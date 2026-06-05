@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chuyện của Cá 💞
 
-## Getting Started
+Web đôi mobile-first: lưu kỷ niệm, lên kế hoạch hẹn hò, và góc bí mật cho hai người.
+Kiến trúc multi-tenant (mỗi cặp = 1 "Couple Space") nên có thể mở cho nhiều cặp sau này.
 
-First, run the development server:
+## Tech stack
+
+- **Next.js 15** (App Router) + TypeScript + Tailwind v4
+- **tRPC v11** + TanStack Query
+- **MongoDB** (Mongoose) — Atlas M0 free tier
+- **Better Auth** (email + Google OAuth)
+- **Mapbox** (bản đồ + Directions proxy server-side)
+- **Cloudinary** (ảnh kỷ niệm — unsigned upload)
+- Deploy: **Vercel** (zero-cost)
+
+## Tính năng (v1)
+
+1. Đăng nhập (email / Google) + Couple Space + mời người yêu qua mã.
+2. Bản đồ ăn chơi: thêm/lọc địa điểm, Đã đi / Muốn đi, route preview, chỉ đường.
+3. Vòng quay "Hôm nay ăn gì?".
+4. Dòng kỷ niệm (ảnh + caption + ngày).
+5. Góc bí mật: kế hoạch tương lai, wishlist quà, phiếu bé ngoan (điểm/voucher).
+
+## Chạy local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # rồi điền các giá trị bên dưới
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> Lưu ý: build/dev dùng **webpack** (không Turbopack) vì Better Auth. Nếu gặp lỗi
+> `WasmHash ... reading 'length'` sau khi cài thêm package → xoá cache: `rm -rf .next`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Biến môi trường (`.env.local`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Biến | Lấy ở đâu |
+|------|-----------|
+| `MONGODB_URI` | MongoDB Atlas → Create free **M0** cluster → Connect → driver string |
+| `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
+| `BETTER_AUTH_URL` | `http://localhost:3000` (local) / domain thật (prod) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Cloud Console → OAuth client (Web). Redirect URI: `<BETTER_AUTH_URL>/api/auth/callback/google` |
+| `RESEND_API_KEY` | resend.com (mời/verify email) — optional cho local |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | mapbox.com → token **public** (render bản đồ), giới hạn theo URL |
+| `MAPBOX_SECRET_TOKEN` | mapbox.com → token **secret** (Directions proxy) — KHÔNG để lộ |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | cloudinary.com dashboard |
+| `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Cloudinary → Settings → Upload → **unsigned** preset (khoá folder/format/size) |
+| `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Cloudinary dashboard (server-side, để xoá ảnh) |
 
-## Learn More
+## Deploy (Vercel)
 
-To learn more about Next.js, take a look at the following resources:
+1. Push repo lên GitHub (đã có).
+2. Vercel → Import project → đặt **tất cả** biến môi trường ở trên (đổi `BETTER_AUTH_URL` thành domain Vercel).
+3. Thêm redirect URI production vào Google OAuth client.
+4. Deploy. Atlas M0 + Vercel + Mapbox/Cloudinary free → $0.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Bảo mật đã có
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Cô lập dữ liệu theo `spaceId` (lấy từ session, không tin client).
+- Invite code: hash + TTL 7 ngày + dùng 1 lần; join atomic (max 2 người); 1 user = 1 space.
+- Điểm phiếu bé ngoan: counter atomic (`$inc` có guard) chống điểm âm; voucher single-use.
+- CSRF origin guard cho mutation; URL input chỉ nhận `https://`.
