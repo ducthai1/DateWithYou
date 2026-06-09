@@ -1,10 +1,14 @@
 "use client";
 
-import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
-import "mapbox-gl/dist/mapbox-gl.css";
+import { useEffect, useRef } from "react";
+import Map, { Marker, Source, Layer, type MapRef } from "react-map-gl/maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
 import type { LatLng } from "@/lib/maps";
+import { cn } from "@/lib/utils";
 
-const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+// OpenFreeMap serves free vector tiles + styles with no API key, no signup, and
+// no credit card — unlike Mapbox, which gates tokens behind a payment method.
+const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 // Ho Chi Minh City centre.
 const DEFAULT_CENTER = { longitude: 106.7009, latitude: 10.7769, zoom: 12 };
 
@@ -19,30 +23,88 @@ export function LocationMapView({
   pins,
   routeGeometry,
   selectedId,
+  focusGeo,
+  userGeo,
+  followGeo,
+  heading,
+  traveled,
   onSelect,
   onMapClick,
+  className,
 }: {
   pins: MapPin[];
   routeGeometry?: unknown;
   selectedId?: string | null;
+  focusGeo?: LatLng | null;
+  userGeo?: LatLng | null;
+  followGeo?: LatLng | null;
+  /** Device heading in degrees (0 = north). Rotates the map when following. */
+  heading?: number | null;
+  traveled?: Array<[number, number]>;
   onSelect?: (id: string) => void;
   onMapClick?: (geo: LatLng) => void;
+  className?: string;
 }) {
-  if (!TOKEN) {
-    return (
-      <div className="border-border bg-muted/40 text-muted-foreground flex h-full min-h-[280px] items-center justify-center rounded-xl border p-6 text-center text-sm">
-        Bản đồ cần <code>NEXT_PUBLIC_MAPBOX_TOKEN</code>. Thêm vào{" "}
-        <code>.env.local</code> để hiển thị.
-      </div>
+  const mapRef = useRef<MapRef>(null);
+
+  // Follow mode: keep the live position centred as the user moves.
+  // When heading is available, rotate the map so "up" = direction of travel.
+  useEffect(() => {
+    if (followGeo) {
+      mapRef.current?.easeTo({
+        center: [followGeo.lng, followGeo.lat],
+        zoom: 18.5,
+        bearing: heading ?? 0,
+        pitch: 60,       // tilted 3-D perspective for navigation feel
+        duration: 600,
+      });
+    }
+  }, [followGeo, heading]);
+
+  // In-app "Chỉ đường": glide the map to the chosen pin instead of leaving the app.
+  useEffect(() => {
+    if (focusGeo) {
+      mapRef.current?.flyTo({
+        center: [focusGeo.lng, focusGeo.lat],
+        zoom: 15,
+        bearing: 0,
+        pitch: 0,
+        duration: 800,
+      });
+    }
+  }, [focusGeo]);
+
+  // When a route is drawn, frame the whole line so both the user's location and
+  // the destination are visible at once.
+  useEffect(() => {
+    const coords = (routeGeometry as { coordinates?: [number, number][] } | null)
+      ?.coordinates;
+    if (!coords?.length) return;
+    let minLng = Infinity,
+      minLat = Infinity,
+      maxLng = -Infinity,
+      maxLat = -Infinity;
+    for (const [lng, lat] of coords) {
+      minLng = Math.min(minLng, lng);
+      maxLng = Math.max(maxLng, lng);
+      minLat = Math.min(minLat, lat);
+      maxLat = Math.max(maxLat, lat);
+    }
+    mapRef.current?.fitBounds(
+      [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ],
+      { padding: 56, duration: 900, maxZoom: 16 },
     );
-  }
+  }, [routeGeometry]);
 
   return (
-    <div className="h-full min-h-[280px] overflow-hidden rounded-xl">
+    <div className={cn("h-full min-h-[280px] overflow-hidden rounded-xl border border-border bg-card shadow-sm", className)}>
       <Map
-        mapboxAccessToken={TOKEN}
+        ref={mapRef}
         initialViewState={DEFAULT_CENTER}
-        mapStyle="mapbox://styles/mapbox/light-v11"
+        mapStyle={MAP_STYLE}
         onClick={(e) =>
           onMapClick?.({ lat: e.lngLat.lat, lng: e.lngLat.lng })
         }
@@ -68,6 +130,70 @@ export function LocationMapView({
             </Marker>
           ))}
 
+        {traveled && traveled.length > 1 && (
+          <Source
+            id="traveled"
+            type="geojson"
+            data={{
+              type: "Feature",
+              properties: {},
+              geometry: { type: "LineString", coordinates: traveled } as never,
+            }}
+          >
+            <Layer
+              id="traveled-line"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{ "line-color": "#2563eb", "line-width": 5, "line-opacity": 0.7 }}
+            />
+          </Source>
+        )}
+
+        {userGeo && (
+          <Marker
+            longitude={userGeo.lng}
+            latitude={userGeo.lat}
+            // Rotate the marker itself so the arrow points in travel direction.
+            // The map rotates too, but the marker must stay pointing "up" relative
+            // to the map — so we counter-rotate by subtracting the map bearing.
+            rotation={0}
+          >
+            {heading != null ? (
+              /* Directional arrow when heading is known */
+              <div className="relative flex items-center justify-center">
+                {/* Pulsing accuracy halo */}
+                <span className="absolute h-16 w-16 animate-ping rounded-full bg-blue-400/30" />
+                {/* Direction cone */}
+                <svg
+                  width="56"
+                  height="56"
+                  viewBox="0 0 36 36"
+                  fill="none"
+                  className="drop-shadow-lg"
+                >
+                  {/* Translucent cone showing heading */}
+                  <path
+                    d="M18 2 L26 18 L18 14 L10 18 Z"
+                    fill="#3b82f6"
+                    fillOpacity="0.9"
+                    stroke="white"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  {/* Centre dot */}
+                  <circle cx="18" cy="16" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                </svg>
+              </div>
+            ) : (
+              /* Simple dot when heading is unknown */
+              <span
+                className="block h-5 w-5 rounded-full border-[2.5px] border-white bg-blue-500 shadow ring-4 ring-blue-500/30"
+                title="Vị trí của bạn"
+              />
+            )}
+          </Marker>
+        )}
+
         {routeGeometry != null && (
           <Source
             id="route"
@@ -77,7 +203,8 @@ export function LocationMapView({
             <Layer
               id="route-line"
               type="line"
-              paint={{ "line-color": "#b08968", "line-width": 4 }}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{ "line-color": "#c2693f", "line-width": 5 }}
             />
           </Source>
         )}

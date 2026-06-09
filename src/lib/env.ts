@@ -14,14 +14,16 @@ const serverEnvSchema = z.object({
   // Phase 2 — auth (Better Auth + Google OAuth)
   BETTER_AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().optional(),
+  // Comma-separated extra origins to trust (e.g. a LAN IP for phone testing).
+  BETTER_AUTH_TRUSTED_ORIGINS: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 
   // Phase 2/7 — transactional email
   RESEND_API_KEY: z.string().optional(),
 
-  // Phase 3 — Mapbox Directions proxy (secret token, server only)
-  MAPBOX_SECRET_TOKEN: z.string().optional(),
+  // Phase 3 — Stadia Maps (Valhalla motor_scooter directions, server only)
+  STADIA_API_KEY: z.string().optional(),
 
   // Phase 5 — Cloudinary asset cleanup (server only)
   CLOUDINARY_API_KEY: z.string().optional(),

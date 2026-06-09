@@ -2,26 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NAV_ITEMS, NAV_HIDDEN_ON } from "./nav-items";
 
-const ITEMS = [
-  { href: "/map", label: "Bản đồ", icon: "🗺️" },
-  { href: "/wheel", label: "Quay", icon: "🎯" },
-  { href: "/timeline", label: "Kỷ niệm", icon: "📸" },
-  { href: "/vault", label: "Bí mật", icon: "🔒" },
-  { href: "/settings", label: "Cài đặt", icon: "⚙️" },
-];
-
-// Hidden on auth / landing / onboarding routes.
-const HIDDEN_ON = ["/", "/sign-in", "/sign-up", "/onboarding"];
-
+/** Mobile-only bottom nav (hidden on md+, where the sidebar takes over). */
 export function BottomNav() {
   const pathname = usePathname();
-  if (HIDDEN_ON.includes(pathname)) return null;
+  if (NAV_HIDDEN_ON.includes(pathname)) return null;
 
   return (
-    <nav className="border-border bg-background/90 fixed inset-x-0 bottom-0 z-20 flex justify-around border-t pb-[env(safe-area-inset-bottom)] backdrop-blur">
-      {ITEMS.map((it) => {
+    <nav className="border-border bg-background/90 fixed inset-x-0 bottom-0 z-20 flex justify-around border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+      {NAV_ITEMS.map((it) => {
         const active = pathname.startsWith(it.href);
+        const Icon = it.Icon;
         return (
           <Link
             key={it.href}
@@ -30,7 +22,7 @@ export function BottomNav() {
               active ? "text-accent" : "text-muted-foreground"
             }`}
           >
-            <span className="text-lg">{it.icon}</span>
+            <Icon className="h-5 w-5" />
             {it.label}
           </Link>
         );

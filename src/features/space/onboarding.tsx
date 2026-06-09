@@ -2,9 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs } from "@/components/ui/tabs";
+
+const ONBOARDING_TABS = [
+  { key: "create", label: "Tạo mới" },
+  { key: "join", label: "Tham gia" },
+] as const;
 
 export function Onboarding() {
   const router = useRouter();
@@ -38,68 +45,67 @@ export function Onboarding() {
         </p>
       </div>
 
-      <div className="bg-muted flex rounded-xl p-1 text-sm">
-        <button
-          className={`flex-1 rounded-lg py-2 ${tab === "create" ? "bg-background font-medium shadow-sm" : "text-muted-foreground"}`}
-          onClick={() => setTab("create")}
-        >
-          Tạo mới
-        </button>
-        <button
-          className={`flex-1 rounded-lg py-2 ${tab === "join" ? "bg-background font-medium shadow-sm" : "text-muted-foreground"}`}
-          onClick={() => setTab("join")}
-        >
-          Tham gia
-        </button>
-      </div>
+      <Tabs tabs={ONBOARDING_TABS} value={tab} onChange={setTab} />
 
-      {tab === "create" ? (
-        <div className="space-y-3">
-          <Input
-            placeholder="Tên không gian (vd: Chuyện của Cá)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          {create.error && (
-            <p className="text-sm text-red-600">
-              {create.error.message === "ALREADY_IN_SPACE"
-                ? "Bạn đã có không gian rồi."
-                : "Không tạo được, thử lại nhé."}
-            </p>
-          )}
-          <Button
-            className="w-full"
-            disabled={!name.trim() || create.isPending}
-            onClick={() => create.mutate({ name: name.trim() })}
+      <div className="relative">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -10, filter: "blur(4px)", position: "absolute", width: "100%", top: 0, left: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-            {create.isPending ? "Đang tạo…" : "Tạo không gian"}
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <Input
-            placeholder="Nhập mã mời"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-          />
-          {join.error && (
-            <p className="text-sm text-red-600">
-              {join.error.message === "INVALID_OR_EXPIRED_CODE"
-                ? "Mã sai hoặc đã hết hạn."
-                : join.error.message === "ALREADY_IN_SPACE"
-                  ? "Bạn đã có không gian rồi."
-                  : "Không tham gia được, thử lại nhé."}
-            </p>
+          {tab === "create" ? (
+            <div className="space-y-3">
+              <Input
+                placeholder="Tên không gian (vd: Chuyện của Cá)"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              {create.error && (
+                <p className="text-sm text-destructive">
+                  {create.error.message === "ALREADY_IN_SPACE"
+                    ? "Bạn đã có không gian rồi."
+                    : `Không tạo được: ${create.error.message}`}
+                </p>
+              )}
+              <Button
+                className="w-full"
+                disabled={!name.trim() || create.isPending}
+                onClick={() => create.mutate({ name: name.trim() })}
+              >
+                {create.isPending ? "Đang tạo…" : "Tạo không gian"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Input
+                placeholder="Nhập mã mời"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+              />
+              {join.error && (
+                <p className="text-sm text-destructive">
+                  {join.error.message === "INVALID_OR_EXPIRED_CODE"
+                    ? "Mã sai hoặc đã hết hạn."
+                    : join.error.message === "ALREADY_IN_SPACE"
+                      ? "Bạn đã có không gian rồi."
+                      : "Không tham gia được, thử lại nhé."}
+                </p>
+              )}
+              <Button
+                className="w-full"
+                disabled={!code.trim() || join.isPending}
+                onClick={() => join.mutate({ code: code.trim() })}
+              >
+                {join.isPending ? "Đang tham gia…" : "Tham gia"}
+              </Button>
+            </div>
           )}
-          <Button
-            className="w-full"
-            disabled={!code.trim() || join.isPending}
-            onClick={() => join.mutate({ code: code.trim() })}
-          >
-            {join.isPending ? "Đang tham gia…" : "Tham gia"}
-          </Button>
-        </div>
-      )}
+        </motion.div>
+      </AnimatePresence>
+      </div>
     </div>
   );
 }

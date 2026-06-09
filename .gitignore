@@ -32,10 +32,20 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# keep the template so collaborators know which vars to set
+!.env.example
 
 # vercel
 .vercel
 
+# local agent tooling & planning artifacts (kept local, not pushed)
+/.claude/
+/plans/
+/docs/
+idea.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+certificates

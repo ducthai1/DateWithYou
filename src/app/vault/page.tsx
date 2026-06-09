@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { RoadmapBoard } from "@/features/vault/roadmap-board";
 import { WishlistGrid } from "@/features/vault/wishlist-grid";
 import { RewardsPanel } from "@/features/vault/rewards-panel";
+import { Tabs } from "@/components/ui/tabs";
 
 const TABS = [
   { key: "roadmap", label: "Kế hoạch" },
@@ -15,22 +17,24 @@ export default function VaultPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("roadmap");
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 px-4 py-6">
+    <div className="mx-auto max-w-2xl space-y-4 px-4 py-6 lg:max-w-4xl">
       <h1 className="text-2xl font-semibold">Góc bí mật</h1>
-      <div className="bg-muted flex rounded-xl p-1 text-sm">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex-1 rounded-lg py-2 ${tab === t.key ? "bg-background font-medium shadow-sm" : "text-muted-foreground"}`}
+      <Tabs tabs={TABS} value={tab} onChange={setTab} />
+      <div className="relative">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -10, filter: "blur(4px)", position: "absolute", width: "100%", top: 0, left: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-            {t.label}
-          </button>
-        ))}
+          {tab === "roadmap" && <RoadmapBoard />}
+          {tab === "wishlist" && <WishlistGrid />}
+          {tab === "rewards" && <RewardsPanel />}
+          </motion.div>
+        </AnimatePresence>
       </div>
-      {tab === "roadmap" && <RoadmapBoard />}
-      {tab === "wishlist" && <WishlistGrid />}
-      {tab === "rewards" && <RewardsPanel />}
     </div>
   );
 }

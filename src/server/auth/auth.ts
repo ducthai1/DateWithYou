@@ -26,12 +26,27 @@ globalForAuthDb._authMongoClient = client;
 export const auth = betterAuth({
   database: mongodbAdapter(client.db(), { client }),
   secret: env.BETTER_AUTH_SECRET ?? "dev-insecure-secret-change-me",
-  baseURL: env.BETTER_AUTH_URL ?? "http://localhost:3000",
+  baseURL: env.BETTER_AUTH_URL ?? "http://localhost:4488",
+  // Origin allow-list (Better Auth's CSRF guard). In dev we trust both localhost
+  // and 127.0.0.1 on the app port so "Invalid origin" never depends on which
+  // host string the browser used. Extra origins (e.g. a LAN IP for phone
+  // testing) can be added via BETTER_AUTH_TRUSTED_ORIGINS without a code change.
+  trustedOrigins: [
+    ...(process.env.NODE_ENV === "production"
+      ? []
+      : ["http://localhost:4488", "http://127.0.0.1:4488"]),
+    ...(env.BETTER_AUTH_TRUSTED_ORIGINS?.split(",")
+      .map((o) => o.trim())
+      .filter(Boolean) ?? []),
+  ],
   emailAndPassword: {
     enabled: true,
-    // Invite code controls who joins a space, so we don't hard-block on verify
-    // for v1. Verification email is still sent (see Resend wiring).
+    // v1 keeps sign-up frictionless: no email verification, and a tiny password
+    // floor so registering means using the app immediately. Invite codes (not
+    // verification) gate who can join a couple space.
     requireEmailVerification: false,
+    minPasswordLength: 1,
+    autoSignIn: true,
   },
   socialProviders: {
     google: {

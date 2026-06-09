@@ -3,6 +3,9 @@ import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { SideNav } from "@/components/layout/side-nav";
+import { SpaceGuard } from "@/components/layout/space-guard";
+import { MainWrapper } from "@/components/layout/main-wrapper";
 
 const inter = Inter({
   variable: "--font-sans-inter",
@@ -28,7 +31,10 @@ export default function RootLayout({
     <html lang="vi">
       <body className={`${inter.variable} ${fraunces.variable} antialiased`}>
         <Providers>
-          <div className="pb-16">{children}</div>
+          <SpaceGuard />
+          <SideNav />
+          {/* Offset for the bottom nav on mobile, for the sidebar on desktop. */}
+          <MainWrapper>{children}</MainWrapper>
           <BottomNav />
         </Providers>
       </body>

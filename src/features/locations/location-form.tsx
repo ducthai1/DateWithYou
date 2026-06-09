@@ -5,19 +5,14 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import {
-  DISTRICTS,
-  CATEGORIES,
-  type District,
-  type Category,
-} from "@/lib/districts-categories";
+
 import type { LatLng } from "@/lib/maps";
 
 export type LocationFormValues = {
   id?: string;
   name: string;
-  district: District;
-  category: Category;
+  district: string;
+  category: string;
   geo: LatLng | null;
   googleMapsUrl: string;
   socialUrl: string;
@@ -26,10 +21,23 @@ export type LocationFormValues = {
   note: string;
 };
 
+/**
+ * Maps a tRPC mutation error to a human reason. The previous code always blamed
+ * the link, which hid the real causes (no couple space, validation, network).
+ */
+function saveErrorMessage(error: { message?: string } | null | undefined): string {
+  const msg = error?.message ?? "";
+  if (msg.includes("NO_SPACE") || msg.includes("FORBIDDEN"))
+    return "Bạn chưa có không gian. Vào /onboarding để tạo trước nhé.";
+  if (msg.toLowerCase().includes("url") || msg.includes("https"))
+    return "Link không hợp lệ — phải bắt đầu bằng https://";
+  return `Không lưu được: ${msg}`;
+}
+
 const empty: LocationFormValues = {
   name: "",
-  district: "Quận 1",
-  category: "Cà phê",
+  district: "",
+  category: "",
   geo: null,
   googleMapsUrl: "",
   socialUrl: "",
@@ -40,14 +48,23 @@ const empty: LocationFormValues = {
 
 export function LocationForm({
   initial,
+  categories,
+  districts,
   onDone,
   onCancel,
 }: {
   initial?: Partial<LocationFormValues>;
+  categories: string[];
+  districts: string[];
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const [v, setV] = useState<LocationFormValues>({ ...empty, ...initial });
+  const [v, setV] = useState<LocationFormValues>({
+    ...empty,
+    district: initial?.district || districts[0] || "",
+    category: initial?.category || categories[0] || "",
+    ...initial,
+  });
   const utils = trpc.useUtils();
   const set = <K extends keyof LocationFormValues>(
     k: K,
@@ -79,7 +96,7 @@ export function LocationForm({
   }
 
   return (
-    <div className="border-border space-y-3 rounded-xl border p-4">
+    <div className="border-border bg-card space-y-3 rounded-2xl border p-5 shadow-sm">
       <Input
         placeholder="Tên quán"
         value={v.name}
@@ -87,21 +104,17 @@ export function LocationForm({
       />
       <div className="flex gap-2">
         <Select
+          aria-label="Quận"
           value={v.district}
-          onChange={(e) => set("district", e.target.value as District)}
-        >
-          {DISTRICTS.map((d) => (
-            <option key={d}>{d}</option>
-          ))}
-        </Select>
+          onChange={(val) => set("district", val)}
+          options={districts.map((d) => ({ value: d, label: d }))}
+        />
         <Select
+          aria-label="Danh mục"
           value={v.category}
-          onChange={(e) => set("category", e.target.value as Category)}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </Select>
+          onChange={(val) => set("category", val)}
+          options={categories.map((c) => ({ value: c, label: c }))}
+        />
       </div>
       <p className="text-muted-foreground text-xs">
         {v.geo
@@ -124,20 +137,21 @@ export function LocationForm({
         onChange={(e) => set("mustTry", e.target.value)}
       />
       <Select
-        value={v.rating ?? ""}
-        onChange={(e) =>
-          set("rating", e.target.value ? Number(e.target.value) : null)
-        }
-      >
-        <option value="">Đánh giá (sao)</option>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <option key={n} value={n}>
-            {"★".repeat(n)}
-          </option>
-        ))}
-      </Select>
+        aria-label="Đánh giá sao"
+        value={v.rating ? String(v.rating) : ""}
+        onChange={(val) => set("rating", val ? Number(val) : null)}
+        options={[
+          { value: "", label: "Đánh giá (sao)" },
+          ...[1, 2, 3, 4, 5].map((n) => ({
+            value: String(n),
+            label: "★".repeat(n),
+          })),
+        ]}
+      />
       {(create.error || update.error) && (
-        <p className="text-sm text-red-600">Không lưu được. Kiểm tra link (phải https) & thử lại.</p>
+        <p className="text-destructive text-sm">
+          {saveErrorMessage(create.error ?? update.error)}
+        </p>
       )}
       <div className="flex gap-2">
         <Button onClick={submit} disabled={!v.name.trim() || pending} className="flex-1">

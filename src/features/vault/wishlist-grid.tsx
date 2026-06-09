@@ -4,6 +4,9 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { ConfirmButton } from "@/components/ui/confirm-button";
+import { Trash2, Check, Undo2 } from "lucide-react";
 
 export function WishlistGrid() {
   const [itemName, setItemName] = useState("");
@@ -27,22 +30,39 @@ export function WishlistGrid() {
       {items.length === 0 ? (
         <p className="text-muted-foreground text-sm">Chưa có món nào trong wishlist.</p>
       ) : (
-        <ul className="space-y-2">
+        <div className="space-y-2">
           {items.map((w) => (
-            <li key={w.id} className="border-border flex items-center justify-between rounded-xl border p-3">
+            <Card key={w.id} className="flex items-center justify-between p-3">
               <div>
                 <p className={`text-sm ${w.bought ? "text-muted-foreground line-through" : ""}`}>{w.itemName}</p>
                 {w.price != null && <p className="text-muted-foreground text-xs">{w.price.toLocaleString("vi-VN")}đ</p>}
               </div>
-              <span className="flex gap-2 text-xs">
-                <button className="text-accent" onClick={() => toggle.mutate({ id: w.id })}>
-                  {w.bought ? "Bỏ đánh dấu" : "Đã mua"}
+              <span className="flex items-center gap-2 text-xs">
+                <button
+                  className="bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground inline-flex items-center gap-1 rounded-lg px-2 py-1 font-medium transition-colors"
+                  onClick={() => toggle.mutate({ id: w.id })}
+                >
+                  {w.bought ? (
+                    <>
+                      <Undo2 className="h-3.5 w-3.5" /> Bỏ đánh dấu
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3.5 w-3.5" /> Đã mua
+                    </>
+                  )}
                 </button>
-                <button className="text-red-500" onClick={() => remove.mutate({ id: w.id })}>✕</button>
+                <ConfirmButton
+                  idle=""
+                  confirm="Xoá?"
+                  icon={<Trash2 className="h-4 w-4" />}
+                  className="rounded-lg px-2 py-1.5 hover:bg-destructive-soft"
+                  onConfirm={() => remove.mutate({ id: w.id })}
+                />
               </span>
-            </li>
+            </Card>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

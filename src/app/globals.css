@@ -2,13 +2,20 @@
 
 /* Modern-minimal theme: warm white / beige, stone ink, muted rose accent. */
 :root {
-  --background: #faf9f7;
+  --background: #f1ece3; /* warmer so solid-white cards/inputs clearly lift off it */
   --foreground: #1c1917;
-  --muted: #f1eee9;
-  --muted-foreground: #78716c;
-  --border: #e7e3dd;
-  --accent: #b08968;
+  --muted: #e7e1d6;
+  --muted-foreground: #6f675d;
+  --border: #d8cfc1; /* stronger so fields read as distinct surfaces, not sunken */
+  --accent: #c2693f; /* warm terracotta — brighter & cleaner than the old muddy taupe */
+  --accent-hover: #a8542f; /* darker terracotta for hover/active */
+  --accent-soft: #f6e6dc; /* solid light terracotta — replaces translucent accent/10 tints */
   --accent-foreground: #ffffff;
+  --card: #ffffff; /* solid surface that now sits clearly above the warm background */
+  --ring: #c2693f; /* focus-visible ring colour */
+  --destructive: #dc2626;
+  --destructive-soft: #fbe8e8; /* solid light red — replaces destructive/10 */
+  --success: #059669;
   --radius: 0.75rem;
 }
 
@@ -19,7 +26,14 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
   --color-accent-foreground: var(--accent-foreground);
+  --color-card: var(--card);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-success: var(--success);
   --font-sans: var(--font-sans-inter);
   --font-serif: var(--font-serif-fraunces);
   --radius-base: var(--radius);
@@ -36,4 +50,21 @@ h1,
 h2,
 h3 {
   font-family: var(--font-serif), ui-serif, Georgia, serif;
+}
+
+/*
+ * Interaction defaults. Native <button>/<select> do NOT show a pointer cursor,
+ * so every clickable element gets one here in one place instead of per-call.
+ */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+select:not(:disabled),
+summary,
+label[for] {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }

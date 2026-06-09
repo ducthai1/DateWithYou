@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Modal, ModalHeader } from "@/components/ui/modal";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { MemoryForm } from "./memory-form";
 
 function monthKey(d: Date): string {
@@ -25,16 +29,28 @@ export function MemoryTimeline() {
   }, {});
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 px-4 py-6">
+    <div className="mx-auto max-w-2xl space-y-4 px-4 py-6 lg:max-w-4xl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Dòng kỷ niệm</h1>
-        <Button onClick={() => setAdding((a) => !a)}>{adding ? "Đóng" : "+ Thêm"}</Button>
+        <Button onClick={() => setAdding(true)}>+ Thêm</Button>
       </div>
 
-      {adding && <MemoryForm onDone={() => setAdding(false)} onCancel={() => setAdding(false)} />}
+      <Modal
+        open={adding}
+        onClose={() => setAdding(false)}
+      >
+        <ModalHeader title="Thêm kỷ niệm" onClose={() => setAdding(false)} />
+        <MemoryForm
+          onDone={() => setAdding(false)}
+          onCancel={() => setAdding(false)}
+        />
+      </Modal>
 
       {list.isLoading ? (
-        <p className="text-muted-foreground text-sm">Đang tải…</p>
+        <div className="space-y-3">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
       ) : memories.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           Chưa có kỷ niệm nào. Lưu khoảnh khắc đầu tiên nhé 💞
@@ -44,7 +60,7 @@ export function MemoryTimeline() {
           <section key={month} className="space-y-3">
             <h2 className="text-muted-foreground text-sm font-medium capitalize">{month}</h2>
             {items.map((m) => (
-              <article key={m.id} className="border-border rounded-xl border p-3">
+              <Card key={m.id} className="p-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium">{m.title}</p>
@@ -52,9 +68,10 @@ export function MemoryTimeline() {
                       {new Date(m.date).toLocaleDateString("vi-VN")}
                     </p>
                   </div>
-                  <button className="text-xs text-red-500" onClick={() => remove.mutate({ id: m.id })}>
-                    Xoá
-                  </button>
+                  <ConfirmButton
+                    className="text-xs hover:underline"
+                    onConfirm={() => remove.mutate({ id: m.id })}
+                  />
                 </div>
                 {m.caption && <p className="mt-1 text-sm">{m.caption}</p>}
                 {m.photos.length > 0 && (
@@ -71,7 +88,7 @@ export function MemoryTimeline() {
                     ))}
                   </div>
                 )}
-              </article>
+              </Card>
             ))}
           </section>
         ))

@@ -1,0 +1,212 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { LatLng } from "@/lib/maps";
+
+/** Minimal screen Wake Lock shape (avoids relying on lib.dom typings). */
+type WakeLockLike = { release: () => Promise<void> };
+type NavigatorWithWakeLock = Navigator & {
+  wakeLock?: { request: (type: "screen") => Promise<WakeLockLike> };
+};
+
+export type LiveNavigation = {
+  isNavigating: boolean;
+  /** Latest live position (null until the first fix). */
+  userGeo: LatLng | null;
+  /** Device heading in degrees (0 = north, 90 = east). null when unavailable. */
+  heading: number | null;
+  /** Accumulated travelled path as [lng, lat] pairs for a map line. */
+  traveled: Array<[number, number]>;
+  /** Estimated remaining distance in metres (null before first fix). */
+  remainingMeters: number | null;
+  /** Estimated remaining time in seconds (null before first fix). */
+  remainingSeconds: number | null;
+  error: string | null;
+  start: () => void;
+  stop: () => void;
+  /** Feed the route polyline + totals so the hook can compute remaining distance live. */
+  setRouteInfo: (coords: Array<[number, number]>, totalMeters: number, totalSeconds: number) => void;
+};
+
+// ── Geo helpers ──────────────────────────────────────────────────────────────
+
+/** Haversine distance in metres between two points. */
+function haversineM(a: LatLng, b: LatLng): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+
+/**
+ * Given the user's current position and the full route polyline ([lng,lat]),
+ * find the closest point on the route and sum the remaining segment lengths.
+ */
+function remainingAlongRoute(
+  user: LatLng,
+  coords: Array<[number, number]>,
+): number {
+  if (coords.length < 2) return 0;
+  let bestIdx = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < coords.length; i++) {
+    const d = haversineM(user, { lat: coords[i][1], lng: coords[i][0] });
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = i;
+    }
+  }
+  // Sum from the snapped point to the end of the route.
+  let total = haversineM(user, { lat: coords[bestIdx][1], lng: coords[bestIdx][0] });
+  for (let i = bestIdx; i < coords.length - 1; i++) {
+    total += haversineM(
+      { lat: coords[i][1], lng: coords[i][0] },
+      { lat: coords[i + 1][1], lng: coords[i + 1][0] },
+    );
+  }
+  return total;
+}
+
+// ── Hook ─────────────────────────────────────────────────────────────────────
+
+/**
+ * "Follow me" navigation: streams the device location via watchPosition while
+ * keeping the screen awake. Tracks heading for map rotation and computes
+ * remaining distance/time along the route polyline.
+ */
+export function useLiveNavigation(): LiveNavigation {
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [userGeo, setUserGeo] = useState<LatLng | null>(null);
+  const [heading, setHeading] = useState<number | null>(null);
+  const [traveled, setTraveled] = useState<Array<[number, number]>>([]);
+  const [remainingMeters, setRemainingMeters] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const watchId = useRef<number | null>(null);
+  const wakeLock = useRef<WakeLockLike | null>(null);
+
+  // Route data set externally so the hook can compute remaining distance.
+  const routeCoordsRef = useRef<Array<[number, number]> | null>(null);
+  const routeTotalMetersRef = useRef<number>(0);
+  const routeTotalSecondsRef = useRef<number>(0);
+
+  /** Call this after fetching a route to feed the hook the polyline + totals. */
+  const setRouteInfo = useCallback(
+    (coords: Array<[number, number]>, totalMeters: number, totalSeconds: number) => {
+      routeCoordsRef.current = coords;
+      routeTotalMetersRef.current = totalMeters;
+      routeTotalSecondsRef.current = totalSeconds;
+    },
+    [],
+  );
+
+  // Expose setRouteInfo on the returned object so the page can call it.
+  // We store it on a ref so `start` doesn't depend on it for the useCallback deps.
+  const setRouteInfoRef = useRef(setRouteInfo);
+  setRouteInfoRef.current = setRouteInfo;
+
+  const acquireWakeLock = useCallback(() => {
+    const nav = navigator as NavigatorWithWakeLock;
+    nav.wakeLock
+      ?.request("screen")
+      .then((s) => {
+        wakeLock.current = s;
+      })
+      .catch(() => {
+        /* wake lock is best-effort; ignore if unsupported/denied */
+      });
+  }, []);
+
+  const stop = useCallback(() => {
+    if (watchId.current != null) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+    wakeLock.current?.release().catch(() => {});
+    wakeLock.current = null;
+    setIsNavigating(false);
+    setHeading(null);
+    setRemainingMeters(null);
+    setRemainingSeconds(null);
+  }, []);
+
+  const start = useCallback(() => {
+    if (watchId.current != null) return; // already navigating — avoid a 2nd watch
+    if (!navigator.geolocation) {
+      setError("Trình duyệt không hỗ trợ định vị.");
+      return;
+    }
+    setError(null);
+    setTraveled([]);
+    setRemainingMeters(null);
+    setRemainingSeconds(null);
+    setIsNavigating(true);
+    acquireWakeLock();
+    watchId.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const g = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserGeo(g);
+        setTraveled((t) => [...t, [g.lng, g.lat]]);
+
+        // Heading: only set when the device reports a valid value.
+        if (pos.coords.heading != null && !isNaN(pos.coords.heading)) {
+          setHeading(pos.coords.heading);
+        }
+
+        // Remaining distance along route.
+        const rc = routeCoordsRef.current;
+        if (rc && rc.length >= 2) {
+          const remM = remainingAlongRoute(g, rc);
+          setRemainingMeters(Math.round(remM));
+          // Estimate remaining time proportionally.
+          const totalM = routeTotalMetersRef.current;
+          const totalS = routeTotalSecondsRef.current;
+          if (totalM > 0) {
+            setRemainingSeconds(Math.round((remM / totalM) * totalS));
+          }
+        }
+      },
+      (err) => {
+        setError(
+          err.code === err.PERMISSION_DENIED
+            ? "Bị chặn quyền vị trí — cho phép rồi thử lại."
+            : "Không lấy được vị trí khi đang đi.",
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 },
+    );
+  }, [acquireWakeLock]);
+
+  // Browsers drop the wake lock when the tab is hidden; re-acquire on return.
+  useEffect(() => {
+    const onVisible = () => {
+      if (
+        isNavigating &&
+        document.visibilityState === "visible" &&
+        !wakeLock.current
+      ) {
+        acquireWakeLock();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [isNavigating, acquireWakeLock]);
+
+  // Always clean up the watch + wake lock when the page unmounts.
+  useEffect(() => () => stop(), [stop]);
+
+  return {
+    isNavigating,
+    userGeo,
+    heading,
+    traveled,
+    remainingMeters,
+    remainingSeconds,
+    error,
+    start,
+    stop,
+    setRouteInfo,
+  };
+}

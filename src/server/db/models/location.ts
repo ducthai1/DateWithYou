@@ -1,5 +1,4 @@
 import { Schema, model, models, type InferSchemaType } from "mongoose";
-import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 
 /**
  * A place on the couple's date map. Scoped to a space; every query must filter
@@ -9,8 +8,8 @@ const locationSchema = new Schema(
   {
     spaceId: { type: String, required: true, index: true },
     name: { type: String, required: true },
-    district: { type: String, enum: DISTRICTS, required: true },
-    category: { type: String, enum: CATEGORIES, required: true },
+    district: { type: String, required: true },
+    category: { type: String, required: true },
     geo: {
       lat: { type: Number },
       lng: { type: Number },
