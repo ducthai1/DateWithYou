@@ -39,6 +39,16 @@ export const auth = betterAuth({
       .map((o) => o.trim())
       .filter(Boolean) ?? []),
   ],
+  session: {
+    // Cache the session in a short-lived signed cookie so most requests resolve
+    // the user without a DB round-trip. Every tRPC call goes through
+    // getSession; against a remote Atlas cluster that round-trip dominates
+    // navigation latency. 5 min is the revocation lag we accept for it.
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+    },
+  },
   emailAndPassword: {
     enabled: true,
     // v1 keeps sign-up frictionless: no email verification, and a tiny password

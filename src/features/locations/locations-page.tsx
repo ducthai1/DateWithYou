@@ -29,6 +29,7 @@ import {
 import { useLiveNavigation } from "./use-live-navigation";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
+import type { Category } from "@/lib/districts-categories";
 
 // Shared styling for the small icon+label actions on a location card.
 const ACTION_CLS =

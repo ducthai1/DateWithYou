@@ -3,7 +3,10 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { LocationModel } from "@/server/db/models/location";
-import { LocationConfigModel } from "@/server/db/models/location-config";
+import {
+  LocationConfigModel,
+  type LocationConfig,
+} from "@/server/db/models/location-config";
 import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 import { requireEnv } from "@/lib/env";
 
@@ -223,17 +226,23 @@ export const locationRouter = router({
 
   getConfig: protectedProcedure.query(async ({ ctx }) => {
     await connectToDatabase();
-    let config = await LocationConfigModel.findOne({ spaceId: ctx.spaceId }).lean();
-    if (!config) {
-      config = await LocationConfigModel.create({
-        spaceId: ctx.spaceId,
-        categories: CATEGORIES,
-        districts: DISTRICTS,
-      });
+    const existing = await LocationConfigModel.findOne({
+      spaceId: ctx.spaceId,
+    }).lean<LocationConfig>();
+    if (existing) {
+      return { categories: existing.categories, districts: existing.districts };
     }
+    // First access for this space: seed the config with the default lists and
+    // return those defaults (spread to plain string[] so the tRPC output type
+    // is concrete, not a readonly tuple).
+    await LocationConfigModel.create({
+      spaceId: ctx.spaceId,
+      categories: CATEGORIES,
+      districts: DISTRICTS,
+    });
     return {
-      categories: config.categories,
-      districts: config.districts,
+      categories: [...CATEGORIES] as string[],
+      districts: [...DISTRICTS] as string[],
     };
   }),
 
