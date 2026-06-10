@@ -71,7 +71,7 @@ export default function Home() {
           </motion.div>
 
           <h1 className="font-serif text-4xl font-medium tracking-tight text-[#3b322a] drop-shadow-sm sm:text-5xl md:text-6xl whitespace-nowrap">
-            Chuyện của Cá
+            Vivu No Plan
           </h1>
           
           <p className="mt-8 px-2 text-base font-light leading-relaxed text-[#6b5c51] sm:text-lg">

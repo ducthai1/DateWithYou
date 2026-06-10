@@ -1,4 +1,4 @@
-# Chuyện của Cá 💞
+# Vivu No Plan 💞
 
 Web đôi mobile-first: lưu kỷ niệm, lên kế hoạch hẹn hò, và góc bí mật cho hai người.
 Kiến trúc multi-tenant (mỗi cặp = 1 "Couple Space") nên có thể mở cho nhiều cặp sau này.

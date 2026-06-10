@@ -18,7 +18,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Chuyện của Cá",
+  title: "Vivu No Plan",
   description: "Nơi lưu kỷ niệm và lên kế hoạch hẹn hò của tụi mình.",
 };
 

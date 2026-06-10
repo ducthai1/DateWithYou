@@ -36,7 +36,7 @@ export function SideNav() {
               isCollapsed ? "w-0 opacity-0 ml-0" : "w-auto opacity-100 ml-2"
             )}
           >
-            Chuyện của Cá
+            Vivu No Plan
           </span>
         </Link>
         

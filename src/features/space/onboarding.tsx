@@ -59,7 +59,7 @@ export function Onboarding() {
           {tab === "create" ? (
             <div className="space-y-3">
               <Input
-                placeholder="Tên không gian (vd: Chuyện của Cá)"
+                placeholder="Tên không gian (vd: Vivu No Plan)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
