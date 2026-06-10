@@ -1,5 +1,6 @@
 import "server-only";
 import { betterAuth } from "better-auth";
+import { oneTap } from "better-auth/plugins";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { MongoClient } from "mongodb";
 import { env } from "@/lib/env";
@@ -35,6 +36,14 @@ export const auth = betterAuth({
     ...(process.env.NODE_ENV === "production"
       ? []
       : ["http://localhost:4488", "http://127.0.0.1:4488"]),
+    // Vercel assigns a fresh URL per deployment plus a stable production URL,
+    // both injected at runtime. Trust them so the CSRF origin check passes on
+    // preview deploys and the production alias even when BETTER_AUTH_URL pins a
+    // single canonical origin — otherwise every *.vercel.app host is rejected.
+    ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
+    ...(process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? [`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`]
+      : []),
     ...(env.BETTER_AUTH_TRUSTED_ORIGINS?.split(",")
       .map((o) => o.trim())
       .filter(Boolean) ?? []),
@@ -64,6 +73,10 @@ export const auth = betterAuth({
       clientSecret: env.GOOGLE_CLIENT_SECRET ?? "",
     },
   },
+  // Server side of Google One Tap. Verifies the ID token the One Tap prompt
+  // returns and signs the user in via the same Google account/provider as the
+  // redirect button — no separate identity.
+  plugins: [oneTap()],
   account: {
     accountLinking: {
       // Disabled in v1: with email verification not hard-blocking, auto-linking

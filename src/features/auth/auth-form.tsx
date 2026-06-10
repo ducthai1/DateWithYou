@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
+import { POST_LOGIN_REDIRECT } from "@/components/layout/nav-items";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -50,7 +51,9 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       setError(result.error.message ?? "Có lỗi xảy ra, thử lại nhé.");
       return;
     }
-    router.push("/");
+    // Land on a SpaceGuard-protected route so it routes to the app or
+    // /onboarding based on whether this user already has a couple space.
+    router.push(POST_LOGIN_REDIRECT);
   }
 
   return (
@@ -66,7 +69,10 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         variant="outline"
         className="flex w-full items-center justify-center gap-3 bg-card font-medium text-foreground hover:bg-muted border-border"
         onClick={() =>
-          authClient.signIn.social({ provider: "google", callbackURL: "/" })
+          authClient.signIn.social({
+            provider: "google",
+            callbackURL: POST_LOGIN_REDIRECT,
+          })
         }
       >
         <GoogleIcon className="h-5 w-5" />
