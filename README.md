@@ -13,13 +13,15 @@ Kiến trúc multi-tenant (mỗi cặp = 1 "Couple Space") nên có thể mở c
 - **Cloudinary** (ảnh kỷ niệm — unsigned upload)
 - Deploy: **Vercel** (zero-cost)
 
-## Tính năng (v1)
+## Tính năng
 
 1. Đăng nhập (email / Google) + Couple Space + mời người yêu qua mã.
-2. Bản đồ ăn chơi: thêm/lọc địa điểm, Đã đi / Muốn đi, route preview, chỉ đường.
-3. Vòng quay "Hôm nay ăn gì?".
-4. Dòng kỷ niệm (ảnh + caption + ngày).
-5. Góc bí mật: kế hoạch tương lai, wishlist quà, phiếu bé ngoan (điểm/voucher).
+2. **Lịch chung (Unified Couple Calendar)** — tab trung tâm: lịch tháng với badge số việc + dot nhãn + thumbnail kỷ niệm + ngày đặc biệt; bấm 1 ngày mở itinerary theo khung giờ (Sáng/Trưa/Chiều/Tối), gán nhãn, người phụ trách, giờ, link địa điểm, check-off, "Lưu thành kỷ niệm"; ngày quá khứ tự hiện kỷ niệm + địa điểm đã đi ("Ngày này năm xưa"). View "Sắp tới" + đếm ngược ngày kỷ niệm/sinh nhật (lặp hàng năm).
+3. Bản đồ ăn chơi: thêm/lọc địa điểm, Đã đi / Muốn đi, route preview, chỉ đường.
+4. Vòng quay "Hôm nay ăn gì?" — quay địa điểm "Muốn đi" hoặc công thức tự nấu.
+5. **Bộ sưu tập** — lưu nhạc / video món ngon / công thức nấu ăn (link + embed YouTube/Spotify; công thức có nguyên liệu + các bước).
+6. Dòng kỷ niệm (ảnh + nhãn + embed nhạc/video + ngày), lọc theo nhãn.
+7. Góc bí mật: kế hoạch tương lai, wishlist quà, phiếu bé ngoan (điểm/voucher).
 
 ## Chạy local
 

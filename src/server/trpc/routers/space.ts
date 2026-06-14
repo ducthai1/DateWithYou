@@ -2,9 +2,20 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { TRPCError } from "@trpc/server";
-import { router, authedProcedure } from "@/server/trpc/trpc";
+import { router, authedProcedure, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { SpaceModel } from "@/server/db/models/space";
+import { resolveMemberProfiles } from "@/server/auth/member-profiles";
+import { mergeTags, type Tag } from "@/lib/plan-meta";
+
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
+type MemberProfileOverride = {
+  userId: string;
+  nickname?: string;
+  avatarEmoji?: string;
+  avatarColor?: string;
+};
 
 // Unambiguous alphabet (no 0/O/1/I), 10 chars → hard to brute-force.
 const generateInviteCode = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 10);
@@ -116,6 +127,84 @@ export const spaceRouter = router({
           message: "INVALID_OR_EXPIRED_CODE",
         });
       return { id: String(joined._id) };
+    }),
+
+  // Member display profiles (name + avatar from Better Auth, with optional
+  // couple-set nickname/emoji/colour overrides) — powers the assignee picker.
+  members: protectedProcedure.query(async ({ ctx }) => {
+    await connectToDatabase();
+    const space = await SpaceModel.findById(ctx.spaceId).lean<{
+      members: string[];
+      memberProfiles?: MemberProfileOverride[];
+    }>();
+    if (!space) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
+    const profiles = await resolveMemberProfiles(space.members);
+    const overrides = new Map(
+      (space.memberProfiles ?? []).map((p) => [p.userId, p]),
+    );
+    return profiles.map((p) => {
+      const o = overrides.get(p.id);
+      return {
+        id: p.id,
+        name: o?.nickname || p.name,
+        image: p.image,
+        avatarEmoji: o?.avatarEmoji ?? null,
+        avatarColor: o?.avatarColor ?? null,
+        isSelf: p.id === ctx.userId,
+      };
+    });
+  }),
+
+  // Tag palette = built-in defaults + this space's custom tags.
+  tags: protectedProcedure.query(async ({ ctx }) => {
+    await connectToDatabase();
+    const space = await SpaceModel.findById(ctx.spaceId)
+      .select("tags")
+      .lean<{ tags?: Tag[] }>();
+    return mergeTags(space?.tags);
+  }),
+
+  addTag: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(24),
+        color: hexColor,
+        icon: z.string().trim().max(8).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const space = await SpaceModel.findById(ctx.spaceId).select("tags");
+      if (!space) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
+      const tags: Tag[] = space.get("tags") ?? [];
+      // Idempotent by name (case-insensitive) so quick-add never duplicates.
+      if (tags.some((t) => t.name.toLowerCase() === input.name.toLowerCase())) {
+        return { ok: true };
+      }
+      tags.push({ name: input.name, color: input.color, icon: input.icon });
+      space.set("tags", tags);
+      await space.save();
+      return { ok: true };
+    }),
+
+  setMemberProfile: protectedProcedure
+    .input(
+      z.object({
+        nickname: z.string().trim().max(24).optional(),
+        avatarEmoji: z.string().trim().max(8).optional(),
+        avatarColor: hexColor.optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const space = await SpaceModel.findById(ctx.spaceId).select("memberProfiles");
+      if (!space) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
+      const profiles: MemberProfileOverride[] = space.get("memberProfiles") ?? [];
+      const next = profiles.filter((p) => p.userId !== ctx.userId);
+      next.push({ userId: ctx.userId, ...input });
+      space.set("memberProfiles", next);
+      await space.save();
+      return { ok: true };
     }),
 
   updateTheme: authedProcedure

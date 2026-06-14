@@ -14,6 +14,17 @@ const spaceSchema = new Schema(
     members: { type: [String], required: true, default: [] },
     inviteCodeHash: { type: String },
     inviteCodeExpiresAt: { type: Date },
+    // Couple-defined tag palette for itinerary items (on top of the built-in
+    // defaults merged in at read time). `nickname`/`avatarEmoji`/`avatarColor`
+    // are optional per-member display overrides keyed by member userId.
+    tags: {
+      type: [{ name: String, color: String, icon: String }],
+      default: [],
+    },
+    memberProfiles: {
+      type: [{ userId: String, nickname: String, avatarEmoji: String, avatarColor: String }],
+      default: [],
+    },
   },
   { timestamps: true },
 );

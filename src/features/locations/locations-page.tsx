@@ -220,6 +220,14 @@ export function LocationsPage() {
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Bản đồ ăn chơi</h1>
         <div className="flex gap-2">
+          <a
+            href="/wheel"
+            aria-label="Hôm nay ăn gì?"
+            title="Hôm nay ăn gì?"
+            className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 items-center justify-center rounded-xl border shadow-sm"
+          >
+            <Utensils className="h-4 w-4" />
+          </a>
           <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)}>
             <Settings className="h-4 w-4" />
           </Button>
