@@ -5,23 +5,35 @@ import { motion, useAnimationControls } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { Tabs } from "@/components/ui/tabs";
 import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
 import { Utensils } from "lucide-react";
 import { CATEGORIES, type Category } from "@/lib/districts-categories";
 
 const WEDGE_COLORS = ["#c2693f", "#d4a373", "#e9c46a", "#a3b18a", "#cb997e", "#9c5f3c"];
 
+const SOURCE_TABS = [
+  { key: "place", label: "Quán xá 📍" },
+  { key: "recipe", label: "Tự nấu 👩‍🍳" },
+] as const;
+
 export function FoodWheel() {
+  const [source, setSource] = useState<(typeof SOURCE_TABS)[number]["key"]>("place");
   const [category, setCategory] = useState("");
-  const list = trpc.location.list.useQuery({
+  const places = trpc.location.list.useQuery({
     status: "want_to_go",
     category: (category || undefined) as Category | undefined,
   });
+  const recipes = trpc.media.list.useQuery({ kind: "recipe" });
   const controls = useAnimationControls();
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<{ id: string; name: string; mustTry: string | null } | null>(null);
 
-  const items = list.data ?? [];
+  // Normalise both sources to { id, name, mustTry } for the wheel.
+  const items =
+    source === "place"
+      ? (places.data ?? []).map((p) => ({ id: p.id, name: p.name, mustTry: p.mustTry }))
+      : (recipes.data ?? []).map((r) => ({ id: r.id, name: r.title, mustTry: r.recipe?.cookTime ?? null }));
 
   async function spin() {
     if (items.length === 0 || spinning) return;
@@ -56,16 +68,20 @@ export function FoodWheel() {
     <div className="mx-auto flex max-w-md flex-col items-center gap-6 px-6 py-8">
       <h1 className="text-2xl font-semibold">Hôm nay ăn gì?</h1>
 
-      <Select
-        aria-label="Lọc danh mục"
-        className="max-w-xs"
-        value={category}
-        onChange={setCategory}
-        options={[
-          { value: "", label: "Mọi danh mục" },
-          ...CATEGORIES.map((c) => ({ value: c, label: c })),
-        ]}
-      />
+      <Tabs tabs={SOURCE_TABS} value={source} onChange={setSource} className="w-full max-w-xs" />
+
+      {source === "place" && (
+        <Select
+          aria-label="Lọc danh mục"
+          className="max-w-xs"
+          value={category}
+          onChange={setCategory}
+          options={[
+            { value: "", label: "Mọi danh mục" },
+            ...CATEGORIES.map((c) => ({ value: c, label: c })),
+          ]}
+        />
+      )}
 
       <div className="relative h-72 w-72">
         {/* Pointer (fixed, above the spinning wheel). */}
@@ -111,7 +127,9 @@ export function FoodWheel() {
 
       {items.length === 0 ? (
         <p className="text-muted-foreground text-center text-sm">
-          Chưa có địa điểm “Muốn đi”. Thêm vài chỗ ở Bản đồ trước nhé.
+          {source === "place"
+            ? "Chưa có địa điểm “Muốn đi”. Thêm vài chỗ ở Bản đồ trước nhé."
+            : "Chưa có công thức nào. Lưu vài món ở Bộ sưu tập trước nhé."}
         </p>
       ) : (
         <Button onClick={spin} disabled={spinning} className="w-40">
@@ -140,10 +158,10 @@ export function FoodWheel() {
                   Quay lại
                 </Button>
                 <a
-                  href="/map"
+                  href={source === "place" ? "/map" : "/library"}
                   className="bg-accent text-accent-foreground hover:bg-accent-hover inline-flex h-11 items-center rounded-xl px-4 text-sm font-medium transition-colors"
                 >
-                  Xem trên bản đồ →
+                  {source === "place" ? "Xem trên bản đồ →" : "Xem công thức →"}
                 </a>
               </div>
             </div>

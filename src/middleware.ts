@@ -18,6 +18,8 @@ export const config = {
   matcher: [
     "/onboarding/:path*",
     "/settings/:path*",
+    "/calendar/:path*",
+    "/library/:path*",
     "/map/:path*",
     "/wheel/:path*",
     "/timeline/:path*",

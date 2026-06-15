@@ -113,6 +113,8 @@ export const locationRouter = router({
       const doc = await LocationModel.create({
         ...input,
         geo: geoVal,
+        // Stamp the visit day up-front when a place is added already "visited".
+        visitedAt: input.status === "visited" ? new Date() : undefined,
         spaceId: ctx.spaceId,
         createdBy: ctx.userId,
       });
@@ -129,9 +131,22 @@ export const locationRouter = router({
         const g = await geoFromGoogleMapsUrl(patch.googleMapsUrl);
         if (g) patch.geo = g;
       }
+      const update: Record<string, unknown> = { $set: patch };
+      // Only (re)stamp visitedAt on an actual transition, so editing an
+      // already-visited place's note/name never silently moves its calendar day.
+      if (patch.status) {
+        const current = await LocationModel.findOne({ _id: id, spaceId: ctx.spaceId })
+          .select("status")
+          .lean<{ status: string }>();
+        if (patch.status === "visited" && current?.status !== "visited") {
+          (update.$set as Record<string, unknown>).visitedAt = new Date();
+        } else if (patch.status === "want_to_go") {
+          update.$unset = { visitedAt: "" };
+        }
+      }
       const res = await LocationModel.findOneAndUpdate(
         { _id: id, spaceId: ctx.spaceId },
-        { $set: patch },
+        update,
         { new: true },
       )
         .select("_id")
@@ -149,7 +164,10 @@ export const locationRouter = router({
         spaceId: ctx.spaceId,
       }).select("status");
       if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
-      doc.status = doc.status === "visited" ? "want_to_go" : "visited";
+      const nowVisited = doc.status !== "visited";
+      doc.status = nowVisited ? "visited" : "want_to_go";
+      // Record the day it was marked visited; clear it when un-marking.
+      doc.set("visitedAt", nowVisited ? new Date() : undefined);
       await doc.save();
       return { status: doc.status as "want_to_go" | "visited" };
     }),

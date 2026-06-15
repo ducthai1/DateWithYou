@@ -5,6 +5,22 @@ import { connectToDatabase } from "@/server/db/connect";
 import { MemoryModel } from "@/server/db/models/memory";
 import { LocationModel } from "@/server/db/models/location";
 import { destroyAssets } from "@/server/cloudinary";
+import { parseEmbed } from "@/lib/embed";
+
+// Re-derive embed metadata server-side from each URL so iframe srcs are never
+// attacker-controlled (the client only needs to send the pasted URL).
+function deriveEmbeds(embeds: { url: string }[] | undefined) {
+  return (embeds ?? []).map((e) => {
+    const p = parseEmbed(e.url);
+    return {
+      provider: p.provider,
+      url: e.url,
+      embedId: p.embedId ?? undefined,
+      embedUrl: p.embedUrl ?? undefined,
+      thumbnailUrl: p.thumbnailUrl ?? undefined,
+    };
+  });
+}
 
 const photo = z.object({
   url: z.string().url().startsWith("https://"),
@@ -13,10 +29,17 @@ const photo = z.object({
   height: z.number().optional(),
 });
 
+// Only the URL is accepted; embed metadata is derived server-side (deriveEmbeds).
+const embed = z.object({
+  url: z.string().url().startsWith("https://"),
+});
+
 const memoryInput = z.object({
   title: z.string().trim().min(1).max(120),
   caption: z.string().trim().max(1000).optional(),
   photos: z.array(photo).max(10).default([]),
+  embeds: z.array(embed).max(10).default([]),
+  tags: z.array(z.string().trim().min(1).max(24)).max(8).default([]),
   date: z.coerce.date(),
   locationId: z.string().optional(),
   geo: z.object({ lat: z.number(), lng: z.number() }).optional(),
@@ -48,6 +71,14 @@ export const memoryRouter = router({
         url: p.url,
         publicId: p.publicId,
       })),
+      embeds: (d.embeds ?? []).map((e: Record<string, string>) => ({
+        provider: e.provider,
+        url: e.url,
+        embedUrl: e.embedUrl ?? null,
+        thumbnailUrl: e.thumbnailUrl ?? null,
+        title: e.title ?? null,
+      })),
+      tags: d.tags ?? [],
       date: d.date,
       locationId: d.locationId ?? null,
       geo: d.geo?.lat != null ? { lat: d.geo.lat, lng: d.geo.lng } : null,
@@ -61,6 +92,7 @@ export const memoryRouter = router({
       await assertLocationInSpace(input.locationId, ctx.spaceId);
       const doc = await MemoryModel.create({
         ...input,
+        embeds: deriveEmbeds(input.embeds),
         spaceId: ctx.spaceId,
         createdBy: ctx.userId,
       });
@@ -85,7 +117,10 @@ export const memoryRouter = router({
           .map((p: { publicId: string }) => p.publicId)
           .filter((pid: string) => !nextIds.has(pid));
       }
-      existing.set(patch);
+      existing.set({
+        ...patch,
+        ...(patch.embeds ? { embeds: deriveEmbeds(patch.embeds) } : {}),
+      });
       await existing.save();
       await destroyAssets(removed);
       return { ok: true };

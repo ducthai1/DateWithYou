@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { SideNav } from "@/components/layout/side-nav";
+import { AppHeader } from "@/components/layout/app-header";
 import { SpaceGuard } from "@/components/layout/space-guard";
 import { MainWrapper } from "@/components/layout/main-wrapper";
 
@@ -34,7 +35,10 @@ export default function RootLayout({
           <SpaceGuard />
           <SideNav />
           {/* Offset for the bottom nav on mobile, for the sidebar on desktop. */}
-          <MainWrapper>{children}</MainWrapper>
+          <MainWrapper>
+            <AppHeader />
+            {children}
+          </MainWrapper>
           <BottomNav />
         </Providers>
       </body>
