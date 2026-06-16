@@ -95,21 +95,35 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
                 </div>
               )}
 
-              {BUCKETS.map((b) => (
-                <BucketSection
-                  key={b.key}
-                  label={b.label}
-                  icon={b.icon}
-                  items={byBucket(b.key)}
-                  date={date}
-                  members={members.data ?? []}
-                  palette={palette}
-                  locationNames={locationNames}
-                  onAdd={() => openAdd(b.key)}
-                  onEdit={openEdit}
-                  onSaveAsMemory={setMemoryFor}
-                />
-              ))}
+              <div className="relative">
+                {items.length === 0 && (
+                  <div className="absolute inset-0 z-0 flex items-center justify-center opacity-20 pointer-events-none select-none">
+                    <EmptyState
+                      icon="calendar-heart"
+                      title="Ngày này còn trống"
+                      subtitle="Thêm một việc để cùng lên kế hoạch nhé."
+                      className="py-0"
+                    />
+                  </div>
+                )}
+                <div className="relative z-10 space-y-6">
+                  {BUCKETS.map((b) => (
+                    <BucketSection
+                      key={b.key}
+                      label={b.label}
+                      icon={b.icon}
+                      items={byBucket(b.key)}
+                      date={date}
+                      members={members.data ?? []}
+                      palette={palette}
+                      locationNames={locationNames}
+                      onAdd={() => openAdd(b.key)}
+                      onEdit={openEdit}
+                      onSaveAsMemory={setMemoryFor}
+                    />
+                  ))}
+                </div>
+              </div>
 
               {detail.data && (detail.data.memories.length > 0 || detail.data.visited.length > 0) && (
                 <div className="border-border space-y-2 border-t pt-3">
@@ -126,13 +140,6 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
                     </div>
                   ))}
                 </div>
-              )}
-              {items.length === 0 && (
-                <EmptyState
-                  icon="calendar-heart"
-                  title="Ngày này còn trống"
-                  subtitle="Thêm một việc để cùng lên kế hoạch nhé."
-                />
               )}
             </>
           )}
