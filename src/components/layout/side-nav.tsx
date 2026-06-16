@@ -52,11 +52,13 @@ export function SideNav() {
                 key={it.href}
                 href={it.href}
                 className={cn(
-                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
+                  "group flex items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
                   active
                     ? "bg-accent-soft font-medium text-accent shadow-sm"
                     : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-                  isCollapsed && "justify-center px-0"
+                  // No gap when collapsed: the zero-width label still counts as a
+                  // flex item, so a gap would shove the icon off-centre.
+                  isCollapsed ? "justify-center px-0" : "gap-3"
                 )}
                 title={isCollapsed ? it.label : undefined}
               >
@@ -79,11 +81,11 @@ export function SideNav() {
         <Link
           href="/settings"
           className={cn(
-            "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
+            "group flex items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
             pathname.startsWith("/settings")
               ? "bg-accent-soft font-medium text-accent shadow-sm"
               : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-            isCollapsed && "justify-center px-0",
+            isCollapsed ? "justify-center px-0" : "gap-3",
           )}
           title={isCollapsed ? "Cài đặt" : undefined}
         >

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Fraunces } from "next/font/google";
+import { Inter } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -12,11 +12,6 @@ import { THEME_COOKIE_NAME, resolveThemeKey } from "@/lib/theme-presets";
 
 const inter = Inter({
   variable: "--font-sans-inter",
-  subsets: ["latin"],
-});
-
-const fraunces = Fraunces({
-  variable: "--font-serif-fraunces",
   subsets: ["latin"],
 });
 
@@ -43,7 +38,7 @@ export default async function RootLayout({
 
   return (
     <html lang="vi" data-theme={themeKey}>
-      <body className={`${inter.variable} ${fraunces.variable} antialiased`}>
+      <body className={`${inter.variable} antialiased`}>
         <Providers>
           <SpaceGuard />
           <SideNav />

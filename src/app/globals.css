@@ -37,14 +37,14 @@
 
   /* --- Typography scale -------------------------------------------------- */
   /*
-   * Font-size / line-height pairs.
-   * display/h* → Fraunces (serif); body/sm/xs → Inter (sans).
+   * Font-size / line-height pairs. Single sans family (Inter) across the whole
+   * scale — headings and body share it so type reads as one consistent system.
    * Exposed as CSS shorthand so `font: var(--text-h1)` works anywhere, and
    * mirrored in @theme so `text-h1`, `text-body` etc. resolve as utilities.
    */
-  --text-display: 700 40px/44px var(--font-serif-fraunces), ui-serif, Georgia, serif;
-  --text-h1:      600 28px/34px var(--font-serif-fraunces), ui-serif, Georgia, serif;
-  --text-h2:      600 20px/26px var(--font-serif-fraunces), ui-serif, Georgia, serif;
+  --text-display: 700 40px/44px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+  --text-h1:      600 28px/34px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+  --text-h2:      600 20px/26px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
   --text-body:    400 15px/22px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
   --text-sm:      400 13px/18px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
   --text-xs:      400 11px/14px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
@@ -117,9 +117,10 @@
   --color-destructive-soft:  var(--destructive-soft);
   --color-success:           var(--success);
 
-  /* Fonts */
+  /* Fonts — one sans family everywhere. `font-serif` is intentionally aliased
+     to the same sans face so any leftover `font-serif` class stays consistent. */
   --font-sans:  var(--font-sans-inter);
-  --font-serif: var(--font-serif-fraunces);
+  --font-serif: var(--font-sans-inter);
 
   /* Elevation shadows → shadow-elev-1, shadow-elev-2, shadow-elev-3 */
   --shadow-elev-1: var(--elev-1);
@@ -201,12 +202,6 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-}
-
-h1,
-h2,
-h3 {
-  font-family: var(--font-serif), ui-serif, Georgia, serif;
 }
 
 /*
