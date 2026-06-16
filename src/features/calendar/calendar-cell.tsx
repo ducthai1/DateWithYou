@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import type { GridCell } from "@/lib/date-keys";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
+import { resolveIcon } from "@/lib/icon-registry";
 
 /* ── deterministic pseudo-random based on string ── */
 function hash(s: string) {
@@ -23,7 +24,7 @@ const NOTE_STYLES = [
   { bg: "#F0F4C3", text: "#827717" }, // lime
 ];
 
-/* ── pin colour classes ── */
+/* ── pin colours ── */
 const PIN_BG = ["#E53935", "#1E88E5", "#43A047", "#FB8C00", "#8E24AA"];
 
 /* ── pre-computed positions for up to 3 notes scattered inside a cell ─
@@ -31,17 +32,11 @@ const PIN_BG = ["#E53935", "#1E88E5", "#43A047", "#FB8C00", "#8E24AA"];
  *  We pick from several layout presets based on the date hash so every
  *  day looks a little different.  */
 const LAYOUTS: [number, number, number][][] = [
-  // layout 0 — one center, two flanking
   [[25, 10, -4], [40, 35, 3], [20, 55, -2]],
-  // layout 1 — diagonal scatter
   [[18, 5, 2],  [38, 30, -5], [55, 50, 4]],
-  // layout 2 — top-heavy
   [[20, 8, -3], [15, 48, 5],  [50, 25, -1]],
-  // layout 3 — bottom-heavy
   [[22, 40, 3], [45, 8, -4],  [48, 50, 2]],
-  // layout 4 — staggered
   [[18, 15, -2],[35, 45, 4],  [55, 10, -3]],
-  // layout 5 — compact center
   [[22, 15, 3], [30, 38, -3], [45, 20, 1]],
 ];
 
@@ -59,10 +54,14 @@ export function CalendarCell({
 }) {
   const count = summary?.planCount ?? 0;
   const hasPlans = summary?.plans && summary.plans.length > 0;
+  const hasSpecial = !!summary?.special;
 
   // pick a layout for this cell based on the date
   const dayHash = hash(cell.key);
   const layout = LAYOUTS[dayHash % LAYOUTS.length];
+
+  // Resolve Lucide icon for special date
+  const SpecialIcon = hasSpecial ? resolveIcon(summary!.special!.icon ?? undefined) : null;
 
   return (
     <button
@@ -74,8 +73,20 @@ export function CalendarCell({
           ? "bg-card border-border hover:border-accent"
           : "border-transparent bg-transparent text-muted-foreground/40",
         isToday && "ring-accent ring-2",
+        // Special date gets a pink border highlight
+        hasSpecial && cell.inMonth && "border-pink-300 dark:border-pink-700",
       )}
     >
+      {/* Soft radial glow background for special dates */}
+      {hasSpecial && cell.inMonth && (
+        <div
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse at 50% 50%, rgba(244,114,182,0.12) 0%, transparent 70%)",
+          }}
+        />
+      )}
+
       {/* Background memory thumbnail */}
       {summary?.thumbnailUrl && cell.inMonth && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -104,11 +115,20 @@ export function CalendarCell({
         )}
       </div>
 
-      {/* ── Special date banner ── */}
-      {summary?.special && (
-        <div className="w-full truncate rounded bg-pink-500/15 px-1 py-0.5 text-[9px] sm:text-[10px] font-semibold text-pink-700 dark:text-pink-300 z-20 text-left mt-0.5 shadow-sm">
-          {summary.special.icon && <span className="mr-0.5">{summary.special.icon}</span>}
-          {summary.special.title}
+      {/* ── Special date ribbon with proper Lucide icon ── */}
+      {hasSpecial && SpecialIcon && (
+        <div className="relative w-full z-20 mt-0.5">
+          <div
+            className="flex items-center gap-1 rounded-md px-1.5 py-[3px] shadow-sm"
+            style={{
+              background: "linear-gradient(135deg, #FCE4EC 0%, #F8BBD0 50%, #F48FB1 100%)",
+            }}
+          >
+            <SpecialIcon className="w-3 h-3 text-pink-600 shrink-0" />
+            <span className="text-[8px] sm:text-[9px] font-bold text-pink-800 truncate leading-tight">
+              {summary!.special!.title}
+            </span>
+          </div>
         </div>
       )}
 
@@ -119,8 +139,7 @@ export function CalendarCell({
           const style = NOTE_STYLES[noteHash % NOTE_STYLES.length];
           const pin = PIN_BG[noteHash % PIN_BG.length];
           const [top, left, rot] = layout[i] ?? layout[0];
-          // add small per-note variation
-          const extraRot = ((noteHash % 7) - 3);
+          const extraRot = (noteHash % 7) - 3;
           const finalRot = rot + extraRot;
 
           return (
@@ -142,7 +161,7 @@ export function CalendarCell({
                 className="relative -mb-[4px] z-20 w-[7px] h-[7px] sm:w-[8px] sm:h-[8px] rounded-full shrink-0"
                 style={{
                   backgroundColor: pin,
-                  boxShadow: `0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 2px rgba(255,255,255,0.35)`,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 2px rgba(255,255,255,0.35)",
                 }}
               />
 
@@ -153,8 +172,7 @@ export function CalendarCell({
                   backgroundColor: style.bg,
                   color: style.text,
                   boxShadow: "2px 3px 6px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.12)",
-                  // subtle curl effect via gradient
-                  backgroundImage: `linear-gradient(135deg, transparent 70%, rgba(0,0,0,0.04) 100%)`,
+                  backgroundImage: "linear-gradient(135deg, transparent 70%, rgba(0,0,0,0.04) 100%)",
                 }}
               >
                 <div
