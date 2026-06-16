@@ -27,10 +27,17 @@ async function geoFromGoogleMapsUrl(
   url: string,
 ): Promise<{ lat: number; lng: number } | null> {
   let finalUrl = url;
-  if (/(?:maps\.app\.goo\.gl|goo\.gl)\//.test(url)) {
+  let html = "";
+  if (/(?:maps\.app\.goo\.gl|goo\.gl)\//.test(url) || url.includes("google.com/maps")) {
     try {
-      const res = await fetch(url, { redirect: "follow" });
+      const res = await fetch(url, {
+        redirect: "follow",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+      });
       finalUrl = res.url || url;
+      html = await res.text();
     } catch {
       // redirect/network failure → parse the original URL as-is
     }
@@ -50,6 +57,17 @@ async function geoFromGoogleMapsUrl(
       if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
     }
   }
+
+  // If the URL didn't contain coordinates, try to extract from the OpenGraph image tag in the HTML
+  if (html) {
+    const metaMatch = html.match(/<meta content="https:\/\/maps\.google\.com\/maps\/api\/staticmap\?center=(-?\d+\.\d+)%2C(-?\d+\.\d+)/);
+    if (metaMatch) {
+      const lat = Number(metaMatch[1]);
+      const lng = Number(metaMatch[2]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+    }
+  }
+
   return null;
 }
 
