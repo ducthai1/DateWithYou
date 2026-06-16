@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { authClient } from "@/lib/auth-client";
-import { LogOut } from "lucide-react";
+import { LogOut, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -23,10 +23,21 @@ export function SpaceSettings() {
   const mine = trpc.space.getMine.useQuery();
   const utils = trpc.useUtils();
 
+  const allMine = trpc.space.getAllMine.useQuery();
+  
   const [name, setName] = useState("");
   // Active preset key — initialised from DB, updated optimistically on swatch click
   const [activePreset, setActivePreset] = useState<ThemePresetKey>("terracotta");
   const [invite, setInvite] = useState<string | null>(null);
+  const [joinCode, setJoinCode] = useState("");
+
+  function handleSpaceSwitch(spaceId: string) {
+    const maxAge = 60 * 60 * 24 * 365;
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `active_space_id=${spaceId}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
+    // Force a full page reload so that all queries re-fetch under the new space context
+    window.location.reload();
+  }
 
   useEffect(() => {
     if (mine.data) {
@@ -42,8 +53,14 @@ export function SpaceSettings() {
   const createInvite = trpc.space.createInvite.useMutation({
     onSuccess: (d) => setInvite(d.code),
   });
+  const createSpace = trpc.space.create.useMutation({
+    onSuccess: (data) => handleSpaceSwitch(data.id),
+  });
+  const joinSpace = trpc.space.joinByCode.useMutation({
+    onSuccess: (data) => handleSpaceSwitch(data.id),
+  });
 
-  if (mine.isLoading || !mine.data) {
+  if (mine.isLoading || !mine.data || allMine.isLoading) {
     return <p className="p-8 text-center text-sm">Đang tải…</p>;
   }
 
@@ -68,6 +85,61 @@ export function SpaceSettings() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 px-6 py-12 lg:max-w-lg">
       <h1 className="text-3xl font-semibold">Cài đặt không gian</h1>
+
+      {/* ── QUẢN LÝ KHÔNG GIAN ── */}
+      <Card className="space-y-4 border-accent shadow-sm">
+        <div>
+          <p className="text-sm font-semibold mb-2 text-accent">Chuyển đổi không gian</p>
+          <div className="flex flex-col gap-2">
+            {allMine.data?.map(s => (
+              <button
+                key={s.id}
+                onClick={() => handleSpaceSwitch(s.id)}
+                className={cn(
+                  "flex items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted",
+                  s.id === mine.data?.id ? "border-accent bg-accent/5 ring-1 ring-accent" : "border-border"
+                )}
+              >
+                <div>
+                  <p className="font-medium text-sm">{s.name}</p>
+                  <p className="text-xs text-muted-foreground">{s.memberCount} thành viên</p>
+                </div>
+                {s.id === mine.data?.id && <CheckCircle2 className="h-5 w-5 text-accent" />}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        <div className="pt-3 border-t border-border">
+          <p className="text-sm font-medium mb-2">Tạo không gian mới</p>
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={createSpace.isPending}
+            onClick={() => createSpace.mutate({ name: "Không gian mới" })}
+          >
+            {createSpace.isPending ? "Đang tạo..." : "Tạo không gian trống mới"}
+          </Button>
+        </div>
+
+        <div className="pt-3 border-t border-border space-y-2">
+          <p className="text-sm font-medium">Tham gia bằng mã mời</p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Nhập mã mời"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+            />
+            <Button
+              disabled={!joinCode.trim() || joinSpace.isPending}
+              onClick={() => joinSpace.mutate({ code: joinCode.trim() })}
+            >
+              Tham gia
+            </Button>
+          </div>
+          {joinSpace.isError && <p className="text-xs text-destructive">{joinSpace.error.message}</p>}
+        </div>
+      </Card>
 
       <Card className="space-y-3">
         <p className="text-sm font-medium">Tên không gian</p>

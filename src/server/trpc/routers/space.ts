@@ -32,16 +32,47 @@ const isDuplicateKey = (e: unknown): boolean =>
   typeof e === "object" && e !== null && (e as { code?: number }).code === 11000;
 
 export const spaceRouter = router({
+  getAllMine: authedProcedure.query(async ({ ctx }) => {
+    await connectToDatabase();
+    const spaces = await SpaceModel.find({ members: ctx.userId })
+      .select("_id name themePreset coverImage members")
+      .lean<{ _id: unknown; name: string; themePreset?: string; coverImage?: string; members: string[] }[]>();
+    
+    return spaces.map((s) => ({
+      id: String(s._id),
+      name: s.name,
+      themePreset: resolveThemeKey(s.themePreset),
+      coverImage: s.coverImage ?? null,
+      memberCount: s.members.length,
+    }));
+  }),
+
   getMine: authedProcedure.query(async ({ ctx }) => {
     await connectToDatabase();
-    const space = await SpaceModel.findOne({ members: ctx.userId }).lean<{
-      _id: unknown;
-      name: string;
-      themeColor: string;
-      themePreset?: string;
-      coverImage?: string;
-      members: string[];
-    }>();
+    let space = null;
+    
+    if (ctx.activeSpaceId) {
+      space = await SpaceModel.findOne({ _id: ctx.activeSpaceId, members: ctx.userId }).lean<{
+        _id: unknown;
+        name: string;
+        themeColor: string;
+        themePreset?: string;
+        coverImage?: string;
+        members: string[];
+      }>();
+    }
+    
+    if (!space) {
+      space = await SpaceModel.findOne({ members: ctx.userId }).lean<{
+        _id: unknown;
+        name: string;
+        themeColor: string;
+        themePreset?: string;
+        coverImage?: string;
+        members: string[];
+      }>();
+    }
+
     if (!space) return null;
     return {
       id: String(space._id),
@@ -55,16 +86,10 @@ export const spaceRouter = router({
     };
   }),
 
-  // One space per user in v1. Reject if already a member of any space.
   create: authedProcedure
     .input(z.object({ name: z.string().trim().min(1).max(60) }))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
-      const existing = await SpaceModel.findOne({ members: ctx.userId })
-        .select("_id")
-        .lean();
-      if (existing)
-        throw new TRPCError({ code: "CONFLICT", message: "ALREADY_IN_SPACE" });
       try {
         const doc = await SpaceModel.create({
           name: input.name,
@@ -99,9 +124,6 @@ export const spaceRouter = router({
 
         return { id: spaceId };
       } catch (e) {
-        // Unique members index → user raced into another space.
-        if (isDuplicateKey(e))
-          throw new TRPCError({ code: "CONFLICT", message: "ALREADY_IN_SPACE" });
         throw e;
       }
     }),
@@ -126,11 +148,6 @@ export const spaceRouter = router({
     .input(z.object({ code: z.string().min(1).max(32) }))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
-      const already = await SpaceModel.findOne({ members: ctx.userId })
-        .select("_id")
-        .lean();
-      if (already)
-        throw new TRPCError({ code: "CONFLICT", message: "ALREADY_IN_SPACE" });
 
       let joined;
       try {
@@ -150,9 +167,6 @@ export const spaceRouter = router({
           .select("_id")
           .lean<{ _id: unknown }>();
       } catch (e) {
-        // Unique members index → user already belongs to another space.
-        if (isDuplicateKey(e))
-          throw new TRPCError({ code: "CONFLICT", message: "ALREADY_IN_SPACE" });
         throw e;
       }
 

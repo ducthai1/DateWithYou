@@ -39,9 +39,8 @@ const spaceSchema = new Schema(
   { timestamps: true },
 );
 
-// Unique multikey index: a user id can appear in at most one space's members —
-// enforces the 1-user-1-space invariant atomically even under concurrent joins.
-spaceSchema.index({ members: 1 }, { unique: true });
+// Allows efficient querying of spaces a user belongs to.
+spaceSchema.index({ members: 1 });
 // Speeds up joinByCode lookups (and avoids a full scan per brute-force attempt).
 spaceSchema.index({ inviteCodeHash: 1 }, { sparse: true });
 
