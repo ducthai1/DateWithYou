@@ -7,6 +7,7 @@ import {
   LocationConfigModel,
   type LocationConfig,
 } from "@/server/db/models/location-config";
+import { LiveLocationModel } from "@/server/db/models/live-location";
 import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 import { requireEnv } from "@/lib/env";
 
@@ -297,6 +298,34 @@ export const locationRouter = router({
         { upsert: true, new: true },
       );
       return { success: true };
+    }),
+
+  // Upsert the user's current location and return the partner's location (if recently active)
+  pingLiveLocation: protectedProcedure
+    .input(z.object({
+      lat: z.number(),
+      lng: z.number(),
+      heading: z.number().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      
+      // Update own location
+      await LiveLocationModel.findOneAndUpdate(
+        { spaceId: ctx.spaceId, userId: ctx.userId },
+        { lat: input.lat, lng: input.lng, heading: input.heading, updatedAt: new Date() },
+        { upsert: true, new: true }
+      );
+
+      // Find other members in the same space active within the last 5 minutes
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const partners = await LiveLocationModel.find({
+        spaceId: ctx.spaceId,
+        userId: { $ne: ctx.userId },
+        updatedAt: { $gt: fiveMinutesAgo }
+      }).lean<{ userId: string; lat: number; lng: number; heading: number | null; updatedAt: Date }[]>();
+
+      return partners;
     }),
 });
 

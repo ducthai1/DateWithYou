@@ -60,6 +60,11 @@ export function LocationsPage() {
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeDistanceMeters, setRouteDistanceMeters] = useState<number | null>(null);
   const [routeDurationSeconds, setRouteDurationSeconds] = useState<number | null>(null);
+  
+  const [partnerRouteGeometry, setPartnerRouteGeometry] = useState<unknown>(null);
+  const [partnerRouteDistanceMeters, setPartnerRouteDistanceMeters] = useState<number | null>(null);
+  const [partnerRouteDurationSeconds, setPartnerRouteDurationSeconds] = useState<number | null>(null);
+  
   const isRecalculating = useRef(false);
   
   const nav = useLiveNavigation({
@@ -128,10 +133,32 @@ export function LocationsPage() {
         const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserGeo(origin);
         try {
-          const r = await utils.location.getRoute.fetch({ destinationId: id, origin });
+          const reqs = [utils.location.getRoute.fetch({ destinationId: id, origin })];
+          
+          // If partner is currently active, fetch a route for them too
+          if (nav.partnerLocation) {
+            reqs.push(utils.location.getRoute.fetch({ 
+              destinationId: id, 
+              origin: { lat: nav.partnerLocation.lat, lng: nav.partnerLocation.lng } 
+            }));
+          }
+
+          const [r, partnerR] = await Promise.all(reqs);
+
           setRouteGeometry(r.geometry);
           setRouteDistanceMeters(r.distanceMeters);
           setRouteDurationSeconds(r.durationSeconds);
+          
+          if (partnerR) {
+            setPartnerRouteGeometry(partnerR.geometry);
+            setPartnerRouteDistanceMeters(partnerR.distanceMeters);
+            setPartnerRouteDurationSeconds(partnerR.durationSeconds);
+          } else {
+            setPartnerRouteGeometry(null);
+            setPartnerRouteDistanceMeters(null);
+            setPartnerRouteDurationSeconds(null);
+          }
+
           // Feed the route polyline to the nav hook so it can compute remaining distance.
           const coords = (r.geometry as { coordinates?: Array<[number, number]> }).coordinates;
           if (coords) {
@@ -191,9 +218,11 @@ export function LocationsPage() {
             <LocationMapView
               pins={pins}
               routeGeometry={routeGeometry}
+              partnerRouteGeometry={partnerRouteGeometry}
               selectedId={selectedId}
               focusGeo={focusGeo}
               userGeo={liveUser}
+              partnerLocation={nav.partnerLocation}
               followGeo={nav.userGeo}
               heading={nav.heading}
               traveled={nav.traveled}
@@ -217,16 +246,38 @@ export function LocationsPage() {
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tính lại đường...
                   </div>
                 )}
-                <div className="flex items-center gap-4 rounded-2xl bg-white/90 px-5 py-2.5 shadow-lg backdrop-blur-sm">
-                  <div className="flex items-center gap-1.5">
-                    <Route className="h-4 w-4 text-accent" />
-                    <span className="text-sm font-semibold">{fmtDistance(displayDistance)}</span>
+                <div className="flex rounded-2xl bg-white/90 shadow-lg backdrop-blur-sm overflow-hidden divide-x divide-border">
+                  {/* YOU */}
+                  <div className="flex flex-col px-4 py-2 bg-blue-50/50">
+                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Bạn</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Route className="h-3.5 w-3.5 text-blue-500" />
+                        <span className="text-sm font-semibold">{fmtDistance(displayDistance)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-blue-500" />
+                        <span className="text-sm font-semibold">{fmtDuration(displayDuration)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="h-5 w-px bg-border" />
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="h-4 w-4 text-accent" />
-                    <span className="text-sm font-semibold">{fmtDuration(displayDuration)}</span>
-                  </div>
+
+                  {/* PARTNER */}
+                  {partnerRouteGeometry != null && (
+                    <div className="flex flex-col px-4 py-2 bg-rose-50/50">
+                      <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mb-1">Người ấy</span>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          <Route className="h-3.5 w-3.5 text-rose-500" />
+                          <span className="text-sm font-semibold">{fmtDistance(partnerRouteDistanceMeters)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5 text-rose-500" />
+                          <span className="text-sm font-semibold">{fmtDuration(partnerRouteDurationSeconds)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

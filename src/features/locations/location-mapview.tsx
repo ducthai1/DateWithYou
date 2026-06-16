@@ -32,9 +32,11 @@ function getPinColor(lat: number, lng: number, status: string): string {
 export function LocationMapView({
   pins,
   routeGeometry,
+  partnerRouteGeometry,
   selectedId,
   focusGeo,
   userGeo,
+  partnerLocation,
   followGeo,
   heading,
   traveled,
@@ -44,9 +46,11 @@ export function LocationMapView({
 }: {
   pins: MapPin[];
   routeGeometry?: unknown;
+  partnerRouteGeometry?: unknown;
   selectedId?: string | null;
   focusGeo?: LatLng | null;
   userGeo?: LatLng | null;
+  partnerLocation?: { lat: number; lng: number } | null;
   followGeo?: LatLng | null;
   /** Device heading in degrees (0 = north). Rotates the map when following. */
   heading?: number | null;
@@ -200,6 +204,7 @@ export function LocationMapView({
             // The map rotates too, but the marker must stay pointing "up" relative
             // to the map — so we counter-rotate by subtracting the map bearing.
             rotation={0}
+            style={{ zIndex: 10 }}
           >
             {heading != null ? (
               /* Directional arrow when heading is known */
@@ -237,6 +242,71 @@ export function LocationMapView({
           </Marker>
         )}
 
+        {partnerLocation && (
+          <Marker
+            longitude={partnerLocation.lng}
+            latitude={partnerLocation.lat}
+            style={{ zIndex: 9 }}
+          >
+            <div className="relative flex items-center justify-center group">
+              <span className="absolute -top-6 whitespace-nowrap rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-200 opacity-0 group-hover:opacity-100 group-hover:-translate-y-1">
+                Người ấy
+              </span>
+              <span className="absolute h-12 w-12 animate-ping rounded-full bg-rose-400/30" />
+              <span
+                className="block h-5 w-5 rounded-full border-[2.5px] border-white bg-rose-500 shadow ring-4 ring-rose-500/30"
+              />
+            </div>
+          </Marker>
+        )}
+
+        {/* CROW FLIES LINE (DASHED) BETWEEN PARTNERS WHEN NO ROUTE IS SELECTED */}
+        {!routeGeometry && userGeo && partnerLocation && (
+          <Source
+            id="partner-distance"
+            type="geojson"
+            data={{
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: [
+                  [userGeo.lng, userGeo.lat],
+                  [partnerLocation.lng, partnerLocation.lat],
+                ],
+              } as never,
+            }}
+          >
+            <Layer
+              id="partner-distance-line"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "#a8a29e", // stone-400
+                "line-width": 2,
+                "line-dasharray": [2, 4], // Dashed pattern
+              }}
+            />
+          </Source>
+        )}
+
+        {/* PARTNER'S ROUTE (PINK) */}
+        {partnerRouteGeometry != null && (
+          <Source
+            id="partner-route"
+            type="geojson"
+            data={{ type: "Feature", properties: {}, geometry: partnerRouteGeometry as never }}
+          >
+            <Layer
+              id="partner-route-line"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{ "line-color": "#f43f5e", "line-width": 8, "line-opacity": 0.6 }} // rose-500
+            />
+          </Source>
+        )}
+
+        {/* USER'S ROUTE (BLUE) */}
         {routeGeometry != null && (
           <Source
             id="route"

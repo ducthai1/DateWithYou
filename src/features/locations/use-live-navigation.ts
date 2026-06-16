@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LatLng } from "@/lib/maps";
+import { trpc } from "@/lib/trpc";
+
+export type PartnerLocation = {
+  userId: string;
+  lat: number;
+  lng: number;
+  heading: number | null;
+  updatedAt: Date;
+};
 
 /** Minimal screen Wake Lock shape (avoids relying on lib.dom typings). */
 type WakeLockLike = { release: () => Promise<void> };
@@ -17,6 +26,8 @@ export type LiveNavigation = {
   speedKmH: number | null;
   /** Network connection status */
   isOffline: boolean;
+  /** Partner's latest live location (if available in the same space) */
+  partnerLocation: PartnerLocation | null;
   /** Accumulated travelled path as [lng, lat] pairs for a map line. */
   traveled: Array<[number, number]>;
   /** Estimated remaining distance in metres (null before first fix). */
@@ -121,6 +132,10 @@ export function useLiveNavigation(options?: {
   const [isOffline, setIsOffline] = useState(
     typeof navigator !== "undefined" ? !navigator.onLine : false,
   );
+  const [partnerLocation, setPartnerLocation] = useState<PartnerLocation | null>(null);
+  
+  const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
+  
   const watchId = useRef<number | null>(null);
   const wakeLock = useRef<WakeLockLike | null>(null);
 
@@ -246,6 +261,31 @@ export function useLiveNavigation(options?: {
   // Always clean up the watch + wake lock when the page unmounts.
   useEffect(() => () => stop(), [stop]);
 
+  // Ping interval: every 5 seconds, send userGeo to server and fetch partner's position
+  useEffect(() => {
+    if (!isNavigating || !userGeo || isOffline) return;
+    
+    // Immediate ping when we get a fresh userGeo, but we want to throttle it
+    // Using a simple interval is easier.
+    const interval = setInterval(() => {
+      pingLiveLocation.mutate({
+        lat: userGeo.lat,
+        lng: userGeo.lng,
+        heading: heading,
+      }, {
+        onSuccess: (partners) => {
+          if (partners && partners.length > 0) {
+            setPartnerLocation(partners[0]);
+          } else {
+            setPartnerLocation(null);
+          }
+        }
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isNavigating, userGeo, heading, isOffline, pingLiveLocation]);
+
   // Track network connection status
   useEffect(() => {
     const handleOffline = () => setIsOffline(true);
@@ -264,6 +304,7 @@ export function useLiveNavigation(options?: {
     heading,
     speedKmH,
     isOffline,
+    partnerLocation,
     traveled,
     remainingMeters,
     remainingSeconds,
