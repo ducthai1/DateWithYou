@@ -40,7 +40,24 @@ export function RoadmapBoard() {
   const invalidate = () => utils.plan.list.invalidate();
   const create = trpc.plan.create.useMutation({ onSuccess: () => { closeForm(); invalidate(); } });
   const update = trpc.plan.update.useMutation({ onSuccess: () => { closeForm(); invalidate(); } });
-  const setStatus = trpc.plan.setStatus.useMutation({ onSuccess: invalidate });
+  const setStatus = trpc.plan.setStatus.useMutation({
+    onMutate: async ({ id, status }) => {
+      await utils.plan.list.cancel();
+      const previous = utils.plan.list.getData();
+      if (previous) {
+        utils.plan.list.setData(undefined, previous.map(p => p.id === id ? { ...p, status } : p));
+      }
+      return { previous };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previous) {
+        utils.plan.list.setData(undefined, context.previous);
+      }
+    },
+    onSettled: () => {
+      invalidate();
+    },
+  });
   const remove = trpc.plan.remove.useMutation({ onSuccess: invalidate });
 
   const celebrate = useCelebrate();
@@ -165,6 +182,9 @@ export function RoadmapBoard() {
                             {p.title}
                           </h4>
                         </div>
+                        <div className="text-muted-foreground cursor-grab hover:text-foreground shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <GripVertical className="h-4 w-4" />
+                        </div>
                       </div>
 
                       {p.description && (
@@ -185,9 +205,6 @@ export function RoadmapBoard() {
                             className="rounded-lg px-2 py-1.5 hover:bg-destructive-soft opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 shrink-0"
                             onConfirm={() => remove.mutate({ id: p.id })}
                           />
-                          <div className="text-muted-foreground cursor-grab p-1 hover:text-foreground">
-                            <GripVertical className="h-4 w-4" />
-                          </div>
                         </div>
                       </div>
                     </Card>
