@@ -155,18 +155,17 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
       {memoryFor && (
         <Modal open onClose={() => setMemoryFor(null)} className="max-w-md">
           <ModalHeader title="Lưu thành kỷ niệm" onClose={() => setMemoryFor(null)} />
-          <div ref={modalRef} className="relative">
-            <MemoryForm
-              initialTitle={memoryFor.title}
-              initialDate={date}
-              initialLocationId={memoryFor.locationId ?? undefined}
-              onDone={() => {
-                celebrate(modalRef.current);
-                setMemoryFor(null);
-              }}
-              onCancel={() => setMemoryFor(null)}
-            />
-          </div>
+          <div ref={modalRef} className="absolute inset-0 pointer-events-none" />
+          <MemoryForm
+            initialTitle={memoryFor.title}
+            initialDate={date}
+            initialLocationId={memoryFor.locationId ?? undefined}
+            onDone={() => {
+              celebrate(modalRef.current);
+              setMemoryFor(null);
+            }}
+            onCancel={() => setMemoryFor(null)}
+          />
         </Modal>
       )}
     </>
