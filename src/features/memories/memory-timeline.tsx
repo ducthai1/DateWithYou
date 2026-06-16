@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
+import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmbedPlayer } from "@/components/ui/embed-player";
@@ -227,14 +227,16 @@ export function MemoryTimeline() {
                   ))}
                 </div>
               )}
+            </ModalContent>
+            <ModalFooter>
               <Button 
                 variant="outline" 
-                className="w-full mt-2" 
+                className="w-full" 
                 onClick={() => setWarningEditId(selectedMemo.id)}
               >
                 <Edit className="w-4 h-4 mr-2" /> Chỉnh sửa kỷ niệm
               </Button>
-            </ModalContent>
+            </ModalFooter>
           </>
         )}
       </Modal>
@@ -254,7 +256,7 @@ export function MemoryTimeline() {
             Việc chỉnh sửa có thể vô tình làm thay đổi thiết kế hoặc làm hỏng kỷ niệm hiện tại. Bạn có chắc chắn muốn tiếp tục chỉnh sửa không?
           </p>
         </ModalContent>
-        <div className="p-4 pt-0 flex gap-3 justify-end border-t border-border/50 mt-4">
+        <ModalFooter className="flex-row justify-end gap-3">
           <Button variant="ghost" onClick={() => setWarningEditId(null)}>Huỷ</Button>
           <Button
             className="bg-amber-600 hover:bg-amber-700 text-white"
@@ -266,7 +268,7 @@ export function MemoryTimeline() {
           >
             Vẫn tiếp tục sửa
           </Button>
-        </div>
+        </ModalFooter>
       </Modal>
 
       <Modal open={!!editingMemoId} onClose={() => setEditingMemoId(null)}>
