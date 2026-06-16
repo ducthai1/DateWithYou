@@ -40,20 +40,19 @@ export function SpaceSettings() {
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   
   const PRESET_AVATARS = [
-    // 3D Chibi Boy/Girl styles
-    "https://avatar.iran.liara.run/public/boy?username=1",
-    "https://avatar.iran.liara.run/public/boy?username=3",
-    "https://avatar.iran.liara.run/public/boy?username=5",
-    "https://avatar.iran.liara.run/public/girl?username=1",
-    "https://avatar.iran.liara.run/public/girl?username=2",
-    "https://avatar.iran.liara.run/public/girl?username=3",
-    // Cute 3D characters
-    "https://avatar.iran.liara.run/public/12",
-    "https://avatar.iran.liara.run/public/15",
-    "https://avatar.iran.liara.run/public/17",
-    "https://avatar.iran.liara.run/public/20",
-    "https://avatar.iran.liara.run/public/25",
-    "https://avatar.iran.liara.run/public/30",
+    // 3D Cute Animals (Fluent UI 3D Emojis)
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cat%20face/3D/cat_face_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Dog%20face/3D/dog_face_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Rabbit%20face/3D/rabbit_face_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bear/3D/bear_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Panda/3D/panda_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Koala/3D/koala_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Tiger%20face/3D/tiger_face_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hatching%20chick/3D/hatching_chick_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Penguin/3D/penguin_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Frog/3D/frog_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Monkey%20face/3D/monkey_face_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Pig%20face/3D/pig_face_3d.png",
   ];
 
   const displayAvatars = [
