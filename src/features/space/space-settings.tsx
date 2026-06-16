@@ -46,6 +46,19 @@ export function SpaceSettings() {
     "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Toby",
     "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Bella",
     "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Max",
+    "https://api.dicebear.com/9.x/lorelei/svg?seed=Nala",
+    "https://api.dicebear.com/9.x/lorelei/svg?seed=Jack",
+    "https://api.dicebear.com/9.x/notionists/svg?seed=Milo",
+    "https://api.dicebear.com/9.x/notionists/svg?seed=Luna",
+    "https://api.dicebear.com/9.x/micah/svg?seed=Oliver",
+    "https://api.dicebear.com/9.x/micah/svg?seed=Chloe",
+    "https://api.dicebear.com/9.x/avataaars/svg?seed=Felix",
+    "https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka",
+  ];
+
+  const displayAvatars = [
+    ...(session?.user.image && !PRESET_AVATARS.includes(session.user.image) ? [session.user.image] : []),
+    ...PRESET_AVATARS,
   ];
 
   function handleSpaceSwitch(spaceId: string) {
@@ -137,9 +150,9 @@ export function SpaceSettings() {
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Chọn ảnh đại diện có sẵn</p>
             <div className="flex flex-wrap gap-3">
-              {PRESET_AVATARS.map((url) => (
+              {displayAvatars.map((url, idx) => (
                 <button
-                  key={url}
+                  key={url + idx}
                   onClick={async () => {
                     setIsUpdatingAvatar(true);
                     await authClient.updateUser({ image: url });
@@ -167,6 +180,7 @@ export function SpaceSettings() {
               />
               <Button 
                 variant="outline"
+                className="whitespace-nowrap"
                 disabled={!customAvatarUrl.trim() || isUpdatingAvatar}
                 onClick={async () => {
                   setIsUpdatingAvatar(true);
