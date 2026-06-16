@@ -52,7 +52,10 @@ export function SpaceSettings() {
   }, [mine.data, mine.isSuccess, router]);
 
   const updateTheme = trpc.space.updateTheme.useMutation({
-    onSuccess: () => utils.space.getMine.invalidate(),
+    onSuccess: () => {
+      utils.space.getMine.invalidate();
+      utils.space.getAllMine.invalidate();
+    },
   });
   const createInvite = trpc.space.createInvite.useMutation({
     onSuccess: (d) => setInvite(d.code),
@@ -170,7 +173,6 @@ export function SpaceSettings() {
       </Card>
 
       <Card className="space-y-3">
-        <p className="text-sm font-medium">Tên không gian</p>
         <Input
           placeholder="Tên không gian"
           value={name}
