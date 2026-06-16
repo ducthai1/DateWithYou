@@ -34,6 +34,19 @@ export function SpaceSettings() {
   const [newSpacePin, setNewSpacePin] = useState("");
   const [deletePin, setDeletePin] = useState("");
   const { data: session } = authClient.useSession();
+  
+  // Avatar states
+  const [customAvatarUrl, setCustomAvatarUrl] = useState("");
+  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
+  
+  const PRESET_AVATARS = [
+    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Mimi",
+    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Leo",
+    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Daisy",
+    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Toby",
+    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Bella",
+    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Max",
+  ];
 
   function handleSpaceSwitch(spaceId: string) {
     const maxAge = 60 * 60 * 24 * 365;
@@ -102,10 +115,74 @@ export function SpaceSettings() {
 
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 py-12 md:px-[30px]">
-      <h1 className="text-3xl font-semibold">Cài đặt không gian</h1>
+      <h1 className="text-3xl font-semibold">Cài đặt</h1>
+
+      {/* ── CÀI ĐẶT CÁ NHÂN ── */}
+      <Card className="space-y-4 shadow-sm">
+        <p className="text-sm font-semibold text-accent">Hồ sơ cá nhân</p>
+        
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <img 
+              src={session?.user.image || PRESET_AVATARS[0]} 
+              alt="Avatar" 
+              className="h-16 w-16 rounded-full border-2 border-border object-cover bg-muted"
+            />
+            <div>
+              <p className="font-medium">{session?.user.name}</p>
+              <p className="text-sm text-muted-foreground">{session?.user.email}</p>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Chọn ảnh đại diện có sẵn</p>
+            <div className="flex flex-wrap gap-3">
+              {PRESET_AVATARS.map((url) => (
+                <button
+                  key={url}
+                  onClick={async () => {
+                    setIsUpdatingAvatar(true);
+                    await authClient.updateUser({ image: url });
+                    window.location.reload();
+                  }}
+                  disabled={isUpdatingAvatar}
+                  className={cn(
+                    "relative h-12 w-12 rounded-full border-2 transition-all hover:scale-105 active:scale-95 bg-muted",
+                    session?.user.image === url ? "border-accent ring-2 ring-accent/20 ring-offset-1" : "border-transparent hover:border-border"
+                  )}
+                >
+                  <img src={url} alt="Preset" className="h-full w-full rounded-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="space-y-2 pt-2 border-t border-border">
+            <p className="text-xs font-medium text-muted-foreground">Hoặc dùng link ảnh khác</p>
+            <div className="flex gap-2">
+              <Input 
+                placeholder="Dán link ảnh (https://...)" 
+                value={customAvatarUrl}
+                onChange={(e) => setCustomAvatarUrl(e.target.value)}
+              />
+              <Button 
+                variant="outline"
+                disabled={!customAvatarUrl.trim() || isUpdatingAvatar}
+                onClick={async () => {
+                  setIsUpdatingAvatar(true);
+                  await authClient.updateUser({ image: customAvatarUrl.trim() });
+                  window.location.reload();
+                }}
+              >
+                {isUpdatingAvatar ? "Đang lưu..." : "Lưu ảnh"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* ── QUẢN LÝ KHÔNG GIAN ── */}
-      <Card className="space-y-4 border-accent shadow-sm">
+      <Card className="space-y-4 shadow-sm">
         <div>
           <p className="text-sm font-semibold mb-2 text-accent">Chuyển đổi không gian</p>
           <div className="flex flex-col gap-2">

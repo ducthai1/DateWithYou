@@ -42,6 +42,7 @@ import {
   prefersAppleMaps,
   type LatLng,
 } from "@/lib/maps";
+import { authClient } from "@/lib/auth-client";
 import { LocationMapView } from "./location-mapview";
 import { LocationForm, type LocationFormValues } from "./location-form";
 
@@ -108,6 +109,12 @@ export function LocationsPage() {
   const remove = trpc.location.remove.useMutation({
     onSuccess: () => utils.location.list.invalidate(),
   });
+  
+  const { data: session } = authClient.useSession();
+  const members = trpc.space.members.useQuery();
+  
+  const userAvatar = session?.user.image || undefined;
+  const partnerAvatar = members.data?.find((m) => m.id !== session?.user.id)?.image || undefined;
 
   // In-app "Chỉ đường": select the pin, fly to it, then get the user's location
   // and draw the route. Errors surface to the user instead of failing silently.
@@ -224,6 +231,8 @@ export function LocationsPage() {
               partnerLocation={nav.partnerLocation}
               followGeo={nav.userGeo}
               heading={nav.heading}
+              userAvatar={userAvatar}
+              partnerAvatar={partnerAvatar}
               traveled={nav.traveled}
               onSelect={setSelectedId}
               className="min-h-0 rounded-none border-0 shadow-none"
@@ -379,11 +388,15 @@ export function LocationsPage() {
             <LocationMapView
               pins={pins}
               routeGeometry={routeGeometry}
+              partnerRouteGeometry={partnerRouteGeometry}
               selectedId={selectedId}
               focusGeo={focusGeo}
               userGeo={liveUser}
+              partnerLocation={nav.partnerLocation}
               followGeo={nav.isNavigating ? nav.userGeo : null}
               heading={nav.isNavigating ? nav.heading : null}
+              userAvatar={userAvatar}
+              partnerAvatar={partnerAvatar}
               traveled={nav.traveled}
               onSelect={setSelectedId}
               onMapClick={(geo) =>

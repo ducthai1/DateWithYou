@@ -39,6 +39,8 @@ export function LocationMapView({
   partnerLocation,
   followGeo,
   heading,
+  userAvatar,
+  partnerAvatar,
   traveled,
   onSelect,
   onMapClick,
@@ -54,6 +56,8 @@ export function LocationMapView({
   followGeo?: LatLng | null;
   /** Device heading in degrees (0 = north). Rotates the map when following. */
   heading?: number | null;
+  userAvatar?: string;
+  partnerAvatar?: string;
   traveled?: Array<[number, number]>;
   onSelect?: (id: string) => void;
   onMapClick?: (geo: LatLng) => void;
@@ -211,15 +215,15 @@ export function LocationMapView({
               <div className="relative flex items-center justify-center">
                 {/* Pulsing accuracy halo */}
                 <span className="absolute h-16 w-16 animate-ping rounded-full bg-blue-400/30" />
+                
                 {/* Direction cone */}
                 <svg
                   width="56"
                   height="56"
                   viewBox="0 0 36 36"
                   fill="none"
-                  className="drop-shadow-lg"
+                  className="drop-shadow-lg absolute"
                 >
-                  {/* Translucent cone showing heading */}
                   <path
                     d="M18 2 L26 18 L18 14 L10 18 Z"
                     fill="#3b82f6"
@@ -228,16 +232,27 @@ export function LocationMapView({
                     strokeWidth="1.5"
                     strokeLinejoin="round"
                   />
-                  {/* Centre dot */}
-                  <circle cx="18" cy="16" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
                 </svg>
+                
+                {/* Centre avatar or dot */}
+                {userAvatar ? (
+                  <img src={userAvatar} alt="Bạn" className="relative z-10 h-8 w-8 rounded-full border-[2.5px] border-white object-cover shadow-sm bg-muted" />
+                ) : (
+                  <circle cx="18" cy="16" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" className="relative z-10" />
+                )}
               </div>
             ) : (
-              /* Simple dot when heading is unknown */
-              <span
-                className="block h-5 w-5 rounded-full border-[2.5px] border-white bg-blue-500 shadow ring-4 ring-blue-500/30"
-                title="Vị trí của bạn"
-              />
+              /* Simple avatar or dot when heading is unknown */
+              <div className="relative flex items-center justify-center">
+                {userAvatar ? (
+                  <img src={userAvatar} alt="Bạn" className="h-9 w-9 rounded-full border-[2.5px] border-white object-cover shadow-md ring-4 ring-blue-500/30 bg-muted" />
+                ) : (
+                  <span
+                    className="block h-5 w-5 rounded-full border-[2.5px] border-white bg-blue-500 shadow ring-4 ring-blue-500/30"
+                    title="Vị trí của bạn"
+                  />
+                )}
+              </div>
             )}
           </Marker>
         )}
@@ -253,9 +268,11 @@ export function LocationMapView({
                 Người ấy
               </span>
               <span className="absolute h-12 w-12 animate-ping rounded-full bg-rose-400/30" />
-              <span
-                className="block h-5 w-5 rounded-full border-[2.5px] border-white bg-rose-500 shadow ring-4 ring-rose-500/30"
-              />
+              {partnerAvatar ? (
+                <img src={partnerAvatar} alt="Người ấy" className="h-8 w-8 rounded-full border-[2.5px] border-white object-cover shadow-md ring-4 ring-rose-500/30 bg-muted" />
+              ) : (
+                <span className="block h-5 w-5 rounded-full border-[2.5px] border-white bg-rose-500 shadow ring-4 ring-rose-500/30" />
+              )}
             </div>
           </Marker>
         )}
