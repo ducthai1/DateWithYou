@@ -154,7 +154,7 @@ export function MemoryForm({
 
   return (
     <>
-      <ModalContent className="space-y-4">
+      <ModalContent className="space-y-5">
         <Input placeholder="Tiêu đề kỷ niệm" value={title} onChange={(e) => setTitle(e.target.value)} />
       <Textarea
         placeholder="Kể lại một chút…"
@@ -165,11 +165,11 @@ export function MemoryForm({
       <DatePicker value={date} onChange={setDate} />
 
       <div>
-        <p className="text-muted-foreground mb-1.5 text-xs font-medium">Nhãn</p>
+        <p className="text-muted-foreground mb-2.5 text-xs font-medium">Nhãn</p>
         <TagPicker value={tags} onChange={setTags} />
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <div className="relative">
           <Link2 className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
           <input
@@ -182,7 +182,7 @@ export function MemoryForm({
           />
         </div>
         {embeds.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="space-y-2.5">
             {embeds.map((e, i) => (
               <div
                 key={i}

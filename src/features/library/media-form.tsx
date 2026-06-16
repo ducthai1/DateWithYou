@@ -66,7 +66,7 @@ export function MediaForm({
 
   return (
     <>
-      <ModalContent className="space-y-4">
+      <ModalContent className="space-y-5">
         <Input placeholder={isGame ? "Tên trò chơi" : "Tên"} value={title} onChange={(e) => setTitle(e.target.value)} />
         {!isRecipe && !isGame && (
           <Input
@@ -94,7 +94,7 @@ export function MediaForm({
           rows={isGame ? 5 : 2}
         />
         <div>
-          <p className="text-muted-foreground mb-1.5 text-xs font-medium">Nhãn</p>
+          <p className="text-muted-foreground mb-2.5 text-xs font-medium ml-1">Nhãn</p>
           <TagPicker value={tags} onChange={setTags} />
         </div>
       </ModalContent>

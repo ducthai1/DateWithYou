@@ -102,7 +102,7 @@ export function LocationForm({
   }
 
   return (
-    <div className="border-border bg-card space-y-3 rounded-2xl border p-5 shadow-sm">
+    <div className="border-border bg-card space-y-4 rounded-2xl border p-5 shadow-sm">
       <Input
         placeholder="Tên quán"
         value={v.name}
@@ -143,7 +143,7 @@ export function LocationForm({
         onChange={(e) => set("mustTry", e.target.value)}
       />
       <div className="flex gap-2">
-        <div className="flex-1 space-y-1">
+        <div className="flex-1 space-y-2.5">
           <label className="text-xs font-medium text-muted-foreground ml-1">Giờ mở cửa</label>
           <Input
             type="time"
@@ -151,7 +151,7 @@ export function LocationForm({
             onChange={(e) => set("openTime", e.target.value)}
           />
         </div>
-        <div className="flex-1 space-y-1">
+        <div className="flex-1 space-y-2.5">
           <label className="text-xs font-medium text-muted-foreground ml-1">Giờ đóng cửa</label>
           <Input
             type="time"

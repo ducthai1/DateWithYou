@@ -71,18 +71,18 @@ export function PlanItemForm({
 
   return (
     <>
-      <ModalContent className="space-y-4">
-        <div className="space-y-1.5">
+      <ModalContent className="space-y-5">
+        <div className="space-y-2.5">
           <label className="text-xs font-medium text-muted-foreground ml-1">Tiêu đề công việc</label>
           <Input placeholder="Làm gì nào?" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           <label className="text-xs font-medium text-muted-foreground ml-1">Ghi chú chi tiết</label>
           <Textarea placeholder="Ghi chú (tuỳ chọn)" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1.5">
+          <div className="space-y-2.5">
             <label className="text-xs font-medium text-muted-foreground ml-1">Buổi trong ngày</label>
             <Select
               aria-label="Buổi"
@@ -91,7 +91,7 @@ export function PlanItemForm({
               options={BUCKETS.map((b) => ({ value: b.key, label: b.label }))}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2.5">
             <label className="text-xs font-medium text-muted-foreground ml-1">Giờ (tuỳ chọn)</label>
             <TimePicker value={time} onChange={setTime} />
           </div>
@@ -103,7 +103,7 @@ export function PlanItemForm({
         </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="space-y-1.5">
+          <div className="space-y-2.5">
             <label className="text-xs font-medium text-muted-foreground ml-1">Người phụ trách</label>
             <Select
               aria-label="Ai phụ trách"
@@ -115,7 +115,7 @@ export function PlanItemForm({
               ]}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2.5">
             <label className="text-xs font-medium text-muted-foreground ml-1">Gắn địa điểm</label>
             <Select
               aria-label="Địa điểm"
