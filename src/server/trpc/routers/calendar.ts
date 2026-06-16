@@ -23,6 +23,7 @@ export type DaySummary = {
   memoryCount: number;
   visitedCount: number;
   tagColors: string[];
+  plans: { title: string; color: string; done: boolean }[];
   special: { title: string; icon: string | null } | null;
   thumbnailUrl: string | null;
 };
@@ -41,7 +42,7 @@ export const calendarRouter = router({
 
       const [plans, memories, visited, specials, space] = await Promise.all([
         PlanItemModel.find({ spaceId: ctx.spaceId, date: { $gte: fromKey, $lt: toKey } })
-          .select("date status tags")
+          .select("date status tags title")
           .lean(),
         MemoryModel.find({ spaceId: ctx.spaceId, date: { $gte: from, $lt: to } })
           .select("date photos")
@@ -69,6 +70,7 @@ export const calendarRouter = router({
           memoryCount: 0,
           visitedCount: 0,
           tagColors: [],
+          plans: [],
           special: null,
           thumbnailUrl: null,
         });
@@ -77,8 +79,16 @@ export const calendarRouter = router({
         const d = get(p.date as string);
         d.planCount++;
         if (p.status === "done") d.doneCount++;
-        for (const c of colorsForTags((p.tags as string[]) ?? [], palette)) {
+        const pColors = colorsForTags((p.tags as string[]) ?? [], palette);
+        for (const c of pColors) {
           if (!d.tagColors.includes(c)) d.tagColors.push(c);
+        }
+        if (d.plans.length < 3) {
+          d.plans.push({
+            title: p.title as string,
+            color: pColors[0] ?? "",
+            done: p.status === "done",
+          });
         }
       }
       for (const m of memories) {
