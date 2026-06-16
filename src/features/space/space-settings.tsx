@@ -40,20 +40,24 @@ export function SpaceSettings() {
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   
   const PRESET_AVATARS = [
-    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Mimi",
-    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Leo",
-    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Daisy",
-    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Toby",
-    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Bella",
-    "https://api.dicebear.com/9.x/fun-emoji/svg?seed=Max",
+    // Adventurer
+    "https://api.dicebear.com/9.x/adventurer/svg?seed=Mimi",
+    "https://api.dicebear.com/9.x/adventurer/svg?seed=Destiny",
+    "https://api.dicebear.com/9.x/adventurer/svg?seed=Felix",
+    // Micah
+    "https://api.dicebear.com/9.x/micah/svg?seed=Milo",
+    "https://api.dicebear.com/9.x/micah/svg?seed=Luna",
+    // Lorelei
     "https://api.dicebear.com/9.x/lorelei/svg?seed=Nala",
     "https://api.dicebear.com/9.x/lorelei/svg?seed=Jack",
-    "https://api.dicebear.com/9.x/notionists/svg?seed=Milo",
-    "https://api.dicebear.com/9.x/notionists/svg?seed=Luna",
-    "https://api.dicebear.com/9.x/micah/svg?seed=Oliver",
-    "https://api.dicebear.com/9.x/micah/svg?seed=Chloe",
-    "https://api.dicebear.com/9.x/avataaars/svg?seed=Felix",
-    "https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka",
+    // Notionists
+    "https://api.dicebear.com/9.x/notionists/svg?seed=Oliver",
+    "https://api.dicebear.com/9.x/notionists/svg?seed=Chloe",
+    // Dylan
+    "https://api.dicebear.com/9.x/dylan/svg?seed=Aneka",
+    // Bottts
+    "https://api.dicebear.com/9.x/bottts/svg?seed=Toby",
+    "https://api.dicebear.com/9.x/bottts/svg?seed=Bella",
   ];
 
   const displayAvatars = [
@@ -189,6 +193,18 @@ export function SpaceSettings() {
                 }}
               >
                 {isUpdatingAvatar ? "Đang lưu..." : "Lưu ảnh"}
+              </Button>
+            </div>
+            
+            <div className="pt-2">
+              <Button 
+                variant="ghost" 
+                className="text-xs text-muted-foreground hover:text-foreground w-auto py-1.5 h-auto px-3"
+                onClick={() => {
+                  authClient.signIn.social({ provider: "google" });
+                }}
+              >
+                🔄 Đồng bộ lại ảnh từ Google
               </Button>
             </div>
           </div>
