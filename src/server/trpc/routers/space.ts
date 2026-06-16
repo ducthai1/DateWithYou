@@ -28,8 +28,6 @@ const hashCode = (code: string) =>
 const INVITE_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
 // MongoDB duplicate-key (unique index) error.
-const isDuplicateKey = (e: unknown): boolean =>
-  typeof e === "object" && e !== null && (e as { code?: number }).code === 11000;
 
 export const spaceRouter = router({
   getAllMine: authedProcedure.query(async ({ ctx }) => {

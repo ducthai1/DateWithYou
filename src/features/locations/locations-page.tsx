@@ -25,7 +25,6 @@ import {
   Circle,
   WifiOff,
   Loader2,
-  Gauge,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";

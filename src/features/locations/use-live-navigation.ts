@@ -121,6 +121,9 @@ export function useLiveNavigation(options?: {
   onOffRoute?: (userGeo: LatLng) => void;
   offRouteThresholdMeters?: number;
 }): LiveNavigation {
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
   const [isNavigating, setIsNavigating] = useState(false);
   const [userGeo, setUserGeo] = useState<LatLng | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
@@ -220,8 +223,8 @@ export function useLiveNavigation(options?: {
           const { remaining, deviation } = remainingAlongRoute(g, rc);
           setRemainingMeters(Math.round(remaining));
 
-          if (options?.onOffRoute && deviation > (options.offRouteThresholdMeters ?? 50)) {
-            options.onOffRoute(g);
+          if (optionsRef.current?.onOffRoute && deviation > (optionsRef.current.offRouteThresholdMeters ?? 50)) {
+            optionsRef.current.onOffRoute(g);
           }
 
           // Estimate remaining time proportionally.

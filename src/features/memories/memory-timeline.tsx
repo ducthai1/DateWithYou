@@ -271,13 +271,17 @@ export function MemoryTimeline() {
 
       <Modal open={!!editingMemoId} onClose={() => setEditingMemoId(null)}>
         <ModalHeader title="Chỉnh sửa kỷ niệm" onClose={() => setEditingMemoId(null)} />
-        {editingMemoId && (
-          <MemoryForm
-            initialMemory={all.find((m) => m.id === editingMemoId) as any}
-            onDone={() => setEditingMemoId(null)}
-            onCancel={() => setEditingMemoId(null)}
-          />
-        )}
+        {editingMemoId && (() => {
+          const m = all.find((m) => m.id === editingMemoId);
+          if (!m) return null;
+          return (
+            <MemoryForm
+              initialMemory={m}
+              onDone={() => setEditingMemoId(null)}
+              onCancel={() => setEditingMemoId(null)}
+            />
+          );
+        })()}
       </Modal>
     </div>
   );

@@ -64,7 +64,6 @@ export function CalendarCell({
       {hasPlans && (
         <div className="mt-auto w-full space-y-1 z-10 pb-1 px-0.5">
           {summary.plans.map((p, i) => {
-            const hasColor = !!p.color;
             const accent = p.color || "var(--accent)";
             return (
               <div
