@@ -144,12 +144,12 @@ export function RoadmapBoard() {
                         </p>
                       )}
 
-                      <div className="mt-1 flex items-center justify-between gap-2 border-t border-border pt-3">
+                      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-3 border-t border-border/50 pt-3">
                         <p className="text-muted-foreground text-[10px]" title={p.createdAt?.toString()}>
                           {p.createdAt ? formatDistanceToNow(p.createdAt, { locale: vi, addSuffix: true }) : ""}
                         </p>
-                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                          <div className="w-36">
+                        <div className="flex items-center gap-1.5 flex-1 justify-end min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex-1 max-w-[140px]">
                             <Select
                               aria-label="Chuyển trạng thái"
                               value={p.status}
@@ -158,14 +158,14 @@ export function RoadmapBoard() {
                                 value: c.key,
                                 label: c.label,
                               }))}
-                              className="h-7 text-xs"
+                              className="h-8 text-xs w-full"
                             />
                           </div>
                           <ConfirmButton
                             idle=""
                             confirmText="Xoá"
-                            icon={<Trash2 className="h-3.5 w-3.5" />}
-                            className="rounded-lg px-2 py-1.5 hover:bg-destructive-soft opacity-0 transition-opacity group-hover:opacity-100"
+                            icon={<Trash2 className="h-4 w-4" />}
+                            className="rounded-lg px-2 py-1.5 hover:bg-destructive-soft opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 shrink-0"
                             onConfirm={() => remove.mutate({ id: p.id })}
                           />
                         </div>
