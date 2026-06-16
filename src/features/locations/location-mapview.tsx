@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Map, { Marker, Source, Layer, type MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { LatLng } from "@/lib/maps";
@@ -57,10 +57,22 @@ export function LocationMapView({
 }) {
   const mapRef = useRef<MapRef>(null);
 
+  // Track manual map interactions to suspend auto-tracking
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const interactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleInteraction = () => {
+    setIsUserInteracting(true);
+    if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
+    interactionTimeoutRef.current = setTimeout(() => {
+      setIsUserInteracting(false);
+    }, 2000);
+  };
+
   // Follow mode: keep the live position centred as the user moves.
   // When heading is available, rotate the map so "up" = direction of travel.
   useEffect(() => {
-    if (followGeo) {
+    if (followGeo && !isUserInteracting) {
       mapRef.current?.easeTo({
         center: [followGeo.lng, followGeo.lat],
         zoom: 18.5,
@@ -69,7 +81,7 @@ export function LocationMapView({
         duration: 600,
       });
     }
-  }, [followGeo, heading]);
+  }, [followGeo, heading, isUserInteracting]);
 
   // In-app "Chỉ đường": glide the map to the chosen pin instead of leaving the app.
   useEffect(() => {
@@ -110,7 +122,12 @@ export function LocationMapView({
   }, [routeGeometry]);
 
   return (
-    <div className={cn("h-full min-h-[280px] overflow-hidden rounded-xl border border-border bg-card shadow-sm", className)}>
+    <div 
+      className={cn("h-full min-h-[280px] overflow-hidden rounded-xl border border-border bg-card shadow-sm", className)}
+      onPointerDownCapture={handleInteraction}
+      onWheelCapture={handleInteraction}
+      onTouchStartCapture={handleInteraction}
+    >
       <Map
         ref={mapRef}
         initialViewState={DEFAULT_CENTER}
