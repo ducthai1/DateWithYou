@@ -20,9 +20,9 @@ import { Trash2, Plus, Lightbulb, Map, CheckCircle2 } from "lucide-react";
 type PlanStatus = "idea" | "planning" | "done";
 
 const COLUMNS = [
-  { key: "idea" as const, label: "Ý tưởng", icon: Lightbulb },
-  { key: "planning" as const, label: "Đang lên kế hoạch", icon: Map },
-  { key: "done" as const, label: "Đã làm", icon: CheckCircle2 },
+  { key: "idea" as const, label: "Ý tưởng", icon: Lightbulb, bg: "bg-amber-500/10 border-amber-500/20", iconColor: "text-amber-600" },
+  { key: "planning" as const, label: "Đang lên kế hoạch", icon: Map, bg: "bg-sky-500/10 border-sky-500/20", iconColor: "text-sky-600" },
+  { key: "done" as const, label: "Đã làm", icon: CheckCircle2, bg: "bg-emerald-500/10 border-emerald-500/20", iconColor: "text-emerald-600" },
 ];
 
 export function RoadmapBoard() {
@@ -103,11 +103,11 @@ export function RoadmapBoard() {
           const Icon = col.icon;
           
           return (
-            <section key={col.key} className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <Icon className="text-accent h-4 w-4" />
-                <h3 className="font-semibold">{col.label}</h3>
-                <span className="bg-muted text-muted-foreground ml-auto rounded-full px-2 py-0.5 text-xs font-medium">
+            <section key={col.key} className={`flex flex-col gap-3 rounded-2xl border p-4 ${col.bg}`}>
+              <div className="flex items-center gap-2 border-b border-border/50 pb-3">
+                <Icon className={`h-4 w-4 ${col.iconColor}`} />
+                <h3 className="font-semibold text-foreground/90">{col.label}</h3>
+                <span className="bg-background/80 text-muted-foreground ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm">
                   {colPlans.length}
                 </span>
               </div>
