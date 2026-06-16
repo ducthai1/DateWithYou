@@ -86,6 +86,11 @@ export function PlanItemForm({
             value={time}
             onChange={(e) => setTime(e.target.value)}
             aria-label="Giờ"
+            // Open the native time picker on tap anywhere in the field (not just
+            // the tiny clock glyph). showPicker() throws without user activation,
+            // so guard it — harmless if the browser blocks/lacks it.
+            onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch {} }}
+            onFocus={(e) => { try { e.currentTarget.showPicker?.(); } catch {} }}
             className="border-border bg-card h-11 rounded-xl border px-3 text-sm outline-none focus:border-accent"
           />
         </div>

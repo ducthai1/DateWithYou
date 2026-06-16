@@ -6,7 +6,6 @@ import { RoadmapBoard } from "@/features/vault/roadmap-board";
 import { WishlistGrid } from "@/features/vault/wishlist-grid";
 import { RewardsPanel } from "@/features/vault/rewards-panel";
 import { Tabs } from "@/components/ui/tabs";
-import { HeaderMesh } from "@/components/layout/header-mesh";
 
 const TABS = [
   { key: "roadmap", label: "Kế hoạch" },
@@ -19,10 +18,7 @@ export default function VaultPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 px-4 py-6 lg:max-w-4xl">
-      <div className="relative overflow-hidden rounded-2xl px-1 py-1">
-        <HeaderMesh />
-        <h1 className="text-h1 relative z-10 font-serif">Góc bí mật</h1>
-      </div>
+      <h1 className="text-h1 font-serif">Góc bí mật</h1>
       <Tabs tabs={TABS} value={tab} onChange={setTab} />
       <div className="relative">
         <AnimatePresence mode="popLayout" initial={false}>

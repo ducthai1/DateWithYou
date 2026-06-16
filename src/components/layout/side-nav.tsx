@@ -10,14 +10,17 @@ import { cn } from "@/lib/utils";
 /** Desktop-only sidebar (md+). Mobile uses the bottom nav instead. */
 export function SideNav() {
   const pathname = usePathname();
-  const { isCollapsed, toggleSidebar } = useSidebar();
+  const { isCollapsed, toggleSidebar, ready } = useSidebar();
 
   if (NAV_HIDDEN_ON.includes(pathname)) return null;
 
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-20 hidden flex-col justify-between border-r border-border bg-card shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-[width] duration-300 ease-in-out md:flex",
+        "fixed inset-y-0 left-0 z-20 hidden flex-col justify-between border-r border-border bg-card shadow-[4px_0_24px_rgba(0,0,0,0.02)] md:flex",
+        // Only animate width once the saved state is loaded — avoids the
+        // expanded→collapsed slide on first paint.
+        ready && "transition-[width] duration-300 ease-in-out",
         isCollapsed ? "w-20" : "w-64"
       )}
     >

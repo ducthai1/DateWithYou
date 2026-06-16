@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
-import { HeaderMesh } from "@/components/layout/header-mesh";
 import { useLiveNavigation } from "./use-live-navigation";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
@@ -218,9 +217,8 @@ export function LocationsPage() {
 
       {/* ── Normal page layout ── */}
       <div className="mx-auto max-w-2xl px-4 py-6 lg:max-w-6xl">
-      <div className="relative mb-4 flex items-center justify-between overflow-hidden rounded-2xl px-1 py-1">
-        <HeaderMesh />
-        <h1 className="text-h1 relative z-10 font-serif">Bản đồ ăn chơi</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-h1 font-serif">Bản đồ ăn chơi</h1>
         <div className="flex gap-2">
           <a
             href="/wheel"
