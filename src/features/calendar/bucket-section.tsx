@@ -39,16 +39,16 @@ export function BucketSection({
   return (
     <section className="relative">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-          <BucketIcon className="h-4 w-4 text-accent" />
+        <h3 className="text-muted-foreground flex items-center gap-1.5 text-sm font-medium">
+          <BucketIcon className="h-4 w-4 opacity-70" />
           {label}
-          <span className="text-muted-foreground text-xs font-normal">({items.length})</span>
+          <span className="text-xs font-normal opacity-70">({items.length})</span>
         </h3>
         <button
           type="button"
           onClick={onAdd}
           aria-label={`Thêm việc buổi ${label}`}
-          className="text-accent hover:bg-accent-soft inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
         >
           <Plus className="h-3.5 w-3.5" /> Thêm
         </button>
