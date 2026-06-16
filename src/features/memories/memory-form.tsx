@@ -34,6 +34,7 @@ export function MemoryForm({
   initialTitle,
   initialDate,
   initialLocationId,
+  initialMemory,
 }: {
   onDone: () => void;
   onCancel: () => void;
@@ -41,10 +42,20 @@ export function MemoryForm({
   initialTitle?: string;
   initialDate?: string; // YYYY-MM-DD
   initialLocationId?: string;
+  initialMemory?: {
+    id: string;
+    title: string;
+    caption: string | null;
+    date: Date | string;
+    photos: { url: string; publicId: string }[];
+    embeds: { url: string }[];
+    tags: string[];
+  };
 }) {
-  const [title, setTitle] = useState(initialTitle ?? "");
-  const [caption, setCaption] = useState("");
+  const [title, setTitle] = useState(initialMemory?.title ?? initialTitle ?? "");
+  const [caption, setCaption] = useState(initialMemory?.caption ?? "");
   const [date, setDate] = useState(() => {
+    if (initialMemory?.date) return new Date(initialMemory.date).toISOString().slice(0, 10);
     if (initialDate) return initialDate;
     const d = new Date();
     const y = d.getFullYear();
@@ -52,9 +63,14 @@ export function MemoryForm({
     const day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
   });
-  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
-  const [embeds, setEmbeds] = useState<ParsedEmbed[]>([]);
+  const [photos, setPhotos] = useState<UploadedPhoto[]>(initialMemory?.photos ?? []);
+  const [tags, setTags] = useState<string[]>(initialMemory?.tags ?? []);
+  const [embeds, setEmbeds] = useState<ParsedEmbed[]>(() => {
+    if (initialMemory?.embeds) {
+      return initialMemory.embeds.map((e) => parseEmbed(e.url));
+    }
+    return [];
+  });
   const [linkInput, setLinkInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -92,15 +108,15 @@ export function MemoryForm({
   }
 
   const utils = trpc.useUtils();
-  const create = trpc.memory.create.useMutation({
-    onSuccess: () => {
-      utils.memory.list.invalidate();
-      // Memories surface on the unified calendar, so refresh it too.
-      utils.calendar.dayDetail.invalidate();
-      utils.calendar.monthSummary.invalidate();
-      onDone();
-    },
-  });
+  const onSuccess = () => {
+    utils.memory.list.invalidate();
+    // Memories surface on the unified calendar, so refresh it too.
+    utils.calendar.dayDetail.invalidate();
+    utils.calendar.monthSummary.invalidate();
+    onDone();
+  };
+  const create = trpc.memory.create.useMutation({ onSuccess });
+  const update = trpc.memory.update.useMutation({ onSuccess });
 
   async function onFiles(files: FileList | null) {
     if (!files) return;
@@ -266,23 +282,34 @@ export function MemoryForm({
       </ModalContent>
 
       <ModalFooter>
-        <Button
-          className="flex-1"
-          disabled={!title.trim() || create.isPending || uploading}
-          onClick={() =>
-            create.mutate({
-              title: title.trim(),
-              caption: caption.trim() || undefined,
-              date: new Date(date),
-              photos,
-              tags,
-              embeds: collectAllEmbeds(),
-              locationId: initialLocationId,
-            })
-          }
-        >
-          {create.isPending ? "Đang lưu…" : "Lưu kỷ niệm"}
-        </Button>
+          <Button
+            onClick={() => {
+              if (initialMemory) {
+                update.mutate({
+                  id: initialMemory.id,
+                  title,
+                  caption: caption || undefined,
+                  date: new Date(date),
+                  photos,
+                  embeds: collectAllEmbeds(),
+                  tags,
+                });
+              } else {
+                create.mutate({
+                  title,
+                  caption: caption || undefined,
+                  date: new Date(date),
+                  photos,
+                  embeds: collectAllEmbeds(),
+                  tags,
+                  locationId: initialLocationId,
+                });
+              }
+            }}
+            disabled={!title || (create.isPending || update.isPending)}
+          >
+            {(create.isPending || update.isPending) ? "Đang lưu..." : "Lưu"}
+          </Button>
         <Button variant="ghost" onClick={onCancel}>
           Huỷ
         </Button>

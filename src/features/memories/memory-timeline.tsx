@@ -13,6 +13,7 @@ import { StaggerList } from "@/components/ui/stagger-list";
 import { type EmbedProvider, PROVIDER_LABEL } from "@/lib/embed";
 import { cn } from "@/lib/utils";
 import { MemoryForm } from "./memory-form";
+import { Edit, AlertTriangle } from "lucide-react";
 
 type EmbedField = {
   provider: string;
@@ -30,6 +31,8 @@ export function MemoryTimeline() {
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
+  const [warningEditId, setWarningEditId] = useState<string | null>(null);
   const list = trpc.memory.list.useQuery();
   const utils = trpc.useUtils();
   const remove = trpc.memory.remove.useMutation({
@@ -224,8 +227,56 @@ export function MemoryTimeline() {
                   ))}
                 </div>
               )}
+              <Button 
+                variant="outline" 
+                className="w-full mt-2" 
+                onClick={() => setWarningEditId(selectedMemo.id)}
+              >
+                <Edit className="w-4 h-4 mr-2" /> Chỉnh sửa kỷ niệm
+              </Button>
             </ModalContent>
           </>
+        )}
+      </Modal>
+
+      <Modal open={!!warningEditId} onClose={() => setWarningEditId(null)}>
+        <ModalHeader
+          title={
+            <span className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+              <AlertTriangle className="h-5 w-5" />
+              Cảnh báo sửa đổi
+            </span>
+          }
+          onClose={() => setWarningEditId(null)}
+        />
+        <ModalContent>
+          <p className="text-sm text-muted-foreground">
+            Việc chỉnh sửa có thể vô tình làm thay đổi thiết kế hoặc làm hỏng kỷ niệm hiện tại. Bạn có chắc chắn muốn tiếp tục chỉnh sửa không?
+          </p>
+        </ModalContent>
+        <div className="p-4 pt-0 flex gap-3 justify-end border-t border-border/50 mt-4">
+          <Button variant="ghost" onClick={() => setWarningEditId(null)}>Huỷ</Button>
+          <Button
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+            onClick={() => {
+              setEditingMemoId(warningEditId);
+              setWarningEditId(null);
+              setSelected(null);
+            }}
+          >
+            Vẫn tiếp tục sửa
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal open={!!editingMemoId} onClose={() => setEditingMemoId(null)}>
+        <ModalHeader title="Chỉnh sửa kỷ niệm" onClose={() => setEditingMemoId(null)} />
+        {editingMemoId && (
+          <MemoryForm
+            initialMemory={all.find((m) => m.id === editingMemoId) as any}
+            onDone={() => setEditingMemoId(null)}
+            onCancel={() => setEditingMemoId(null)}
+          />
         )}
       </Modal>
     </div>
