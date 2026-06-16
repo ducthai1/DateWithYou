@@ -2,6 +2,8 @@
 
 import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StaggerList } from "@/components/ui/stagger-list";
 import { todayKey } from "@/lib/date-keys";
 import { colorsForTags, mergeTags } from "@/lib/plan-meta";
 import { ChevronRight } from "lucide-react";
@@ -37,11 +39,18 @@ export function AgendaView({ onSelectDay }: { onSelectDay: (dateKey: string) => 
   const days = Object.keys(grouped).sort();
 
   if (days.length === 0) {
-    return <p className="text-muted-foreground py-10 text-center text-sm">Chưa có kế hoạch sắp tới. Mở một ngày trên lịch để thêm nhé 💞</p>;
+    return (
+      <EmptyState
+        icon="calendar-heart"
+        title="Chưa có kế hoạch sắp tới"
+        subtitle="Mở một ngày trên lịch để thêm việc cùng nhau nhé."
+        action={{ label: "Xem lịch tháng", onClick: () => onSelectDay(todayKey()) }}
+      />
+    );
   }
 
   return (
-    <div className="space-y-3">
+    <StaggerList gap="space-y-3">
       {days.map((key) => {
         const dayItems = grouped[key] ?? [];
         const colors = [...new Set(colorsForTags(dayItems.flatMap((i) => i.tags), palette))].slice(0, 4);
@@ -67,6 +76,6 @@ export function AgendaView({ onSelectDay }: { onSelectDay: (dateKey: string) => 
           </button>
         );
       })}
-    </div>
+    </StaggerList>
   );
 }

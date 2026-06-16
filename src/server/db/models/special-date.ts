@@ -11,6 +11,11 @@ const specialDateSchema = new Schema(
     title: { type: String, required: true },
     date: { type: String, required: true }, // YYYY-MM-DD
     recurYearly: { type: Boolean, default: true },
+    /**
+     * Icon registry key (e.g. "heart", "cake") from icon-registry.ts.
+     * Legacy docs may contain raw emoji strings — resolveIcon() handles the
+     * fallback gracefully so old data is never a crash risk.
+     */
     icon: { type: String },
     createdBy: { type: String, required: true },
   },

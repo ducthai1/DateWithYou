@@ -9,7 +9,17 @@ const spaceSchema = new Schema(
   {
     name: { type: String, required: true },
     coverImage: { type: String },
+    /**
+     * @deprecated No longer read by the render path. Kept so existing docs
+     * don't fail on strict schema validation. Use `themePreset` instead.
+     */
     themeColor: { type: String, default: "#b08968" },
+    /**
+     * Preset key from the theme registry (theme-presets.ts). This is the sole
+     * source of truth for the couple's accent palette. The SSR layout reads
+     * the `vivu_theme` cookie (written from this field) to set data-theme.
+     */
+    themePreset: { type: String, default: "terracotta" },
     anniversaryDate: { type: Date },
     members: { type: [String], required: true, default: [] },
     inviteCodeHash: { type: String },

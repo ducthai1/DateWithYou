@@ -8,6 +8,9 @@ import { Modal, ModalHeader } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmbedPlayer } from "@/components/ui/embed-player";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StaggerList } from "@/components/ui/stagger-list";
+import { HeaderMesh } from "@/components/layout/header-mesh";
 import { type EmbedProvider } from "@/lib/embed";
 import { cn } from "@/lib/utils";
 import { MemoryForm } from "./memory-form";
@@ -47,9 +50,10 @@ export function MemoryTimeline() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 px-4 py-6 lg:max-w-4xl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Dòng kỷ niệm</h1>
-        <Button onClick={() => setAdding(true)}>+ Thêm</Button>
+      <div className="relative flex items-center justify-between overflow-hidden rounded-2xl px-1 py-1">
+        <HeaderMesh />
+        <h1 className="text-h1 relative z-10 font-serif">Dòng kỷ niệm</h1>
+        <Button className="relative z-10" onClick={() => setAdding(true)}>+ Thêm</Button>
       </div>
 
       {allTags.length > 0 && (
@@ -68,20 +72,32 @@ export function MemoryTimeline() {
 
       {list.isLoading ? (
         <div className="space-y-3">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
+          <Skeleton variant="card" className="h-24" />
+          <Skeleton variant="card" className="h-24" />
         </div>
       ) : memories.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          {filter ? "Không có kỷ niệm nào với nhãn này." : "Chưa có kỷ niệm nào. Lưu khoảnh khắc đầu tiên nhé 💞"}
-        </p>
+        filter ? (
+          <EmptyState
+            icon="sparkles"
+            title="Không tìm thấy kỷ niệm"
+            subtitle="Không có kỷ niệm nào với nhãn này."
+            action={{ label: "Xem tất cả", onClick: () => setFilter(null) }}
+          />
+        ) : (
+          <EmptyState
+            icon="sparkles"
+            title="Chưa có kỷ niệm nào"
+            subtitle="Lưu khoảnh khắc đầu tiên — hình ảnh, cảm xúc, khoảnh khắc nhỏ."
+            action={{ label: "+ Lưu kỷ niệm", onClick: () => setAdding(true) }}
+          />
+        )
       ) : (
         Object.entries(groups).map(([month, items]: [string, Memo[]]) => (
           <section key={month} className="space-y-3">
             <h2 className="text-muted-foreground text-sm font-medium capitalize">{month}</h2>
-            <div className="gap-3 sm:columns-2 [&>*]:mb-3 [&>*]:break-inside-avoid">
+            <StaggerList className="gap-3 sm:columns-2 [&>*]:mb-3 [&>*]:break-inside-avoid">
               {items.map((m) => (
-                <Card key={m.id} className="p-3">
+                <Card key={m.id} interactive className="p-3">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">{m.title}</p>
@@ -137,7 +153,7 @@ export function MemoryTimeline() {
                   )}
                 </Card>
               ))}
-            </div>
+            </StaggerList>
           </section>
         ))
       )}

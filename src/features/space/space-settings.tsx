@@ -9,6 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import {
+  THEME_PRESETS,
+  THEME_PRESET_KEYS,
+  THEME_COOKIE_NAME,
+  resolveThemeKey,
+  type ThemePresetKey,
+} from "@/lib/theme-presets";
+import { cn } from "@/lib/utils";
 
 export function SpaceSettings() {
   const router = useRouter();
@@ -16,16 +24,15 @@ export function SpaceSettings() {
   const utils = trpc.useUtils();
 
   const [name, setName] = useState("");
-  const [themeColor, setThemeColor] = useState("#b08968");
+  // Active preset key — initialised from DB, updated optimistically on swatch click
+  const [activePreset, setActivePreset] = useState<ThemePresetKey>("terracotta");
   const [invite, setInvite] = useState<string | null>(null);
 
   useEffect(() => {
     if (mine.data) {
       setName(mine.data.name);
-      setThemeColor(mine.data.themeColor);
+      setActivePreset(resolveThemeKey(mine.data.themePreset));
     }
-    // No space yet → go onboard. Gate on a successful fetch returning null so a
-    // transient getMine error doesn't bounce a user who actually has a space.
     if (mine.isSuccess && mine.data === null) router.replace("/onboarding");
   }, [mine.data, mine.isSuccess, router]);
 
@@ -42,32 +49,77 @@ export function SpaceSettings() {
 
   const full = mine.data.memberCount >= 2;
 
+  /** Optimistically apply the preset locally, write the SSR cookie, then persist to DB. */
+  function handlePresetSelect(key: ThemePresetKey) {
+    setActivePreset(key);
+
+    // Optimistic: set data-theme so CSS vars switch immediately without reload
+    document.documentElement.dataset.theme = key;
+
+    // Write the vivu_theme cookie so SSR layout picks it up on next navigation.
+    // ~1 year maxAge; path=/ so all routes see it. Secure on HTTPS (prod).
+    const maxAge = 60 * 60 * 24 * 365;
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${THEME_COOKIE_NAME}=${key}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
+
+    updateTheme.mutate({ themePreset: key });
+  }
+
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 px-6 py-12 lg:max-w-lg">
       <h1 className="text-3xl font-semibold">Cài đặt không gian</h1>
 
       <Card className="space-y-3">
-        <p className="text-sm font-medium">Tên & màu chủ đạo</p>
-        <Input placeholder="Tên không gian" value={name} onChange={(e) => setName(e.target.value)} />
-        <div className="flex items-center gap-3">
-          <label className="border-border flex items-center gap-2 rounded-xl border px-2 py-1.5 text-xs">
-            <input
-              type="color"
-              value={themeColor}
-              onChange={(e) => setThemeColor(e.target.value)}
-              className="h-7 w-9 cursor-pointer rounded-md border-0 bg-transparent p-0"
-              aria-label="Màu chủ đạo"
-            />
-            <span className="text-muted-foreground font-mono">{themeColor}</span>
-          </label>
-          <Button
-            disabled={updateTheme.isPending}
-            onClick={() => updateTheme.mutate({ name: name.trim(), themeColor })}
-            className="flex-1"
-          >
-            {updateTheme.isPending ? "Đang lưu…" : "Lưu"}
-          </Button>
+        <p className="text-sm font-medium">Tên không gian</p>
+        <Input
+          placeholder="Tên không gian"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Button
+          disabled={updateTheme.isPending}
+          onClick={() => updateTheme.mutate({ name: name.trim() })}
+          className="w-full"
+        >
+          {updateTheme.isPending ? "Đang lưu…" : "Lưu tên"}
+        </Button>
+      </Card>
+
+      <Card className="space-y-3">
+        <p className="text-sm font-medium">Màu chủ đạo</p>
+        {/* 6-swatch preset grid — one swatch per ThemePresetKey */}
+        <div className="grid grid-cols-6 gap-2">
+          {THEME_PRESET_KEYS.map((key) => {
+            const preset = THEME_PRESETS[key];
+            const isActive = activePreset === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                title={preset.label}
+                aria-label={preset.label}
+                aria-pressed={isActive}
+                onClick={() => handlePresetSelect(key)}
+                className={cn(
+                  "h-9 w-9 rounded-full transition-all active:scale-90",
+                  // Ring indicates selected preset
+                  isActive
+                    ? "ring-2 ring-offset-2 scale-110"
+                    : "hover:scale-105 opacity-80 hover:opacity-100",
+                )}
+                style={{
+                  background: `linear-gradient(135deg, ${preset.gradientFrom}, ${preset.gradientTo})`,
+                  // Use the preset's own colour for the selection outline ring
+                  outline: isActive ? `2px solid ${preset.ring}` : "none",
+                  outlineOffset: "2px",
+                }}
+              />
+            );
+          })}
         </div>
+        <p className="text-xs text-muted-foreground">
+          {THEME_PRESETS[activePreset].label}
+        </p>
       </Card>
 
       <Card className="space-y-3">

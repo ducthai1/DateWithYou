@@ -4,6 +4,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Plus, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { resolveIcon } from "@/lib/icon-registry";
 
 const QUICK_COLORS = ["#c2693f", "#e8a598", "#d4a373", "#a3b18a", "#cb997e", "#8a9bb0", "#b08bbd"];
 
@@ -41,6 +42,7 @@ export function TagPicker({
       <div className="flex flex-wrap gap-1.5">
         {(tags.data ?? []).map((t) => {
           const on = value.includes(t.name);
+          const TagIcon = t.icon ? resolveIcon(t.icon) : null;
           return (
             <button
               key={t.name}
@@ -53,7 +55,7 @@ export function TagPicker({
               style={on ? { backgroundColor: t.color, borderColor: t.color } : { borderColor: t.color }}
             >
               {on && <Check className="h-3 w-3" />}
-              {t.icon && <span>{t.icon}</span>}
+              {TagIcon && <TagIcon className="h-3 w-3" />}
               {t.name}
             </button>
           );

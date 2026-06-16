@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, MapPin } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useCelebrate } from "@/components/ui/celebrate";
+import { Sparkles, MapPin, Heart } from "lucide-react";
 import { BUCKETS, mergeTags, type BucketKey } from "@/lib/plan-meta";
 import { MemoryForm } from "@/features/memories/memory-form";
 import { BucketSection } from "./bucket-section";
@@ -26,6 +28,9 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
   const members = trpc.space.members.useQuery();
   const tags = trpc.space.tags.useQuery();
   const locations = trpc.location.list.useQuery(undefined);
+  const celebrate = useCelebrate();
+  // Anchor the celebration burst to the modal body so it stays in-context.
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<EditableItem | undefined>();
@@ -111,7 +116,8 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
                   <p className="text-muted-foreground text-xs font-semibold">Đã lưu trong ngày</p>
                   {detail.data.memories.map((m) => (
                     <div key={m.id} className="flex items-center gap-2 text-sm">
-                      💞 <span className="font-medium">{m.title}</span>
+                      <Heart className="h-3.5 w-3.5 shrink-0 text-accent" />
+                      <span className="font-medium">{m.title}</span>
                     </div>
                   ))}
                   {detail.data.visited.map((v) => (
@@ -122,7 +128,11 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
                 </div>
               )}
               {items.length === 0 && (
-                <p className="text-muted-foreground text-center text-sm">Chưa có kế hoạch nào cho ngày này — thêm một việc nhé 💞</p>
+                <EmptyState
+                  icon="calendar-heart"
+                  title="Ngày này còn trống"
+                  subtitle="Thêm một việc để cùng lên kế hoạch nhé."
+                />
               )}
             </>
           )}
@@ -145,13 +155,18 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
       {memoryFor && (
         <Modal open onClose={() => setMemoryFor(null)} className="max-w-md">
           <ModalHeader title="Lưu thành kỷ niệm" onClose={() => setMemoryFor(null)} />
-          <MemoryForm
-            initialTitle={memoryFor.title}
-            initialDate={date}
-            initialLocationId={memoryFor.locationId ?? undefined}
-            onDone={() => setMemoryFor(null)}
-            onCancel={() => setMemoryFor(null)}
-          />
+          <div ref={modalRef} className="relative">
+            <MemoryForm
+              initialTitle={memoryFor.title}
+              initialDate={date}
+              initialLocationId={memoryFor.locationId ?? undefined}
+              onDone={() => {
+                celebrate(modalRef.current);
+                setMemoryFor(null);
+              }}
+              onCancel={() => setMemoryFor(null)}
+            />
+          </div>
         </Modal>
       )}
     </>

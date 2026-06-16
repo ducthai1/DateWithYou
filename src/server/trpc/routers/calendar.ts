@@ -103,7 +103,9 @@ export const calendarRouter = router({
         const annKey = dateKeyFromDate(space.anniversaryDate);
         if (monthDayOf(annKey).slice(0, 2) === mm) {
           const key = `${year}-${annKey.slice(5)}`;
-          get(key).special ??= { title: "Kỷ niệm yêu nhau", icon: "💞" };
+          // "heart" is a registry key — resolveIcon renders it as a Lucide Heart.
+          // The fallback was previously a raw emoji ("💞") which bypassed the registry.
+          get(key).special ??= { title: "Kỷ niệm yêu nhau", icon: "heart" };
         }
       }
       return days;

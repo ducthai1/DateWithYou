@@ -5,10 +5,14 @@ import { TRPCError } from "@trpc/server";
 import { router, authedProcedure, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { SpaceModel } from "@/server/db/models/space";
+import { SpecialDateModel } from "@/server/db/models/special-date";
 import { resolveMemberProfiles } from "@/server/auth/member-profiles";
 import { mergeTags, type Tag } from "@/lib/plan-meta";
+import { THEME_PRESET_KEYS, resolveThemeKey } from "@/lib/theme-presets";
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+// Server-side validation: only known preset keys accepted, not arbitrary strings.
+const themePresetKey = z.enum(THEME_PRESET_KEYS as [string, ...string[]]);
 
 type MemberProfileOverride = {
   userId: string;
@@ -34,6 +38,7 @@ export const spaceRouter = router({
       _id: unknown;
       name: string;
       themeColor: string;
+      themePreset?: string;
       coverImage?: string;
       members: string[];
     }>();
@@ -41,7 +46,10 @@ export const spaceRouter = router({
     return {
       id: String(space._id),
       name: space.name,
+      // themeColor kept for legacy callers but themePreset is the render source
       themeColor: space.themeColor,
+      // resolveThemeKey falls back to "terracotta" for legacy docs missing the field
+      themePreset: resolveThemeKey(space.themePreset),
       coverImage: space.coverImage ?? null,
       memberCount: space.members.length,
     };
@@ -61,8 +69,35 @@ export const spaceRouter = router({
         const doc = await SpaceModel.create({
           name: input.name,
           members: [ctx.userId],
+          themePreset: "terracotta",
         });
-        return { id: String(doc._id) };
+        const spaceId = String(doc._id);
+
+        // Seed 2 clearly-placeholder special dates so the countdown banner is
+        // never empty on a brand-new space. Both are set to today's date as a
+        // sensible starting point — the couple can edit or delete them freely.
+        // create-only: never called again so couple edits are never overwritten.
+        const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        await SpecialDateModel.insertMany([
+          {
+            spaceId,
+            createdBy: ctx.userId,
+            title: "Ngày kỷ niệm",
+            icon: "heart",       // registry key — resolveIcon renders a Heart
+            date: todayStr,
+            recurYearly: true,
+          },
+          {
+            spaceId,
+            createdBy: ctx.userId,
+            title: "Sinh nhật",
+            icon: "cake",        // registry key — resolveIcon renders a Cake
+            date: todayStr,
+            recurYearly: true,
+          },
+        ]);
+
+        return { id: spaceId };
       } catch (e) {
         // Unique members index → user raced into another space.
         if (isDuplicateKey(e))
@@ -211,10 +246,13 @@ export const spaceRouter = router({
     .input(
       z.object({
         name: z.string().trim().min(1).max(60).optional(),
-        themeColor: z
-          .string()
-          .regex(/^#[0-9a-fA-F]{6}$/)
-          .optional(),
+        /**
+         * Preset key from the theme registry. This is the sole render source —
+         * the free-hex themeColor field is retired from the UI/render path.
+         * Server validates against THEME_PRESET_KEYS so clients can't inject
+         * arbitrary strings into the DB.
+         */
+        themePreset: themePresetKey.optional(),
         coverImage: z.string().url().startsWith("https://").optional(),
       }),
     )

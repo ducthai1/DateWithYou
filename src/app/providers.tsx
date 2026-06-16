@@ -20,7 +20,25 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
-        defaultOptions: { queries: { staleTime: 30_000 } },
+        defaultOptions: {
+          queries: {
+            // Couple data changes rarely and only from two people, so treat
+            // cached data as fresh for a while: re-visiting a screen renders
+            // instantly from cache instead of showing a spinner + waiting on a
+            // remote-Atlas round-trip. Background refetch still keeps it current.
+            staleTime: 5 * 60_000,
+            gcTime: 30 * 60_000,
+            // Don't re-hit the API every time the tab regains focus — on a slow
+            // serverless+Atlas path that caused visible reload flicker.
+            refetchOnWindowFocus: false,
+            // Fail fast: 3 retries on a ~1s call compounds into multi-second
+            // stalls. One retry rides out a transient blip without piling up.
+            retry: 1,
+          },
+          // Mutations shouldn't silently retry — optimistic UI already reflects
+          // the change; surface errors fast so the optimistic state rolls back.
+          mutations: { retry: 0 },
+        },
       }),
   );
   const [trpcClient] = useState(() =>
