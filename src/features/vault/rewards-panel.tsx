@@ -93,7 +93,7 @@ export function RewardsPanel() {
         {nextVoucher && (
           <div className="bg-muted rounded-xl p-4 text-sm">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-muted-foreground font-medium">Đổi "{nextVoucher.title}"</span>
+              <span className="text-muted-foreground font-medium">Đổi &quot;{nextVoucher.title}&quot;</span>
               <span className="font-semibold">{myBalance} / {nextVoucher.cost}đ</span>
             </div>
             <div className="bg-background h-2.5 w-full overflow-hidden rounded-full">
@@ -126,7 +126,7 @@ export function RewardsPanel() {
                   <div className="min-w-0 flex-1 leading-snug">
                     <span className="font-medium">{isMe ? "Bạn" : "Người ấy"}</span> đã nhận{" "}
                     <span className="text-accent font-semibold">{log.points}đ</span> từ{" "}
-                    <span className="text-muted-foreground">"{log.taskTitle}"</span>
+                    <span className="text-muted-foreground">&quot;{log.taskTitle}&quot;</span>
                   </div>
                   <span className="text-muted-foreground shrink-0 text-xs">
                     {formatDistanceToNow(log.doneAt, { locale: vi, addSuffix: true })}

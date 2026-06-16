@@ -13,7 +13,6 @@ import { AlertTriangle } from "lucide-react";
 export function ConfirmButton({
   onConfirm,
   idle = "Xoá",
-  confirm = "Chắc chứ?",
   icon,
   className,
   disabled,
@@ -24,7 +23,6 @@ export function ConfirmButton({
 }: {
   onConfirm: () => void;
   idle?: string;
-  confirm?: string;
   icon?: React.ReactNode;
   className?: string;
   disabled?: boolean;

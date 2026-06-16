@@ -249,6 +249,7 @@ export function MemoryForm({
       {photos.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {photos.map((p) => (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img key={p.publicId} src={p.url} alt="" className="h-16 w-16 rounded-lg object-cover" />
           ))}
         </div>

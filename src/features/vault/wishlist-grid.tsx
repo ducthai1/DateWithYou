@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -193,8 +191,8 @@ export function WishlistGrid() {
               </div>
 
               {w.note && (
-                <p className="text-muted-foreground line-clamp-2 text-xs italic">
-                  "{w.note}"
+                <p className="text-muted-foreground mt-2 border-l-2 pl-2 text-xs italic">
+                  &quot;{w.note}&quot;
                 </p>
               )}
 
@@ -229,8 +227,8 @@ export function WishlistGrid() {
                 </div>
                 <ConfirmButton
                   idle=""
-                  confirm="Xoá?"
-                  icon={<Trash2 className="h-4 w-4" />}
+                  confirmText="Xoá"
+                  icon={<Trash2 className="h-3.5 w-3.5" />}
                   className="rounded-lg px-2 py-1.5 text-muted-foreground hover:bg-destructive-soft hover:text-destructive opacity-0 transition-opacity group-hover:opacity-100"
                   onConfirm={() => remove.mutate({ id: w.id })}
                 />

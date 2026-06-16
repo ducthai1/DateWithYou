@@ -15,7 +15,7 @@ import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/m
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useCelebrate } from "@/components/ui/celebrate";
-import { Trash2, Plus, Calendar, Target, Lightbulb, Map, CheckCircle2 } from "lucide-react";
+import { Trash2, Plus, Lightbulb, Map, CheckCircle2 } from "lucide-react";
 
 type PlanStatus = "idea" | "planning" | "done";
 
@@ -163,7 +163,7 @@ export function RoadmapBoard() {
                           </div>
                           <ConfirmButton
                             idle=""
-                            confirm="Xoá?"
+                            confirmText="Xoá"
                             icon={<Trash2 className="h-3.5 w-3.5" />}
                             className="rounded-lg px-2 py-1.5 hover:bg-destructive-soft opacity-0 transition-opacity group-hover:opacity-100"
                             onConfirm={() => remove.mutate({ id: p.id })}
