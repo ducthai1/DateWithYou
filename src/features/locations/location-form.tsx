@@ -18,6 +18,8 @@ export type LocationFormValues = {
   socialUrl: string;
   mustTry: string;
   rating: number | null;
+  openTime: string;
+  closeTime: string;
   note: string;
 };
 
@@ -43,6 +45,8 @@ const empty: LocationFormValues = {
   socialUrl: "",
   mustTry: "",
   rating: null,
+  openTime: "",
+  closeTime: "",
   note: "",
 };
 
@@ -89,6 +93,8 @@ export function LocationForm({
       socialUrl: v.socialUrl.trim() || undefined,
       mustTry: v.mustTry.trim() || undefined,
       rating: v.rating ?? undefined,
+      openTime: v.openTime || undefined,
+      closeTime: v.closeTime || undefined,
       note: v.note.trim() || undefined,
     };
     if (v.id) update.mutate({ id: v.id, ...payload });
@@ -136,6 +142,24 @@ export function LocationForm({
         value={v.mustTry}
         onChange={(e) => set("mustTry", e.target.value)}
       />
+      <div className="flex gap-2">
+        <div className="flex-1 space-y-1">
+          <label className="text-xs font-medium text-muted-foreground ml-1">Giờ mở cửa</label>
+          <Input
+            type="time"
+            value={v.openTime}
+            onChange={(e) => set("openTime", e.target.value)}
+          />
+        </div>
+        <div className="flex-1 space-y-1">
+          <label className="text-xs font-medium text-muted-foreground ml-1">Giờ đóng cửa</label>
+          <Input
+            type="time"
+            value={v.closeTime}
+            onChange={(e) => set("closeTime", e.target.value)}
+          />
+        </div>
+      </div>
       <Select
         aria-label="Đánh giá sao"
         value={v.rating ? String(v.rating) : ""}

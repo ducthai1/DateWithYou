@@ -82,6 +82,8 @@ const locationInput = z.object({
   mustTry: z.string().trim().max(200).optional(),
   rating: z.number().int().min(1).max(5).optional(),
   status: statusEnum.optional(),
+  openTime: z.string().trim().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid format HH:mm").optional().or(z.literal("")),
+  closeTime: z.string().trim().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid format HH:mm").optional().or(z.literal("")),
   note: z.string().trim().max(500).optional(),
 });
 
@@ -116,6 +118,8 @@ export const locationRouter = router({
         mustTry: d.mustTry ?? null,
         rating: d.rating ?? null,
         status: d.status as "want_to_go" | "visited",
+        openTime: d.openTime ?? null,
+        closeTime: d.closeTime ?? null,
         note: d.note ?? null,
       }));
     }),

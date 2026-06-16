@@ -29,10 +29,39 @@ export function FoodWheel() {
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<{ id: string; name: string; mustTry: string | null } | null>(null);
 
+  // Helper to parse "HH:mm" to minutes
+  function parseTime(timeStr?: string | null) {
+    if (!timeStr) return null;
+    const [h, m] = timeStr.split(":").map(Number);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+  }
+
+  // Filter places based on open/close time
+  const now = new Date();
+  const currentMins = now.getHours() * 60 + now.getMinutes();
+
+  const filteredPlaces = (places.data ?? []).filter((p) => {
+    const openMins = parseTime(p.openTime);
+    const closeMins = parseTime(p.closeTime);
+    
+    // If no open/close time specified, keep it
+    if (openMins === null || closeMins === null) return true;
+    
+    // Normal case: 08:00 to 22:00
+    if (openMins <= closeMins) {
+      return currentMins >= openMins && currentMins <= closeMins;
+    } 
+    // Overnight case: 18:00 to 02:00
+    else {
+      return currentMins >= openMins || currentMins <= closeMins;
+    }
+  });
+
   // Normalise both sources to { id, name, mustTry } for the wheel.
   const items =
     source === "place"
-      ? (places.data ?? []).map((p) => ({ id: p.id, name: p.name, mustTry: p.mustTry }))
+      ? filteredPlaces.map((p) => ({ id: p.id, name: p.name, mustTry: p.mustTry }))
       : (recipes.data ?? []).map((r) => ({ id: r.id, name: r.title, mustTry: r.recipe?.cookTime ?? null }));
 
   async function spin() {
@@ -128,7 +157,9 @@ export function FoodWheel() {
       {items.length === 0 ? (
         <p className="text-muted-foreground text-center text-sm">
           {source === "place"
-            ? "Chưa có địa điểm “Muốn đi”. Thêm vài chỗ ở Bản đồ trước nhé."
+            ? (places.data && places.data.length > 0)
+              ? "Hiện tại không có quán nào trong danh mục này đang mở cửa. Thử đổi danh mục hoặc qua tab Tự nấu nhé!"
+              : "Chưa có địa điểm “Muốn đi”. Thêm vài chỗ ở Bản đồ trước nhé."
             : "Chưa có công thức nào. Lưu vài món ở Bộ sưu tập trước nhé."}
         </p>
       ) : (

@@ -23,6 +23,8 @@ const locationSchema = new Schema(
       enum: ["want_to_go", "visited"],
       default: "want_to_go",
     },
+    openTime: { type: String }, // Format "HH:mm"
+    closeTime: { type: String }, // Format "HH:mm"
     // Set when status flips to "visited", cleared back to undefined otherwise —
     // lets the unified calendar pin a visited place to the day it was marked.
     visitedAt: { type: Date },
