@@ -15,7 +15,7 @@ import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/m
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useCelebrate } from "@/components/ui/celebrate";
-import { Trash2, Plus, Lightbulb, Map, CheckCircle2 } from "lucide-react";
+import { Trash2, Plus, Lightbulb, Map, CheckCircle2, GripVertical } from "lucide-react";
 
 type PlanStatus = "idea" | "planning" | "done";
 
@@ -28,6 +28,7 @@ const COLUMNS = [
 export function RoadmapBoard() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [draggedPlanId, setDraggedPlanId] = useState<string | null>(null);
   
   // Form State
   const [title, setTitle] = useState("");
@@ -88,6 +89,26 @@ export function RoadmapBoard() {
     }
   }
 
+  function handleDragStart(e: React.DragEvent, id: string) {
+    setDraggedPlanId(id);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+
+  function handleDrop(e: React.DragEvent, status: PlanStatus) {
+    e.preventDefault();
+    if (!draggedPlanId) return;
+    const plan = plans.find((p) => p.id === draggedPlanId);
+    if (plan && plan.status !== status) {
+      handleStatusChange(draggedPlanId, status, e.currentTarget as HTMLElement);
+    }
+    setDraggedPlanId(null);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -103,7 +124,12 @@ export function RoadmapBoard() {
           const Icon = col.icon;
           
           return (
-            <section key={col.key} className={`flex flex-col gap-3 rounded-2xl border p-4 ${col.bg}`}>
+            <section 
+              key={col.key} 
+              className={`flex flex-col gap-3 rounded-2xl border p-4 transition-colors ${col.bg} ${draggedPlanId ? "ring-2 ring-accent/20" : ""}`}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, col.key)}
+            >
               <div className="flex items-center gap-2 border-b border-border/50 pb-3">
                 <Icon className={`h-4 w-4 ${col.iconColor}`} />
                 <h3 className="font-semibold text-foreground/90">{col.label}</h3>
@@ -124,8 +150,11 @@ export function RoadmapBoard() {
                     <Card
                       key={p.id}
                       interactive
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, p.id)}
+                      onDragEnd={() => setDraggedPlanId(null)}
                       onClick={() => openEditForm(p)}
-                      className="group flex flex-col gap-3 p-4 hover:border-accent/40"
+                      className={`group flex flex-col gap-3 p-4 hover:border-accent/40 cursor-grab active:cursor-grabbing ${draggedPlanId === p.id ? "opacity-50" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -144,23 +173,11 @@ export function RoadmapBoard() {
                         </p>
                       )}
 
-                      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-3 border-t border-border/50 pt-3">
+                      <div className="mt-1 flex items-center justify-between gap-x-2 border-t border-border/50 pt-3">
                         <p className="text-muted-foreground text-[10px]" title={p.createdAt?.toString()}>
                           {p.createdAt ? formatDistanceToNow(p.createdAt, { locale: vi, addSuffix: true }) : ""}
                         </p>
-                        <div className="flex items-center gap-1.5 flex-1 justify-end min-w-[140px]" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex-1 max-w-[140px]">
-                            <Select
-                              aria-label="Chuyển trạng thái"
-                              value={p.status}
-                              onChange={(val) => handleStatusChange(p.id, val as PlanStatus, null)}
-                              options={COLUMNS.map((c) => ({
-                                value: c.key,
-                                label: c.label,
-                              }))}
-                              className="h-8 text-xs w-full"
-                            />
-                          </div>
+                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                           <ConfirmButton
                             idle=""
                             confirmText="Xoá"
@@ -168,6 +185,9 @@ export function RoadmapBoard() {
                             className="rounded-lg px-2 py-1.5 hover:bg-destructive-soft opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 shrink-0"
                             onConfirm={() => remove.mutate({ id: p.id })}
                           />
+                          <div className="text-muted-foreground cursor-grab p-1 hover:text-foreground">
+                            <GripVertical className="h-4 w-4" />
+                          </div>
                         </div>
                       </div>
                     </Card>
