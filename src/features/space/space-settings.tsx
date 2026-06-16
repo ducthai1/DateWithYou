@@ -40,24 +40,22 @@ export function SpaceSettings() {
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   
   const PRESET_AVATARS = [
-    // Adventurer
-    "https://api.dicebear.com/9.x/adventurer/svg?seed=Mimi",
-    "https://api.dicebear.com/9.x/adventurer/svg?seed=Destiny",
-    "https://api.dicebear.com/9.x/adventurer/svg?seed=Felix",
-    // Micah
-    "https://api.dicebear.com/9.x/micah/svg?seed=Milo",
-    "https://api.dicebear.com/9.x/micah/svg?seed=Luna",
-    // Lorelei
-    "https://api.dicebear.com/9.x/lorelei/svg?seed=Nala",
-    "https://api.dicebear.com/9.x/lorelei/svg?seed=Jack",
-    // Notionists
-    "https://api.dicebear.com/9.x/notionists/svg?seed=Oliver",
-    "https://api.dicebear.com/9.x/notionists/svg?seed=Chloe",
-    // Dylan
-    "https://api.dicebear.com/9.x/dylan/svg?seed=Aneka",
-    // Bottts
-    "https://api.dicebear.com/9.x/bottts/svg?seed=Toby",
-    "https://api.dicebear.com/9.x/bottts/svg?seed=Bella",
+    // Miniavs (Cute little heads)
+    "https://api.dicebear.com/9.x/miniavs/svg?seed=Mimi&backgroundColor=b6e3f4",
+    "https://api.dicebear.com/9.x/miniavs/svg?seed=Lucky&backgroundColor=ffdfbf",
+    "https://api.dicebear.com/9.x/miniavs/svg?seed=Happy&backgroundColor=c0aede",
+    // Big Smile (Cute smiling characters)
+    "https://api.dicebear.com/9.x/big-smile/svg?seed=Milo&backgroundColor=ffd5dc",
+    "https://api.dicebear.com/9.x/big-smile/svg?seed=Chloe&backgroundColor=d1d4f9",
+    "https://api.dicebear.com/9.x/big-smile/svg?seed=Loki&backgroundColor=c0aede",
+    // Bottts Neutral (Cute simple robots)
+    "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Toby&backgroundColor=ffdfbf",
+    "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Felix&backgroundColor=b6e3f4",
+    "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Bella&backgroundColor=ffd5dc",
+    // Shapes (Cute simple shapes with faces)
+    "https://api.dicebear.com/9.x/shapes/svg?seed=Peanut&backgroundColor=c0aede",
+    "https://api.dicebear.com/9.x/shapes/svg?seed=Buster&backgroundColor=ffdfbf",
+    "https://api.dicebear.com/9.x/shapes/svg?seed=Snickers&backgroundColor=b6e3f4",
   ];
 
   const displayAvatars = [
