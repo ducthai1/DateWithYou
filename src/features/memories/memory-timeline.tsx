@@ -4,13 +4,12 @@ import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Modal, ModalHeader } from "@/components/ui/modal";
+import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmbedPlayer } from "@/components/ui/embed-player";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
-import { HeaderMesh } from "@/components/layout/header-mesh";
 import { type EmbedProvider } from "@/lib/embed";
 import { cn } from "@/lib/utils";
 import { MemoryForm } from "./memory-form";
@@ -30,6 +29,7 @@ function monthKey(d: Date): string {
 export function MemoryTimeline() {
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const list = trpc.memory.list.useQuery();
   const utils = trpc.useUtils();
   const remove = trpc.memory.remove.useMutation({
@@ -43,6 +43,7 @@ export function MemoryTimeline() {
     [list.data],
   );
   const memories: Memo[] = filter ? all.filter((m) => (m.tags ?? []).includes(filter)) : all;
+  const selectedMemo = selected ? all.find((m) => m.id === selected) ?? null : null;
   const groups = memories.reduce<Record<string, Memo[]>>((acc, m) => {
     (acc[monthKey(m.date)] ??= []).push(m);
     return acc;
@@ -50,10 +51,9 @@ export function MemoryTimeline() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 px-4 py-6 lg:max-w-4xl">
-      <div className="relative flex items-center justify-between overflow-hidden rounded-2xl px-1 py-1">
-        <HeaderMesh />
-        <h1 className="text-h1 relative z-10 font-serif">Dòng kỷ niệm</h1>
-        <Button className="relative z-10" onClick={() => setAdding(true)}>+ Thêm</Button>
+      <div className="flex items-center justify-between">
+        <h1 className="text-h1 font-serif">Dòng kỷ niệm</h1>
+        <Button onClick={() => setAdding(true)}>+ Thêm</Button>
       </div>
 
       {allTags.length > 0 && (
@@ -96,67 +96,113 @@ export function MemoryTimeline() {
           <section key={month} className="space-y-3">
             <h2 className="text-muted-foreground text-sm font-medium capitalize">{month}</h2>
             <StaggerList className="gap-3 sm:columns-2 [&>*]:mb-3 [&>*]:break-inside-avoid">
-              {items.map((m) => (
-                <Card key={m.id} interactive className="p-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium">{m.title}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {new Date(m.date).toLocaleDateString("vi-VN")}
+              {items.map((m) => {
+                const photoCount = m.photos.length;
+                const embedCount = (m.embeds ?? []).length;
+                return (
+                  <Card
+                    key={m.id}
+                    interactive
+                    className="cursor-pointer p-3"
+                    onClick={() => setSelected(m.id)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium">{m.title}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {new Date(m.date).toLocaleDateString("vi-VN")}
+                        </p>
+                      </div>
+                      {/* Stop click bubbling so deleting doesn't open the detail. */}
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <ConfirmButton idle="" className="text-xs" onConfirm={() => remove.mutate({ id: m.id })} />
+                      </div>
+                    </div>
+                    {m.caption && <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">{m.caption}</p>}
+                    {(m.tags ?? []).length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {(m.tags as string[]).map((t: string) => (
+                          <span key={t} className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[10px] font-medium">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {photoCount > 0 && (
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        {m.photos.slice(0, 3).map((p: { url: string; publicId: string }) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={p.publicId}
+                            src={p.url}
+                            alt={m.title}
+                            loading="lazy"
+                            className="aspect-square w-full rounded-lg object-cover"
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {(photoCount > 3 || embedCount > 0) && (
+                      <p className="text-muted-foreground mt-2 text-xs">
+                        {photoCount > 3 ? `+${photoCount - 3} ảnh` : ""}
+                        {photoCount > 3 && embedCount > 0 ? " · " : ""}
+                        {embedCount > 0 ? `${embedCount} link` : ""}
                       </p>
-                    </div>
-                    <ConfirmButton
-                      idle=""
-                      className="text-xs"
-                      onConfirm={() => remove.mutate({ id: m.id })}
-                    />
-                  </div>
-                  {m.caption && <p className="mt-1 text-sm">{m.caption}</p>}
-                  {(m.tags ?? []).length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {(m.tags as string[]).map((t: string) => (
-                        <span key={t} className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[10px] font-medium">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {m.photos.length > 0 && (
-                    <div className="mt-2 grid grid-cols-3 gap-2">
-                      {m.photos.map((p: { url: string; publicId: string }) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          key={p.publicId}
-                          src={p.url}
-                          alt={m.title}
-                          loading="lazy"
-                          className="aspect-square w-full rounded-lg object-cover"
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {(m.embeds ?? []).length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      {(m.embeds as EmbedField[]).map((e: EmbedField, i: number) => (
-                        <EmbedPlayer
-                          key={i}
-                          data={{
-                            provider: e.provider as EmbedProvider,
-                            url: e.url,
-                            embedUrl: e.embedUrl,
-                            thumbnailUrl: e.thumbnailUrl,
-                            title: e.title,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              ))}
+                    )}
+                  </Card>
+                );
+              })}
             </StaggerList>
           </section>
         ))
       )}
+
+      <Modal open={!!selectedMemo} onClose={() => setSelected(null)}>
+        {selectedMemo && (
+          <>
+            <ModalHeader title={selectedMemo.title} onClose={() => setSelected(null)} />
+            <ModalContent className="space-y-3">
+              <p className="text-muted-foreground text-xs">
+                {new Date(selectedMemo.date).toLocaleDateString("vi-VN", {
+                  weekday: "long", day: "numeric", month: "long", year: "numeric",
+                })}
+              </p>
+              {selectedMemo.caption && <p className="text-sm">{selectedMemo.caption}</p>}
+              {(selectedMemo.tags ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {(selectedMemo.tags as string[]).map((t) => (
+                    <span key={t} className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[10px] font-medium">{t}</span>
+                  ))}
+                </div>
+              )}
+              {selectedMemo.photos.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedMemo.photos.map((p: { url: string; publicId: string }) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={p.publicId} src={p.url} alt={selectedMemo.title} loading="lazy" className="w-full rounded-lg object-cover" />
+                  ))}
+                </div>
+              )}
+              {(selectedMemo.embeds ?? []).length > 0 && (
+                <div className="space-y-2">
+                  {(selectedMemo.embeds as EmbedField[]).map((e: EmbedField, i: number) => (
+                    <EmbedPlayer
+                      key={i}
+                      data={{
+                        provider: e.provider as EmbedProvider,
+                        url: e.url,
+                        embedUrl: e.embedUrl,
+                        thumbnailUrl: e.thumbnailUrl,
+                        title: e.title,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </ModalContent>
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

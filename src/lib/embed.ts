@@ -71,6 +71,20 @@ export function parseEmbed(rawUrl: string): ParsedEmbed {
   return base;
 }
 
+/**
+ * Normalize a pasted link so it survives the server's `https://`-only check.
+ * People paste `youtube.com/…`, `www.youtu.be/…`, or `http://…` constantly;
+ * without this they hit a silent validation error and nothing gets saved.
+ * Returns "" for blank input so callers can treat it as "no url".
+ */
+export function normalizeUrl(raw: string): string {
+  const s = raw.trim();
+  if (!s) return "";
+  if (/^https:\/\//i.test(s)) return s;
+  if (/^http:\/\//i.test(s)) return "https://" + s.slice(7);
+  return "https://" + s.replace(/^\/+/, "");
+}
+
 export const PROVIDER_LABEL: Record<EmbedProvider, string> = {
   youtube: "YouTube",
   spotify: "Spotify",

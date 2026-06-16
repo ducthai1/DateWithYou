@@ -8,7 +8,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
-import { HeaderMesh } from "@/components/layout/header-mesh";
 import { Disc3 } from "lucide-react";
 import { MediaForm, type MediaKind } from "./media-form";
 import { MediaCard, type MediaListItem } from "./media-card";
@@ -30,10 +29,8 @@ export function LibraryPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 px-4 py-6 lg:max-w-4xl">
-      {/* Relative wrapper so HeaderMesh can be positioned absolutely inside. */}
-      <div className="relative flex items-center justify-between overflow-hidden rounded-2xl px-1 py-1">
-        <HeaderMesh />
-        <h1 className="text-h1 relative z-10 font-serif">Bộ sưu tập</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-h1 font-serif">Bộ sưu tập</h1>
         <div className="flex gap-2">
           <a
             href="/wheel"

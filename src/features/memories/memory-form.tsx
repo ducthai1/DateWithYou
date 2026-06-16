@@ -14,7 +14,7 @@ import { ImagePlus, Link2, X } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
-import { parseEmbed, PROVIDER_LABEL, type ParsedEmbed } from "@/lib/embed";
+import { parseEmbed, normalizeUrl, PROVIDER_LABEL, type ParsedEmbed } from "@/lib/embed";
 
 export function MemoryForm({
   onDone,
@@ -48,7 +48,9 @@ export function MemoryForm({
   const [err, setErr] = useState<string | null>(null);
 
   function addLink() {
-    const v = linkInput.trim();
+    // Normalize first so a pasted "youtube.com/…" (no scheme) is detected as
+    // YouTube and stored as https — otherwise the server rejects it on save.
+    const v = normalizeUrl(linkInput);
     if (!v) return;
     setEmbeds((e) => [...e, parseEmbed(v)]);
     setLinkInput("");

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
+import { normalizeUrl } from "@/lib/embed";
 
 export type MediaKind = "music" | "food_video" | "recipe";
 
@@ -43,11 +44,12 @@ export function MediaForm({
 
   function submit() {
     // Embed metadata is derived server-side from the URL — only send the URL.
+    // Normalize so a pasted "youtube.com/…" (no scheme) isn't rejected.
     create.mutate({
       kind,
       title: title.trim(),
       note: note.trim() || undefined,
-      url: url.trim() || undefined,
+      url: normalizeUrl(url) || undefined,
       tags,
       recipe: isRecipe
         ? {
@@ -55,7 +57,7 @@ export function MediaForm({
             steps: lines(steps),
             cookTime: cookTime.trim() || undefined,
             servings: servings.trim() || undefined,
-            coverImage: cover.trim() || undefined,
+            coverImage: normalizeUrl(cover) || undefined,
           }
         : undefined,
     });
@@ -90,6 +92,11 @@ export function MediaForm({
           <TagPicker value={tags} onChange={setTags} />
         </div>
       </ModalContent>
+      {create.error && (
+        <p className="text-destructive px-5 text-sm">
+          Lưu không được — kiểm tra lại link nhé.
+        </p>
+      )}
       <ModalFooter>
         <Button variant="ghost" onClick={onCancel}>Huỷ</Button>
         <Button disabled={!title.trim() || create.isPending} onClick={submit}>
