@@ -9,7 +9,7 @@ import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
 import { normalizeUrl } from "@/lib/embed";
 
-export type MediaKind = "music" | "food_video" | "recipe";
+export type MediaKind = "music" | "food_video" | "recipe" | "game";
 
 export function MediaForm({
   kind,
@@ -40,6 +40,7 @@ export function MediaForm({
   });
 
   const isRecipe = kind === "recipe";
+  const isGame = kind === "game";
   const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
 
   function submit() {
@@ -66,8 +67,8 @@ export function MediaForm({
   return (
     <>
       <ModalContent className="space-y-4">
-        <Input placeholder="Tên" value={title} onChange={(e) => setTitle(e.target.value)} />
-        {!isRecipe && (
+        <Input placeholder={isGame ? "Tên trò chơi" : "Tên"} value={title} onChange={(e) => setTitle(e.target.value)} />
+        {!isRecipe && !isGame && (
           <Input
             placeholder="Link YouTube / Spotify / TikTok"
             value={url}
@@ -86,7 +87,12 @@ export function MediaForm({
             <Textarea placeholder="Các bước (mỗi dòng một bước)" value={steps} onChange={(e) => setSteps(e.target.value)} rows={5} />
           </>
         )}
-        <Textarea placeholder="Ghi chú (tuỳ chọn)" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
+        <Textarea
+          placeholder={isGame ? "Luật chơi / cách chơi (mô tả chi tiết)" : "Ghi chú (tuỳ chọn)"}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={isGame ? 5 : 2}
+        />
         <div>
           <p className="text-muted-foreground mb-1.5 text-xs font-medium">Nhãn</p>
           <TagPicker value={tags} onChange={setTags} />

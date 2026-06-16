@@ -12,11 +12,13 @@ import { Disc3 } from "lucide-react";
 import { MediaForm, type MediaKind } from "./media-form";
 import { MediaCard, type MediaListItem } from "./media-card";
 import { RecipeDetail } from "./recipe-detail";
+import { GamesPanel } from "./games-panel";
 
 const TABS = [
   { key: "music", label: "Nhạc" },
   { key: "food_video", label: "Video món ngon" },
   { key: "recipe", label: "Công thức" },
+  { key: "game", label: "Trò chơi" },
 ] as const;
 
 export function LibraryPage() {
@@ -24,6 +26,7 @@ export function LibraryPage() {
   const [adding, setAdding] = useState(false);
   const [recipe, setRecipe] = useState<MediaListItem | null>(null);
 
+  const isGame = kind === "game";
   const list = trpc.media.list.useQuery({ kind });
   const items = (list.data ?? []) as MediaListItem[];
 
@@ -46,7 +49,9 @@ export function LibraryPage() {
 
       <Tabs tabs={TABS} value={kind} onChange={setKind} />
 
-      {list.isLoading ? (
+      {isGame ? (
+        <GamesPanel />
+      ) : list.isLoading ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <Skeleton className="h-40" />
           <Skeleton className="h-40" />

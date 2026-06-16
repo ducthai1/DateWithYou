@@ -5,7 +5,7 @@ import { connectToDatabase } from "@/server/db/connect";
 import { MediaItemModel } from "@/server/db/models/media-item";
 import { parseEmbed } from "@/lib/embed";
 
-const kindEnum = z.enum(["music", "food_video", "recipe"]);
+const kindEnum = z.enum(["music", "food_video", "recipe", "game"]);
 const httpsUrl = z.string().url().startsWith("https://");
 
 // Embed metadata is ALWAYS derived server-side from the URL — never trusted from
@@ -44,7 +44,7 @@ function serialize(d: Record<string, unknown>) {
   const r = d.recipe as Record<string, unknown> | undefined;
   return {
     id: String(d._id),
-    kind: d.kind as "music" | "food_video" | "recipe",
+    kind: d.kind as "music" | "food_video" | "recipe" | "game",
     title: d.title as string,
     note: (d.note as string) ?? null,
     url: (d.url as string) ?? null,
