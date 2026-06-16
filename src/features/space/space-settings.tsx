@@ -101,7 +101,7 @@ export function SpaceSettings() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-6 px-6 py-12 lg:max-w-lg">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 py-12 md:px-[30px]">
       <h1 className="text-3xl font-semibold">Cài đặt không gian</h1>
 
       {/* ── QUẢN LÝ KHÔNG GIAN ── */}
