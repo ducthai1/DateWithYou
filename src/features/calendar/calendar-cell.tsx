@@ -62,20 +62,23 @@ export function CalendarCell({
       )}
 
       {hasPlans && (
-        <div className="mt-auto w-full space-y-[2px] z-10">
-          {summary.plans.map((p, i) => (
-            <div
-              key={i}
-              className={cn(
-                "w-full truncate rounded-[3px] px-1 py-[2px] text-[9px] sm:text-[10px] font-medium leading-[1.1] shadow-sm text-left transition-opacity",
-                p.done ? "opacity-50 line-through" : "opacity-95 hover:opacity-100",
-                !p.color && "bg-accent/80 text-accent-foreground"
-              )}
-              style={p.color ? { backgroundColor: p.color, color: "#fff" } : undefined}
-            >
-              {p.title}
-            </div>
-          ))}
+        <div className="mt-auto w-full space-y-1 z-10 pb-1 px-0.5">
+          {summary.plans.map((p, i) => {
+            const hasColor = !!p.color;
+            const accent = p.color || "var(--accent)";
+            return (
+              <div
+                key={i}
+                className={cn(
+                  "relative truncate rounded-r-[4px] rounded-l-[2px] bg-white dark:bg-stone-800 px-1.5 py-[3px] text-[9px] sm:text-[10px] font-semibold text-stone-700 dark:text-stone-300 shadow-sm border border-border/60 transition-opacity mx-0.5",
+                  p.done ? "opacity-50 line-through" : "hover:opacity-100"
+                )}
+                style={{ borderLeftColor: accent, borderLeftWidth: "3px" }}
+              >
+                {p.title}
+              </div>
+            );
+          })}
           {summary.planCount > 3 && (
             <div className="w-full text-[9px] text-muted-foreground text-center font-medium leading-none pt-0.5">
               +{summary.planCount - 3}
