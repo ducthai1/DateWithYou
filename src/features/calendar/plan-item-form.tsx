@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
+import { TimePicker } from "@/components/ui/time-picker";
 import { BUCKETS, type BucketKey } from "@/lib/plan-meta";
 import { TagPicker } from "./tag-picker";
 
@@ -71,28 +72,29 @@ export function PlanItemForm({
   return (
     <>
       <ModalContent className="space-y-4">
-        <Input placeholder="Làm gì nào?" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <Textarea placeholder="Ghi chú (tuỳ chọn)" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground ml-1">Tiêu đề công việc</label>
+          <Input placeholder="Làm gì nào?" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground ml-1">Ghi chú chi tiết</label>
+          <Textarea placeholder="Ghi chú (tuỳ chọn)" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
+        </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <Select
-            aria-label="Buổi"
-            value={bucket}
-            onChange={(v) => setBucket(v as BucketKey)}
-            options={BUCKETS.map((b) => ({ value: b.key, label: b.label }))}
-          />
-          <input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            aria-label="Giờ"
-            // Open the native time picker on tap anywhere in the field (not just
-            // the tiny clock glyph). showPicker() throws without user activation,
-            // so guard it — harmless if the browser blocks/lacks it.
-            onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch {} }}
-            onFocus={(e) => { try { e.currentTarget.showPicker?.(); } catch {} }}
-            className="border-border bg-card h-11 rounded-xl border px-3 text-sm outline-none focus:border-accent"
-          />
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground ml-1">Buổi trong ngày</label>
+            <Select
+              aria-label="Buổi"
+              value={bucket}
+              onChange={(v) => setBucket(v as BucketKey)}
+              options={BUCKETS.map((b) => ({ value: b.key, label: b.label }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground ml-1">Giờ (tuỳ chọn)</label>
+            <TimePicker value={time} onChange={setTime} />
+          </div>
         </div>
 
         <div>
@@ -101,25 +103,31 @@ export function PlanItemForm({
         </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Select
-            aria-label="Ai phụ trách"
-            value={assigneeId}
-            onChange={setAssigneeId}
-            options={[
-              { value: "", label: "Cả hai" },
-              ...(members.data ?? []).map((m) => ({ value: m.id, label: m.name })),
-            ]}
-          />
-          <Select
-            aria-label="Địa điểm"
-            value={locationId}
-            onChange={setLocationId}
-            placeholder="Gắn địa điểm"
-            options={[
-              { value: "", label: "Không gắn địa điểm" },
-              ...(locations.data ?? []).map((l) => ({ value: l.id, label: l.name })),
-            ]}
-          />
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground ml-1">Người phụ trách</label>
+            <Select
+              aria-label="Ai phụ trách"
+              value={assigneeId}
+              onChange={setAssigneeId}
+              options={[
+                { value: "", label: "Cả hai" },
+                ...(members.data ?? []).map((m) => ({ value: m.id, label: m.name })),
+              ]}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground ml-1">Gắn địa điểm</label>
+            <Select
+              aria-label="Địa điểm"
+              value={locationId}
+              onChange={setLocationId}
+              placeholder="Không gắn địa điểm"
+              options={[
+                { value: "", label: "Không gắn địa điểm" },
+                ...(locations.data ?? []).map((l) => ({ value: l.id, label: l.name })),
+              ]}
+            />
+          </div>
         </div>
       </ModalContent>
 
