@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,68 +10,314 @@ import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
-import { Trash2, Check, Undo2 } from "lucide-react";
+import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { useCelebrate } from "@/components/ui/celebrate";
+import { Trash2, Check, Undo2, Plus, Gift, Link as LinkIcon, User, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type FilterMode = "all" | "active" | "bought";
 
 export function WishlistGrid() {
+  const [filter, setFilter] = useState<FilterMode>("all");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Form State
   const [itemName, setItemName] = useState("");
+  const [price, setPrice] = useState("");
+  const [forWhom, setForWhom] = useState<"me" | "partner">("partner");
+  const [note, setNote] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+
   const list = trpc.wishlist.list.useQuery();
   const utils = trpc.useUtils();
   const invalidate = () => utils.wishlist.list.invalidate();
-  const create = trpc.wishlist.create.useMutation({ onSuccess: () => { setItemName(""); invalidate(); } });
+  const create = trpc.wishlist.create.useMutation({ onSuccess: () => { closeForm(); invalidate(); } });
+  const update = trpc.wishlist.update.useMutation({ onSuccess: () => { closeForm(); invalidate(); } });
   const toggle = trpc.wishlist.toggleBought.useMutation({ onSuccess: invalidate });
   const remove = trpc.wishlist.remove.useMutation({ onSuccess: invalidate });
 
+  const celebrate = useCelebrate();
+
   const items = list.data ?? [];
+  const boughtCount = items.filter(i => i.bought).length;
+  const progressPercent = items.length > 0 ? (boughtCount / items.length) * 100 : 0;
+
+  const filteredItems = items.filter(i => {
+    if (filter === "active") return !i.bought;
+    if (filter === "bought") return i.bought;
+    return true;
+  });
+
+  function openNewForm() {
+    setItemName("");
+    setPrice("");
+    setForWhom("partner");
+    setNote("");
+    setSourceUrl("");
+    setEditingId(null);
+    setFormOpen(true);
+  }
+
+  function openEditForm(item: typeof items[number]) {
+    setItemName(item.itemName);
+    setPrice(item.price ? String(item.price) : "");
+    setForWhom(item.forWhom);
+    setNote(item.note ?? "");
+    setSourceUrl(item.sourceUrl ?? "");
+    setEditingId(item.id);
+    setFormOpen(true);
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setTimeout(() => {
+      setItemName("");
+      setPrice("");
+      setForWhom("partner");
+      setNote("");
+      setSourceUrl("");
+      setEditingId(null);
+    }, 200);
+  }
+
+  function saveForm() {
+    if (!itemName.trim()) return;
+    const data = {
+      itemName,
+      price: price ? Number(price) : undefined,
+      forWhom,
+      note,
+      sourceUrl: sourceUrl || undefined,
+    };
+    if (editingId) {
+      update.mutate({ id: editingId, ...data });
+    } else {
+      create.mutate(data);
+    }
+  }
+
+  function handleToggle(id: string, currentlyBought: boolean, anchorEl?: HTMLElement | null) {
+    toggle.mutate({ id });
+    if (!currentlyBought) {
+      celebrate(anchorEl);
+    }
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
-        <Input placeholder="Món quà muốn có…" value={itemName} onChange={(e) => setItemName(e.target.value)} />
-        <Button disabled={!itemName.trim() || create.isPending} onClick={() => create.mutate({ itemName: itemName.trim() })}>
-          Thêm
+    <div className="space-y-6">
+      {/* Header & Progress */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex-1">
+          <div className="mb-2 flex items-center justify-between text-sm">
+            <span className="text-muted-foreground font-medium">Tiến độ mua sắm</span>
+            <span className="font-semibold">{boughtCount} / {items.length} món</span>
+          </div>
+          <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+            <div 
+              className="bg-accent h-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+        <Button onClick={openNewForm} className="shrink-0 gap-1.5" variant="primary">
+          <Plus className="h-4 w-4" /> Thêm món quà
         </Button>
       </div>
-      {items.length === 0 ? (
+
+      {/* Filters */}
+      {items.length > 0 && (
+        <div className="bg-muted inline-flex rounded-xl p-1 text-sm">
+          <button
+            onClick={() => setFilter("all")}
+            className={cn("rounded-lg px-4 py-1.5 font-medium transition-colors outline-none", filter === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+          >
+            Tất cả
+          </button>
+          <button
+            onClick={() => setFilter("active")}
+            className={cn("rounded-lg px-4 py-1.5 font-medium transition-colors outline-none", filter === "active" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+          >
+            Chưa mua
+          </button>
+          <button
+            onClick={() => setFilter("bought")}
+            className={cn("rounded-lg px-4 py-1.5 font-medium transition-colors outline-none", filter === "bought" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+          >
+            Đã mua
+          </button>
+        </div>
+      )}
+
+      {/* Grid */}
+      {filteredItems.length === 0 ? (
         <EmptyState
           icon="gift"
           title="Wishlist trống"
-          subtitle="Thêm món quà muốn có — cùng lên kế hoạch mua nhé."
+          subtitle={items.length === 0 ? "Thêm món quà muốn có — cùng lên kế hoạch mua nhé." : "Không có món quà nào trong mục này."}
         />
       ) : (
-        <StaggerList gap="space-y-2">
-          {items.map((w) => (
-            <Card key={w.id} className="flex items-center justify-between p-3">
-              <div>
-                <p className={`text-sm ${w.bought ? "text-muted-foreground line-through" : ""}`}>{w.itemName}</p>
-                {w.price != null && <p className="text-muted-foreground text-xs">{w.price.toLocaleString("vi-VN")}đ</p>}
+        <StaggerList gap="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {filteredItems.map((w) => (
+            <Card 
+              key={w.id} 
+              interactive
+              onClick={() => openEditForm(w)}
+              className={cn(
+                "group relative flex flex-col gap-3 p-4 transition-all duration-300",
+                w.bought && "opacity-60 grayscale-[0.2]"
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="bg-accent-soft text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                  <Gift className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className={cn("font-semibold leading-tight", w.bought && "line-through decoration-2")}>
+                    {w.itemName}
+                  </h4>
+                  <div className="mt-1 flex items-center gap-2">
+                    {w.price != null && (
+                      <span className="text-accent font-medium text-sm">
+                        {w.price.toLocaleString("vi-VN")}đ
+                      </span>
+                    )}
+                    <Badge tone="neutral" className="gap-1 px-1.5 py-0">
+                      {w.forWhom === "me" ? <User className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                      {w.forWhom === "me" ? "Bạn" : "Người ấy"}
+                    </Badge>
+                  </div>
+                </div>
               </div>
-              <span className="flex items-center gap-2 text-xs">
-                <button
-                  className="bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground inline-flex items-center gap-1 rounded-lg px-2 py-1 font-medium transition-colors"
-                  onClick={() => toggle.mutate({ id: w.id })}
-                >
-                  {w.bought ? (
-                    <>
-                      <Undo2 className="h-3.5 w-3.5" /> Bỏ đánh dấu
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-3.5 w-3.5" /> Đã mua
-                    </>
+
+              {w.note && (
+                <p className="text-muted-foreground line-clamp-2 text-xs italic">
+                  "{w.note}"
+                </p>
+              )}
+
+              <div className="mt-auto flex items-center justify-between border-t border-border pt-3" onClick={(e) => e.stopPropagation()}>
+                <div className="flex gap-2">
+                  <button
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all duration-200",
+                      w.bought 
+                        ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                        : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                    )}
+                    onClick={(e) => handleToggle(w.id, w.bought, (e.target as HTMLElement).closest('.group') as HTMLElement | null)}
+                  >
+                    {w.bought ? (
+                      <><Undo2 className="h-3.5 w-3.5" /> Bỏ đánh dấu</>
+                    ) : (
+                      <><Check className="h-3.5 w-3.5" /> Đã mua</>
+                    )}
+                  </button>
+                  {w.sourceUrl && (
+                    <a 
+                      href={w.sourceUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 transition-colors"
+                      title="Mở link"
+                    >
+                      <LinkIcon className="h-3.5 w-3.5" />
+                    </a>
                   )}
-                </button>
+                </div>
                 <ConfirmButton
                   idle=""
                   confirm="Xoá?"
                   icon={<Trash2 className="h-4 w-4" />}
-                  className="rounded-lg px-2 py-1.5 hover:bg-destructive-soft"
+                  className="rounded-lg px-2 py-1.5 text-muted-foreground hover:bg-destructive-soft hover:text-destructive opacity-0 transition-opacity group-hover:opacity-100"
                   onConfirm={() => remove.mutate({ id: w.id })}
                 />
-              </span>
+              </div>
+              
+              {/* Overlay for bought items */}
+              {w.bought && (
+                <div className="pointer-events-none absolute -right-2 -top-2 rotate-12 drop-shadow-md">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
+                    <Check className="h-5 w-5 stroke-[3]" />
+                  </div>
+                </div>
+              )}
             </Card>
           ))}
         </StaggerList>
       )}
+
+      {/* Modal Form */}
+      <Modal open={formOpen} onClose={closeForm}>
+        <ModalHeader title={editingId ? "Chỉnh sửa Wishlist" : "Thêm vào Wishlist"} onClose={closeForm} />
+        <ModalContent className="space-y-4">
+          <div>
+            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Tên món quà</label>
+            <Input 
+              autoFocus 
+              placeholder="VD: Giày sneaker, Nước hoa..." 
+              value={itemName} 
+              onChange={(e) => setItemName(e.target.value)} 
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Giá dự kiến (VNĐ)</label>
+              <Input 
+                type="number"
+                placeholder="VD: 500000" 
+                value={price} 
+                onChange={(e) => setPrice(e.target.value)} 
+              />
+            </div>
+            <div>
+              <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Dành cho ai?</label>
+              <div className="bg-muted flex h-11 items-center rounded-xl p-1 text-sm">
+                <button
+                  className={cn("flex-1 rounded-lg py-1.5 transition-colors outline-none", forWhom === "me" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
+                  onClick={() => setForWhom("me")}
+                >
+                  Bạn
+                </button>
+                <button
+                  className={cn("flex-1 rounded-lg py-1.5 transition-colors outline-none", forWhom === "partner" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
+                  onClick={() => setForWhom("partner")}
+                >
+                  Người ấy
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Link tham khảo (bắt đầu bằng https://)</label>
+            <Input 
+              placeholder="https://shopee.vn/..." 
+              value={sourceUrl} 
+              onChange={(e) => setSourceUrl(e.target.value)} 
+            />
+          </div>
+
+          <div>
+            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Ghi chú thêm</label>
+            <Textarea
+              rows={2}
+              placeholder="Màu sắc, size, địa chỉ mua..."
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+        </ModalContent>
+        <ModalFooter>
+          <Button variant="ghost" onClick={closeForm}>Huỷ</Button>
+          <Button variant="primary" disabled={!itemName.trim() || create.isPending || update.isPending} onClick={saveForm}>
+            {editingId ? "Cập nhật" : "Lưu vào Wishlist"}
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

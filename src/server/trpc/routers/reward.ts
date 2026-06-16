@@ -21,11 +21,12 @@ async function assertMember(userId: string, spaceId: string): Promise<void> {
 export const rewardRouter = router({
   overview: protectedProcedure.query(async ({ ctx }) => {
     await connectToDatabase();
-    const [tasks, vouchers, accounts, space] = await Promise.all([
+    const [tasks, vouchers, accounts, space, recentLogs] = await Promise.all([
       RewardTaskModel.find({ spaceId: ctx.spaceId }).lean(),
       RewardVoucherModel.find({ spaceId: ctx.spaceId }).sort({ createdAt: -1 }).lean(),
       RewardAccountModel.find({ spaceId: ctx.spaceId }).lean(),
       SpaceModel.findById(ctx.spaceId).select("members").lean<{ members: string[] }>(),
+      RewardLogModel.find({ spaceId: ctx.spaceId }).sort({ doneAt: -1 }).limit(5).lean(),
     ]);
     const balanceOf = (uid: string) =>
       accounts.find((a) => a.userId === uid)?.balance ?? 0;
@@ -43,6 +44,17 @@ export const rewardRouter = router({
         balance: balanceOf(uid),
         isMe: uid === ctx.userId,
       })),
+      recentLogs: recentLogs.map((l) => {
+        const taskTitle = tasks.find(t => String(t._id) === l.taskId)?.title ?? "Nhiệm vụ đã xoá";
+        return {
+          id: String(l._id),
+          taskId: l.taskId,
+          taskTitle,
+          userId: l.userId,
+          points: l.points,
+          doneAt: l.doneAt as Date,
+        };
+      }),
     };
   }),
 

@@ -6,6 +6,15 @@ import { WishlistItemModel } from "@/server/db/models/wishlist-item";
 
 const httpsUrl = z.string().url().startsWith("https://");
 
+const wishlistInput = z.object({
+  itemName: z.string().trim().min(1).max(120),
+  forWhom: z.enum(["me", "partner"]).default("partner"),
+  imageUrl: httpsUrl.optional(),
+  sourceUrl: httpsUrl.optional(),
+  price: z.number().nonnegative().optional(),
+  note: z.string().trim().max(500).optional(),
+});
+
 export const wishlistRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     await connectToDatabase();
@@ -21,20 +30,12 @@ export const wishlistRouter = router({
       sourceUrl: d.sourceUrl ?? null,
       bought: Boolean(d.bought),
       note: d.note ?? null,
+      createdAt: d.createdAt as Date,
     }));
   }),
 
   create: protectedProcedure
-    .input(
-      z.object({
-        itemName: z.string().trim().min(1).max(120),
-        forWhom: z.enum(["me", "partner"]).default("partner"),
-        imageUrl: httpsUrl.optional(),
-        sourceUrl: httpsUrl.optional(),
-        price: z.number().nonnegative().optional(),
-        note: z.string().trim().max(500).optional(),
-      }),
-    )
+    .input(wishlistInput)
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       const doc = await WishlistItemModel.create({
@@ -43,6 +44,21 @@ export const wishlistRouter = router({
         createdBy: ctx.userId,
       });
       return { id: String(doc._id) };
+    }),
+
+  update: protectedProcedure
+    .input(z.object({ id: z.string() }).and(wishlistInput.partial()))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const { id, ...patch } = input;
+      const res = await WishlistItemModel.findOneAndUpdate(
+        { _id: id, spaceId: ctx.spaceId },
+        { $set: patch },
+      )
+        .select("_id")
+        .lean();
+      if (!res) throw new TRPCError({ code: "NOT_FOUND" });
+      return { ok: true };
     }),
 
   toggleBought: protectedProcedure

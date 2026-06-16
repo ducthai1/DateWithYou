@@ -6,6 +6,13 @@ import { RoadmapPlanModel } from "@/server/db/models/roadmap-plan";
 
 const statusEnum = z.enum(["idea", "planning", "done"]);
 
+const planInput = z.object({
+  title: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(1000).optional(),
+  category: z.string().trim().max(40).optional(),
+  targetDate: z.coerce.date().optional(),
+});
+
 export const planRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     await connectToDatabase();
@@ -16,19 +23,15 @@ export const planRouter = router({
       id: String(d._id),
       title: d.title,
       description: d.description ?? null,
+      category: d.category ?? null,
       targetDate: d.targetDate ?? null,
       status: d.status as "idea" | "planning" | "done",
+      createdAt: d.createdAt as Date,
     }));
   }),
 
   create: protectedProcedure
-    .input(
-      z.object({
-        title: z.string().trim().min(1).max(120),
-        description: z.string().trim().max(1000).optional(),
-        targetDate: z.coerce.date().optional(),
-      }),
-    )
+    .input(planInput)
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       const doc = await RoadmapPlanModel.create({
@@ -37,6 +40,21 @@ export const planRouter = router({
         createdBy: ctx.userId,
       });
       return { id: String(doc._id) };
+    }),
+
+  update: protectedProcedure
+    .input(z.object({ id: z.string() }).and(planInput.partial()))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const { id, ...patch } = input;
+      const res = await RoadmapPlanModel.findOneAndUpdate(
+        { _id: id, spaceId: ctx.spaceId },
+        { $set: patch },
+      )
+        .select("_id")
+        .lean();
+      if (!res) throw new TRPCError({ code: "NOT_FOUND" });
+      return { ok: true };
     }),
 
   setStatus: protectedProcedure
