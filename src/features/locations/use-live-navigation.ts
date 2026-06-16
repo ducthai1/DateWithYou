@@ -41,32 +41,58 @@ function haversineM(a: LatLng, b: LatLng): number {
 }
 
 /**
+ * Distance from point P to segment AB on an equirectangular approximation.
+ */
+function distanceToSegment(p: LatLng, a: LatLng, b: LatLng): { distance: number, projection: LatLng } {
+  const cosLat = Math.cos((p.lat * Math.PI) / 180);
+  const px = p.lng * cosLat; const py = p.lat;
+  const ax = a.lng * cosLat; const ay = a.lat;
+  const bx = b.lng * cosLat; const by = b.lat;
+  
+  const l2 = (bx - ax)**2 + (by - ay)**2;
+  if (l2 === 0) return { distance: haversineM(p, a), projection: a };
+  
+  let t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2;
+  t = Math.max(0, Math.min(1, t));
+  
+  const proj = { lat: a.lat + t * (b.lat - a.lat), lng: a.lng + t * (b.lng - a.lng) };
+  return { distance: haversineM(p, proj), projection: proj };
+}
+
+/**
  * Given the user's current position and the full route polyline ([lng,lat]),
- * find the closest point on the route and sum the remaining segment lengths.
+ * find the closest segment on the route, compute cross-track deviation,
+ * and sum the remaining segment lengths.
  */
 function remainingAlongRoute(
   user: LatLng,
   coords: Array<[number, number]>,
-): number {
-  if (coords.length < 2) return 0;
+): { remaining: number; deviation: number } {
+  if (coords.length < 2) return { remaining: 0, deviation: 0 };
   let bestIdx = 0;
   let bestDist = Infinity;
-  for (let i = 0; i < coords.length; i++) {
-    const d = haversineM(user, { lat: coords[i][1], lng: coords[i][0] });
-    if (d < bestDist) {
-      bestDist = d;
+  let bestProj = { lat: coords[0][1], lng: coords[0][0] };
+
+  for (let i = 0; i < coords.length - 1; i++) {
+    const a = { lat: coords[i][1], lng: coords[i][0] };
+    const b = { lat: coords[i + 1][1], lng: coords[i + 1][0] };
+    const { distance, projection } = distanceToSegment(user, a, b);
+    if (distance < bestDist) {
+      bestDist = distance;
       bestIdx = i;
+      bestProj = projection;
     }
   }
-  // Sum from the snapped point to the end of the route.
-  let total = haversineM(user, { lat: coords[bestIdx][1], lng: coords[bestIdx][0] });
-  for (let i = bestIdx; i < coords.length - 1; i++) {
+
+  // Sum from the snapped projection point to the end of the route.
+  let total = haversineM(bestProj, { lat: coords[bestIdx + 1][1], lng: coords[bestIdx + 1][0] });
+  for (let i = bestIdx + 1; i < coords.length - 1; i++) {
     total += haversineM(
       { lat: coords[i][1], lng: coords[i][0] },
       { lat: coords[i + 1][1], lng: coords[i + 1][0] },
     );
   }
-  return total;
+  return { remaining: total, deviation: bestDist };
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
@@ -76,7 +102,10 @@ function remainingAlongRoute(
  * keeping the screen awake. Tracks heading for map rotation and computes
  * remaining distance/time along the route polyline.
  */
-export function useLiveNavigation(): LiveNavigation {
+export function useLiveNavigation(options?: {
+  onOffRoute?: (userGeo: LatLng) => void;
+  offRouteThresholdMeters?: number;
+}): LiveNavigation {
   const [isNavigating, setIsNavigating] = useState(false);
   const [userGeo, setUserGeo] = useState<LatLng | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
@@ -158,13 +187,18 @@ export function useLiveNavigation(): LiveNavigation {
         // Remaining distance along route.
         const rc = routeCoordsRef.current;
         if (rc && rc.length >= 2) {
-          const remM = remainingAlongRoute(g, rc);
-          setRemainingMeters(Math.round(remM));
+          const { remaining, deviation } = remainingAlongRoute(g, rc);
+          setRemainingMeters(Math.round(remaining));
+
+          if (options?.onOffRoute && deviation > (options.offRouteThresholdMeters ?? 50)) {
+            options.onOffRoute(g);
+          }
+
           // Estimate remaining time proportionally.
           const totalM = routeTotalMetersRef.current;
           const totalS = routeTotalSecondsRef.current;
           if (totalM > 0) {
-            setRemainingSeconds(Math.round((remM / totalM) * totalS));
+            setRemainingSeconds(Math.round((remaining / totalM) * totalS));
           }
         }
       },

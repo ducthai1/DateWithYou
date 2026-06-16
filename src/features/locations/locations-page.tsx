@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { AnimatePresence, motion } from "framer-motion";
@@ -57,7 +57,29 @@ export function LocationsPage() {
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeDistanceMeters, setRouteDistanceMeters] = useState<number | null>(null);
   const [routeDurationSeconds, setRouteDurationSeconds] = useState<number | null>(null);
-  const nav = useLiveNavigation();
+  const isRecalculating = useRef(false);
+  
+  const nav = useLiveNavigation({
+    onOffRoute: async (currentGeo) => {
+      if (!selectedId || isRecalculating.current) return;
+      isRecalculating.current = true;
+      try {
+        const r = await utils.location.getRoute.fetch({ destinationId: selectedId, origin: currentGeo });
+        setRouteGeometry(r.geometry);
+        setRouteDistanceMeters(r.distanceMeters);
+        setRouteDurationSeconds(r.durationSeconds);
+        const coords = (r.geometry as { coordinates?: Array<[number, number]> }).coordinates;
+        if (coords) {
+          nav.setRouteInfo(coords, r.distanceMeters, r.durationSeconds);
+        }
+      } catch (err) {
+        console.error("Lỗi tính lại đường đi", err);
+      } finally {
+        // Wait a bit before allowing another recalculation to avoid spamming
+        setTimeout(() => { isRecalculating.current = false; }, 5000);
+      }
+    }
+  });
 
   // Live position wins whenever we have one (and persists after Dừng so the
   // marker doesn't jump back to the route origin); otherwise the route origin.
