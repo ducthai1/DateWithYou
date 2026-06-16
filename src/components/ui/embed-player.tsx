@@ -11,8 +11,8 @@ type EmbedData = {
   title?: string | null;
 };
 
-/** Renders an inline iframe for embeddable providers (YouTube/Spotify); a
- *  thumbnail/link card otherwise. Lazy iframes keep the page light. */
+/** Renders an inline iframe for embeddable providers (YouTube/Spotify/TikTok);
+ *  a thumbnail/link card otherwise. Lazy iframes keep the page light. */
 export function EmbedPlayer({ data }: { data: EmbedData }) {
   if (data.embedUrl && data.provider === "youtube") {
     return (
@@ -40,7 +40,22 @@ export function EmbedPlayer({ data }: { data: EmbedData }) {
       />
     );
   }
-  // Fallback link card (TikTok / Instagram / other).
+  if (data.embedUrl && data.provider === "tiktok") {
+    return (
+      <div className="mx-auto w-full max-w-[325px] overflow-hidden rounded-xl">
+        <iframe
+          src={data.embedUrl}
+          title={data.title ?? "TikTok"}
+          loading="lazy"
+          sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts allow-top-navigation allow-same-origin"
+          allowFullScreen
+          className="w-full border-0"
+          style={{ height: 740 }}
+        />
+      </div>
+    );
+  }
+  // Fallback link card (TikTok without ID / Instagram / other).
   return (
     <a
       href={data.url}

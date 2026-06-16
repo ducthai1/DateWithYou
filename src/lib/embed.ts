@@ -1,8 +1,8 @@
 // Link → embed parser shared by memories (embedded media) and the collections
 // library (music / food videos). Pure client-side URL parsing — no network — so
 // it stays free-tier friendly. YouTube & Spotify get real iframe embeds +
-// thumbnails; TikTok/Instagram fall back to a link card (their embeds are heavy
-// and unreliable). Unknown links become a generic link card.
+// thumbnails; TikTok gets an oEmbed iframe; Instagram falls back to a link card
+// (their embeds require auth). Unknown links become a generic link card.
 
 export type EmbedProvider = "youtube" | "spotify" | "tiktok" | "instagram" | "other";
 
@@ -24,6 +24,29 @@ function youtubeId(u: URL): string | null {
 function spotify(u: URL): { kind: string; id: string } | null {
   const m = u.pathname.match(/\/(track|playlist|album|episode|show)\/([\w]+)/);
   return m ? { kind: m[1], id: m[2] } : null;
+}
+
+/**
+ * Extract a TikTok video ID from the URL path.
+ * Handles formats:
+ *   - https://www.tiktok.com/@user/video/1234567890
+ *   - https://www.tiktok.com/@user/photo/1234567890
+ *   - https://vm.tiktok.com/AbCdEf/  (short links — ID is the path segment)
+ *   - https://www.tiktok.com/t/AbCdEf/ (another short format)
+ */
+function tiktokId(u: URL): string | null {
+  // Long-form: /@user/video/ID or /@user/photo/ID
+  const longMatch = u.pathname.match(/\/(video|photo)\/(\d+)/);
+  if (longMatch) return longMatch[2];
+  // Short links: vm.tiktok.com/CODE/ or tiktok.com/t/CODE/
+  const host = u.hostname.replace(/^www\./, "");
+  if (host === "vm.tiktok.com") {
+    const code = u.pathname.replace(/^\/+|\/+$/g, "");
+    return code || null;
+  }
+  const shortMatch = u.pathname.match(/^\/t\/([A-Za-z0-9_-]+)/);
+  if (shortMatch) return shortMatch[1];
+  return null;
 }
 
 /** Parse a pasted URL into provider + embed info. Returns provider "other" for
@@ -66,7 +89,26 @@ export function parseEmbed(rawUrl: string): ParsedEmbed {
         thumbnailUrl: null,
       };
   }
-  if (host.includes("tiktok.com")) return { ...base, provider: "tiktok" };
+  if (host.includes("tiktok.com")) {
+    const id = tiktokId(u);
+    if (id) {
+      // For long-form video IDs (numeric), use the TikTok embed player.
+      // For short-link codes, we still store them — the embed iframe
+      // can handle the redirect, or we fall back to a link card.
+      const isNumericId = /^\d+$/.test(id);
+      return {
+        provider: "tiktok",
+        url: rawUrl,
+        embedId: id,
+        embedUrl: isNumericId
+          ? `https://www.tiktok.com/embed/v2/${id}`
+          : null, // short-link codes can't be directly embedded
+        thumbnailUrl: null,
+      };
+    }
+    // TikTok link that we couldn't parse — still tag as tiktok for the label
+    return { ...base, provider: "tiktok" };
+  }
   if (host.includes("instagram.com")) return { ...base, provider: "instagram" };
   return base;
 }
