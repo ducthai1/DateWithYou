@@ -40,22 +40,20 @@ export function SpaceSettings() {
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   
   const PRESET_AVATARS = [
-    // Miniavs (Cute little heads)
-    "https://api.dicebear.com/9.x/miniavs/svg?seed=Mimi&backgroundColor=b6e3f4",
-    "https://api.dicebear.com/9.x/miniavs/svg?seed=Lucky&backgroundColor=ffdfbf",
-    "https://api.dicebear.com/9.x/miniavs/svg?seed=Happy&backgroundColor=c0aede",
-    // Big Smile (Cute smiling characters)
-    "https://api.dicebear.com/9.x/big-smile/svg?seed=Milo&backgroundColor=ffd5dc",
-    "https://api.dicebear.com/9.x/big-smile/svg?seed=Chloe&backgroundColor=d1d4f9",
-    "https://api.dicebear.com/9.x/big-smile/svg?seed=Loki&backgroundColor=c0aede",
-    // Bottts Neutral (Cute simple robots)
-    "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Toby&backgroundColor=ffdfbf",
-    "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Felix&backgroundColor=b6e3f4",
-    "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Bella&backgroundColor=ffd5dc",
-    // Shapes (Cute simple shapes with faces)
-    "https://api.dicebear.com/9.x/shapes/svg?seed=Peanut&backgroundColor=c0aede",
-    "https://api.dicebear.com/9.x/shapes/svg?seed=Buster&backgroundColor=ffdfbf",
-    "https://api.dicebear.com/9.x/shapes/svg?seed=Snickers&backgroundColor=b6e3f4",
+    // 3D Chibi Boy/Girl styles
+    "https://avatar.iran.liara.run/public/boy?username=1",
+    "https://avatar.iran.liara.run/public/boy?username=3",
+    "https://avatar.iran.liara.run/public/boy?username=5",
+    "https://avatar.iran.liara.run/public/girl?username=1",
+    "https://avatar.iran.liara.run/public/girl?username=2",
+    "https://avatar.iran.liara.run/public/girl?username=3",
+    // Cute 3D characters
+    "https://avatar.iran.liara.run/public/12",
+    "https://avatar.iran.liara.run/public/15",
+    "https://avatar.iran.liara.run/public/17",
+    "https://avatar.iran.liara.run/public/20",
+    "https://avatar.iran.liara.run/public/25",
+    "https://avatar.iran.liara.run/public/30",
   ];
 
   const displayAvatars = [
