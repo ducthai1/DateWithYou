@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,11 +10,23 @@ import {
   cloudinaryConfigured,
   type UploadedPhoto,
 } from "@/lib/cloudinary-upload";
-import { ImagePlus, Link2, X } from "lucide-react";
+import { ImagePlus, Link2, X, ExternalLink, Play } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
 import { parseEmbed, normalizeUrl, PROVIDER_LABEL, type ParsedEmbed } from "@/lib/embed";
+
+/** Try to extract valid URLs from a string (caption, pasted text, etc.) */
+function extractUrls(text: string): string[] {
+  const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
+  const matches = text.match(urlRegex) ?? [];
+  // Also detect bare domains: youtube.com/…, tiktok.com/…, etc.
+  const bareRegex = /(?:^|\s)((?:(?:www\.)?(?:youtube\.com|youtu\.be|tiktok\.com|vm\.tiktok\.com|open\.spotify\.com|instagram\.com))[^\s<>"{}|\\^`[\]]*)/gi;
+  const bareMatches = [...text.matchAll(bareRegex)].map((m) => m[1].trim());
+  const all = [...matches, ...bareMatches.map((b) => normalizeUrl(b))];
+  // Deduplicate
+  return [...new Set(all)].filter(Boolean);
+}
 
 export function MemoryForm({
   onDone,
@@ -47,13 +59,36 @@ export function MemoryForm({
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  /** Add a single URL to embeds if not already present. */
+  const addUrl = useCallback((raw: string) => {
+    const v = normalizeUrl(raw);
+    if (!v) return;
+    setEmbeds((prev) => {
+      if (prev.some((e) => e.url === v)) return prev; // dedupe
+      return [...prev, parseEmbed(v)];
+    });
+  }, []);
+
+  /** Manually add the current link input. */
   function addLink() {
-    // Normalize first so a pasted "youtube.com/…" (no scheme) is detected as
-    // YouTube and stored as https — otherwise the server rejects it on save.
     const v = normalizeUrl(linkInput);
     if (!v) return;
-    setEmbeds((e) => [...e, parseEmbed(v)]);
+    addUrl(v);
     setLinkInput("");
+  }
+
+  /** Auto-detect URLs when user pastes into the link input. */
+  function onPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData("text/plain").trim();
+    if (!pasted) return;
+    // If the pasted text looks like a URL (or contains one), auto-add it.
+    const urls = extractUrls(pasted);
+    if (urls.length > 0) {
+      e.preventDefault(); // Don't also put the text in the input
+      urls.forEach(addUrl);
+    }
+    // If it doesn't look like a URL, let the default paste happen
+    // so the user can still type/edit in the input.
   }
 
   const utils = trpc.useUtils();
@@ -83,6 +118,24 @@ export function MemoryForm({
     }
   }
 
+  /** Collect all embeds including: saved ones, pending link input, and URLs in caption. */
+  function collectAllEmbeds(): { url: string }[] {
+    const all = [...embeds];
+    // Include pending link input if user forgot to press Enter
+    const pending = normalizeUrl(linkInput);
+    if (pending && !all.some((e) => e.url === pending)) {
+      all.push(parseEmbed(pending));
+    }
+    // Auto-extract URLs from caption text
+    const captionUrls = extractUrls(caption);
+    for (const u of captionUrls) {
+      if (!all.some((e) => e.url === u)) {
+        all.push(parseEmbed(u));
+      }
+    }
+    return all.map((e) => ({ url: e.url }));
+  }
+
   return (
     <>
       <ModalContent className="space-y-4">
@@ -101,32 +154,57 @@ export function MemoryForm({
       </div>
 
       <div className="space-y-2">
-        <div className="flex gap-2">
+        <div className="relative">
+          <Link2 className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
           <input
             value={linkInput}
             onChange={(e) => setLinkInput(e.target.value)}
-            placeholder="Dán link YouTube / Spotify / TikTok…"
-            className="border-border bg-card h-10 flex-1 rounded-xl border px-3 text-sm outline-none focus:border-accent"
+            onPaste={onPaste}
+            placeholder="Dán link YouTube / TikTok / Spotify vào đây…"
+            className="border-border bg-card h-11 w-full rounded-xl border pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-accent focus:ring-1 focus:ring-accent/20"
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addLink())}
           />
-          <Button type="button" variant="outline" onClick={addLink} disabled={!linkInput.trim()}>
-            <Link2 className="h-4 w-4" />
-          </Button>
         </div>
         {embeds.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="space-y-1.5">
             {embeds.map((e, i) => (
-              <span key={i} className="bg-muted inline-flex items-center gap-1 rounded-full py-1 pl-2.5 pr-1 text-xs">
-                {PROVIDER_LABEL[e.provider]}
+              <div
+                key={i}
+                className="border-border bg-card flex items-center gap-2.5 rounded-xl border p-2 transition-all"
+              >
+                {e.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={e.thumbnailUrl}
+                    alt={PROVIDER_LABEL[e.provider]}
+                    className="h-12 w-20 shrink-0 rounded-lg object-cover"
+                  />
+                ) : (
+                  <span className="bg-accent-soft text-accent flex h-12 w-12 shrink-0 items-center justify-center rounded-lg">
+                    {e.provider === "youtube" ? (
+                      <Play className="h-5 w-5" />
+                    ) : e.provider === "spotify" ? (
+                      <span className="text-lg">♫</span>
+                    ) : e.provider === "tiktok" ? (
+                      <span className="text-xs font-bold">TT</span>
+                    ) : (
+                      <ExternalLink className="h-4 w-4" />
+                    )}
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium">{PROVIDER_LABEL[e.provider]}</p>
+                  <p className="text-muted-foreground truncate text-[11px]">{e.url}</p>
+                </div>
                 <button
                   type="button"
                   aria-label="Bỏ link"
                   onClick={() => setEmbeds((arr) => arr.filter((_, j) => j !== i))}
-                  className="hover:bg-card rounded-full p-0.5"
+                  className="hover:bg-muted shrink-0 rounded-full p-1.5 transition-colors"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
-              </span>
+              </div>
             ))}
           </div>
         )}
@@ -197,8 +275,7 @@ export function MemoryForm({
               date: new Date(date),
               photos,
               tags,
-              // Server derives embed metadata from the URL — only send the URL.
-              embeds: embeds.map((e) => ({ url: e.url })),
+              embeds: collectAllEmbeds(),
               locationId: initialLocationId,
             })
           }
@@ -212,3 +289,4 @@ export function MemoryForm({
     </>
   );
 }
+

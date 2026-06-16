@@ -10,7 +10,7 @@ import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmbedPlayer } from "@/components/ui/embed-player";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
-import { type EmbedProvider } from "@/lib/embed";
+import { type EmbedProvider, PROVIDER_LABEL } from "@/lib/embed";
 import { cn } from "@/lib/utils";
 import { MemoryForm } from "./memory-form";
 
@@ -142,11 +142,36 @@ export function MemoryTimeline() {
                         ))}
                       </div>
                     )}
-                    {(photoCount > 3 || embedCount > 0) && (
+                    {embedCount > 0 && (
+                      <div className="mt-2 space-y-1.5">
+                        {(m.embeds as EmbedField[]).slice(0, 2).map((e: EmbedField, i: number) => (
+                          <div key={i} className="flex items-center gap-2 rounded-lg bg-muted/50 p-1.5">
+                            {e.thumbnailUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={e.thumbnailUrl}
+                                alt={e.title ?? e.provider}
+                                loading="lazy"
+                                className="h-10 w-16 shrink-0 rounded object-cover"
+                              />
+                            ) : (
+                              <span className="bg-accent-soft text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded text-[10px] font-bold uppercase">
+                                {e.provider === "tiktok" ? "TT" : e.provider === "spotify" ? "♫" : "▶"}
+                              </span>
+                            )}
+                            <p className="text-muted-foreground min-w-0 truncate text-[11px]">
+                              {e.title || PROVIDER_LABEL[e.provider as EmbedProvider]}
+                            </p>
+                          </div>
+                        ))}
+                        {embedCount > 2 && (
+                          <p className="text-muted-foreground text-xs">+{embedCount - 2} link</p>
+                        )}
+                      </div>
+                    )}
+                    {photoCount > 3 && (
                       <p className="text-muted-foreground mt-2 text-xs">
-                        {photoCount > 3 ? `+${photoCount - 3} ảnh` : ""}
-                        {photoCount > 3 && embedCount > 0 ? " · " : ""}
-                        {embedCount > 0 ? `${embedCount} link` : ""}
+                        +{photoCount - 3} ảnh
                       </p>
                     )}
                   </Card>
