@@ -7,11 +7,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import {
-  MapPinned,
   Link2,
   Navigation,
   ExternalLink,
@@ -26,6 +24,9 @@ import {
   CheckCircle2,
   Circle,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StaggerList } from "@/components/ui/stagger-list";
+import { HeaderMesh } from "@/components/layout/header-mesh";
 import { useLiveNavigation } from "./use-live-navigation";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
@@ -217,8 +218,9 @@ export function LocationsPage() {
 
       {/* ── Normal page layout ── */}
       <div className="mx-auto max-w-2xl px-4 py-6 lg:max-w-6xl">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Bản đồ ăn chơi</h1>
+      <div className="relative mb-4 flex items-center justify-between overflow-hidden rounded-2xl px-1 py-1">
+        <HeaderMesh />
+        <h1 className="text-h1 relative z-10 font-serif">Bản đồ ăn chơi</h1>
         <div className="flex gap-2">
           <a
             href="/wheel"
@@ -351,16 +353,14 @@ export function LocationsPage() {
               <Skeleton className="h-20" />
             </div>
           ) : pins.length === 0 ? (
-            <div className="border-border text-muted-foreground flex flex-col items-center gap-2 rounded-xl border border-dashed py-12 text-center text-sm">
-              <MapPinned className="h-8 w-8 opacity-50" />
-              <p>
-                Chưa có địa điểm nào.
-                <br />
-                Bấm “+ Thêm” để lưu chỗ hẹn hò đầu tiên.
-              </p>
-            </div>
+            <EmptyState
+              icon="map-pin"
+              title="Chưa có địa điểm nào"
+              subtitle="Bấm + Thêm để lưu chỗ hẹn hò đầu tiên."
+              action={{ label: "+ Thêm địa điểm", onClick: () => { setFormInitial({}); setFormOpen(true); } }}
+            />
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <StaggerList className="grid gap-3 sm:grid-cols-2">
               {(list.data ?? []).map((l) => {
                 const meta =
                   CATEGORY_META[l.category as Category] ??
@@ -520,7 +520,7 @@ export function LocationsPage() {
                   </Card>
                 );
               })}
-            </div>
+            </StaggerList>
           )}
         </div>
         </div>

@@ -11,7 +11,9 @@ const input = z.object({
   title: z.string().trim().min(1).max(80),
   date: dateKey,
   recurYearly: z.boolean().default(true),
-  icon: z.string().trim().max(8).optional(),
+  // Icon registry key (e.g. "calendar-heart"), not an emoji — widened from the
+  // old 8-char emoji cap so multi-word lucide keys validate.
+  icon: z.string().trim().max(32).optional(),
 });
 
 export const specialDateRouter = router({

@@ -1,43 +1,200 @@
 @import "tailwindcss";
 
-/* Modern-minimal theme: warm white / beige, stone ink, muted rose accent. */
+/*
+ * Design token foundation for Vivu No Plan.
+ *
+ * Organisation:
+ *   1. :root — primitive tokens (colour, typography, elevation, motion, radius)
+ *   2. @theme inline — maps tokens to Tailwind v4 utility classes
+ *   3. [data-theme="…"] blocks — per-preset accent + gradient overrides
+ *   4. Base styles (body, headings, interactive elements)
+ *   5. Reduced-motion guard
+ */
+
+/* ─── 1. Primitive tokens ─────────────────────────────────────────────────── */
 :root {
-  --background: #f1ece3; /* warmer so solid-white cards/inputs clearly lift off it */
+  /* --- Colour: surfaces & ink -------------------------------------------- */
+  --background: #f1ece3;       /* warm parchment — shared across ALL presets  */
   --foreground: #1c1917;
   --muted: #e7e1d6;
   --muted-foreground: #6f675d;
-  --border: #d8cfc1; /* stronger so fields read as distinct surfaces, not sunken */
-  --accent: #c2693f; /* warm terracotta — brighter & cleaner than the old muddy taupe */
-  --accent-hover: #a8542f; /* darker terracotta for hover/active */
-  --accent-soft: #f6e6dc; /* solid light terracotta — replaces translucent accent/10 tints */
+  --border: #d8cfc1;
+  --card: #ffffff;
   --accent-foreground: #ffffff;
-  --card: #ffffff; /* solid surface that now sits clearly above the warm background */
-  --ring: #c2693f; /* focus-visible ring colour */
   --destructive: #dc2626;
-  --destructive-soft: #fbe8e8; /* solid light red — replaces destructive/10 */
+  --destructive-soft: #fbe8e8;
   --success: #059669;
+
+  /* --- Colour: accent triplet (terracotta default; overridden per preset) - */
+  --accent: #c2693f;
+  --accent-hover: #a8542f;
+  --accent-soft: #f6e6dc;
+  --ring: #c2693f;
+
+  /* --- Gradient stops (used by header mesh and space cover) --------------- */
+  --gradient-from: #e8846a;
+  --gradient-to: #f5b89a;
+
+  /* --- Typography scale -------------------------------------------------- */
+  /*
+   * Font-size / line-height pairs.
+   * display/h* → Fraunces (serif); body/sm/xs → Inter (sans).
+   * Exposed as CSS shorthand so `font: var(--text-h1)` works anywhere, and
+   * mirrored in @theme so `text-h1`, `text-body` etc. resolve as utilities.
+   */
+  --text-display: 700 40px/44px var(--font-serif-fraunces), ui-serif, Georgia, serif;
+  --text-h1:      600 28px/34px var(--font-serif-fraunces), ui-serif, Georgia, serif;
+  --text-h2:      600 20px/26px var(--font-serif-fraunces), ui-serif, Georgia, serif;
+  --text-body:    400 15px/22px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+  --text-sm:      400 13px/18px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+  --text-xs:      400 11px/14px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Raw size tokens for Tailwind text-size utilities */
+  --font-size-display: 40px;
+  --font-size-h1: 28px;
+  --font-size-h2: 20px;
+  --font-size-body: 15px;
+  --font-size-sm-scale: 13px;
+  --font-size-xs-scale: 11px;
+
+  --line-height-display: 44px;
+  --line-height-h1: 34px;
+  --line-height-h2: 26px;
+  --line-height-body: 22px;
+  --line-height-sm-scale: 18px;
+  --line-height-xs-scale: 14px;
+
+  /* --- Elevation (warm-tinted shadows — terracotta undertone not neutral) - */
+  /*
+   * Warm brown tint keeps shadows from looking flat grey on the parchment bg.
+   * elev-1 = resting card; elev-2 = hover lift; elev-3 = modal / floating hub.
+   */
+  --elev-1: 0 1px 3px 0 rgb(120 72 40 / 0.10), 0 1px 2px -1px rgb(120 72 40 / 0.08);
+  --elev-2: 0 4px 12px -2px rgb(120 72 40 / 0.14), 0 2px 4px -2px rgb(120 72 40 / 0.10);
+  --elev-3: 0 8px 24px -4px rgb(120 72 40 / 0.18), 0 4px 8px -4px rgb(120 72 40 / 0.12);
+
+  /* --- Motion tokens ----------------------------------------------------- */
+  /*
+   * Spring easing gives UI a physical feel (fast out, slight overshoot).
+   * Three duration steps cover micro-interactions, standard transitions, and
+   * longer entrance/exit animations.
+   */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 150ms;
+  --dur: 250ms;
+  --dur-slow: 400ms;
+
+  /* --- Radius scale ------------------------------------------------------ */
+  --r-sm: 8px;
+  --r: 12px;
+  --r-lg: 16px;
+  --r-full: 9999px;
+
+  /* Legacy alias — keeps existing `rounded-xl` / radius-base consumers happy */
   --radius: 0.75rem;
 }
 
+/* ─── 2. Tailwind v4 @theme mapping ───────────────────────────────────────── */
+/*
+ * Maps :root tokens to Tailwind utility names.
+ * Naming convention: colour utilities use `--color-*`; shadow uses `--shadow-*`;
+ * font uses `--font-*`; radius uses `--radius-*`.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-soft: var(--accent-soft);
+  /* Colours */
+  --color-background:        var(--background);
+  --color-foreground:        var(--foreground);
+  --color-muted:             var(--muted);
+  --color-muted-foreground:  var(--muted-foreground);
+  --color-border:            var(--border);
+  --color-accent:            var(--accent);
+  --color-accent-hover:      var(--accent-hover);
+  --color-accent-soft:       var(--accent-soft);
   --color-accent-foreground: var(--accent-foreground);
-  --color-card: var(--card);
-  --color-ring: var(--ring);
-  --color-destructive: var(--destructive);
-  --color-destructive-soft: var(--destructive-soft);
-  --color-success: var(--success);
-  --font-sans: var(--font-sans-inter);
+  --color-card:              var(--card);
+  --color-ring:              var(--ring);
+  --color-destructive:       var(--destructive);
+  --color-destructive-soft:  var(--destructive-soft);
+  --color-success:           var(--success);
+
+  /* Fonts */
+  --font-sans:  var(--font-sans-inter);
   --font-serif: var(--font-serif-fraunces);
-  --radius-base: var(--radius);
+
+  /* Elevation shadows → shadow-elev-1, shadow-elev-2, shadow-elev-3 */
+  --shadow-elev-1: var(--elev-1);
+  --shadow-elev-2: var(--elev-2);
+  --shadow-elev-3: var(--elev-3);
+
+  /* Radius → rounded-sm-scale, rounded-base, rounded-lg-scale, rounded-full-scale */
+  --radius-base:       var(--radius);
+  --radius-sm-scale:   var(--r-sm);
+  --radius-lg-scale:   var(--r-lg);
+
+  /* Typography size utilities → text-display, text-h1, text-h2, text-body,
+     text-sm-scale, text-xs-scale. Using -scale suffix on sm/xs to avoid
+     colliding with Tailwind's built-in text-sm / text-xs utilities. */
+  --text-display:   var(--font-size-display);
+  --text-h1:        var(--font-size-h1);
+  --text-h2:        var(--font-size-h2);
+  --text-body:      var(--font-size-body);
+  --text-sm-scale:  var(--font-size-sm-scale);
+  --text-xs-scale:  var(--font-size-xs-scale);
 }
+
+/* ─── 3. Per-preset theme overrides ───────────────────────────────────────── */
+/*
+ * Only the accent triplet + gradient stops change between presets.
+ * Background, card, border, and foreground stay warm-neutral for all.
+ * terracotta values already live in :root so it works without any attribute.
+ */
+
+[data-theme="rose"] {
+  --accent:         #c25f7a;
+  --accent-hover:   #a64862;
+  --accent-soft:    #f7e3ea;
+  --ring:           #c25f7a;
+  --gradient-from:  #e8849a;
+  --gradient-to:    #f5b0c0;
+}
+
+[data-theme="sage"] {
+  --accent:         #6f8f6a;
+  --accent-hover:   #577352;
+  --accent-soft:    #e6efe2;
+  --ring:           #6f8f6a;
+  --gradient-from:  #8faf8a;
+  --gradient-to:    #b5d4b0;
+}
+
+[data-theme="plum"] {
+  --accent:         #8a5fa3;
+  --accent-hover:   #714a89;
+  --accent-soft:    #efe6f5;
+  --ring:           #8a5fa3;
+  --gradient-from:  #aa7fc3;
+  --gradient-to:    #ccb0e0;
+}
+
+[data-theme="ocean"] {
+  --accent:         #3f8aa3;
+  --accent-hover:   #2f6f87;
+  --accent-soft:    #dcebef;
+  --ring:           #3f8aa3;
+  --gradient-from:  #5faac3;
+  --gradient-to:    #90ccd8;
+}
+
+[data-theme="honey"] {
+  --accent:         #c2902f;
+  --accent-hover:   #a8771f;
+  --accent-soft:    #f6eed2;
+  --ring:           #c2902f;
+  --gradient-from:  #d4a84a;
+  --gradient-to:    #e8c882;
+}
+
+/* ─── 4. Base styles ─────────────────────────────────────────────────────── */
 
 body {
   background: var(--background);
@@ -67,4 +224,21 @@ label[for] {
 button:disabled,
 [aria-disabled="true"] {
   cursor: not-allowed;
+}
+
+/* ─── 5. Reduced-motion guard ─────────────────────────────────────────────── */
+/*
+ * Near-zero durations instead of `none` so JS animationend / transitionend
+ * events still fire and state updates (focus, aria-expanded) still propagate.
+ * This pattern is recommended by WCAG 2.5.3 (Motion from Animations).
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

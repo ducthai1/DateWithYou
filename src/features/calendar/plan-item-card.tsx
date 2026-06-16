@@ -1,9 +1,11 @@
 "use client";
 
+import { useRef } from "react";
 import { motion } from "framer-motion";
-import { Check, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, MapPin } from "lucide-react";
+import { Check, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, MapPin, Users } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useCelebrate } from "@/components/ui/celebrate";
 import type { Tag } from "@/lib/plan-meta";
 import { colorsForTags } from "@/lib/plan-meta";
 
@@ -54,25 +56,69 @@ export function PlanItemCard({
   onSaveAsMemory: () => void;
 }) {
   const utils = trpc.useUtils();
-  const invalidate = () => {
-    utils.calendar.dayDetail.invalidate({ date });
-    utils.calendar.monthSummary.invalidate();
-  };
-  const setStatus = trpc.planItem.setStatus.useMutation({ onSuccess: invalidate });
-  const move = trpc.planItem.move.useMutation({ onSuccess: invalidate });
-  const remove = trpc.planItem.remove.useMutation({ onSuccess: invalidate });
+  const celebrate = useCelebrate();
+  // Ref on the card container so the burst anchors to the tapped item.
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Optimistic check-off / delete: patch the cached day detail immediately so
+  // the tap reflects with zero network wait, then reconcile. The old code
+  // awaited the mutation AND a follow-up refetch (two remote round-trips)
+  // before the UI moved — the main source of the "laggy tap" feel. monthSummary
+  // (calendar badge counts) is refreshed in the background, off the hot path.
+  const setStatus = trpc.planItem.setStatus.useMutation({
+    onMutate: async ({ id, status }) => {
+      await utils.calendar.dayDetail.cancel({ date });
+      const prev = utils.calendar.dayDetail.getData({ date });
+      utils.calendar.dayDetail.setData({ date }, (old) =>
+        old
+          ? { ...old, items: old.items.map((it) => (it.id === id ? { ...it, status } : it)) }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) utils.calendar.dayDetail.setData({ date }, ctx.prev);
+    },
+    onSettled: () => utils.calendar.monthSummary.invalidate(),
+  });
+
+  const remove = trpc.planItem.remove.useMutation({
+    onMutate: async ({ id }) => {
+      await utils.calendar.dayDetail.cancel({ date });
+      const prev = utils.calendar.dayDetail.getData({ date });
+      utils.calendar.dayDetail.setData({ date }, (old) =>
+        old ? { ...old, items: old.items.filter((it) => it.id !== id) } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) utils.calendar.dayDetail.setData({ date }, ctx.prev);
+    },
+    onSettled: () => utils.calendar.monthSummary.invalidate(),
+  });
+
+  // Reordering is rarer and order-sensitive; let the server be source of truth
+  // but only refetch the open day (not the whole month) on success.
+  const move = trpc.planItem.move.useMutation({
+    onSuccess: () => utils.calendar.dayDetail.invalidate({ date }),
+  });
 
   const done = item.status === "done";
   const assignee = members.find((m) => m.id === item.assigneeId);
   const tagColors = colorsForTags(item.tags, palette);
 
   return (
-    <div className="bg-card border-border flex items-start gap-2.5 rounded-xl border p-2.5 shadow-sm">
+    <div ref={cardRef} className="bg-card border-border relative flex items-start gap-2.5 rounded-xl border p-2.5 shadow-sm">
       <motion.button
         type="button"
         whileTap={{ scale: 0.8 }}
         aria-label={done ? "Bỏ hoàn thành" : "Hoàn thành"}
-        onClick={() => setStatus.mutate({ id: item.id, status: done ? "planned" : "done" })}
+        onClick={() => {
+          const next = done ? "planned" : "done";
+          // Celebrate only on completion, anchored to this card.
+          if (next === "done") celebrate(cardRef.current);
+          setStatus.mutate({ id: item.id, status: next });
+        }}
         className={cn(
           "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
           done ? "bg-success border-success text-white" : "border-muted-foreground/40",
@@ -110,7 +156,13 @@ export function PlanItemCard({
         )}
 
         <div className="mt-1.5 flex items-center gap-1">
-          {assignee ? <Avatar member={assignee} /> : <span className="text-muted-foreground text-[10px]">Cả hai 💕</span>}
+          {assignee ? (
+            <Avatar member={assignee} />
+          ) : (
+            <span className="text-muted-foreground inline-flex items-center gap-1 text-[10px]">
+              <Users className="h-3 w-3" /> Cả hai
+            </span>
+          )}
           <div className="ml-auto flex items-center gap-0.5">
             <IconBtn label="Lên" onClick={() => move.mutate({ id: item.id, direction: "up" })}><ChevronUp className="h-4 w-4" /></IconBtn>
             <IconBtn label="Xuống" onClick={() => move.mutate({ id: item.id, direction: "down" })}><ChevronDown className="h-4 w-4" /></IconBtn>

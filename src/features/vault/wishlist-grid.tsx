@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StaggerList } from "@/components/ui/stagger-list";
 import { Trash2, Check, Undo2 } from "lucide-react";
 
 export function WishlistGrid() {
@@ -28,9 +30,13 @@ export function WishlistGrid() {
         </Button>
       </div>
       {items.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Chưa có món nào trong wishlist.</p>
+        <EmptyState
+          icon="gift"
+          title="Wishlist trống"
+          subtitle="Thêm món quà muốn có — cùng lên kế hoạch mua nhé."
+        />
       ) : (
-        <div className="space-y-2">
+        <StaggerList gap="space-y-2">
           {items.map((w) => (
             <Card key={w.id} className="flex items-center justify-between p-3">
               <div>
@@ -62,7 +68,7 @@ export function WishlistGrid() {
               </span>
             </Card>
           ))}
-        </div>
+        </StaggerList>
       )}
     </div>
   );

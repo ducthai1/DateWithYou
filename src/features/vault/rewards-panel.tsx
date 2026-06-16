@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StaggerList } from "@/components/ui/stagger-list";
 import { cn } from "@/lib/utils";
 
 // Small grant/redeem chip — terracotta soft, fills on hover.
@@ -91,11 +93,13 @@ export function RewardsPanel() {
           </Button>
         </div>
         {tasks.length === 0 ? (
-          <p className="text-muted-foreground text-xs">
-            Chưa có nhiệm vụ nào. Thêm việc nhỏ để cùng tích điểm 💞
-          </p>
+          <EmptyState
+            icon="list-checks"
+            title="Chưa có nhiệm vụ"
+            subtitle="Thêm việc nhỏ để cùng tích điểm."
+          />
         ) : (
-          <div className="space-y-2">
+          <StaggerList gap="space-y-2">
             {tasks.map((t) => (
               <Card key={t.id} className="flex items-center justify-between gap-2 p-3">
                 <div className="flex min-w-0 items-center gap-2">
@@ -115,7 +119,7 @@ export function RewardsPanel() {
                 </div>
               </Card>
             ))}
-          </div>
+          </StaggerList>
         )}
       </section>
 
@@ -156,11 +160,13 @@ export function RewardsPanel() {
           </p>
         )}
         {vouchers.length === 0 ? (
-          <p className="text-muted-foreground text-xs">
-            Chưa có phần thưởng. Đặt vài voucher để đổi điểm nhé 🎁
-          </p>
+          <EmptyState
+            icon="gift"
+            title="Chưa có phần thưởng"
+            subtitle="Đặt vài voucher để đổi điểm với nhau."
+          />
         ) : (
-          <div className="space-y-2">
+          <StaggerList gap="space-y-2">
             {vouchers.map((v) => (
               <Card key={v.id} className="flex items-center justify-between gap-2 p-3">
                 <div className="flex min-w-0 items-center gap-2">
@@ -186,7 +192,7 @@ export function RewardsPanel() {
                 )}
               </Card>
             ))}
-          </div>
+          </StaggerList>
         )}
       </section>
     </div>

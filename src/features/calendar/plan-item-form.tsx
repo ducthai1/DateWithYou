@@ -79,7 +79,7 @@ export function PlanItemForm({
             aria-label="Buổi"
             value={bucket}
             onChange={(v) => setBucket(v as BucketKey)}
-            options={BUCKETS.map((b) => ({ value: b.key, label: `${b.icon} ${b.label}` }))}
+            options={BUCKETS.map((b) => ({ value: b.key, label: b.label }))}
           />
           <input
             type="time"
@@ -101,7 +101,7 @@ export function PlanItemForm({
             value={assigneeId}
             onChange={setAssigneeId}
             options={[
-              { value: "", label: "Cả hai 💕" },
+              { value: "", label: "Cả hai" },
               ...(members.data ?? []).map((m) => ({ value: m.id, label: m.name })),
             ]}
           />

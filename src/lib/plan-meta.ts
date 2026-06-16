@@ -3,10 +3,10 @@
 // even after a couple adds their own. Shared by client UI and server routers.
 
 export const BUCKETS = [
-  { key: "morning", label: "Sáng", icon: "🌅" },
-  { key: "noon", label: "Trưa", icon: "☀️" },
-  { key: "afternoon", label: "Chiều", icon: "🌤️" },
-  { key: "evening", label: "Tối", icon: "🌙" },
+  { key: "morning", label: "Sáng", icon: "sunrise" },
+  { key: "noon", label: "Trưa", icon: "sun" },
+  { key: "afternoon", label: "Chiều", icon: "cloud-sun" },
+  { key: "evening", label: "Tối", icon: "moon" },
 ] as const;
 
 export type BucketKey = (typeof BUCKETS)[number]["key"];
@@ -23,15 +23,16 @@ export type PlanStatus = (typeof PLAN_STATUSES)[number];
 
 export type Tag = { name: string; color: string; icon?: string };
 
-// Built-in palette — colours pulled from the existing terracotta/pastel theme so
-// dots on the calendar read as part of the same system.
+// Built-in palette — colours harmonised with the terracotta/warm preset so
+// calendar dots read as part of the same design system at any theme.
+// Saturation kept mid-range so dots remain legible on the warm bg (#f1ece3).
 export const DEFAULT_TAGS: Tag[] = [
-  { name: "Hẹn hò", color: "#e8a598", icon: "🌹" },
-  { name: "Ăn uống", color: "#d4a373", icon: "🍜" },
-  { name: "Du lịch", color: "#a3b18a", icon: "✈️" },
-  { name: "Quà", color: "#cb997e", icon: "🎁" },
-  { name: "Việc cần làm", color: "#6f675d", icon: "✅" },
-  { name: "Kỷ niệm", color: "#c2693f", icon: "💞" },
+  { name: "Hẹn hò",        color: "#d97f72", icon: "heart" },           // warm coral
+  { name: "Ăn uống",       color: "#c8955a", icon: "utensils-crossed" }, // amber-tan
+  { name: "Du lịch",       color: "#7fa882", icon: "plane" },            // soft sage
+  { name: "Quà",           color: "#b07cc6", icon: "gift" },             // gentle plum
+  { name: "Việc cần làm",  color: "#7a9db5", icon: "list-checks" },      // muted ocean
+  { name: "Kỷ niệm",       color: "#c2693f", icon: "sparkles" },         // terracotta accent
 ];
 
 /** Default palette + a space's custom tags, defaults first, de-duped by name. */

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings } from "lucide-react";
+import { Settings, HeartHandshake } from "lucide-react";
 import { NAV_HIDDEN_ON } from "./nav-items";
 
 /**
@@ -17,7 +17,7 @@ export function AppHeader() {
   return (
     <header className="border-border bg-background/85 sticky top-0 z-20 flex items-center justify-between border-b px-4 py-2.5 backdrop-blur md:hidden">
       <Link href="/calendar" className="flex items-center gap-1.5 font-serif text-lg font-semibold">
-        <span className="text-xl">💞</span>
+        <HeartHandshake className="h-5 w-5 shrink-0 text-accent" />
         Vivu No Plan
       </Link>
       <Link
