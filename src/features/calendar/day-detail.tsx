@@ -97,7 +97,7 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
 
               <div className="relative">
                 {items.length === 0 && (
-                  <div className="absolute inset-0 z-0 flex items-center justify-center opacity-40 pointer-events-none select-none">
+                  <div className="absolute inset-0 z-0 flex items-center justify-center opacity-80 pointer-events-none select-none">
                     <EmptyState
                       icon="calendar-heart"
                       title="Ngày này còn trống"
