@@ -13,6 +13,10 @@ export type LiveNavigation = {
   userGeo: LatLng | null;
   /** Device heading in degrees (0 = north, 90 = east). null when unavailable. */
   heading: number | null;
+  /** Device speed in km/h. null when unavailable or stationary. */
+  speedKmH: number | null;
+  /** Network connection status */
+  isOffline: boolean;
   /** Accumulated travelled path as [lng, lat] pairs for a map line. */
   traveled: Array<[number, number]>;
   /** Estimated remaining distance in metres (null before first fix). */
@@ -109,10 +113,14 @@ export function useLiveNavigation(options?: {
   const [isNavigating, setIsNavigating] = useState(false);
   const [userGeo, setUserGeo] = useState<LatLng | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
+  const [speedKmH, setSpeedKmH] = useState<number | null>(null);
   const [traveled, setTraveled] = useState<Array<[number, number]>>([]);
   const [remainingMeters, setRemainingMeters] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(
+    typeof navigator !== "undefined" ? !navigator.onLine : false,
+  );
   const watchId = useRef<number | null>(null);
   const wakeLock = useRef<WakeLockLike | null>(null);
 
@@ -184,6 +192,13 @@ export function useLiveNavigation(options?: {
           setHeading(pos.coords.heading);
         }
 
+        // Speed: convert from m/s to km/h
+        if (pos.coords.speed != null && !isNaN(pos.coords.speed) && pos.coords.speed >= 0) {
+          setSpeedKmH(Math.round(pos.coords.speed * 3.6));
+        } else {
+          setSpeedKmH(null);
+        }
+
         // Remaining distance along route.
         const rc = routeCoordsRef.current;
         if (rc && rc.length >= 2) {
@@ -231,10 +246,24 @@ export function useLiveNavigation(options?: {
   // Always clean up the watch + wake lock when the page unmounts.
   useEffect(() => () => stop(), [stop]);
 
+  // Track network connection status
+  useEffect(() => {
+    const handleOffline = () => setIsOffline(true);
+    const handleOnline = () => setIsOffline(false);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, []);
+
   return {
     isNavigating,
     userGeo,
     heading,
+    speedKmH,
+    isOffline,
     traveled,
     remainingMeters,
     remainingSeconds,

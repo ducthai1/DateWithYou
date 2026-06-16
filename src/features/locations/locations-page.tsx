@@ -23,6 +23,9 @@ import {
   Settings,
   CheckCircle2,
   Circle,
+  WifiOff,
+  Loader2,
+  Gauge,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
@@ -198,23 +201,45 @@ export function LocationsPage() {
               className="min-h-0 rounded-none border-0 shadow-none"
             />
 
-            {/* ── Navigation HUD: distance + ETA ── */}
+            {/* ── Navigation HUD: distance + ETA + Speed ── */}
             <div
-              className="absolute inset-x-0 top-0 flex items-center justify-center gap-4 p-3"
+              className="absolute inset-x-0 top-0 flex items-center justify-center p-3"
               style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
             >
-              <div className="flex items-center gap-4 rounded-2xl bg-white/90 px-5 py-2.5 shadow-lg backdrop-blur-sm">
-                <div className="flex items-center gap-1.5">
-                  <Route className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-semibold">{fmtDistance(displayDistance)}</span>
-                </div>
-                <div className="h-5 w-px bg-border" />
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-semibold">{fmtDuration(displayDuration)}</span>
+              <div className="flex flex-col items-center gap-2">
+                {nav.isOffline && (
+                  <div className="flex items-center gap-2 rounded-full bg-red-500 px-3 py-1 text-xs font-medium text-white shadow-lg">
+                    <WifiOff className="h-3.5 w-3.5" /> Mất kết nối mạng
+                  </div>
+                )}
+                {isRecalculating.current && !nav.isOffline && (
+                  <div className="flex items-center gap-2 rounded-full bg-yellow-500 px-3 py-1 text-xs font-medium text-white shadow-lg animate-in fade-in zoom-in">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tính lại đường...
+                  </div>
+                )}
+                <div className="flex items-center gap-4 rounded-2xl bg-white/90 px-5 py-2.5 shadow-lg backdrop-blur-sm">
+                  <div className="flex items-center gap-1.5">
+                    <Route className="h-4 w-4 text-accent" />
+                    <span className="text-sm font-semibold">{fmtDistance(displayDistance)}</span>
+                  </div>
+                  <div className="h-5 w-px bg-border" />
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-accent" />
+                    <span className="text-sm font-semibold">{fmtDuration(displayDuration)}</span>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Floating Speed Indicator */}
+            {nav.speedKmH != null && (
+              <div 
+                className="absolute right-4 top-1/2 flex -translate-y-1/2 flex-col items-center justify-center rounded-full border-[3px] border-accent bg-white/95 shadow-lg backdrop-blur-sm h-16 w-16"
+              >
+                <span className="text-xl font-bold leading-none tracking-tighter text-slate-800">{nav.speedKmH}</span>
+                <span className="text-[9px] font-bold text-muted-foreground uppercase leading-none mt-0.5">km/h</span>
+              </div>
+            )}
 
             {/* Floating stop button — always visible over the map */}
             <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4"
