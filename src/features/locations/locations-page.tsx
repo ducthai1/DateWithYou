@@ -314,7 +314,7 @@ export function LocationsPage() {
       )}
 
       {/* ── Normal page layout ── */}
-      <div className="mx-auto max-w-2xl px-4 py-6 lg:max-w-6xl">
+      <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px]">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-h1 font-serif">Bản đồ ăn chơi</h1>
         <div className="flex gap-2">
