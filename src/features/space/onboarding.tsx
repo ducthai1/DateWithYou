@@ -41,7 +41,7 @@ export function Onboarding() {
       <div className="space-y-1 text-center">
         <h1 className="text-3xl font-semibold">Không gian của tụi mình</h1>
         <p className="text-muted-foreground text-sm">
-          Tạo không gian mới hoặc tham gia bằng mã mời từ người yêu.
+          Tạo không gian mới hoặc tham gia bằng mã mời từ người đồng hành.
         </p>
       </div>
 

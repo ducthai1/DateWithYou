@@ -225,7 +225,7 @@ export function SpaceSettings() {
       </Card>
 
       <Card className="space-y-3">
-        <p className="text-sm font-medium">Mời người yêu</p>
+        <p className="text-sm font-medium">Mời người đồng hành</p>
         {full ? (
           <p className="text-muted-foreground text-sm">
             Không gian đã đủ 2 người 💞
