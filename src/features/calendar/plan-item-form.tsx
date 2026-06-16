@@ -72,12 +72,12 @@ export function PlanItemForm({
   return (
     <>
       <ModalContent className="space-y-5">
-        <div className="space-y-2.5">
-          <label className="text-xs font-medium text-muted-foreground ml-1">Tiêu đề công việc</label>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Tiêu đề công việc</label>
           <Input placeholder="Làm gì nào?" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
-        <div className="space-y-2.5">
-          <label className="text-xs font-medium text-muted-foreground ml-1">Ghi chú chi tiết</label>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Ghi chú chi tiết</label>
           <Textarea placeholder="Ghi chú (tuỳ chọn)" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
         </div>
 

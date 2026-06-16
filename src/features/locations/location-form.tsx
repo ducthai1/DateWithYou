@@ -143,16 +143,16 @@ export function LocationForm({
         onChange={(e) => set("mustTry", e.target.value)}
       />
       <div className="flex gap-2">
-        <div className="flex-1 space-y-2.5">
-          <label className="text-xs font-medium text-muted-foreground ml-1">Giờ mở cửa</label>
+        <div className="flex-1">
+          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Giờ mở cửa</label>
           <Input
             type="time"
             value={v.openTime}
             onChange={(e) => set("openTime", e.target.value)}
           />
         </div>
-        <div className="flex-1 space-y-2.5">
-          <label className="text-xs font-medium text-muted-foreground ml-1">Giờ đóng cửa</label>
+        <div className="flex-1">
+          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Giờ đóng cửa</label>
           <Input
             type="time"
             value={v.closeTime}

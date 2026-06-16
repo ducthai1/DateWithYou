@@ -21,8 +21,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const isPassword = type === "password";
   const actualType = isPassword ? (showPassword ? "text" : "password") : type;
 
-  // Use label or placeholder for the floating text
-  const floatingText = label || placeholder;
+  // Only use floating text if label is explicitly provided
+  const floatingText = label;
 
   return (
     <div className="w-full space-y-1.5">
@@ -39,7 +39,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           type={actualType}
           required={required}
           value={value}
-          placeholder=" "
+          // If using floating label, hide native placeholder. Else use native placeholder.
+          placeholder={floatingText ? " " : placeholder}
           className={cn(
             "peer relative z-10 h-full w-full rounded-xl bg-transparent text-sm outline-none transition-all",
             "disabled:cursor-not-allowed disabled:opacity-60",
@@ -48,6 +49,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             "[&:-webkit-autofill]:-webkit-text-fill-color-foreground",
             prefixIcon ? "pl-10" : "pl-4",
             (suffixIcon || isPassword) ? "pr-10" : "pr-4",
+            // If no floating label, use standard placeholder color
+            !floatingText && "placeholder:text-muted-foreground/60",
             className,
           )}
           {...props}
