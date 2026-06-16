@@ -84,7 +84,7 @@ export function LocationForm({
       name: v.name.trim(),
       district: v.district,
       category: v.category,
-      geo: v.geo ?? undefined,
+      geo: (initial && v.googleMapsUrl !== initial.googleMapsUrl && v.geo === initial.geo) ? undefined : (v.geo ?? undefined),
       googleMapsUrl: v.googleMapsUrl.trim() || undefined,
       socialUrl: v.socialUrl.trim() || undefined,
       mustTry: v.mustTry.trim() || undefined,

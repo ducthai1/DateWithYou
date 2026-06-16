@@ -19,6 +19,16 @@ export type MapPin = {
   status: "want_to_go" | "visited";
 };
 
+// Generates a distinctly different color for coordinates, even if they are very close.
+function getPinColor(lat: number, lng: number, status: string): string {
+  const val = Math.floor(lat * 111111) * 73856093 ^ Math.floor(lng * 111111) * 19349663;
+  const hue = Math.abs(val) % 360;
+  // If visited, we make the color darker/less saturated, or just keep it vibrant.
+  // We'll keep it vibrant but perhaps a slightly different lightness if we wanted.
+  // The user requested distinct colors for each place.
+  return `hsl(${hue}, 85%, ${status === "visited" ? "45%" : "60%"})`;
+}
+
 export function LocationMapView({
   pins,
   routeGeometry,
@@ -121,12 +131,28 @@ export function LocationMapView({
                 onSelect?.(p.id);
               }}
             >
-              <span
-                className={`block h-4 w-4 cursor-pointer rounded-full border-2 border-white shadow ${
-                  p.status === "visited" ? "bg-emerald-500" : "bg-accent"
-                } ${selectedId === p.id ? "ring-2 ring-offset-1" : ""}`}
-                title={p.name}
-              />
+              <div className="group relative flex cursor-pointer flex-col items-center">
+                {/* Name Label - always visible but subtle, pops on hover/select */}
+                <span
+                  className={cn(
+                    "mb-1 whitespace-nowrap rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-200",
+                    selectedId !== p.id && "group-hover:scale-110 group-hover:text-black",
+                    selectedId === p.id ? "scale-110 text-black z-10 ring-1 ring-border" : "text-muted-foreground scale-100"
+                  )}
+                >
+                  {p.name}
+                </span>
+
+                {/* Dot */}
+                <span
+                  className={cn(
+                    "block h-4 w-4 rounded-full border-2 border-white shadow transition-all duration-200",
+                    selectedId === p.id ? "scale-125 ring-2 ring-black/20 ring-offset-1" : "group-hover:scale-110"
+                  )}
+                  style={{ backgroundColor: getPinColor(p.geo!.lat, p.geo!.lng, p.status) }}
+                  title={p.name}
+                />
+              </div>
             </Marker>
           ))}
 
