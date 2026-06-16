@@ -6,7 +6,7 @@ import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useCelebrate } from "@/components/ui/celebrate";
-import { Sparkles, MapPin, Heart } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { BUCKETS, mergeTags, type BucketKey } from "@/lib/plan-meta";
 import { MemoryForm } from "@/features/memories/memory-form";
 import { BucketSection } from "./bucket-section";
@@ -125,22 +125,7 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
                 </div>
               </div>
 
-              {detail.data && (detail.data.memories.length > 0 || detail.data.visited.length > 0) && (
-                <div className="border-border space-y-2 border-t pt-3">
-                  <p className="text-muted-foreground text-xs font-semibold">Đã lưu trong ngày</p>
-                  {detail.data.memories.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2 text-sm">
-                      <Heart className="h-3.5 w-3.5 shrink-0 text-accent" />
-                      <span className="font-medium">{m.title}</span>
-                    </div>
-                  ))}
-                  {detail.data.visited.map((v) => (
-                    <div key={v.id} className="text-muted-foreground flex items-center gap-1.5 text-sm">
-                      <MapPin className="h-3.5 w-3.5" /> {v.name} <span className="text-xs">· {v.category}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+
             </>
           )}
         </ModalContent>
