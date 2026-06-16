@@ -4,24 +4,48 @@ import { cn } from "@/lib/utils";
 import type { GridCell } from "@/lib/date-keys";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
 
-function getHash(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash);
+/* ── deterministic pseudo-random based on string ── */
+function hash(s: string) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h);
+  return Math.abs(h);
 }
 
-const PIN_COLORS = [
-  "bg-red-500 border-red-700", 
-  "bg-blue-500 border-blue-700", 
-  "bg-emerald-500 border-emerald-700", 
-  "bg-amber-500 border-amber-700", 
-  "bg-purple-500 border-purple-700"
+/* ── pastel sticky-note palette (bg + text pairs) ── */
+const NOTE_STYLES = [
+  { bg: "#FFF9C4", text: "#5D4037" }, // yellow
+  { bg: "#F8BBD0", text: "#880E4F" }, // pink
+  { bg: "#B2EBF2", text: "#006064" }, // cyan
+  { bg: "#C8E6C9", text: "#1B5E20" }, // green
+  { bg: "#D1C4E9", text: "#4A148C" }, // lavender
+  { bg: "#FFE0B2", text: "#E65100" }, // peach
+  { bg: "#BBDEFB", text: "#0D47A1" }, // sky blue
+  { bg: "#F0F4C3", text: "#827717" }, // lime
 ];
 
-/** One day cell in the month grid: number, memory thumbnail peek, tag dots,
- *  item count badge, special marker. Tap opens the day detail. */
+/* ── pin colour classes ── */
+const PIN_BG = ["#E53935", "#1E88E5", "#43A047", "#FB8C00", "#8E24AA"];
+
+/* ── pre-computed positions for up to 3 notes scattered inside a cell ─
+ *  Each entry is [top%, left%, rotation°].
+ *  We pick from several layout presets based on the date hash so every
+ *  day looks a little different.  */
+const LAYOUTS: [number, number, number][][] = [
+  // layout 0 — one center, two flanking
+  [[25, 10, -4], [40, 35, 3], [20, 55, -2]],
+  // layout 1 — diagonal scatter
+  [[18, 5, 2],  [38, 30, -5], [55, 50, 4]],
+  // layout 2 — top-heavy
+  [[20, 8, -3], [15, 48, 5],  [50, 25, -1]],
+  // layout 3 — bottom-heavy
+  [[22, 40, 3], [45, 8, -4],  [48, 50, 2]],
+  // layout 4 — staggered
+  [[18, 15, -2],[35, 45, 4],  [55, 10, -3]],
+  // layout 5 — compact center
+  [[22, 15, 3], [30, 38, -3], [45, 20, 1]],
+];
+
+/** One day cell in the month grid – sticky-note style. */
 export function CalendarCell({
   cell,
   summary,
@@ -36,16 +60,23 @@ export function CalendarCell({
   const count = summary?.planCount ?? 0;
   const hasPlans = summary?.plans && summary.plans.length > 0;
 
+  // pick a layout for this cell based on the date
+  const dayHash = hash(cell.key);
+  const layout = LAYOUTS[dayHash % LAYOUTS.length];
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "relative flex aspect-square flex-col items-center justify-start gap-1 overflow-hidden rounded-xl border p-1 text-sm transition-colors",
-        cell.inMonth ? "bg-card border-border hover:border-accent" : "border-transparent bg-transparent text-muted-foreground/40",
+        "relative flex aspect-square flex-col items-start justify-start overflow-hidden rounded-xl border p-1 text-sm transition-colors",
+        cell.inMonth
+          ? "bg-card border-border hover:border-accent"
+          : "border-transparent bg-transparent text-muted-foreground/40",
         isToday && "ring-accent ring-2",
       )}
     >
+      {/* Background memory thumbnail */}
       {summary?.thumbnailUrl && cell.inMonth && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -56,9 +87,12 @@ export function CalendarCell({
         />
       )}
 
-      <div className="relative flex w-full items-start justify-between z-10">
+      {/* ── Top row: day number + count badge ── */}
+      <div className="relative flex w-full items-start justify-between z-20">
         <div className="flex items-center gap-1">
-          <span className={cn("font-medium leading-none", isToday && "text-accent")}>{cell.day}</span>
+          <span className={cn("font-medium leading-none", isToday && "text-accent")}>
+            {cell.day}
+          </span>
           {summary && summary.memoryCount > 0 && !summary.thumbnailUrl && (
             <span className="h-1.5 w-1.5 rounded-full bg-stone-400" title="Kỷ niệm" />
           )}
@@ -70,57 +104,77 @@ export function CalendarCell({
         )}
       </div>
 
+      {/* ── Special date banner ── */}
       {summary?.special && (
-        <div className="w-full truncate rounded bg-pink-500/15 px-1 py-0.5 text-[9px] sm:text-[10px] font-semibold text-pink-700 dark:text-pink-300 z-10 text-left mb-0.5 shadow-sm">
+        <div className="w-full truncate rounded bg-pink-500/15 px-1 py-0.5 text-[9px] sm:text-[10px] font-semibold text-pink-700 dark:text-pink-300 z-20 text-left mt-0.5 shadow-sm">
           {summary.special.icon && <span className="mr-0.5">{summary.special.icon}</span>}
           {summary.special.title}
         </div>
       )}
 
-      {hasPlans && (
-        <div className="mt-auto w-full relative z-10 pb-1 px-0.5 flex flex-col items-center justify-end">
-          {summary.plans.map((p, i) => {
-            const hash = getHash(p.title + cell.key + i);
-            const rotate = (hash % 16) - 8; // -8 to 8 deg
-            const transX = (hash % 10) - 5; // -5 to 5 px
-            const transY = i === 0 ? 0 : -((hash % 6) + 6); // -6 to -11 px overlap
-            const accent = p.color || "var(--accent)";
-            const pinColor = PIN_COLORS[hash % PIN_COLORS.length];
+      {/* ── Sticky notes scattered in the cell ── */}
+      {hasPlans &&
+        summary.plans.slice(0, 2).map((p, i) => {
+          const noteHash = hash(p.title + cell.key + i);
+          const style = NOTE_STYLES[noteHash % NOTE_STYLES.length];
+          const pin = PIN_BG[noteHash % PIN_BG.length];
+          const [top, left, rot] = layout[i] ?? layout[0];
+          // add small per-note variation
+          const extraRot = ((noteHash % 7) - 3);
+          const finalRot = rot + extraRot;
 
-            return (
+          return (
+            <div
+              key={i}
+              className={cn(
+                "absolute z-10 flex flex-col items-center transition-transform duration-200 hover:scale-110 hover:z-30",
+                p.done && "opacity-50",
+              )}
+              style={{
+                top: `${top}%`,
+                left: `${left}%`,
+                width: "48%",
+                transform: `rotate(${finalRot}deg)`,
+              }}
+            >
+              {/* The pin */}
               <div
-                key={i}
-                className={cn(
-                  "relative w-[85%] flex items-center justify-center shadow-md border border-black/10 dark:border-white/10 transition-all hover:scale-125 hover:z-50 duration-200 ease-out",
-                  p.done ? "opacity-60 line-through" : "opacity-95"
-                )}
-                style={{ 
-                  backgroundColor: accent, 
-                  color: "#fff", 
-                  zIndex: 10 + i,
-                  borderRadius: "1px 6px 1px 6px",
-                  marginTop: i === 0 ? "2px" : `${transY}px`,
-                  transform: `translate(${transX}px, 0) rotate(${rotate}deg)`,
+                className="relative -mb-[4px] z-20 w-[7px] h-[7px] sm:w-[8px] sm:h-[8px] rounded-full shrink-0"
+                style={{
+                  backgroundColor: pin,
+                  boxShadow: `0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 2px rgba(255,255,255,0.35)`,
+                }}
+              />
+
+              {/* The note */}
+              <div
+                className="w-full rounded-[2px] px-1 py-[3px] sm:py-1"
+                style={{
+                  backgroundColor: style.bg,
+                  color: style.text,
+                  boxShadow: "2px 3px 6px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.12)",
+                  // subtle curl effect via gradient
+                  backgroundImage: `linear-gradient(135deg, transparent 70%, rgba(0,0,0,0.04) 100%)`,
                 }}
               >
-                {/* Pin */}
-                <div 
-                   className={cn("absolute -top-[3px] left-1/2 -translate-x-1/2 w-[6px] h-[6px] sm:w-[7px] sm:h-[7px] rounded-full shadow-sm border", pinColor)}
-                   style={{ boxShadow: "1px 1px 2px rgba(0,0,0,0.5), inset -1px -1px 2px rgba(255,255,255,0.3)" }}
-                />
-                
-                {/* Text */}
-                <div className="text-[9px] sm:text-[10px] font-bold leading-[1.1] truncate text-center w-full drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)] px-1 py-1">
+                <div
+                  className={cn(
+                    "text-[8px] sm:text-[9px] font-bold leading-[1.2] truncate",
+                    p.done && "line-through",
+                  )}
+                  style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
+                >
                   {p.title}
                 </div>
               </div>
-            );
-          })}
-          {summary.planCount > 3 && (
-            <div className="w-full text-[9px] text-muted-foreground text-center font-bold pt-1.5 z-0 drop-shadow-sm">
-              +{summary.planCount - 3} nữa
             </div>
-          )}
+          );
+        })}
+
+      {/* Extra count indicator */}
+      {hasPlans && summary.planCount > 2 && (
+        <div className="absolute bottom-1 right-1 z-20 text-[8px] sm:text-[9px] font-bold text-muted-foreground/80 bg-card/70 rounded-full px-1.5 py-0.5 backdrop-blur-sm shadow-sm border border-border/50">
+          +{summary.planCount - 2}
         </div>
       )}
     </button>
