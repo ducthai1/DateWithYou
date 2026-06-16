@@ -30,6 +30,10 @@ export function SpaceSettings() {
   const [activePreset, setActivePreset] = useState<ThemePresetKey>("terracotta");
   const [invite, setInvite] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState("");
+  const [newSpaceName, setNewSpaceName] = useState("");
+  const [newSpacePin, setNewSpacePin] = useState("");
+  const [deletePin, setDeletePin] = useState("");
+  const { data: session } = authClient.useSession();
 
   function handleSpaceSwitch(spaceId: string) {
     const maxAge = 60 * 60 * 24 * 365;
@@ -58,6 +62,17 @@ export function SpaceSettings() {
   });
   const joinSpace = trpc.space.joinByCode.useMutation({
     onSuccess: (data) => handleSpaceSwitch(data.id),
+  });
+  const deleteSpace = trpc.space.delete.useMutation({
+    onSuccess: () => {
+      // Find another space to switch to
+      const nextSpace = allMine.data?.find(s => s.id !== mine.data?.id);
+      if (nextSpace) {
+        handleSpaceSwitch(nextSpace.id);
+      } else {
+        router.replace("/onboarding");
+      }
+    }
   });
 
   if (mine.isLoading || !mine.data || allMine.isLoading) {
@@ -112,14 +127,26 @@ export function SpaceSettings() {
         
         <div className="pt-3 border-t border-border">
           <p className="text-sm font-medium mb-2">Tạo không gian mới</p>
-          <Button
-            variant="outline"
-            className="w-full"
-            disabled={createSpace.isPending}
-            onClick={() => createSpace.mutate({ name: "Không gian mới" })}
-          >
-            {createSpace.isPending ? "Đang tạo..." : "Tạo không gian trống mới"}
-          </Button>
+          <div className="space-y-2">
+            <Input
+              placeholder="Tên không gian"
+              value={newSpaceName}
+              onChange={(e) => setNewSpaceName(e.target.value)}
+            />
+            <Input
+              placeholder="Mã PIN bảo vệ (để xoá không gian)"
+              value={newSpacePin}
+              onChange={(e) => setNewSpacePin(e.target.value)}
+            />
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={createSpace.isPending || !newSpaceName.trim()}
+              onClick={() => createSpace.mutate({ name: newSpaceName.trim(), pin: newSpacePin.trim() })}
+            >
+              {createSpace.isPending ? "Đang tạo..." : "Tạo không gian trống mới"}
+            </Button>
+          </div>
         </div>
 
         <div className="pt-3 border-t border-border space-y-2">
@@ -133,6 +160,7 @@ export function SpaceSettings() {
             <Button
               disabled={!joinCode.trim() || joinSpace.isPending}
               onClick={() => joinSpace.mutate({ code: joinCode.trim() })}
+              className="whitespace-nowrap"
             >
               Tham gia
             </Button>
@@ -220,6 +248,29 @@ export function SpaceSettings() {
           </>
         )}
       </Card>
+
+      {mine.data && !mine.data.isPersonal && mine.data.createdBy === session?.user.id && (
+        <Card className="space-y-3 border-destructive">
+          <p className="text-sm font-medium text-destructive">Xoá không gian</p>
+          <p className="text-xs text-muted-foreground">Chỉ người tạo mới có thể xoá không gian. Vui lòng nhập mã PIN đã đặt lúc tạo.</p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Nhập mã PIN"
+              value={deletePin}
+              onChange={(e) => setDeletePin(e.target.value)}
+            />
+            <Button
+              variant="destructive"
+              className="whitespace-nowrap"
+              disabled={deleteSpace.isPending || !deletePin.trim()}
+              onClick={() => deleteSpace.mutate({ pin: deletePin.trim() })}
+            >
+              Xoá không gian
+            </Button>
+          </div>
+          {deleteSpace.isError && <p className="text-xs text-destructive">{deleteSpace.error.message}</p>}
+        </Card>
+      )}
 
       <ConfirmButton
         title="Đăng xuất"

@@ -22,6 +22,9 @@ const spaceSchema = new Schema(
     themePreset: { type: String, default: "terracotta" },
     anniversaryDate: { type: Date },
     members: { type: [String], required: true, default: [] },
+    pin: { type: String },
+    createdBy: { type: String },
+    isPersonal: { type: Boolean, default: false },
     inviteCodeHash: { type: String },
     inviteCodeExpiresAt: { type: Date },
     // Couple-defined tag palette for itinerary items (on top of the built-in

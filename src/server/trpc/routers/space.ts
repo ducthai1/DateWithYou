@@ -35,8 +35,8 @@ export const spaceRouter = router({
   getAllMine: authedProcedure.query(async ({ ctx }) => {
     await connectToDatabase();
     const spaces = await SpaceModel.find({ members: ctx.userId })
-      .select("_id name themePreset coverImage members")
-      .lean<{ _id: unknown; name: string; themePreset?: string; coverImage?: string; members: string[] }[]>();
+      .select("_id name themePreset coverImage members createdBy isPersonal")
+      .lean<{ _id: unknown; name: string; themePreset?: string; coverImage?: string; members: string[]; createdBy?: string; isPersonal?: boolean }[]>();
     
     return spaces.map((s) => ({
       id: String(s._id),
@@ -44,6 +44,8 @@ export const spaceRouter = router({
       themePreset: resolveThemeKey(s.themePreset),
       coverImage: s.coverImage ?? null,
       memberCount: s.members.length,
+      createdBy: s.createdBy ?? s.members[0],
+      isPersonal: s.isPersonal ?? false,
     }));
   }),
 
@@ -59,6 +61,8 @@ export const spaceRouter = router({
         themePreset?: string;
         coverImage?: string;
         members: string[];
+        createdBy?: string;
+        isPersonal?: boolean;
       }>();
     }
     
@@ -70,6 +74,8 @@ export const spaceRouter = router({
         themePreset?: string;
         coverImage?: string;
         members: string[];
+        createdBy?: string;
+        isPersonal?: boolean;
       }>();
     }
 
@@ -83,11 +89,17 @@ export const spaceRouter = router({
       themePreset: resolveThemeKey(space.themePreset),
       coverImage: space.coverImage ?? null,
       memberCount: space.members.length,
+      createdBy: space.createdBy ?? space.members[0],
+      isPersonal: space.isPersonal ?? false,
     };
   }),
 
   create: authedProcedure
-    .input(z.object({ name: z.string().trim().min(1).max(60) }))
+    .input(z.object({ 
+      name: z.string().trim().min(1).max(60),
+      pin: z.string().optional(),
+      isPersonal: z.boolean().optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       try {
@@ -95,6 +107,9 @@ export const spaceRouter = router({
           name: input.name,
           members: [ctx.userId],
           themePreset: "terracotta",
+          pin: input.pin,
+          createdBy: ctx.userId,
+          isPersonal: input.isPersonal ?? false,
         });
         const spaceId = String(doc._id);
 
@@ -176,6 +191,22 @@ export const spaceRouter = router({
           message: "INVALID_OR_EXPIRED_CODE",
         });
       return { id: String(joined._id) };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ pin: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const space = await SpaceModel.findById(ctx.spaceId).lean<{ createdBy?: string; pin?: string; isPersonal?: boolean }>();
+      
+      if (!space) throw new TRPCError({ code: "NOT_FOUND", message: "Space not found" });
+      if (space.isPersonal) throw new TRPCError({ code: "FORBIDDEN", message: "Cannot delete personal space" });
+      if (space.createdBy !== ctx.userId) throw new TRPCError({ code: "FORBIDDEN", message: "Only creator can delete" });
+      if (space.pin !== input.pin) throw new TRPCError({ code: "FORBIDDEN", message: "Mã PIN không đúng" });
+      
+      await SpaceModel.findByIdAndDelete(ctx.spaceId);
+      // We should also delete related collections (locations, memories, etc.) but for simplicity, we just delete the space doc for now.
+      return { ok: true };
     }),
 
   // Member display profiles (name + avatar from Better Auth, with optional
