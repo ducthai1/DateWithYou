@@ -187,7 +187,7 @@ export function LocationMapView({
               id="traveled-line"
               type="line"
               layout={{ "line-cap": "round", "line-join": "round" }}
-              paint={{ "line-color": "#2563eb", "line-width": 5, "line-opacity": 0.7 }}
+              paint={{ "line-color": "#4f46e5", "line-width": 8, "line-opacity": 1 }}
             />
           </Source>
         )}
@@ -247,7 +247,7 @@ export function LocationMapView({
               id="route-line"
               type="line"
               layout={{ "line-cap": "round", "line-join": "round" }}
-              paint={{ "line-color": "#c2693f", "line-width": 5 }}
+              paint={{ "line-color": "#60a5fa", "line-width": 8, "line-opacity": 0.8 }}
             />
           </Source>
         )}
