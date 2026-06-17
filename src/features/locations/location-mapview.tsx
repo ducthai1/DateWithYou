@@ -22,6 +22,9 @@ export type MapPin = {
   status: "want_to_go" | "visited";
 };
 
+// Distinct colours cycled per trip leg so each segment reads as its own line.
+const LEG_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#06b6d4"];
+
 // Generates a distinctly different color for coordinates, even if they are very close.
 function getPinColor(lat: number, lng: number, status: string): string {
   const val = Math.floor(lat * 111111) * 73856093 ^ Math.floor(lng * 111111) * 19349663;
@@ -35,6 +38,8 @@ function getPinColor(lat: number, lng: number, status: string): string {
 export function LocationMapView({
   pins,
   routeGeometry,
+  legGeometries,
+  currentLegIndex = 0,
   partnerRouteGeometry,
   selectedId,
   focusGeo,
@@ -53,6 +58,10 @@ export function LocationMapView({
 }: {
   pins: MapPin[];
   routeGeometry?: unknown;
+  /** Per-leg polylines for a multi-stop trip; each drawn in its own colour. */
+  legGeometries?: Array<{ geometry: { coordinates: [number, number][] } }> | null;
+  /** Index of the leg currently being navigated (earlier legs render dimmed). */
+  currentLegIndex?: number;
   partnerRouteGeometry?: unknown;
   selectedId?: string | null;
   focusGeo?: LatLng | null;
@@ -132,8 +141,6 @@ export function LocationMapView({
   }, [userGeo, partnerLocation, hasKissed]);
 
   // ── QUICK PINGS (EMOTION BUBBLES) ──
-  const [activePing, setActivePing] = useState<{ emoji: string; id: number } | null>(null);
-  const [activeUserPing, setActiveUserPing] = useState<{ emoji: string; id: number } | null>(null);
   const [globalPing, setGlobalPing] = useState<{ emoji: string; id: number; fromPartner: boolean } | null>(null);
   
   const getPingEmoji = (action: string, isPartner: boolean) => {
@@ -151,31 +158,25 @@ export function LocationMapView({
   };
 
   useEffect(() => {
-    // Prefer real-time ping from SSE, fallback to interval-based ping
-    const action = partnerPingAction || partnerLocation?.pingAction;
-    if (action) {
-      const emoji = getPingEmoji(action, true);
-      if (emoji) {
-        const pingId = Date.now();
-        setActivePing({ emoji, id: pingId });
-        setGlobalPing({ emoji, id: pingId, fromPartner: true });
-        setTimeout(() => setActivePing((prev) => (prev?.id === pingId ? null : prev)), 4000);
-        setTimeout(() => setGlobalPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
-      }
-    }
-  }, [partnerPingAction, partnerLocation?.pingAction]);
+    // Pings arrive in real time over SSE only. The persisted live-location
+    // pingAction is intentionally NOT used as a second source — it lingers across
+    // polls and would re-fire the same ping repeatedly. The single always-visible
+    // banner below is the only render, so a ping shows exactly once.
+    if (!partnerPingAction) return;
+    const emoji = getPingEmoji(partnerPingAction, true);
+    if (!emoji) return;
+    const pingId = Date.now();
+    setGlobalPing({ emoji, id: pingId, fromPartner: true });
+    setTimeout(() => setGlobalPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
+  }, [partnerPingAction]);
 
   useEffect(() => {
-    if (userPingAction) {
-      const emoji = getPingEmoji(userPingAction, false);
-      if (emoji) {
-        const pingId = Date.now();
-        setActiveUserPing({ emoji, id: pingId });
-        setGlobalPing({ emoji, id: pingId, fromPartner: false });
-        setTimeout(() => setActiveUserPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
-        setTimeout(() => setGlobalPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
-      }
-    }
+    if (!userPingAction) return;
+    const emoji = getPingEmoji(userPingAction, false);
+    if (!emoji) return;
+    const pingId = Date.now();
+    setGlobalPing({ emoji, id: pingId, fromPartner: false });
+    setTimeout(() => setGlobalPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
   }, [userPingAction]);
 
   const handleInteraction = () => {
@@ -237,6 +238,29 @@ export function LocationMapView({
       { padding: 56, duration: 900, maxZoom: 16 },
     );
   }, [routeGeometry]);
+
+  // Frame all legs once when a multi-stop trip is first drawn. Keyed on leg
+  // count (not array identity) so re-routing a single leg never re-frames the
+  // map and yanks the view away while the user is riding.
+  const legCount = legGeometries?.length ?? 0;
+  useEffect(() => {
+    if (!legGeometries?.length) return;
+    let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+    for (const leg of legGeometries) {
+      for (const [lng, lat] of leg.geometry.coordinates) {
+        minLng = Math.min(minLng, lng);
+        maxLng = Math.max(maxLng, lng);
+        minLat = Math.min(minLat, lat);
+        maxLat = Math.max(maxLat, lat);
+      }
+    }
+    if (minLng === Infinity) return;
+    mapRef.current?.fitBounds(
+      [[minLng, minLat], [maxLng, maxLat]],
+      { padding: 56, duration: 900, maxZoom: 16 },
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legCount]);
 
   return (
     <div 
@@ -407,21 +431,6 @@ export function LocationMapView({
                   />
                 </svg>
                 
-                {/* Emotion Bubble for User */}
-                <AnimatePresence>
-                  {activeUserPing && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.5, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.5, y: -10 }}
-                      className="absolute -top-12 z-20 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-sm font-bold shadow-lg border-2 border-blue-100 flex items-center"
-                    >
-                      {activeUserPing.emoji}
-                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
                 {/* Centre avatar or dot */}
                 {userAvatar ? (
                   <img src={userAvatar} alt="Bạn" className="relative z-10 h-8 w-8 rounded-full border-[2.5px] border-white object-cover shadow-sm bg-muted" />
@@ -432,21 +441,6 @@ export function LocationMapView({
             ) : (
               /* Simple avatar or dot when heading is unknown */
               <div className="relative flex items-center justify-center">
-                {/* Emotion Bubble for User */}
-                <AnimatePresence>
-                  {activeUserPing && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.5, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.5, y: -10 }}
-                      className="absolute -top-12 z-20 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-sm font-bold shadow-lg border-2 border-blue-100 flex items-center"
-                    >
-                      {activeUserPing.emoji}
-                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
                 {userAvatar ? (
                   <img src={userAvatar} alt="Bạn" className="h-9 w-9 rounded-full border-[2.5px] border-white object-cover shadow-md ring-4 ring-blue-500/30 bg-muted" />
                 ) : (
@@ -467,21 +461,6 @@ export function LocationMapView({
             style={{ zIndex: 9 }}
           >
             <div className="relative flex items-center justify-center group">
-              {/* Emotion Bubble */}
-              <AnimatePresence>
-                {activePing && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.5, y: -10 }}
-                    className="absolute -top-12 z-20 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-sm font-bold shadow-lg border-2 border-rose-100 flex items-center"
-                  >
-                    {activePing.emoji}
-                    <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
               <span className="absolute -top-6 whitespace-nowrap rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-200 opacity-0 group-hover:opacity-100 group-hover:-translate-y-1">
                 Người ấy
               </span>
@@ -541,21 +520,54 @@ export function LocationMapView({
           </Source>
         )}
 
-        {/* USER'S ROUTE (BLUE) */}
-        {routeGeometry != null && (
-          <Source
-            id="route"
-            type="geojson"
-            data={{ type: "Feature", properties: {}, geometry: routeGeometry as never }}
-          >
-            <Layer
-              id="route-line"
-              type="line"
-              layout={{ "line-cap": "round", "line-join": "round" }}
-              paint={{ "line-color": "#60a5fa", "line-width": 8, "line-opacity": 0.8 }}
-            />
-          </Source>
-        )}
+        {/* MULTI-STOP TRIP: one coloured line per leg. Done legs dim, the
+            active leg is bold, upcoming legs sit in between so the whole plan
+            stays readable while only the current segment is "live". */}
+        {legGeometries?.length
+          ? legGeometries.map((leg, i) => {
+              const color = LEG_COLORS[i % LEG_COLORS.length];
+              const done = i < currentLegIndex;
+              const active = i === currentLegIndex;
+              return (
+                <Source
+                  key={`leg-${i}`}
+                  id={`leg-${i}`}
+                  type="geojson"
+                  data={{
+                    type: "Feature",
+                    properties: {},
+                    geometry: { type: "LineString", coordinates: leg.geometry.coordinates } as never,
+                  }}
+                >
+                  <Layer
+                    id={`leg-${i}-line`}
+                    type="line"
+                    layout={{ "line-cap": "round", "line-join": "round" }}
+                    paint={{
+                      "line-color": color,
+                      "line-width": active ? 9 : 6,
+                      "line-opacity": done ? 0.3 : active ? 0.95 : 0.6,
+                      ...(done ? { "line-dasharray": [1, 2] } : {}),
+                    }}
+                  />
+                </Source>
+              );
+            })
+          : /* USER'S ROUTE (BLUE) — single-destination trips */
+            routeGeometry != null && (
+              <Source
+                id="route"
+                type="geojson"
+                data={{ type: "Feature", properties: {}, geometry: routeGeometry as never }}
+              >
+                <Layer
+                  id="route-line"
+                  type="line"
+                  layout={{ "line-cap": "round", "line-join": "round" }}
+                  paint={{ "line-color": "#60a5fa", "line-width": 8, "line-opacity": 0.8 }}
+                />
+              </Source>
+            )}
       </Map>
     </div>
   );
