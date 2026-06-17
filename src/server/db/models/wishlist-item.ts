@@ -8,6 +8,7 @@ const wishlistItemSchema = new Schema(
     forWhom: { type: String, enum: ["me", "partner"], default: "partner" },
     imageUrl: { type: String },
     price: { type: Number },
+    pointCost: { type: Number, default: 0 },
     sourceUrl: { type: String },
     bought: { type: Boolean, default: false },
     note: { type: String },

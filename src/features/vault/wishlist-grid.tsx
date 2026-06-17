@@ -12,7 +12,7 @@ import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/m
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useCelebrate } from "@/components/ui/celebrate";
-import { Trash2, Check, Undo2, Plus, Gift, Link as LinkIcon, User, Users } from "lucide-react";
+import { Trash2, Check, Undo2, Plus, Gift, Link as LinkIcon, User, Users, Coins, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type FilterMode = "all" | "active" | "bought";
@@ -25,6 +25,7 @@ export function WishlistGrid() {
   // Form State
   const [itemName, setItemName] = useState("");
   const [price, setPrice] = useState("");
+  const [pointCost, setPointCost] = useState("");
   const [forWhom, setForWhom] = useState<"me" | "partner">("partner");
   const [note, setNote] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -36,6 +37,13 @@ export function WishlistGrid() {
   const update = trpc.wishlist.update.useMutation({ onSuccess: () => { closeForm(); invalidate(); } });
   const toggle = trpc.wishlist.toggleBought.useMutation({ onSuccess: invalidate });
   const remove = trpc.wishlist.remove.useMutation({ onSuccess: invalidate });
+  const redeem = trpc.wishlist.redeem.useMutation({
+    onSuccess: (_, variables) => {
+      invalidate();
+      // the confetti will be triggered from the button click
+    },
+    onError: (err) => alert(err.message),
+  });
 
   const celebrate = useCelebrate();
 
@@ -52,6 +60,7 @@ export function WishlistGrid() {
   function openNewForm() {
     setItemName("");
     setPrice("");
+    setPointCost("");
     setForWhom("partner");
     setNote("");
     setSourceUrl("");
@@ -62,6 +71,7 @@ export function WishlistGrid() {
   function openEditForm(item: typeof items[number]) {
     setItemName(item.itemName);
     setPrice(item.price ? String(item.price) : "");
+    setPointCost(item.pointCost ? String(item.pointCost) : "");
     setForWhom(item.forWhom);
     setNote(item.note ?? "");
     setSourceUrl(item.sourceUrl ?? "");
@@ -74,6 +84,7 @@ export function WishlistGrid() {
     setTimeout(() => {
       setItemName("");
       setPrice("");
+      setPointCost("");
       setForWhom("partner");
       setNote("");
       setSourceUrl("");
@@ -86,6 +97,7 @@ export function WishlistGrid() {
     const data = {
       itemName,
       price: price ? Number(price) : undefined,
+      pointCost: pointCost ? Number(pointCost) : undefined,
       forWhom,
       note,
       sourceUrl: sourceUrl || undefined,
@@ -102,6 +114,12 @@ export function WishlistGrid() {
     if (!currentlyBought) {
       celebrate(anchorEl);
     }
+  }
+
+  function handleRedeem(id: string, anchorEl?: HTMLElement | null) {
+    redeem.mutate({ id }, {
+      onSuccess: () => celebrate(anchorEl)
+    });
   }
 
   return (
@@ -182,6 +200,12 @@ export function WishlistGrid() {
                         {w.price.toLocaleString("vi-VN")}đ
                       </span>
                     )}
+                    {w.pointCost > 0 && (
+                      <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 gap-1 px-1.5 py-0 border-none shadow-sm">
+                        <Coins className="h-3 w-3" />
+                        {w.pointCost} điểm
+                      </Badge>
+                    )}
                     <Badge tone="neutral" className="gap-1 px-1.5 py-0">
                       {w.forWhom === "me" ? <User className="h-3 w-3" /> : <Users className="h-3 w-3" />}
                       {w.forWhom === "me" ? "Bạn" : "Người ấy"}
@@ -213,6 +237,20 @@ export function WishlistGrid() {
                       <><Check className="h-3.5 w-3.5" /> Đã mua</>
                     )}
                   </button>
+
+                  {!w.bought && w.pointCost > 0 && (
+                    <button
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all duration-200 bg-amber-400 text-amber-950 hover:bg-amber-500 shadow-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRedeem(w.id, (e.target as HTMLElement).closest('.group') as HTMLElement | null);
+                      }}
+                      disabled={redeem.isPending}
+                    >
+                      {redeem.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Coins className="h-3.5 w-3.5" />}
+                      Đổi quà
+                    </button>
+                  )}
                   {w.sourceUrl && (
                     <a 
                       href={w.sourceUrl} 
@@ -272,7 +310,18 @@ export function WishlistGrid() {
               />
             </div>
             <div>
-              <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Dành cho ai?</label>
+              <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Giá đổi điểm (Phiếu bé ngoan)</label>
+              <Input 
+                type="number"
+                placeholder="VD: 100" 
+                value={pointCost} 
+                onChange={(e) => setPointCost(e.target.value)} 
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Dành cho ai?</label>
               <div className="bg-muted flex h-11 items-center rounded-xl p-1 text-sm">
                 <button
                   className={cn("flex-1 rounded-lg py-1.5 transition-colors outline-none", forWhom === "me" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
@@ -288,7 +337,6 @@ export function WishlistGrid() {
                 </button>
               </div>
             </div>
-          </div>
 
           <div>
             <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Link tham khảo (bắt đầu bằng https://)</label>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
 import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
-import { Utensils } from "lucide-react";
+import { Utensils, Navigation, Loader2 } from "lucide-react";
 import { CATEGORIES, type Category } from "@/lib/districts-categories";
 
 const WEDGE_COLORS = ["#c2693f", "#d4a373", "#e9c46a", "#a3b18a", "#cb997e", "#9c5f3c"];
@@ -28,6 +28,23 @@ export function FoodWheel() {
   const controls = useAnimationControls();
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<{ id: string; name: string; mustTry: string | null } | null>(null);
+  const sendInvite = trpc.location.sendNavInvite.useMutation();
+
+  const handleSendCompanionInvite = (locationId: string, name: string) => {
+    sendInvite.mutate(
+      { locationId, locationName: name },
+      {
+        onSuccess: () => {
+          setWinner(null);
+          // Redirect to map to see the invite waiting state
+          window.location.href = "/map";
+        },
+        onError: () => {
+          alert("Lỗi khi gửi lời mời!");
+        }
+      }
+    );
+  };
 
   // Helper to parse "HH:mm" to minutes
   function parseTime(timeStr?: string | null) {
@@ -184,16 +201,27 @@ export function FoodWheel() {
                   {winner.mustTry}
                 </p>
               )}
-              <div className="flex justify-center gap-2 pt-2">
-                <Button onClick={() => setWinner(null)} variant="outline">
+              <div className="flex flex-col gap-2 pt-4">
+                {source === "place" ? (
+                  <Button
+                    className="w-full gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white border-none shadow-md"
+                    disabled={sendInvite.isPending}
+                    onClick={() => handleSendCompanionInvite(winner.id, winner.name)}
+                  >
+                    {sendInvite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4" />}
+                    Rủ người ấy tới đây!
+                  </Button>
+                ) : (
+                  <a
+                    href="/library"
+                    className="bg-accent text-accent-foreground hover:bg-accent-hover inline-flex h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-medium transition-colors"
+                  >
+                    Xem công thức →
+                  </a>
+                )}
+                <Button onClick={() => setWinner(null)} variant="ghost" className="w-full">
                   Quay lại
                 </Button>
-                <a
-                  href={source === "place" ? "/map" : "/library"}
-                  className="bg-accent text-accent-foreground hover:bg-accent-hover inline-flex h-11 items-center rounded-xl px-4 text-sm font-medium transition-colors"
-                >
-                  {source === "place" ? "Xem trên bản đồ →" : "Xem công thức →"}
-                </a>
               </div>
             </div>
           )}
