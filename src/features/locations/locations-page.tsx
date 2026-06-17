@@ -483,52 +483,52 @@ export function LocationsPage() {
                 )}
                 <div className="flex rounded-2xl bg-white/90 shadow-lg backdrop-blur-sm overflow-hidden divide-x divide-border">
                   {/* YOU */}
-                  <div className="flex flex-col px-4 py-2 bg-blue-50/50 relative">
+                  <div className="flex flex-col px-3 py-2 sm:px-4 bg-blue-50/50 relative flex-1 min-w-0">
                     {weather && (
-                      <div className="absolute top-1 right-2 text-[10px] font-medium text-blue-800/60 bg-blue-100/50 px-1.5 rounded-full flex items-center gap-1">
+                      <div className="absolute top-1 right-2 text-[10px] font-medium text-blue-800/60 bg-blue-100/50 px-1.5 rounded-full flex items-center gap-1 whitespace-nowrap">
                         ⛅ {weather.temp}°C
                       </div>
                     )}
-                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Bạn</span>
-                    <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1 truncate">Bạn</span>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-3 mt-0.5">
                       <div className="flex items-center gap-1">
-                        <Route className="h-3.5 w-3.5 text-blue-500" />
-                        <span className="text-sm font-semibold">{fmtDistance(displayDistance)}</span>
+                        <Route className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500 shrink-0" />
+                        <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmtDistance(displayDistance)}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-blue-500" />
-                        <span className="text-sm font-semibold">{fmtDuration(displayDuration)}</span>
+                        <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500 shrink-0" />
+                        <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmtDuration(displayDuration)}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* PARTNER */}
                   {partnerRouteGeometry != null && (
-                    <div className="flex flex-col px-4 py-2 bg-rose-50/50 relative">
+                    <div className="flex flex-col px-3 py-2 sm:px-4 bg-rose-50/50 relative flex-1 min-w-0">
                       {nav.partnerLocation?.batteryLevel != null && (
-                        <div className={`absolute top-1 right-2 text-[10px] font-medium px-1.5 rounded-full flex items-center gap-1 ${
+                        <div className={`absolute top-1 right-2 text-[10px] font-medium px-1.5 rounded-full flex items-center gap-1 whitespace-nowrap ${
                           nav.partnerLocation.batteryLevel < 20 ? "text-red-700 bg-red-100/80 animate-pulse border border-red-300" : "text-rose-800/60 bg-rose-100/50"
                         }`}>
                           {nav.partnerLocation.batteryLevel < 20 ? "🪫" : "🔋"} {nav.partnerLocation.batteryLevel}% {nav.partnerLocation.batteryLevel < 20 && "Cấp cứu!"}
                         </div>
                       )}
-                      <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mb-1">
+                      <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mb-1 truncate">
                         Người ấy
                         {nav.partnerLocation?.speedKmH != null && (
-                          <span className="ml-2 font-normal opacity-90 lowercase text-xs">
-                            {nav.partnerLocation.speedKmH < 4 ? "🛑 Đứng im lìm (chắc kẹt xe)" : 
-                             nav.partnerLocation.speedKmH > 15 ? "🏍️ Bon bon vù vù" : "🛵 Tàng tàng ngắm cảnh"}
+                          <span className="ml-1 sm:ml-2 font-normal opacity-90 lowercase text-[9px] sm:text-xs">
+                            {nav.partnerLocation.speedKmH < 4 ? "🛑 Đứng im lìm" : 
+                             nav.partnerLocation.speedKmH > 15 ? "🏍️ Vù vù" : "🛵 Tàng tàng"}
                           </span>
                         )}
                       </span>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-3 mt-0.5">
                         <div className="flex items-center gap-1">
-                          <Route className="h-3.5 w-3.5 text-rose-500" />
-                          <span className="text-sm font-semibold">{fmtDistance(partnerRouteDistanceMeters)}</span>
+                          <Route className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-500 shrink-0" />
+                          <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmtDistance(partnerRouteDistanceMeters)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5 text-rose-500" />
-                          <span className="text-sm font-semibold">{fmtDuration(partnerRouteDurationSeconds)}</span>
+                          <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-500 shrink-0" />
+                          <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmtDuration(partnerRouteDurationSeconds)}</span>
                         </div>
                       </div>
                     </div>
