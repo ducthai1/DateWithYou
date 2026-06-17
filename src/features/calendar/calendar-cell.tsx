@@ -56,6 +56,18 @@ export function CalendarCell({
   const hasPlans = summary?.plans && summary.plans.length > 0;
   const hasSpecial = !!summary?.special;
 
+  // Mobile shows compact colored dots instead of sticky notes (legibility).
+  // Dots convey activity variety; the top-right badge conveys quantity.
+  const dotColors = (() => {
+    const fromTags = summary?.tagColors ?? [];
+    if (fromTags.length) return fromTags.slice(0, 4);
+    const fromPlans = (summary?.plans ?? []).map((p) => p.color).filter(Boolean);
+    if (fromPlans.length) return Array.from(new Set(fromPlans)).slice(0, 4);
+    return count > 0 ? ["var(--accent)"] : [];
+  })();
+  // Mirror desktop notes: dim the dot row when every plan that day is done.
+  const allDone = count > 0 && (summary?.doneCount ?? 0) >= count;
+
   // pick a layout for this cell based on the date
   const dayHash = hash(cell.key);
   const layout = LAYOUTS[dayHash % LAYOUTS.length];
@@ -67,6 +79,12 @@ export function CalendarCell({
     <button
       type="button"
       onClick={onClick}
+      aria-label={
+        `Ngày ${cell.day}` +
+        (isToday ? ", hôm nay" : "") +
+        (count > 0 ? `, ${count} việc` : "") +
+        (hasSpecial ? `, ${summary!.special!.title}` : "")
+      }
       className={cn(
         "relative flex aspect-square flex-col items-start justify-start overflow-hidden rounded-xl border p-1 text-sm transition-colors",
         cell.inMonth
@@ -146,7 +164,7 @@ export function CalendarCell({
             <div
               key={i}
               className={cn(
-                "absolute z-10 flex flex-col items-center transition-transform duration-200 hover:scale-110 hover:z-30",
+                "absolute z-10 hidden flex-col items-center transition-transform duration-200 hover:z-30 hover:scale-110 md:flex",
                 p.done && "opacity-50",
               )}
               style={{
@@ -189,10 +207,23 @@ export function CalendarCell({
           );
         })}
 
-      {/* Extra count indicator */}
+      {/* Extra count indicator (desktop sticky-note overflow) */}
       {hasPlans && summary.planCount > 2 && (
-        <div className="absolute bottom-1 right-1 z-20 text-[8px] sm:text-[9px] font-bold text-muted-foreground/80 bg-card/70 rounded-full px-1.5 py-0.5 backdrop-blur-sm shadow-sm border border-border/50">
+        <div className="absolute bottom-1 right-1 z-20 hidden text-[8px] sm:text-[9px] font-bold text-muted-foreground/80 bg-card/70 rounded-full px-1.5 py-0.5 backdrop-blur-sm shadow-sm border border-border/50 md:block">
           +{summary.planCount - 2}
+        </div>
+      )}
+
+      {/* Mobile: compact colored dots (sticky notes are desktop-only) */}
+      {cell.inMonth && dotColors.length > 0 && (
+        <div className={cn("absolute inset-x-0 bottom-1.5 z-20 flex items-center justify-center gap-1 md:hidden", allDone && "opacity-50")}>
+          {dotColors.map((c, i) => (
+            <span
+              key={i}
+              className="h-1.5 w-1.5 rounded-full shadow-sm"
+              style={{ backgroundColor: c }}
+            />
+          ))}
         </div>
       )}
     </button>

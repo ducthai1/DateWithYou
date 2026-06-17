@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { todayKey } from "@/lib/date-keys";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { Modal, ModalHeader } from "@/components/ui/modal";
@@ -32,6 +34,13 @@ export function CalendarView() {
 
   const summary = trpc.calendar.monthSummary.useQuery({ year, month });
 
+  // Swipe-to-change-month: mobile only, enabled after mount so the server and
+  // first client render agree (drag stays off → identical markup → no mismatch).
+  const isMobile = useIsMobile();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const swipeEnabled = mounted && isMobile;
+
   const prev = () => setYM((s) => (s.month === 1 ? { year: s.year - 1, month: 12 } : { ...s, month: s.month - 1 }));
   const next = () => setYM((s) => (s.month === 12 ? { year: s.year + 1, month: 1 } : { ...s, month: s.month + 1 }));
   const goToday = () => setYM(initialYM());
@@ -59,7 +68,18 @@ export function CalendarView() {
           {summary.isLoading ? (
             <Skeleton className="h-80 w-full" />
           ) : (
-            <CalendarGrid year={year} month={month} summary={summary.data ?? {}} onSelectDay={setSelected} />
+            <motion.div
+              drag={swipeEnabled ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.18}
+              onDragEnd={(_, info) => {
+                if (info.offset.x < -60) next();
+                else if (info.offset.x > 60) prev();
+              }}
+              className="touch-pan-y"
+            >
+              <CalendarGrid year={year} month={month} summary={summary.data ?? {}} onSelectDay={setSelected} />
+            </motion.div>
           )}
         </>
       ) : (

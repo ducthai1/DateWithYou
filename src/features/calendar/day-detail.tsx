@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { useCelebrate } from "@/components/ui/celebrate";
@@ -32,6 +34,11 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
   const celebrate = useCelebrate();
   // Anchor the celebration burst to the modal body so it stays in-context.
   const modalRef = useRef<HTMLDivElement>(null);
+  // Mobile uses a bottom sheet; desktop keeps the centered modal. The shell
+  // only mounts after a day is tapped (post-hydration), so reading the
+  // viewport here is safe from SSR mismatch.
+  const isMobile = useIsMobile();
+  const Shell = isMobile ? BottomSheet : Modal;
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<EditableItem | undefined>();
@@ -70,7 +77,7 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
 
   return (
     <>
-      <Modal open onClose={onClose} className="max-w-xl">
+      <Shell open onClose={onClose} className={isMobile ? undefined : "max-w-xl"}>
         <ModalHeader title={<span className="capitalize">{formatDay(date)}</span>} onClose={onClose} />
         <ModalContent className="space-y-5">
           {detail.isLoading ? (
@@ -126,7 +133,7 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
             </>
           )}
         </ModalContent>
-      </Modal>
+      </Shell>
 
       {formOpen && (
         <Modal open onClose={() => setFormOpen(false)} className="max-w-md">
