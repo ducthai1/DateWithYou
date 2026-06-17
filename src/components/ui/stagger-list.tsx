@@ -65,11 +65,12 @@ export function StaggerList({ children, className, gap = "space-y-3" }: StaggerL
             <motion.div
               key={isValidElement(child) && child.key != null ? child.key : i}
               variants={itemVariant}
+              className="min-w-0"
             >
               {child}
             </motion.div>
           ))
-        : <motion.div variants={itemVariant}>{children}</motion.div>}
+        : <motion.div variants={itemVariant} className="min-w-0">{children}</motion.div>}
     </motion.div>
   );
 }
