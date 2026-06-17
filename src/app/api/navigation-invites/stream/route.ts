@@ -90,6 +90,8 @@ export async function GET(req: NextRequest) {
       
       // Track the partner's last ping action time to avoid duplicate pushes
       let lastPartnerPingAt = 0;
+      // Track the last "trip ended" invite we notified about (push once).
+      let lastEndedId: string | null = null;
 
       const poll = async () => {
         if (closed) return;
@@ -164,6 +166,24 @@ export async function GET(req: NextRequest) {
                 waypoints: sent.waypoints,
                 merged: sent.merged,
               });
+            }
+          }
+
+          // 2b. Detect the partner ending a shared trip → prompt this user.
+          const endedTrip = await NavigationInviteModel.findOne({
+            spaceId,
+            status: "ended",
+            $or: [{ initiatorId: userId }, { targetId: userId }],
+          })
+            .sort({ updatedAt: -1 })
+            .lean<{ _id: unknown; endedBy?: string; locationName: string }>();
+
+          const endedId = endedTrip ? String(endedTrip._id) : null;
+          if (endedId && endedId !== lastEndedId) {
+            lastEndedId = endedId;
+            // Notify only the partner who did NOT press end.
+            if (endedTrip?.endedBy && endedTrip.endedBy !== userId) {
+              send("trip-ended", { id: endedId, locationName: endedTrip.locationName });
             }
           }
 

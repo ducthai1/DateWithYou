@@ -450,7 +450,13 @@ export const locationRouter = router({
           targetId: ctx.userId,
           status: "pending",
         },
-        { status: input.accept ? "accepted" : "rejected" },
+        {
+          status: input.accept ? "accepted" : "rejected",
+          // Keep an accepted trip's document alive through a realistic ride so
+          // the end-trip notification (and reload guard) still work past the
+          // original 5-minute pending TTL.
+          ...(input.accept ? { expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000) } : {}),
+        },
         { new: true },
       ).lean<{
         _id: unknown;
@@ -545,6 +551,26 @@ export const locationRouter = router({
           status: "pending",
         },
         { status: "rejected" },
+      );
+      return { ok: true };
+    }),
+
+  /**
+   * End a shared ("Cùng khởi hành") trip. Either partner may call it; the invite
+   * is marked ended with `endedBy` so the SSE notifies only the OTHER partner,
+   * who is then asked whether to stop too.
+   */
+  endNavTrip: protectedProcedure
+    .input(z.object({ inviteId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      await NavigationInviteModel.findOneAndUpdate(
+        {
+          _id: input.inviteId,
+          spaceId: ctx.spaceId,
+          $or: [{ initiatorId: ctx.userId }, { targetId: ctx.userId }],
+        },
+        { status: "ended", endedBy: ctx.userId },
       );
       return { ok: true };
     }),

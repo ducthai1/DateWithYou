@@ -162,6 +162,7 @@ export function LocationsPage() {
   const [rejectedMessage, setRejectedMessage] = useState<string | null>(null);
   const sendInvite = trpc.location.sendNavInvite.useMutation();
   const cancelInvite = trpc.location.cancelNavInvite.useMutation();
+  const endNavTrip = trpc.location.endNavTrip.useMutation();
   const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
 
   // ── "Meet Me Halfway" Feature ──
@@ -669,12 +670,32 @@ export function LocationsPage() {
   // End the trip for good: reset everything and remember the invite as finished
   // so the server's re-delivery can't auto-start it again after a reload.
   const endTrip = () => {
-    if (currentTripInviteId) markTripEnded(currentTripInviteId);
+    if (currentTripInviteId) {
+      markTripEnded(currentTripInviteId);
+      // Tell the server so the partner gets the "they ended — stop too?" prompt.
+      endNavTrip.mutate({ inviteId: currentTripInviteId });
+    }
     acceptedTripStore.set(null);
     setCurrentTripInviteId(null);
     setShowEndConfirm(false);
+    navInvites.clearEndedTrip();
     resetTrip();
   };
+
+  // If the partner ended but this user isn't actually on a trip, there's nothing
+  // to prompt about — drop the signal silently.
+  useEffect(() => {
+    if (
+      navInvites.endedTrip &&
+      !nav.isNavigating &&
+      !pausedTrip &&
+      !legGeometries &&
+      !routeGeometry
+    ) {
+      navInvites.clearEndedTrip();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navInvites.endedTrip, nav.isNavigating, pausedTrip, legGeometries, routeGeometry]);
 
   const pins = (list.data ?? []).map((l) => ({
     id: l.id,
@@ -1439,6 +1460,46 @@ export function LocationsPage() {
           </div>
         </div>
       )}
+
+      {/* ── Partner ended the shared trip — ask whether to stop too ── */}
+      {navInvites.endedTrip &&
+        (nav.isNavigating || pausedTrip || legGeometries || routeGeometry) && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+            onClick={() => navInvites.clearEndedTrip()}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-foreground">
+                Người ấy đã kết thúc chuyến đi 💔
+              </h3>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Người ấy vừa kết thúc chuyến đi đến{" "}
+                <span className="font-medium text-foreground">
+                  {navInvites.endedTrip.locationName}
+                </span>
+                . Bạn có muốn dừng luôn không?
+              </p>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => navInvites.clearEndedTrip()}
+                >
+                  Vẫn tiếp tục
+                </Button>
+                <Button
+                  className="flex-1 bg-destructive text-white hover:bg-destructive/90"
+                  onClick={endTrip}
+                >
+                  Dừng luôn
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* ── Midpoint Error Toast ── */}
       <AnimatePresence>

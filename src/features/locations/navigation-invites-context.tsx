@@ -22,9 +22,11 @@ interface NavigationInvitesContextValue {
   incomingInvite: IncomingInvite | null;
   inviteResponse: InviteResponse | null;
   partnerPingAction: string | null;
+  endedTrip: { id: string; locationName: string } | null;
   isConnected: boolean;
   clearIncoming: () => void;
   clearResponse: () => void;
+  clearEndedTrip: () => void;
 }
 
 const NavigationInvitesContext =

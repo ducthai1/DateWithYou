@@ -45,6 +45,8 @@ export function useNavigationInvites() {
   const [inviteResponse, setInviteResponse] =
     useState<InviteResponse | null>(null);
   const [partnerPingAction, setPartnerPingAction] = useState<string | null>(null);
+  // Set when the partner ends a shared trip — drives the "stop too?" prompt.
+  const [endedTrip, setEndedTrip] = useState<{ id: string; locationName: string } | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const esRef = useRef<EventSource | null>(null);
 
@@ -88,6 +90,15 @@ export function useNavigationInvites() {
       }
     });
 
+    es.addEventListener("trip-ended", (e) => {
+      try {
+        const data = JSON.parse(e.data) as { id: string; locationName: string };
+        setEndedTrip(data);
+      } catch {
+        /* ignore malformed */
+      }
+    });
+
     es.onerror = () => {
       setIsConnected(false);
       // EventSource will auto-reconnect after a brief back-off.
@@ -108,6 +119,8 @@ export function useNavigationInvites() {
   const clearIncoming = useCallback(() => setIncomingInvite(null), []);
   /** Dismiss the response state (after auto-navigating). */
   const clearResponse = useCallback(() => setInviteResponse(null), []);
+  /** Dismiss the partner-ended-trip prompt (after the user decides). */
+  const clearEndedTrip = useCallback(() => setEndedTrip(null), []);
 
   // Connect on mount, disconnect on unmount.
   useEffect(() => {
@@ -122,8 +135,11 @@ export function useNavigationInvites() {
     inviteResponse,
     /** The real-time ping action from partner. Reset automatically. */
     partnerPingAction,
+    /** Set when the partner ends a shared trip (null = none). */
+    endedTrip,
     isConnected,
     clearIncoming,
     clearResponse,
+    clearEndedTrip,
   };
 }

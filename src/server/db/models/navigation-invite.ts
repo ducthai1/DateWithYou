@@ -32,9 +32,11 @@ const navigationInviteSchema = new Schema(
     merged: { type: Boolean, default: false },
     status: {
       type: String,
-      enum: ["pending", "accepted", "rejected"],
+      enum: ["pending", "accepted", "rejected", "ended"],
       default: "pending",
     },
+    /** Who ended the shared trip — lets the SSE notify only the OTHER partner. */
+    endedBy: { type: String },
     // TTL: auto-delete after 5 minutes so stale invites never pile up.
     expiresAt: {
       type: Date,
