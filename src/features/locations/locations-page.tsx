@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { AnimatePresence, motion } from "framer-motion";
@@ -25,10 +25,14 @@ import {
   Circle,
   WifiOff,
   Loader2,
+  Users,
+  UserRound,
+  X,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { useLiveNavigation } from "./use-live-navigation";
+import { useNavigationInvites } from "./use-navigation-invites";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
 import type { Category } from "@/lib/districts-categories";
@@ -66,6 +70,17 @@ export function LocationsPage() {
   const [partnerRouteDurationSeconds, setPartnerRouteDurationSeconds] = useState<number | null>(null);
   
   const isRecalculating = useRef(false);
+
+  // ── Companion navigation ("Cùng khởi hành") ──
+  const [showCompanionChoice, setShowCompanionChoice] = useState(false);
+  const [companionLocationId, setCompanionLocationId] = useState<string | null>(null);
+  const [companionLocationName, setCompanionLocationName] = useState("");
+  const [pendingSentInviteId, setPendingSentInviteId] = useState<string | null>(null);
+  const [showIncomingInvite, setShowIncomingInvite] = useState(false);
+  const navInvites = useNavigationInvites();
+  const sendInvite = trpc.location.sendNavInvite.useMutation();
+  const respondInvite = trpc.location.respondNavInvite.useMutation();
+  const cancelInvite = trpc.location.cancelNavInvite.useMutation();
   
   const nav = useLiveNavigation({
     onOffRoute: async (currentGeo) => {
@@ -115,6 +130,84 @@ export function LocationsPage() {
   
   const userAvatar = session?.user.image || undefined;
   const partnerAvatar = members.data?.find((m) => m.id !== session?.user.id)?.image || undefined;
+  const hasTwoMembers = (members.data?.length ?? 0) >= 2;
+
+  // ── SSE event handlers ──
+
+  // When an incoming invite is detected via SSE, show the modal.
+  useEffect(() => {
+    if (navInvites.incomingInvite && navInvites.incomingInvite.status === "pending") {
+      setShowIncomingInvite(true);
+    }
+  }, [navInvites.incomingInvite]);
+
+  // When our sent invite gets accepted, auto-start navigation.
+  useEffect(() => {
+    if (
+      navInvites.inviteResponse &&
+      navInvites.inviteResponse.status === "accepted" &&
+      navInvites.inviteResponse.id === pendingSentInviteId
+    ) {
+      // Partner accepted! Find the location and start navigation.
+      const locId = navInvites.inviteResponse.locationId;
+      const loc = list.data?.find((l) => l.id === locId);
+      if (loc?.geo) {
+        goToLocation(loc.id, loc.geo);
+        // Auto-start live tracking after a short delay for route to load.
+        setTimeout(() => {
+          setFocusGeo(null);
+          nav.start();
+        }, 2000);
+      }
+      setPendingSentInviteId(null);
+      navInvites.clearResponse();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navInvites.inviteResponse, pendingSentInviteId]);
+
+  // Handle sending a companion invite.
+  const handleSendCompanionInvite = useCallback(
+    async (locationId: string, locationName: string) => {
+      try {
+        const result = await sendInvite.mutateAsync({ locationId, locationName });
+        setPendingSentInviteId(result.id);
+        setShowCompanionChoice(false);
+      } catch (err) {
+        console.error("Failed to send invite", err);
+        setShowCompanionChoice(false);
+      }
+    },
+    [sendInvite],
+  );
+
+  // Handle responding to an incoming invite.
+  const handleRespondToInvite = useCallback(
+    async (inviteId: string, accept: boolean) => {
+      try {
+        const result = await respondInvite.mutateAsync({ inviteId, accept });
+        setShowIncomingInvite(false);
+        navInvites.clearIncoming();
+
+        if (accept && result.locationId) {
+          // Accepted! Navigate to the location.
+          const loc = list.data?.find((l) => l.id === result.locationId);
+          if (loc?.geo) {
+            goToLocation(loc.id, loc.geo);
+            setTimeout(() => {
+              setFocusGeo(null);
+              nav.start();
+            }, 2000);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to respond to invite", err);
+        setShowIncomingInvite(false);
+        navInvites.clearIncoming();
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [respondInvite, list.data],
+  );
 
   // In-app "Chỉ đường": select the pin, fly to it, then get the user's location
   // and draw the route. Errors surface to the user instead of failing silently.
@@ -415,11 +508,39 @@ export function LocationsPage() {
               >
                 <Square className="h-4 w-4" /> Dừng theo dõi
               </Button>
+            ) : hasTwoMembers ? (
+              /* Space has 2 members — show choice */
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2"
+                  onClick={() => {
+                    setFocusGeo(null);
+                    nav.start();
+                  }}
+                >
+                  <UserRound className="h-4 w-4" /> Đi 1 mình
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  onClick={() => {
+                    if (!selectedId) return;
+                    const loc = list.data?.find((l) => l.id === selectedId);
+                    if (loc) {
+                      setCompanionLocationId(loc.id);
+                      setCompanionLocationName(loc.name);
+                      setShowCompanionChoice(true);
+                    }
+                  }}
+                >
+                  <Users className="h-4 w-4" /> Cùng khởi hành
+                </Button>
+              </div>
             ) : (
               <Button
                 className="w-full gap-2"
                 onClick={() => {
-                  setFocusGeo(null); // hand the camera to follow-mode, no fly/ease clash
+                  setFocusGeo(null);
                   nav.start();
                 }}
               >
@@ -641,6 +762,154 @@ export function LocationsPage() {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+
+      {/* ── Companion choice confirmation modal ── */}
+      <AnimatePresence>
+        {showCompanionChoice && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={() => setShowCompanionChoice(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
+                  <Users className="h-6 w-6 text-accent" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Cùng khởi hành</h3>
+                  <p className="text-sm text-muted-foreground">Rủ người ấy cùng đi đến</p>
+                </div>
+              </div>
+              <p className="text-center font-medium text-lg">{companionLocationName}</p>
+              <p className="text-xs text-muted-foreground text-center">
+                Người ấy sẽ nhận được thông báo mời. Khi đồng ý, cả 2 sẽ cùng mở bản đồ và thấy avatar của nhau trên đường đi.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowCompanionChoice(false)}>
+                  Hủy
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  disabled={sendInvite.isPending}
+                  onClick={() => {
+                    if (companionLocationId) {
+                      handleSendCompanionInvite(companionLocationId, companionLocationName);
+                    }
+                  }}
+                >
+                  {sendInvite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+                  Gửi lời mời
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Waiting for partner to accept ── */}
+      <AnimatePresence>
+        {pendingSentInviteId && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+          >
+            <div className="flex items-center gap-3 rounded-2xl bg-card px-5 py-3 shadow-xl border border-border">
+              <Loader2 className="h-5 w-5 animate-spin text-accent" />
+              <span className="text-sm font-medium">Đang chờ người ấy đồng ý...</span>
+              <button
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => {
+                  cancelInvite.mutate({ inviteId: pendingSentInviteId });
+                  setPendingSentInviteId(null);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Incoming invite modal ── */}
+      <AnimatePresence>
+        {showIncomingInvite && navInvites.incomingInvite && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", damping: 20 }}
+              className="bg-card rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4"
+            >
+              <div className="flex items-center justify-center">
+                <div className="relative">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-100">
+                    <Users className="h-8 w-8 text-rose-500" />
+                  </div>
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-rose-500" />
+                  </span>
+                </div>
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="font-semibold text-lg">Lời mời cùng đi!</h3>
+                <p className="text-muted-foreground text-sm">
+                  Người ấy rủ bạn cùng đi đến
+                </p>
+                <p className="font-bold text-accent text-lg">
+                  {navInvites.incomingInvite.locationName}
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Cả 2 sẽ cùng mở bản đồ và thấy avatar của nhau trên đường đi nha 💕
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={respondInvite.isPending}
+                  onClick={() =>
+                    handleRespondToInvite(navInvites.incomingInvite!.id, false)
+                  }
+                >
+                  Để sau
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  disabled={respondInvite.isPending}
+                  onClick={() =>
+                    handleRespondToInvite(navInvites.incomingInvite!.id, true)
+                  }
+                >
+                  {respondInvite.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                  Cùng đi!
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

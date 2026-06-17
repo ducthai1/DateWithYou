@@ -8,6 +8,8 @@ import {
   type LocationConfig,
 } from "@/server/db/models/location-config";
 import { LiveLocationModel } from "@/server/db/models/live-location";
+import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
+import { SpaceModel } from "@/server/db/models/space";
 import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 import { requireEnv } from "@/lib/env";
 
@@ -330,6 +332,105 @@ export const locationRouter = router({
       }).lean<{ userId: string; lat: number; lng: number; heading: number | null; updatedAt: Date }[]>();
 
       return partners;
+    }),
+
+  // ── Navigation Invites ("Cùng khởi hành") ─────────────────────────────
+
+  /**
+   * Send a "Cùng khởi hành" invite to the partner in the same space.
+   * Cancels any existing pending invite from this user first.
+   */
+  sendNavInvite: protectedProcedure
+    .input(
+      z.object({
+        locationId: z.string().min(1),
+        locationName: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+
+      // Find the partner in this space.
+      const space = await SpaceModel.findById(ctx.spaceId)
+        .select("members")
+        .lean<{ members: string[] }>();
+      if (!space) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
+      const partnerId = space.members.find((m) => m !== ctx.userId);
+      if (!partnerId)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cần có 2 người trong không gian để rủ nhau đi.",
+        });
+
+      // Cancel any previous pending invite from this user.
+      await NavigationInviteModel.updateMany(
+        { spaceId: ctx.spaceId, initiatorId: ctx.userId, status: "pending" },
+        { status: "rejected" },
+      );
+
+      const invite = await NavigationInviteModel.create({
+        spaceId: ctx.spaceId,
+        initiatorId: ctx.userId,
+        targetId: partnerId,
+        locationId: input.locationId,
+        locationName: input.locationName,
+      });
+
+      return { id: String(invite._id) };
+    }),
+
+  /** Accept or reject an incoming navigation invite. */
+  respondNavInvite: protectedProcedure
+    .input(
+      z.object({
+        inviteId: z.string().min(1),
+        accept: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const invite = await NavigationInviteModel.findOneAndUpdate(
+        {
+          _id: input.inviteId,
+          targetId: ctx.userId,
+          status: "pending",
+        },
+        { status: input.accept ? "accepted" : "rejected" },
+        { new: true },
+      ).lean<{
+        _id: unknown;
+        locationId: string;
+        locationName: string;
+        status: string;
+      }>();
+
+      if (!invite)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Lời mời không tồn tại hoặc đã hết hạn.",
+        });
+
+      return {
+        id: String(invite._id),
+        locationId: invite.locationId,
+        status: invite.status,
+      };
+    }),
+
+  /** Cancel a pending invite the current user sent. */
+  cancelNavInvite: protectedProcedure
+    .input(z.object({ inviteId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      await NavigationInviteModel.findOneAndUpdate(
+        {
+          _id: input.inviteId,
+          initiatorId: ctx.userId,
+          status: "pending",
+        },
+        { status: "rejected" },
+      );
+      return { ok: true };
     }),
 });
 

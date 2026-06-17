@@ -1,0 +1,183 @@
+import { NextRequest } from "next/server";
+import { auth } from "@/server/auth/auth";
+import { connectToDatabase } from "@/server/db/connect";
+import { SpaceModel } from "@/server/db/models/space";
+import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
+
+/**
+ * SSE endpoint for navigation invites.
+ *
+ * Instead of the client polling every 3-4 seconds, the server keeps a single
+ * HTTP connection open and only pushes data when the invite status *actually
+ * changes*. The browser reconnects automatically on network glitches via the
+ * native EventSource API.
+ *
+ * Each tick of the server loop (every 3 s) is a lightweight single-document
+ * MongoDB query (indexed) — far cheaper than N client-initiated HTTP round
+ * trips because:
+ *   1. There is exactly ONE connection per browser tab, not one per poll.
+ *   2. No TCP/TLS handshake overhead on every check.
+ *   3. No request parsing / response serialisation overhead.
+ *   4. The query only runs while the SSE connection is alive.
+ */
+
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest) {
+  // ── Auth ──
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session?.user?.id) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  const userId = session.user.id;
+
+  // ── Resolve space ──
+  await connectToDatabase();
+  const cookieStr = req.headers.get("cookie");
+  let activeSpaceId: string | null = null;
+  if (cookieStr) {
+    const match = cookieStr.match(/active_space_id=([^;]+)/);
+    if (match) activeSpaceId = match[1];
+  }
+
+  let space;
+  if (activeSpaceId) {
+    space = await SpaceModel.findOne({
+      _id: activeSpaceId,
+      members: userId,
+    })
+      .select("_id")
+      .lean<{ _id: unknown }>();
+  }
+  if (!space) {
+    space = await SpaceModel.findOne({ members: userId })
+      .select("_id")
+      .lean<{ _id: unknown }>();
+  }
+  if (!space) {
+    return new Response("No space", { status: 403 });
+  }
+  const spaceId = String(space._id);
+
+  // ── SSE stream ──
+  const encoder = new TextEncoder();
+  let closed = false;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: unknown) => {
+        if (closed) return;
+        try {
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+          );
+        } catch {
+          closed = true;
+        }
+      };
+
+      // Send a heartbeat immediately so the client knows the connection is live.
+      send("heartbeat", { ts: Date.now() });
+
+      // Track the last known state so we only push on *change*.
+      let lastInviteId: string | null = null;
+      let lastStatus: string | null = null;
+      // Also track invites the current user SENT (to know when accepted).
+      let lastSentInviteId: string | null = null;
+      let lastSentStatus: string | null = null;
+
+      const poll = async () => {
+        if (closed) return;
+        try {
+          // 1. Check for pending invites targeting this user.
+          const incoming = await NavigationInviteModel.findOne({
+            spaceId,
+            targetId: userId,
+            status: "pending",
+          }).lean<{
+            _id: unknown;
+            initiatorId: string;
+            locationId: string;
+            locationName: string;
+            status: string;
+          }>();
+
+          const inId = incoming ? String(incoming._id) : null;
+          const inStatus = incoming?.status ?? null;
+
+          if (inId !== lastInviteId || inStatus !== lastStatus) {
+            lastInviteId = inId;
+            lastStatus = inStatus;
+            if (incoming) {
+              send("invite", {
+                id: String(incoming._id),
+                initiatorId: incoming.initiatorId,
+                locationId: incoming.locationId,
+                locationName: incoming.locationName,
+                status: incoming.status,
+              });
+            }
+          }
+
+          // 2. Check invites this user SENT — to detect acceptance.
+          const sent = await NavigationInviteModel.findOne({
+            spaceId,
+            initiatorId: userId,
+            status: { $in: ["pending", "accepted", "rejected"] },
+          })
+            .sort({ createdAt: -1 })
+            .lean<{
+              _id: unknown;
+              targetId: string;
+              locationId: string;
+              locationName: string;
+              status: string;
+            }>();
+
+          const sentId = sent ? String(sent._id) : null;
+          const sentStatus = sent?.status ?? null;
+
+          if (sentId !== lastSentInviteId || sentStatus !== lastSentStatus) {
+            lastSentInviteId = sentId;
+            lastSentStatus = sentStatus;
+            if (sent) {
+              send("invite-response", {
+                id: String(sent._id),
+                targetId: sent.targetId,
+                locationId: sent.locationId,
+                locationName: sent.locationName,
+                status: sent.status,
+              });
+            }
+          }
+        } catch (err) {
+          console.error("[SSE nav-invite poll]", err);
+        }
+      };
+
+      // Initial check, then every 3 seconds.
+      await poll();
+      const interval = setInterval(poll, 3000);
+
+      // Clean up when the client disconnects.
+      req.signal.addEventListener("abort", () => {
+        closed = true;
+        clearInterval(interval);
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
+      });
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no", // Nginx / Vercel: don't buffer the stream.
+    },
+  });
+}
