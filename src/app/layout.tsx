@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display, Lora } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import "react-photo-view/dist/react-photo-view.css";
@@ -15,6 +15,21 @@ import { THEME_COOKIE_NAME, resolveThemeKey } from "@/lib/theme-presets";
 const inter = Inter({
   variable: "--font-sans-inter",
   subsets: ["latin"],
+});
+
+// Romantic serif pair used by the Time Capsule letter (display title + body).
+// Vietnamese subset so accented glyphs render correctly. Loaded globally as CSS
+// vars but applied only where opted in — the app-wide `font-serif` stays Inter.
+const playfair = Playfair_Display({
+  variable: "--font-display",
+  subsets: ["latin", "vietnamese"],
+  weight: ["500", "600", "700"],
+});
+const lora = Lora({
+  variable: "--font-letter",
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -40,7 +55,7 @@ export default async function RootLayout({
 
   return (
     <html lang="vi" data-theme={themeKey}>
-      <body className={`${inter.variable} antialiased`}>
+      <body className={`${inter.variable} ${playfair.variable} ${lora.variable} antialiased`}>
         <Providers>
           <SpaceGuard />
           <SideNav />
