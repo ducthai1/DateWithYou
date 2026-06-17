@@ -4,9 +4,9 @@ import { useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
+
 import { useCelebrate } from "@/components/ui/celebrate";
-import { Sparkles } from "lucide-react";
+import { Sparkles, CalendarHeart } from "lucide-react";
 import { BUCKETS, mergeTags, type BucketKey } from "@/lib/plan-meta";
 import { MemoryForm } from "@/features/memories/memory-form";
 import { BucketSection } from "./bucket-section";
@@ -97,13 +97,10 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
 
               <div className="relative">
                 {items.length === 0 && (
-                  <div className="absolute inset-0 z-0 flex items-center justify-center opacity-80 pointer-events-none select-none">
-                    <EmptyState
-                      icon="calendar-heart"
-                      title="Ngày này còn trống"
-                      subtitle="Thêm một việc để cùng lên kế hoạch nhé."
-                      className="py-0"
-                    />
+                  <div className="absolute inset-0 z-0 flex flex-col items-center justify-center opacity-20 pointer-events-none select-none text-muted-foreground mix-blend-multiply dark:mix-blend-screen">
+                    <CalendarHeart className="h-20 w-20 mb-3 text-muted-foreground" strokeWidth={1.5} />
+                    <p className="font-serif text-2xl font-semibold leading-snug">Ngày này còn trống</p>
+                    <p className="max-w-xs text-sm text-center mt-1">Thêm một việc để cùng lên kế hoạch nhé.</p>
                   </div>
                 )}
                 <div className="relative z-10 space-y-6">
