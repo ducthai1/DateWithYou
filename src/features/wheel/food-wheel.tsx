@@ -111,7 +111,7 @@ export function FoodWheel() {
       : "var(--muted)";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 py-8 md:px-[30px]">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-8 pb-28 md:pb-8 md:px-[30px]">
       <h1 className="text-2xl font-semibold">Hôm nay ăn gì?</h1>
 
       <Tabs tabs={SOURCE_TABS} value={source} onChange={setSource} className="w-full max-w-xs" />

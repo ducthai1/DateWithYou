@@ -54,7 +54,7 @@ export function MemoryTimeline() {
   }, {});
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 py-6 md:px-[30px]">
+    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-28 md:pb-6 md:px-[30px]">
       <div className="flex items-center justify-between">
         <h1 className="text-h1 font-serif">Dòng kỷ niệm</h1>
         <Button onClick={() => setAdding(true)}>+ Thêm</Button>

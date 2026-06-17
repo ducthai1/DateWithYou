@@ -132,7 +132,7 @@ export function SpaceSettings() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 py-12 md:px-[30px]">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 pt-12 pb-28 md:pb-12 md:px-[30px]">
       <h1 className="text-3xl font-semibold">Cài đặt</h1>
 
       {/* ── CÀI ĐẶT CÁ NHÂN ── */}

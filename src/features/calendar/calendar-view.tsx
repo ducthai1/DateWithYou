@@ -37,7 +37,7 @@ export function CalendarView() {
   const goToday = () => setYM(initialYM());
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 py-5 md:px-[30px]">
+    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-5 pb-28 md:pb-5 md:px-[30px]">
       <CountdownBanner />
 
       <div className="flex items-center gap-2">
