@@ -13,15 +13,16 @@ const recipeSchema = new Schema(
 
 /**
  * A saved item in the couple's collection: a song/playlist, a tasty-food video,
- * or a recipe. Link-only (no file hosting) — `url` + parsed embed metadata for
- * music/video; `recipe` carries structured fields. Scoped to a space.
+ * a recipe, or a game. Link-only (no file hosting) — `url` + parsed embed
+ * metadata for music/video; `recipe` carries structured fields. Scoped to a
+ * space. Keep `kind` in sync with the router's `kindEnum`.
  */
 const mediaItemSchema = new Schema(
   {
     spaceId: { type: String, required: true, index: true },
     kind: {
       type: String,
-      enum: ["music", "food_video", "recipe"],
+      enum: ["music", "food_video", "recipe", "game"],
       required: true,
     },
     title: { type: String, required: true },
