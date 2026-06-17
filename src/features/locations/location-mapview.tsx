@@ -40,6 +40,7 @@ export function LocationMapView({
   focusGeo,
   userGeo,
   partnerLocation,
+  userPingAction,
   followGeo,
   heading,
   userAvatar,
@@ -56,6 +57,7 @@ export function LocationMapView({
   focusGeo?: LatLng | null;
   userGeo?: LatLng | null;
   partnerLocation?: { lat: number; lng: number; pingAction?: string | null } | null;
+  userPingAction?: string | null;
   followGeo?: LatLng | null;
   /** Device heading in degrees (0 = north). Rotates the map when following. */
   heading?: number | null;
@@ -129,31 +131,45 @@ export function LocationMapView({
 
   // ── QUICK PINGS (EMOTION BUBBLES) ──
   const [activePing, setActivePing] = useState<{ emoji: string; id: number } | null>(null);
+  const [activeUserPing, setActiveUserPing] = useState<{ emoji: string; id: number } | null>(null);
   
+  const getPingEmoji = (action: string, isPartner: boolean) => {
+    let emoji = "";
+    if (action === "HOT") emoji = "🥵 Nóng quá!";
+    if (action === "JAM") emoji = "🐌 Kẹt xe cứng ngắc!";
+    if (action === "WAIT") emoji = "🥺 Đợi xíu nha!";
+    if (action === "HURRY") {
+      emoji = "🚨 Rung rinh!";
+      if (isPartner && typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate([200, 100, 200, 100, 500]); // Urgent pattern
+      }
+    }
+    return emoji;
+  };
+
   useEffect(() => {
     if (partnerLocation?.pingAction) {
-      const action = partnerLocation.pingAction;
-      let emoji = "";
-      if (action === "HOT") emoji = "🥵 Nóng quá!";
-      if (action === "JAM") emoji = "🐌 Kẹt xe cứng ngắc!";
-      if (action === "WAIT") emoji = "🥺 Đợi xíu nha!";
-      if (action === "HURRY") {
-        emoji = "🚨 Rung rinh!";
-        if (typeof navigator !== "undefined" && navigator.vibrate) {
-          navigator.vibrate([200, 100, 200, 100, 500]); // Urgent pattern
-        }
-      }
-      
+      const emoji = getPingEmoji(partnerLocation.pingAction, true);
       if (emoji) {
         const pingId = Date.now();
         setActivePing({ emoji, id: pingId });
         // Bubble disappears after 4 seconds
-        setTimeout(() => {
-          setActivePing((prev) => (prev?.id === pingId ? null : prev));
-        }, 4000);
+        setTimeout(() => setActivePing((prev) => (prev?.id === pingId ? null : prev)), 4000);
       }
     }
   }, [partnerLocation?.pingAction]);
+
+  useEffect(() => {
+    if (userPingAction) {
+      const emoji = getPingEmoji(userPingAction, false);
+      if (emoji) {
+        const pingId = Date.now();
+        setActiveUserPing({ emoji, id: pingId });
+        // Bubble disappears after 4 seconds
+        setTimeout(() => setActiveUserPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
+      }
+    }
+  }, [userPingAction]);
 
   const handleInteraction = () => {
     setIsUserInteracting(true);
@@ -364,6 +380,21 @@ export function LocationMapView({
                   />
                 </svg>
                 
+                {/* Emotion Bubble for User */}
+                <AnimatePresence>
+                  {activeUserPing && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.5, y: -10 }}
+                      className="absolute -top-12 z-20 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-sm font-bold shadow-lg border-2 border-blue-100 flex items-center"
+                    >
+                      {activeUserPing.emoji}
+                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Centre avatar or dot */}
                 {userAvatar ? (
                   <img src={userAvatar} alt="Bạn" className="relative z-10 h-8 w-8 rounded-full border-[2.5px] border-white object-cover shadow-sm bg-muted" />
@@ -374,6 +405,21 @@ export function LocationMapView({
             ) : (
               /* Simple avatar or dot when heading is unknown */
               <div className="relative flex items-center justify-center">
+                {/* Emotion Bubble for User */}
+                <AnimatePresence>
+                  {activeUserPing && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.5, y: -10 }}
+                      className="absolute -top-12 z-20 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-sm font-bold shadow-lg border-2 border-blue-100 flex items-center"
+                    >
+                      {activeUserPing.emoji}
+                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {userAvatar ? (
                   <img src={userAvatar} alt="Bạn" className="h-9 w-9 rounded-full border-[2.5px] border-white object-cover shadow-md ring-4 ring-blue-500/30 bg-muted" />
                 ) : (

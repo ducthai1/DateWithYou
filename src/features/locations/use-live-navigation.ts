@@ -44,6 +44,8 @@ export type LiveNavigation = {
   setRouteInfo: (coords: Array<[number, number]>, totalMeters: number, totalSeconds: number) => void;
   /** Send a quick ping emotion to the partner */
   sendPingAction: (action: string) => void;
+  /** User's own latest ping action to show their own emotion locally */
+  userPingAction: string | null;
 };
 
 // ── Geo helpers ──────────────────────────────────────────────────────────────
@@ -136,6 +138,7 @@ export function useLiveNavigation(options?: {
   const [traveled, setTraveled] = useState<Array<[number, number]>>([]);
   const [remainingMeters, setRemainingMeters] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [userPingAction, setUserPingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(
     typeof navigator !== "undefined" ? !navigator.onLine : false,
@@ -192,6 +195,7 @@ export function useLiveNavigation(options?: {
       pingAction: action,
     }, {
       onSuccess: (partners) => {
+        setUserPingAction(action);
         if (partners && partners.length > 0) {
           setPartnerLocation(partners[0]);
         } else {
@@ -390,6 +394,7 @@ export function useLiveNavigation(options?: {
     speedKmH,
     isOffline,
     partnerLocation,
+    userPingAction,
     traveled,
     remainingMeters,
     remainingSeconds,

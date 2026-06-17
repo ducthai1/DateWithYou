@@ -681,6 +681,7 @@ export function LocationsPage() {
               focusGeo={focusGeo}
               userGeo={liveUser}
               partnerLocation={nav.partnerLocation}
+              userPingAction={nav.userPingAction}
               followGeo={nav.isNavigating ? nav.userGeo : null}
               heading={nav.isNavigating ? nav.heading : null}
               userAvatar={userAvatar}
