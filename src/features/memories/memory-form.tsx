@@ -15,8 +15,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
 import { parseEmbed, normalizeUrl, PROVIDER_LABEL, type ParsedEmbed } from "@/lib/embed";
-import Zoom from "react-medium-image-zoom";
-import "react-medium-image-zoom/dist/styles.css";
+import { PhotoView } from "react-photo-view";
+
 
 /** Try to extract valid URLs from a string (caption, pasted text, etc.) */
 function extractUrls(text: string): string[] {
@@ -267,9 +267,9 @@ export function MemoryForm({
       {photos.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {photos.map((p) => (
-            <Zoom key={p.publicId}>
-              <img src={p.url} alt="" className="h-16 w-16 rounded-lg object-cover" />
-            </Zoom>
+            <PhotoView key={p.publicId} src={p.url}>
+              <img src={p.url} alt="" className="h-16 w-16 cursor-zoom-in rounded-lg object-cover" />
+            </PhotoView>
           ))}
         </div>
       )}

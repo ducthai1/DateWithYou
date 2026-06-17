@@ -5,7 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/modal";
-import Zoom from "react-medium-image-zoom";
+import { PhotoView } from "react-photo-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmbedPlayer } from "@/components/ui/embed-player";
@@ -207,9 +207,9 @@ export function MemoryTimeline() {
               {selectedMemo.photos.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
                   {selectedMemo.photos.map((p: { url: string; publicId: string }) => (
-                    <Zoom key={p.publicId}>
-                      <img src={p.url} alt={selectedMemo.title} loading="lazy" className="w-full rounded-lg object-cover" />
-                    </Zoom>
+                    <PhotoView key={p.publicId} src={p.url}>
+                      <img src={p.url} alt={selectedMemo.title} loading="lazy" className="w-full cursor-zoom-in rounded-lg object-cover" />
+                    </PhotoView>
                   ))}
                 </div>
               )}

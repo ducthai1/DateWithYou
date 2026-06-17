@@ -12,7 +12,7 @@ import { MemoryForm } from "@/features/memories/memory-form";
 import { BucketSection } from "./bucket-section";
 import { PlanItemForm, type EditableItem } from "./plan-item-form";
 import type { DayItem } from "./plan-item-card";
-import Zoom from "react-medium-image-zoom";
+import { PhotoView } from "react-photo-view";
 
 function formatDay(key: string): string {
   const [y, m, d] = key.split("-").map(Number);
@@ -86,9 +86,9 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
                     {detail.data.onThisDay.map((m) => (
                       <div key={m.id} className="flex shrink-0 items-center gap-1.5 text-xs">
                         {m.thumbnailUrl && (
-                          <Zoom>
-                            <img src={m.thumbnailUrl} alt="" className="h-8 w-8 rounded-md object-cover" />
-                          </Zoom>
+                          <PhotoView src={m.thumbnailUrl}>
+                            <img src={m.thumbnailUrl} alt="" className="h-8 w-8 cursor-zoom-in rounded-md object-cover" />
+                          </PhotoView>
                         )}
                         <span className="text-foreground">{m.title} <span className="text-muted-foreground">({m.year})</span></span>
                       </div>

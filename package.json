@@ -27,7 +27,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-map-gl": "^8.1.1",
-    "react-medium-image-zoom": "^5.4.8",
+    "react-photo-view": "^1.2.7",
     "resend": "^6.12.4",
     "server-only": "^0.0.1",
     "superjson": "^2.2.6",
