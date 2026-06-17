@@ -748,7 +748,7 @@ export function LocationsPage() {
           </div>
         </div>
 
-        <div className="order-2 space-y-4 lg:order-none">
+        <div className="order-2 space-y-4 lg:order-none pb-28 md:pb-0">
           <AnimatePresence initial={false}>
             {formOpen && (
               <motion.div
@@ -803,7 +803,7 @@ export function LocationsPage() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="truncate font-medium">{l.name}</p>
+                          <p className="flex-1 truncate font-medium">{l.name}</p>
                           <button
                             onClick={() => toggle.mutate({ id: l.id })}
                             className={cn(
