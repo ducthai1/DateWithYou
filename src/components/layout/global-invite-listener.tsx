@@ -21,13 +21,23 @@ export function GlobalInviteListener() {
     }
   }, [navInvites.incomingInvite]);
 
-  // Handle auto-nav for the sender when partner accepts
+  // Handle auto-nav for the sender when partner accepts, or dispatch event if rejected
   useEffect(() => {
-    if (navInvites.inviteResponse && navInvites.inviteResponse.status === "accepted") {
+    if (navInvites.inviteResponse) {
+      const status = navInvites.inviteResponse.status;
       const locId = navInvites.inviteResponse.locationId;
-      navInvites.clearResponse();
-      // Force a redirect to /map with nav flags so it auto-starts
-      router.push(`/map?loc=${locId}&nav=1&t=${Date.now()}`);
+      const id = navInvites.inviteResponse.id;
+
+      if (status === "accepted") {
+        navInvites.clearResponse();
+        // Force a redirect to /map with nav flags so it auto-starts
+        router.push(`/map?loc=${locId}&nav=1&t=${Date.now()}`);
+      } else if (status === "rejected") {
+        navInvites.clearResponse();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("invite-rejected", { detail: { id } }));
+        }
+      }
     }
   }, [navInvites, router]);
 

@@ -81,6 +81,7 @@ export function LocationsPage() {
   const [companionLocationId, setCompanionLocationId] = useState<string | null>(null);
   const [companionLocationName, setCompanionLocationName] = useState("");
   const [pendingSentInviteId, setPendingSentInviteId] = useState<string | null>(null);
+  const [rejectedMessage, setRejectedMessage] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const sendInvite = trpc.location.sendNavInvite.useMutation();
   const cancelInvite = trpc.location.cancelNavInvite.useMutation();
@@ -233,6 +234,20 @@ export function LocationsPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, list.data]);
+
+  // Listen for invite rejection from GlobalInviteListener
+  useEffect(() => {
+    const handleRejected = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.id === pendingSentInviteId) {
+        setPendingSentInviteId(null);
+        setRejectedMessage("Người ấy đang bận hoặc đã lỡ tay đóng lời mời!");
+        setTimeout(() => setRejectedMessage(null), 4000);
+      }
+    };
+    window.addEventListener("invite-rejected", handleRejected);
+    return () => window.removeEventListener("invite-rejected", handleRejected);
+  }, [pendingSentInviteId]);
 
   // Handle sending a companion invite.
   const handleSendCompanionInvite = useCallback(
@@ -1112,13 +1127,13 @@ export function LocationsPage() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+            className="fixed bottom-6 left-1/2 z-50 w-[90%] max-w-sm -translate-x-1/2"
           >
             <div className="flex items-center gap-3 rounded-2xl bg-card px-5 py-3 shadow-xl border border-border">
-              <Loader2 className="h-5 w-5 animate-spin text-accent" />
-              <span className="text-sm font-medium">Đang chờ người ấy đồng ý...</span>
+              <Loader2 className="h-5 w-5 animate-spin text-accent shrink-0" />
+              <span className="text-sm font-medium flex-1">Đang chờ người ấy đồng ý...</span>
               <button
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors shrink-0 p-1"
                 onClick={() => {
                   cancelInvite.mutate({ inviteId: pendingSentInviteId });
                   setPendingSentInviteId(null);
@@ -1126,6 +1141,21 @@ export function LocationsPage() {
               >
                 <X className="h-4 w-4" />
               </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Rejected message ── */}
+        {rejectedMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 left-1/2 z-50 w-[90%] max-w-sm -translate-x-1/2"
+          >
+            <div className="flex items-center gap-3 rounded-2xl bg-rose-50 text-rose-600 px-5 py-3 shadow-xl border border-rose-200">
+              <span className="shrink-0 text-lg">💔</span>
+              <span className="text-sm font-medium">{rejectedMessage}</span>
             </div>
           </motion.div>
         )}
