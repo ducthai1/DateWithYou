@@ -35,7 +35,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { useLiveNavigation } from "./use-live-navigation";
-import { useNavigationInvites } from "./use-navigation-invites";
+import { useSearchParams } from "next/navigation";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
 import type { Category } from "@/lib/districts-categories";
@@ -81,10 +81,8 @@ export function LocationsPage() {
   const [companionLocationId, setCompanionLocationId] = useState<string | null>(null);
   const [companionLocationName, setCompanionLocationName] = useState("");
   const [pendingSentInviteId, setPendingSentInviteId] = useState<string | null>(null);
-  const [showIncomingInvite, setShowIncomingInvite] = useState(false);
-  const navInvites = useNavigationInvites();
+  const searchParams = useSearchParams();
   const sendInvite = trpc.location.sendNavInvite.useMutation();
-  const respondInvite = trpc.location.respondNavInvite.useMutation();
   const cancelInvite = trpc.location.cancelNavInvite.useMutation();
   const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
 
@@ -202,38 +200,39 @@ export function LocationsPage() {
     }
   }, [selectedId, list.data]);
 
-  // ── SSE event handlers ──
-
-  // When an incoming invite is detected via SSE, show the modal.
+  // Auto-fetch partner route when their live location connects and we don't have their route yet
   useEffect(() => {
-    if (navInvites.incomingInvite && navInvites.incomingInvite.status === "pending") {
-      setShowIncomingInvite(true);
+    if (selectedId && nav.partnerLocation && !partnerRouteGeometry && !isRecalculating.current) {
+      utils.location.getRoute.fetch({
+        destinationId: selectedId,
+        origin: { lat: nav.partnerLocation.lat, lng: nav.partnerLocation.lng }
+      }).then(r => {
+        setPartnerRouteGeometry(r.geometry);
+        setPartnerRouteDistanceMeters(r.distanceMeters);
+        setPartnerRouteDurationSeconds(r.durationSeconds);
+      }).catch(() => {
+        // ignore
+      });
     }
-  }, [navInvites.incomingInvite]);
+  }, [selectedId, nav.partnerLocation?.lat, nav.partnerLocation?.lng, partnerRouteGeometry, utils.location]);
 
-  // When our sent invite gets accepted, auto-start navigation.
+  // Auto-start navigation if redirected from GlobalInviteListener
   useEffect(() => {
-    if (
-      navInvites.inviteResponse &&
-      navInvites.inviteResponse.status === "accepted" &&
-      navInvites.inviteResponse.id === pendingSentInviteId
-    ) {
-      // Partner accepted! Find the location and start navigation.
-      const locId = navInvites.inviteResponse.locationId;
-      const loc = list.data?.find((l) => l.id === locId);
+    const locId = searchParams.get('loc');
+    const startNav = searchParams.get('nav');
+    if (locId && startNav === "1" && list.data && !selectedId) {
+      const loc = list.data.find(l => l.id === locId);
       if (loc?.geo) {
         goToLocation(loc.id, loc.geo);
-        // Auto-start live tracking after a short delay for route to load.
+        setPendingSentInviteId(null);
         setTimeout(() => {
           setFocusGeo(null);
           nav.start();
         }, 2000);
       }
-      setPendingSentInviteId(null);
-      navInvites.clearResponse();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navInvites.inviteResponse, pendingSentInviteId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, list.data]);
 
   // Handle sending a companion invite.
   const handleSendCompanionInvite = useCallback(
@@ -248,35 +247,6 @@ export function LocationsPage() {
       }
     },
     [sendInvite],
-  );
-
-  // Handle responding to an incoming invite.
-  const handleRespondToInvite = useCallback(
-    async (inviteId: string, accept: boolean) => {
-      try {
-        const result = await respondInvite.mutateAsync({ inviteId, accept });
-        setShowIncomingInvite(false);
-        navInvites.clearIncoming();
-
-        if (accept && result.locationId) {
-          // Accepted! Navigate to the location.
-          const loc = list.data?.find((l) => l.id === result.locationId);
-          if (loc?.geo) {
-            goToLocation(loc.id, loc.geo);
-            setTimeout(() => {
-              setFocusGeo(null);
-              nav.start();
-            }, 2000);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to respond to invite", err);
-        setShowIncomingInvite(false);
-        navInvites.clearIncoming();
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [respondInvite, list.data],
   );
 
   // In-app "Chỉ đường": select the pin, fly to it, then get the user's location
@@ -1157,76 +1127,6 @@ export function LocationsPage() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Incoming invite modal ── */}
-      <AnimatePresence>
-        {showIncomingInvite && navInvites.incomingInvite && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: "spring", damping: 20 }}
-              className="bg-card rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4"
-            >
-              <div className="flex items-center justify-center">
-                <div className="relative">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-100">
-                    <Users className="h-8 w-8 text-rose-500" />
-                  </div>
-                  <span className="absolute -top-1 -right-1 flex h-5 w-5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-5 w-5 bg-rose-500" />
-                  </span>
-                </div>
-              </div>
-              <div className="text-center space-y-1">
-                <h3 className="font-semibold text-lg">Lời mời cùng đi!</h3>
-                <p className="text-muted-foreground text-sm">
-                  Người ấy rủ bạn cùng đi đến
-                </p>
-                <p className="font-bold text-accent text-lg">
-                  {navInvites.incomingInvite.locationName}
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Cả 2 sẽ cùng mở bản đồ và thấy avatar của nhau trên đường đi nha 💕
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  disabled={respondInvite.isPending}
-                  onClick={() =>
-                    handleRespondToInvite(navInvites.incomingInvite!.id, false)
-                  }
-                >
-                  Để sau
-                </Button>
-                <Button
-                  className="flex-1 gap-2"
-                  disabled={respondInvite.isPending}
-                  onClick={() =>
-                    handleRespondToInvite(navInvites.incomingInvite!.id, true)
-                  }
-                >
-                  {respondInvite.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
-                  Cùng đi!
-                </Button>
-              </div>
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
