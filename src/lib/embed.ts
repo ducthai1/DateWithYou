@@ -1,8 +1,8 @@
 // Link → embed parser shared by memories (embedded media) and the collections
 // library (music / food videos). Pure client-side URL parsing — no network — so
 // it stays free-tier friendly. YouTube & Spotify get real iframe embeds +
-// thumbnails; TikTok gets an oEmbed iframe; Instagram falls back to a link card
-// (their embeds require auth). Unknown links become a generic link card.
+// thumbnails; TikTok gets an oEmbed iframe; Instagram uses its public /embed
+// iframe (no auth needed). Unknown links become a generic link card.
 
 export type EmbedProvider = "youtube" | "spotify" | "tiktok" | "instagram" | "other";
 

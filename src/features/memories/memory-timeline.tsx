@@ -150,9 +150,9 @@ export function MemoryTimeline() {
                       // Play inline on the card — stop clicks bubbling so playing
                       // a track/video doesn't also open the detail modal.
                       <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
-                        {(m.embeds as EmbedField[]).slice(0, 3).map((e: EmbedField, i: number) => (
+                        {(m.embeds as EmbedField[]).slice(0, 3).map((e: EmbedField) => (
                           <EmbedPlayer
-                            key={i}
+                            key={e.url}
                             data={{
                               provider: e.provider as EmbedProvider,
                               url: e.url,
@@ -209,9 +209,9 @@ export function MemoryTimeline() {
               )}
               {(selectedMemo.embeds ?? []).length > 0 && (
                 <div className="space-y-2">
-                  {(selectedMemo.embeds as EmbedField[]).map((e: EmbedField, i: number) => (
+                  {(selectedMemo.embeds as EmbedField[]).map((e: EmbedField) => (
                     <EmbedPlayer
-                      key={i}
+                      key={e.url}
                       data={{
                         provider: e.provider as EmbedProvider,
                         url: e.url,
