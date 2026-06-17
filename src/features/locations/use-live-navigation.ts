@@ -141,15 +141,12 @@ export function useLiveNavigation(options?: {
     typeof navigator !== "undefined" ? !navigator.onLine : false,
   );
   const [partnerLocation, setPartnerLocation] = useState<PartnerLocation | null>(null);
-  
-  const [pendingPingAction, setPendingPingAction] = useState<string | null>(null);
 
   // Store the latest data in a ref so the interval doesn't get cleared on every GPS update
   const pingPayloadRef = useRef({
     userGeo,
     heading,
     speedKmH,
-    pendingPingAction,
   });
 
   // Keep the ref up-to-date with every state change
@@ -158,15 +155,52 @@ export function useLiveNavigation(options?: {
       userGeo,
       heading,
       speedKmH,
-      pendingPingAction,
     };
-  }, [userGeo, heading, speedKmH, pendingPingAction]);
-
-  const sendPingAction = useCallback((action: string) => {
-    setPendingPingAction(action);
-  }, []);
+  }, [userGeo, heading, speedKmH]);
   
   const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
+  const lastPingTime = useRef<number>(0);
+
+  const sendPingAction = useCallback(async (action: string) => {
+    const now = Date.now();
+    // Chặn bấm spam (chờ ít nhất 2.5 giây)
+    if (now - lastPingTime.current < 2500) return;
+    
+    const p = pingPayloadRef.current;
+    if (!p.userGeo) return;
+
+    lastPingTime.current = now;
+
+    let batteryLevel = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nav = navigator as any;
+      if (nav.getBattery) {
+        const battery = await nav.getBattery();
+        batteryLevel = Math.round(battery.level * 100);
+      }
+    } catch {
+      // ignore
+    }
+
+    pingLiveLocation.mutate({
+      lat: p.userGeo.lat,
+      lng: p.userGeo.lng,
+      heading: p.heading,
+      speedKmH: p.speedKmH,
+      batteryLevel,
+      pingAction: action,
+    }, {
+      onSuccess: (partners) => {
+        if (partners && partners.length > 0) {
+          setPartnerLocation(partners[0]);
+        } else {
+          setPartnerLocation(null);
+        }
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   const watchId = useRef<number | null>(null);
   const wakeLock = useRef<WakeLockLike | null>(null);
@@ -319,7 +353,7 @@ export function useLiveNavigation(options?: {
         heading: p.heading,
         speedKmH: p.speedKmH,
         batteryLevel,
-        pingAction: p.pendingPingAction,
+        pingAction: null, // Regular interval clears the action so it doesn't get stuck
       }, {
         onSuccess: (partners) => {
           if (partners && partners.length > 0) {
@@ -327,7 +361,6 @@ export function useLiveNavigation(options?: {
           } else {
             setPartnerLocation(null);
           }
-          if (p.pendingPingAction) setPendingPingAction(null);
         }
       });
     }, 5000);
