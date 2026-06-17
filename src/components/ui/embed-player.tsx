@@ -61,7 +61,7 @@ export function EmbedPlayer({ data }: { data: EmbedData }) {
       href={data.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="border-border bg-card hover:border-accent flex items-center gap-3 rounded-xl border p-3 transition-colors"
+      className="border-border bg-card hover:border-accent flex w-full min-w-0 items-center gap-3 rounded-xl border p-3 transition-colors"
     >
       <span className="bg-accent-soft text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
         <Play className="h-5 w-5" />

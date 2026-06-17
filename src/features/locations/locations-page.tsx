@@ -803,7 +803,7 @@ export function LocationsPage() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="flex-1 truncate font-medium">{l.name}</p>
+                          <p className="flex-1 font-medium leading-tight">{l.name}</p>
                           <button
                             onClick={() => toggle.mutate({ id: l.id })}
                             className={cn(
