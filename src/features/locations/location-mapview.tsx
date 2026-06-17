@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Map, { Marker, Source, Layer, type MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { LatLng } from "@/lib/maps";
+import { calculateDistance, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
+import confetti from "canvas-confetti";
+import { motion, AnimatePresence } from "framer-motion";
+import { Heart } from "lucide-react";
 
 // OpenFreeMap serves free vector tiles + styles with no API key, no signup, and
 // no credit card — unlike Mapbox, which gates tokens behind a payment method.
@@ -68,6 +71,58 @@ export function LocationMapView({
   // Track manual map interactions to suspend auto-tracking
   const [isUserInteracting, setIsUserInteracting] = useState(false);
   const interactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ── HAPTIC KISS FEATURE ──
+  const [hasKissed, setHasKissed] = useState(false);
+  const [showKissOverlay, setShowKissOverlay] = useState(false);
+
+  useEffect(() => {
+    if (!userGeo || !partnerLocation || hasKissed) return;
+
+    const distance = calculateDistance(userGeo, partnerLocation);
+    // If within 30 meters, trigger the romantic event
+    if (distance < 30) {
+      setHasKissed(true);
+      setShowKissOverlay(true);
+
+      // 1. Confetti Explosion
+      const duration = 3000;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ["#ff0000", "#ff69b4", "#ffb6c1"],
+          disableForReducedMotion: true,
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ["#ff0000", "#ff69b4", "#ffb6c1"],
+          disableForReducedMotion: true,
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
+
+      // 2. Haptic Heartbeat (Vibration)
+      // Pattern: beat, pause, beat, pause, loooong beat
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate([100, 50, 100, 50, 300]);
+      }
+
+      // Hide overlay after 5 seconds
+      setTimeout(() => setShowKissOverlay(false), 5000);
+    }
+  }, [userGeo, partnerLocation, hasKissed]);
 
   const handleInteraction = () => {
     setIsUserInteracting(true);
@@ -144,6 +199,48 @@ export function LocationMapView({
           onMapClick?.({ lat: e.lngLat.lat, lng: e.lngLat.lng })
         }
       >
+        {/* ── BIG HEART OVERLAY WHEN MEETING ── */}
+        <AnimatePresence>
+          {showKissOverlay && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 1.5, opacity: 0 }}
+              transition={{ type: "spring", damping: 15, stiffness: 200 }}
+              className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+            >
+              <div className="relative flex flex-col items-center justify-center">
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 0.8 }}
+                  className="relative z-10"
+                >
+                  <Heart className="h-40 w-40 fill-rose-500 text-rose-500 drop-shadow-[0_0_30px_rgba(244,63,94,0.8)]" />
+                  {/* Avatars inside the heart! */}
+                  <div className="absolute inset-0 flex items-center justify-center gap-1">
+                    {userAvatar ? (
+                      <img src={userAvatar} className="h-10 w-10 rounded-full border-2 border-white object-cover" />
+                    ) : null}
+                    {partnerAvatar ? (
+                      <img src={partnerAvatar} className="h-10 w-10 rounded-full border-2 border-white object-cover" />
+                    ) : null}
+                  </div>
+                </motion.div>
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-4 rounded-full bg-white/90 px-6 py-2 shadow-2xl backdrop-blur-md"
+                >
+                  <span className="bg-gradient-to-r from-rose-500 to-pink-500 bg-clip-text text-lg font-black text-transparent">
+                    Hai bạn đã gặp nhau! 💕
+                  </span>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {pins
           .filter((p) => p.geo)
           .map((p) => (

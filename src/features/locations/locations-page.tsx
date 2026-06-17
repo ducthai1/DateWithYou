@@ -28,6 +28,9 @@ import {
   Users,
   UserRound,
   X,
+  MapPinned,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
@@ -44,6 +47,8 @@ import {
   appleMapsDirectionsUrl,
   googleMapsDirectionsUrl,
   prefersAppleMaps,
+  calculateDistance,
+  calculateMidpoint,
   type LatLng,
 } from "@/lib/maps";
 import { authClient } from "@/lib/auth-client";
@@ -81,6 +86,14 @@ export function LocationsPage() {
   const sendInvite = trpc.location.sendNavInvite.useMutation();
   const respondInvite = trpc.location.respondNavInvite.useMutation();
   const cancelInvite = trpc.location.cancelNavInvite.useMutation();
+  const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
+
+  // ── "Meet Me Halfway" Feature ──
+  const [isFindingMidpoint, setIsFindingMidpoint] = useState(false);
+  const [midpointError, setMidpointError] = useState<string | null>(null);
+  const [midpointRecommendations, setMidpointRecommendations] = useState<any[] | null>(null);
+  const [showMidpointModal, setShowMidpointModal] = useState(false);
+  const [midpointIndex, setMidpointIndex] = useState(0);
   
   const nav = useLiveNavigation({
     onOffRoute: async (currentGeo) => {
@@ -307,6 +320,70 @@ export function LocationsPage() {
   const displayDistance = nav.remainingMeters ?? routeDistanceMeters;
   const displayDuration = nav.remainingSeconds ?? routeDurationSeconds;
 
+  // ── Logic for Meet Me Halfway ──
+  const handleFindMidpoint = useCallback(() => {
+    setIsFindingMidpoint(true);
+    setMidpointError(null);
+
+    if (!navigator.geolocation) {
+      setMidpointError("Trình duyệt không hỗ trợ định vị.");
+      setIsFindingMidpoint(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserGeo(origin);
+
+        try {
+          // Ping to get partner location
+          const partners = await pingLiveLocation.mutateAsync(origin);
+          const partner = partners[0]; // Assuming 1 partner in the space
+
+          if (!partner || !partner.lat || !partner.lng) {
+            setMidpointError("Người ấy chưa mở app hoặc chưa bật định vị.");
+            setIsFindingMidpoint(false);
+            return;
+          }
+
+          // We have both! Calculate midpoint.
+          const partnerGeo = { lat: partner.lat, lng: partner.lng };
+          const midpoint = calculateMidpoint(origin, partnerGeo);
+
+          // Find the 3 closest locations from our saved pins to the midpoint
+          const validPins = (list.data ?? [])
+            .filter((p) => p.geo)
+            .map((p) => ({
+              ...p,
+              distanceToMidpoint: calculateDistance(midpoint, p.geo!),
+            }))
+            .sort((a, b) => a.distanceToMidpoint - b.distanceToMidpoint)
+            .slice(0, 3); // top 3
+
+          if (validPins.length === 0) {
+            setMidpointError("Chưa có địa điểm nào được lưu để gợi ý.");
+            setIsFindingMidpoint(false);
+            return;
+          }
+
+          setMidpointRecommendations(validPins);
+          setMidpointIndex(0);
+          setShowMidpointModal(true);
+          setIsFindingMidpoint(false);
+        } catch (err) {
+          setMidpointError("Lỗi kết nối khi tìm người ấy.");
+          setIsFindingMidpoint(false);
+        }
+      },
+      (err) => {
+        setMidpointError("Không lấy được vị trí của bạn.");
+        setIsFindingMidpoint(false);
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+    );
+  }, [pingLiveLocation, list.data]);
+
   return (
     <>
       {/* ── Fullscreen navigation overlay ── */}
@@ -419,6 +496,29 @@ export function LocationsPage() {
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-h1 font-serif">Bản đồ ăn chơi</h1>
         <div className="flex gap-2">
+          {hasTwoMembers && (
+            <Button
+              variant="outline"
+              size="icon"
+              className={cn(
+                "relative overflow-hidden border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all",
+                isFindingMidpoint && "opacity-50 pointer-events-none"
+              )}
+              onClick={handleFindMidpoint}
+              title="Tìm điểm hẹn ở giữa"
+            >
+              {isFindingMidpoint ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MapPinned className="h-4 w-4" />
+              )}
+              {midpointError && (
+                <span className="absolute -bottom-8 bg-black/80 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap">
+                  {midpointError}
+                </span>
+              )}
+            </Button>
+          )}
           <a
             href="/wheel"
             aria-label="Hôm nay ăn gì?"
@@ -762,6 +862,117 @@ export function LocationsPage() {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+
+      {/* ── Meet Me Halfway Modal ── */}
+      <AnimatePresence>
+        {showMidpointModal && midpointRecommendations && midpointRecommendations.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+            onClick={() => setShowMidpointModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 20, opacity: 0 }}
+              className="bg-card w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-rose-400 to-pink-500 p-6 text-white text-center relative">
+                <button 
+                  onClick={() => setShowMidpointModal(false)}
+                  className="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/20 shadow-inner backdrop-blur-sm">
+                  <MapPinned className="h-8 w-8" />
+                </div>
+                <h3 className="font-serif text-2xl font-bold">Gặp Nhau Ở Giữa 📍</h3>
+                <p className="mt-1 text-sm text-rose-50 opacity-90">
+                  Đây là các địa điểm đã lưu nằm ngay giữa quãng đường của hai bạn!
+                </p>
+              </div>
+
+              {/* Carousel Body */}
+              <div className="p-6 relative">
+                {midpointRecommendations.length > 1 && (
+                  <>
+                    <button
+                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-background shadow hover:bg-muted"
+                      onClick={() => setMidpointIndex((i) => (i === 0 ? midpointRecommendations.length - 1 : i - 1))}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-background shadow hover:bg-muted"
+                      onClick={() => setMidpointIndex((i) => (i + 1) % midpointRecommendations.length)}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={midpointIndex}
+                    initial={{ x: 20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: -20, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col items-center text-center space-y-4 px-6"
+                  >
+                    <div className="bg-accent/10 text-accent rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider">
+                      Gợi ý #{midpointIndex + 1}
+                    </div>
+                    <h4 className="text-xl font-bold leading-tight">{midpointRecommendations[midpointIndex].name}</h4>
+                    
+                    <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Navigation className="h-3.5 w-3.5" /> 
+                        Cách trung điểm {(midpointRecommendations[midpointIndex].distanceToMidpoint / 1000).toFixed(1)} km
+                      </span>
+                      <span>·</span>
+                      <span>{midpointRecommendations[midpointIndex].district}</span>
+                      <span>·</span>
+                      <span>{midpointRecommendations[midpointIndex].category}</span>
+                    </div>
+
+                    <Button
+                      className="w-full mt-4 gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 shadow-md text-white border-none"
+                      disabled={sendInvite.isPending}
+                      onClick={() => {
+                        const loc = midpointRecommendations[midpointIndex];
+                        handleSendCompanionInvite(loc.id, loc.name);
+                        setShowMidpointModal(false);
+                      }}
+                    >
+                      {sendInvite.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Users className="h-5 w-5" />}
+                      Rủ người ấy tới đây!
+                    </Button>
+                  </motion.div>
+                </AnimatePresence>
+                
+                {/* Carousel Dots */}
+                {midpointRecommendations.length > 1 && (
+                  <div className="mt-6 flex justify-center gap-1.5">
+                    {midpointRecommendations.map((_, i) => (
+                      <button
+                        key={i}
+                        className={cn("h-1.5 rounded-full transition-all duration-300", i === midpointIndex ? "w-6 bg-rose-400" : "w-1.5 bg-muted-foreground/30")}
+                        onClick={() => setMidpointIndex(i)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Companion choice confirmation modal ── */}
       <AnimatePresence>
