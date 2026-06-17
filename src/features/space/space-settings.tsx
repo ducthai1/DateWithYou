@@ -40,23 +40,25 @@ export function SpaceSettings() {
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   
   const PRESET_AVATARS = [
-    // Animals (Twemoji SVGs - 100% reliable flat vectors)
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f431.svg", // Cat
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f436.svg", // Dog
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f98a.svg", // Fox
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f989.svg", // Owl
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f43c.svg", // Panda
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f428.svg", // Koala
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f42f.svg", // Tiger
+    // Animals
+    "/avatars/animal-1.svg", // Cat
+    "/avatars/animal-2.svg", // Dog
+    "/avatars/animal-3.svg", // Fox
+    "/avatars/animal-4.svg", // Owl
+    "/avatars/animal-5.svg", // Panda
 
-    // Characters (Twemoji SVGs)
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f977.svg", // Ninja
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f468-200d-1f680.svg", // Astronaut
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f9d9.svg", // Wizard
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f482.svg", // Knight/Guard
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f9b8.svg", // Superhero
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f9da.svg", // Fairy
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f9db.svg", // Vampire
+    // Characters
+    "/avatars/character-1.svg", // Ninja
+    "/avatars/character-2.svg", // Astronaut
+    "/avatars/character-3.svg", // Pirate
+    "/avatars/character-4.svg", // Wizard
+    "/avatars/character-5.svg", // Knight
+
+    // Abstract
+    "/avatars/abstract-1.svg",
+    
+    // Default
+    "/avatars/default-1.svg"
   ];
 
   const displayAvatars = [
