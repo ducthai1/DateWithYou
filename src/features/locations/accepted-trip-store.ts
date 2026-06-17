@@ -17,6 +17,8 @@ import type { Waypoint } from "./use-navigation-invites";
 export type AcceptedTrip = {
   locationId: string;
   waypoints: Waypoint[];
+  /** Who is starting this trip — drives the right "let's go" copy per side. */
+  role: "sender" | "receiver";
 };
 
 type Listener = (trip: AcceptedTrip | null) => void;

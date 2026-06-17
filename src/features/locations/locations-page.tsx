@@ -288,9 +288,14 @@ export function LocationsPage() {
 
     goToLocation(loc.id, loc.geo, waypointGeos);
     setPendingSentInviteId(null);
-    // Show friendly accepted notice for the sender (receiver sees the modal).
+    // Friendly notice tailored to each side: the sender hears their invite was
+    // accepted; the receiver (who just tapped "Đi liền") gets a go-together nudge.
     if (fromStore) {
-      setAcceptedMessage("Yayy! Người ấy đồng ý rồi, mình xuất phát thôi 💞");
+      setAcceptedMessage(
+        acceptedTrip?.role === "receiver"
+          ? "Cùng xuất phát nào 🛵"
+          : "Yayy! Người ấy đồng ý rồi, mình xuất phát thôi 💞",
+      );
       setTimeout(() => setAcceptedMessage(null), 4000);
     }
     setTimeout(() => {
