@@ -125,8 +125,6 @@ export function LocationsPage() {
     }
   });
 
-  // Live position wins whenever we have one (and persists after Dừng so the
-  // marker doesn't jump back to the route origin); otherwise the route origin.
   const liveUser = nav.userGeo ?? userGeo;
 
   const utils = trpc.useUtils();
@@ -165,11 +163,14 @@ export function LocationsPage() {
       }
       setShowTrafficWarning(false);
     }
-    
+  }, [nav.partnerLocation?.speedKmH]);
+
+  // Cleanup timeout ONLY on unmount to prevent resetting on minor speed fluctuations (e.g. 0 -> 2 -> 0)
+  useEffect(() => {
     return () => {
       if (stationaryTimeoutRef.current) clearTimeout(stationaryTimeoutRef.current);
     };
-  }, [nav.partnerLocation?.speedKmH]);
+  }, []);
   const { data: session } = authClient.useSession();
   const members = trpc.space.members.useQuery();
   
