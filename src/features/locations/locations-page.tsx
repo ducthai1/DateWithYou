@@ -46,6 +46,11 @@ import type { Category } from "@/lib/districts-categories";
 // Shared styling for the small icon+label actions on a location card.
 const ACTION_CLS =
   "inline-flex items-center gap-1 rounded-lg px-2 py-1 transition-colors";
+
+// An intermediate stop in a companion trip plan (pickup + extra stops).
+type PlannedStop =
+  | { kind: "partner" }
+  | { kind: "saved"; id: string; name: string; lat: number; lng: number };
 import {
   appleMapsDirectionsUrl,
   googleMapsDirectionsUrl,
@@ -84,7 +89,12 @@ export function LocationsPage() {
   const [showCompanionChoice, setShowCompanionChoice] = useState(false);
   const [companionLocationId, setCompanionLocationId] = useState<string | null>(null);
   const [companionLocationName, setCompanionLocationName] = useState("");
-  const [waypointType, setWaypointType] = useState<"none" | "partner_location">("none");
+  // Ordered intermediate stops between start (you) and the final destination.
+  // "partner" resolves to the partner's live location at send time; "saved" is a
+  // chosen saved place. Drives the numbered list in the companion modal and the
+  // waypoints[] sent to the backend (which already splits the route into legs).
+  const [plannedStops, setPlannedStops] = useState<PlannedStop[]>([]);
+  const [stopPickerOpen, setStopPickerOpen] = useState(false);
   const [pendingSentInviteId, setPendingSentInviteId] = useState<string | null>(null);
   const [rejectedMessage, setRejectedMessage] = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -256,25 +266,45 @@ export function LocationsPage() {
   }, [pendingSentInviteId]);
   // Cùng khởi hành: Target a specific saved location to navigate together.
   const handleSendCompanionInvite = (destId: string, destName: string) => {
-    let waypoints = undefined;
-    if (waypointType === "partner_location" && nav.partnerLocation) {
-      waypoints = [{
-        lat: nav.partnerLocation.lat,
-        lng: nav.partnerLocation.lng,
-        name: "Vị trí của người ấy",
-        type: "partner_location" as const,
-        status: "pending" as const,
+    // Build the ordered waypoints from the planned stops. A "partner" stop
+    // resolves to the partner's live location now; if it's unavailable we drop
+    // that stop rather than send a coordinate-less waypoint.
+    type InviteWaypoint = {
+      lat: number;
+      lng: number;
+      name: string;
+      type: "partner_location" | "saved_place" | "custom";
+      status: "pending" | "arrived";
+    };
+    const waypoints = plannedStops.flatMap((s): InviteWaypoint[] => {
+      if (s.kind === "partner") {
+        if (!nav.partnerLocation) return [];
+        return [{
+          lat: nav.partnerLocation.lat,
+          lng: nav.partnerLocation.lng,
+          name: "Vị trí của người ấy",
+          type: "partner_location",
+          status: "pending",
+        }];
+      }
+      return [{
+        lat: s.lat,
+        lng: s.lng,
+        name: s.name,
+        type: "saved_place",
+        status: "pending",
       }];
-    }
-    
+    });
+
     sendInvite.mutate(
-      { locationId: destId, locationName: destName, waypoints },
+      { locationId: destId, locationName: destName, waypoints: waypoints.length ? waypoints : undefined },
       {
         onSuccess: (res) => {
           setPendingSentInviteId(res.id);
           setShowCompanionChoice(false);
           setCompanionLocationId(null);
-          setWaypointType("none");
+          setPlannedStops([]);
+          setStopPickerOpen(false);
         },
       },
     );
@@ -609,7 +639,8 @@ export function LocationsPage() {
 
       {/* ── Normal page layout ── */}
       <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
+      {/* Action bar stays pinned; only the cards below scroll under it. */}
+      <div className="sticky top-0 z-30 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur-sm md:-mx-[30px] md:px-[30px]">
         <h1 className="text-3xl sm:text-h1 font-serif">Bản đồ ăn chơi</h1>
         <div className="flex gap-2">
           {hasTwoMembers && (
@@ -655,7 +686,7 @@ export function LocationsPage() {
       {/* Desktop: map + filters pinned left, list scrolls on the right. */}
       {/* Mobile: filters top, list middle, map bottom */}
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start">
-        <div className="contents lg:block lg:sticky lg:top-6 lg:self-start lg:space-y-3">
+        <div className="contents lg:block lg:sticky lg:top-[84px] lg:self-start lg:space-y-3">
           <div className="order-1 grid grid-cols-2 md:grid-cols-3 gap-2 lg:order-none">
             <Select
               aria-label="Lọc theo quận"
@@ -1133,13 +1164,13 @@ export function LocationsPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={() => setShowCompanionChoice(false)}
+            onClick={() => { setShowCompanionChoice(false); setPlannedStops([]); setStopPickerOpen(false); }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4"
+              className="bg-card rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4 max-h-[85vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="space-y-4">
@@ -1159,28 +1190,80 @@ export function LocationsPage() {
                     <span className="text-sm font-medium">Bạn xuất phát từ đây</span>
                   </div>
                   
-                  {waypointType === "none" ? (
-                    <div className="pl-3 border-l-2 border-dashed border-muted-foreground/30 ml-3 py-2">
-                      <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground border border-dashed bg-background/50" onClick={() => setWaypointType("partner_location")}>
-                        <Plus className="h-4 w-4 mr-2" /> Ghé đón người ấy
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="pl-3 border-l-2 border-rose-200 ml-3 py-2">
-                      <div className="flex items-center justify-between p-3 bg-rose-50 text-rose-700 rounded-lg shadow-sm border border-rose-100 relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
-                        <div className="flex items-center gap-3">
-                          <div className="h-6 w-6 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">2</div>
-                          <span className="text-sm font-medium">Ghé đón người ấy</span>
+                  {/* Intermediate stops (pickup + extra stops), numbered 2..N. */}
+                  {plannedStops.map((s, i) => {
+                    const isPartner = s.kind === "partner";
+                    return (
+                      <div key={isPartner ? "partner" : s.id} className="pl-3 border-l-2 border-rose-200 ml-3 py-1">
+                        <div className="flex items-center justify-between p-3 bg-rose-50 text-rose-700 rounded-lg shadow-sm border border-rose-100 relative overflow-hidden">
+                          <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-6 w-6 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">{i + 2}</div>
+                            <div className="min-w-0">
+                              <span className="text-sm font-medium block truncate">{isPartner ? "Ghé đón người ấy" : s.name}</span>
+                              <span className="text-[11px] text-rose-500/80 block">{isPartner ? "Vị trí trực tiếp" : "Điểm dừng"}</span>
+                            </div>
+                          </div>
+                          <button onClick={() => setPlannedStops((arr) => arr.filter((_, j) => j !== i))} className="p-1 hover:bg-rose-200 rounded-full transition-colors shrink-0"><X className="h-4 w-4" /></button>
                         </div>
-                        <button onClick={() => setWaypointType("none")} className="p-1 hover:bg-rose-200 rounded-full transition-colors"><X className="h-4 w-4" /></button>
                       </div>
-                    </div>
-                  )}
-                  
+                    );
+                  })}
+
+                  {/* Add-stop control with an inline saved-place / partner picker. */}
+                  {(() => {
+                    const hasPartnerStop = plannedStops.some((s) => s.kind === "partner");
+                    const usedSavedIds = new Set(
+                      plannedStops.filter((s): s is Extract<PlannedStop, { kind: "saved" }> => s.kind === "saved").map((s) => s.id),
+                    );
+                    const savedOptions = (list.data ?? []).filter(
+                      (l) => l.geo && l.id !== companionLocationId && !usedSavedIds.has(l.id),
+                    );
+                    const canAddPartner = !!nav.partnerLocation && !hasPartnerStop;
+                    if (!stopPickerOpen) {
+                      return (
+                        <div className="pl-3 border-l-2 border-dashed border-muted-foreground/30 ml-3 py-1">
+                          <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground border border-dashed bg-background/50" onClick={() => setStopPickerOpen(true)}>
+                            <Plus className="h-4 w-4 mr-2" /> {plannedStops.length === 0 ? "Ghé đón người ấy / thêm điểm dừng" : "Thêm điểm dừng"}
+                          </Button>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="pl-3 border-l-2 border-rose-200 ml-3 py-1 space-y-1.5">
+                        <div className="rounded-lg border border-border bg-background p-2 space-y-1 max-h-44 overflow-y-auto">
+                          {canAddPartner && (
+                            <button
+                              onClick={() => { setPlannedStops((a) => [...a, { kind: "partner" }]); setStopPickerOpen(false); }}
+                              className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-rose-50 transition-colors"
+                            >
+                              <Heart className="h-4 w-4 text-rose-500 shrink-0" />
+                              <span className="font-medium">Vị trí trực tiếp của người ấy</span>
+                            </button>
+                          )}
+                          {savedOptions.map((l) => (
+                            <button
+                              key={l.id}
+                              onClick={() => { setPlannedStops((a) => [...a, { kind: "saved", id: l.id, name: l.name, lat: l.geo!.lat, lng: l.geo!.lng }]); setStopPickerOpen(false); }}
+                              className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-muted transition-colors"
+                            >
+                              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="truncate">{l.name}</span>
+                            </button>
+                          ))}
+                          {!canAddPartner && savedOptions.length === 0 && (
+                            <p className="text-muted-foreground text-xs p-2">Không còn địa điểm nào để thêm.</p>
+                          )}
+                        </div>
+                        <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setStopPickerOpen(false)}>Đóng</Button>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Final destination, numbered after all stops. */}
                   <div className="flex items-center gap-3">
                     <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold shrink-0">
-                      {waypointType === "none" ? "2" : "3"}
+                      {plannedStops.length + 2}
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className="text-sm text-muted-foreground block text-xs">Đích đến cuối cùng</span>
@@ -1194,7 +1277,7 @@ export function LocationsPage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setShowCompanionChoice(false)}>
+                <Button variant="outline" className="flex-1" onClick={() => { setShowCompanionChoice(false); setPlannedStops([]); setStopPickerOpen(false); }}>
                   Hủy
                 </Button>
                 <Button
