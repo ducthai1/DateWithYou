@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
+import { AlertModal } from "@/components/ui/alert-modal";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useCelebrate } from "@/components/ui/celebrate";
@@ -21,6 +22,7 @@ export function WishlistGrid() {
   const [filter, setFilter] = useState<FilterMode>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [redeemError, setRedeemError] = useState<string | null>(null);
 
   // Form State
   const [itemName, setItemName] = useState("");
@@ -42,7 +44,7 @@ export function WishlistGrid() {
       invalidate();
       // the confetti will be triggered from the button click
     },
-    onError: (err) => alert(err.message),
+    onError: (err) => setRedeemError(err.message),
   });
 
   const celebrate = useCelebrate();
@@ -364,6 +366,15 @@ export function WishlistGrid() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* Redeem failure (e.g. not enough points) — replaces native alert() */}
+      <AlertModal
+        open={!!redeemError}
+        onClose={() => setRedeemError(null)}
+        tone="error"
+        title="Không đổi được quà"
+        message={redeemError ?? ""}
+      />
     </div>
   );
 }
