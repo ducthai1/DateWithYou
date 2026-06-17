@@ -74,6 +74,29 @@ function legEndpoint(leg: LegInfo): LatLng {
   return { lat: last[1], lng: last[0] };
 }
 
+// A companion invite stays "accepted" on the server, so on reload the SSE/poll
+// re-delivers it and the trip would auto-start again. Persisting the invite ids
+// the user has explicitly ended lets us ignore that re-delivery after an end.
+const ENDED_TRIPS_KEY = "dwy:endedTripInvites";
+function markTripEnded(inviteId: string): void {
+  try {
+    const raw = localStorage.getItem(ENDED_TRIPS_KEY);
+    const arr: string[] = raw ? JSON.parse(raw) : [];
+    if (!arr.includes(inviteId)) arr.push(inviteId);
+    localStorage.setItem(ENDED_TRIPS_KEY, JSON.stringify(arr.slice(-20)));
+  } catch {
+    /* localStorage unavailable (private mode) — best effort only */
+  }
+}
+function isTripEnded(inviteId: string): boolean {
+  try {
+    const raw = localStorage.getItem(ENDED_TRIPS_KEY);
+    return raw ? (JSON.parse(raw) as string[]).includes(inviteId) : false;
+  } catch {
+    return false;
+  }
+}
+
 import { LocationMapView } from "./location-mapview";
 import { useNavigationInvitesContext } from "./navigation-invites-context";
 import { acceptedTripStore, type AcceptedTrip } from "./accepted-trip-store";
@@ -116,6 +139,14 @@ export function LocationsPage() {
   const legArmedRef = useRef(false);
   // Transient banner shown when a leg starts/completes ("Bắt đầu chặng 2", …).
   const [legMessage, setLegMessage] = useState<string | null>(null);
+  // A trip is "paused" when the user temporarily exits the full-screen nav but
+  // hasn't ended it — the route stays drawn and Resume/End show under the map.
+  const [pausedTrip, setPausedTrip] = useState(false);
+  // Invite id backing the current companion trip, so End can mark it ended and
+  // stop the server-side re-delivery from auto-starting it again on reload.
+  const [currentTripInviteId, setCurrentTripInviteId] = useState<string | null>(null);
+  // Controls the "are you sure you want to end?" confirmation modal.
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   // ── Companion navigation ("Cùng khởi hành") ──
   const [showCompanionChoice, setShowCompanionChoice] = useState(false);
@@ -310,7 +341,15 @@ export function LocationsPage() {
   // both the SSE event and the polling fallback. The old `!selectedId` guard
   // blocked this when a pin was already selected (required a reload).
   useEffect(() => {
-    if (!acceptedTrip || !list.data) return;
+    if (!acceptedTrip) return;
+    // The user ended this trip earlier; ignore the server's re-delivery so a
+    // reload doesn't drop us back into a finished trip.
+    if (isTripEnded(acceptedTrip.inviteId)) {
+      acceptedTripStore.set(null);
+      handledInviteRef.current = acceptedTrip.inviteId;
+      return;
+    }
+    if (!list.data) return;
     if (handledInviteRef.current === acceptedTrip.inviteId) return;
     handledInviteRef.current = acceptedTrip.inviteId;
 
@@ -330,6 +369,8 @@ export function LocationsPage() {
     const waypointGeos = waypoints.map(w => ({ lat: w.lat, lng: w.lng }));
 
     goToLocation(loc.id, loc.geo, waypointGeos);
+    // Remember which invite backs this trip so End can mark it finished.
+    setCurrentTripInviteId(acceptedTrip.inviteId);
     // Friendly notice tailored to each side: the sender hears their invite was
     // accepted; the receiver (who just tapped "Đi liền") gets a go-together nudge.
     setAcceptedMessage(
@@ -455,6 +496,10 @@ export function LocationsPage() {
     setCurrentLegIndex(0);
     setLegArrived(false);
     legArmedRef.current = false;
+    setPausedTrip(false);
+    // A manual "Chỉ đường" trip carries no companion invite; clear any stale id
+    // so ending it never marks an unrelated invite as finished.
+    setCurrentTripInviteId(null);
     if (!navigator.geolocation) {
       setRouteError("Trình duyệt không hỗ trợ định vị.");
       return;
@@ -557,12 +602,12 @@ export function LocationsPage() {
     if (!legGeometries) return;
     const total = legGeometries.length;
     const nextIdx = currentLegIndex + 1;
-    // Final leg just finished → whole trip done.
+    // Final leg just finished → whole trip done. End it fully (and mark the
+    // invite finished) so a reload can't drop us back into the completed trip.
     if (nextIdx >= total) {
-      setLegArrived(false);
-      setLegMessage("Tới nơi rồi! Chuyến đi hoàn tất 🎉");
-      setTimeout(() => setLegMessage(null), 5000);
-      nav.stop();
+      endTrip();
+      setAcceptedMessage("Tới nơi rồi! Chuyến đi hoàn tất 🎉");
+      setTimeout(() => setAcceptedMessage(null), 5000);
       return;
     }
     const cur = nav.userGeo ?? userGeo;
@@ -589,6 +634,46 @@ export function LocationsPage() {
     setLegMessage(`Bắt đầu chặng ${nextIdx + 1}/${total} 🛵`);
     setTimeout(() => setLegMessage(null), 4000);
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(80);
+  };
+
+  // Wipe all live-trip state back to a clean map (no route, no legs, not paused).
+  const resetTrip = () => {
+    nav.stop();
+    setPausedTrip(false);
+    setLegGeometries(null);
+    setCurrentLegIndex(0);
+    setLegArrived(false);
+    legArmedRef.current = false;
+    setLegMessage(null);
+    setRouteGeometry(null);
+    setRouteDistanceMeters(null);
+    setRouteDurationSeconds(null);
+    setPartnerRouteGeometry(null);
+    setPartnerRouteDistanceMeters(null);
+    setPartnerRouteDurationSeconds(null);
+    setSelectedId(null);
+  };
+
+  // Temporarily leave navigation without ending the trip — GPS watch stops to
+  // save battery, but the route stays so Resume can re-enter it.
+  const pauseTrip = () => {
+    setPausedTrip(true);
+    nav.stop();
+  };
+
+  const resumeTrip = () => {
+    setPausedTrip(false);
+    nav.start();
+  };
+
+  // End the trip for good: reset everything and remember the invite as finished
+  // so the server's re-delivery can't auto-start it again after a reload.
+  const endTrip = () => {
+    if (currentTripInviteId) markTripEnded(currentTripInviteId);
+    acceptedTripStore.set(null);
+    setCurrentTripInviteId(null);
+    setShowEndConfirm(false);
+    resetTrip();
   };
 
   const pins = (list.data ?? []).map((l) => ({
@@ -901,13 +986,22 @@ export function LocationsPage() {
                   {routeError ?? nav.error}
                 </p>
               )}
-              <Button
-                variant="outline"
-                className="text-destructive border-destructive/30 hover:bg-destructive-soft w-full max-w-sm gap-2 bg-white/90 shadow-lg backdrop-blur-sm"
-                onClick={nav.stop}
-              >
-                <Square className="h-4 w-4" /> Dừng theo dõi
-              </Button>
+              <div className="flex w-full max-w-sm gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 bg-white/90 shadow-lg backdrop-blur-sm"
+                  onClick={pauseTrip}
+                >
+                  <Pause className="h-4 w-4" /> Tạm dừng
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 text-destructive border-destructive/30 hover:bg-destructive-soft bg-white/90 shadow-lg backdrop-blur-sm"
+                  onClick={() => setShowEndConfirm(true)}
+                >
+                  <Square className="h-4 w-4" /> Kết thúc
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1038,14 +1132,28 @@ export function LocationsPage() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tính lại đường...
               </div>
             )}
-            {routeGeometry != null &&
-              (nav.isNavigating ? (
+            {pausedTrip ? (
+              /* Trip paused — resume back into nav, or end it for good. */
+              <div className="flex gap-2">
+                <Button className="flex-1 gap-2" onClick={resumeTrip}>
+                  <Play className="h-4 w-4" /> Tiếp tục
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 text-destructive border-destructive/30 hover:bg-destructive-soft"
+                  onClick={() => setShowEndConfirm(true)}
+                >
+                  <Square className="h-4 w-4" /> Kết thúc
+                </Button>
+              </div>
+            ) : (routeGeometry != null || legGeometries) ? (
+              nav.isNavigating ? (
               <Button
                 variant="outline"
                 className="text-destructive hover:bg-destructive-soft w-full gap-2"
-                onClick={nav.stop}
+                onClick={pauseTrip}
               >
-                <Square className="h-4 w-4" /> Dừng theo dõi
+                <Pause className="h-4 w-4" /> Tạm dừng
               </Button>
             ) : hasTwoMembers ? (
               /* Space has 2 members — show choice */
@@ -1085,7 +1193,7 @@ export function LocationsPage() {
               >
                 <Play className="h-4 w-4" /> Bắt đầu đi
               </Button>
-            ))}
+            )) : null}
           </div>
           {(routeError || nav.error) && (
             <p className="text-destructive text-xs">{routeError ?? nav.error}</p>
@@ -1301,6 +1409,35 @@ export function LocationsPage() {
           initialDistricts={configQuery.data?.districts ?? []}
           onClose={() => setSettingsOpen(false)}
         />
+      )}
+
+      {/* ── End-trip confirmation (above the full-screen nav overlay) ── */}
+      {showEndConfirm && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowEndConfirm(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-foreground">Kết thúc chuyến đi?</h3>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Bạn chắc chắn muốn kết thúc? Lộ trình hiện tại sẽ bị xoá và không thể tiếp tục lại.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowEndConfirm(false)}>
+                Huỷ
+              </Button>
+              <Button
+                className="flex-1 bg-destructive text-white hover:bg-destructive/90"
+                onClick={endTrip}
+              >
+                Kết thúc
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Midpoint Error Toast ── */}
