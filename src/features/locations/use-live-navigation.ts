@@ -144,6 +144,24 @@ export function useLiveNavigation(options?: {
   
   const [pendingPingAction, setPendingPingAction] = useState<string | null>(null);
 
+  // Store the latest data in a ref so the interval doesn't get cleared on every GPS update
+  const pingPayloadRef = useRef({
+    userGeo,
+    heading,
+    speedKmH,
+    pendingPingAction,
+  });
+
+  // Keep the ref up-to-date with every state change
+  useEffect(() => {
+    pingPayloadRef.current = {
+      userGeo,
+      heading,
+      speedKmH,
+      pendingPingAction,
+    };
+  }, [userGeo, heading, speedKmH, pendingPingAction]);
+
   const sendPingAction = useCallback((action: string) => {
     setPendingPingAction(action);
   }, []);
@@ -277,9 +295,12 @@ export function useLiveNavigation(options?: {
 
   // Ping interval: every 5 seconds, send userGeo to server and fetch partner's position
   useEffect(() => {
-    if (!isNavigating || !userGeo || isOffline) return;
+    if (!isNavigating || isOffline) return;
     
     const interval = setInterval(async () => {
+      const p = pingPayloadRef.current;
+      if (!p.userGeo) return; // Wait until we have a location to ping
+
       let batteryLevel = null;
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -293,12 +314,12 @@ export function useLiveNavigation(options?: {
       }
 
       pingLiveLocation.mutate({
-        lat: userGeo.lat,
-        lng: userGeo.lng,
-        heading: heading,
-        speedKmH: speedKmH,
+        lat: p.userGeo.lat,
+        lng: p.userGeo.lng,
+        heading: p.heading,
+        speedKmH: p.speedKmH,
         batteryLevel,
-        pingAction: pendingPingAction,
+        pingAction: p.pendingPingAction,
       }, {
         onSuccess: (partners) => {
           if (partners && partners.length > 0) {
@@ -306,13 +327,16 @@ export function useLiveNavigation(options?: {
           } else {
             setPartnerLocation(null);
           }
-          if (pendingPingAction) setPendingPingAction(null);
+          if (p.pendingPingAction) setPendingPingAction(null);
         }
       });
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [isNavigating, userGeo, heading, speedKmH, pendingPingAction, isOffline, pingLiveLocation]);
+    // ONLY depend on isNavigating & isOffline. 
+    // Do NOT depend on userGeo or pingLiveLocation to prevent infinite reset loops!
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNavigating, isOffline]);
 
   // Track network connection status
   useEffect(() => {

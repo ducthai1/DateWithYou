@@ -505,15 +505,18 @@ export function LocationsPage() {
                   {partnerRouteGeometry != null && (
                     <div className="flex flex-col px-4 py-2 bg-rose-50/50 relative">
                       {nav.partnerLocation?.batteryLevel != null && (
-                        <div className="absolute top-1 right-2 text-[10px] font-medium text-rose-800/60 bg-rose-100/50 px-1.5 rounded-full flex items-center gap-1">
-                          🔋 {nav.partnerLocation.batteryLevel}%
+                        <div className={`absolute top-1 right-2 text-[10px] font-medium px-1.5 rounded-full flex items-center gap-1 ${
+                          nav.partnerLocation.batteryLevel < 20 ? "text-red-700 bg-red-100/80 animate-pulse border border-red-300" : "text-rose-800/60 bg-rose-100/50"
+                        }`}>
+                          {nav.partnerLocation.batteryLevel < 20 ? "🪫" : "🔋"} {nav.partnerLocation.batteryLevel}% {nav.partnerLocation.batteryLevel < 20 && "Cấp cứu!"}
                         </div>
                       )}
                       <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mb-1">
                         Người ấy
                         {nav.partnerLocation?.speedKmH != null && (
-                          <span className="ml-2 lowercase font-normal opacity-70">
-                            ({nav.partnerLocation.speedKmH < 4 ? "dừng/chậm" : "chạy xe"})
+                          <span className="ml-2 font-normal opacity-90 lowercase text-xs">
+                            {nav.partnerLocation.speedKmH < 4 ? "🛑 Đứng im lìm (chắc kẹt xe)" : 
+                             nav.partnerLocation.speedKmH > 15 ? "🏍️ Bon bon vù vù" : "🛵 Tàng tàng ngắm cảnh"}
                           </span>
                         )}
                       </span>
@@ -535,11 +538,11 @@ export function LocationsPage() {
                 {displayDuration != null && partnerRouteDurationSeconds != null && (
                   <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-md">
                     {displayDuration - partnerRouteDurationSeconds > 120 ? (
-                      <span>Bạn sẽ đến trễ hơn <strong className="text-rose-500">{Math.round((displayDuration - partnerRouteDurationSeconds)/60)} phút</strong> 🏃‍♂️</span>
+                      <span>Ối, bạn sẽ đến trễ hơn <strong className="text-rose-500">{Math.round((displayDuration - partnerRouteDurationSeconds)/60)} phút</strong>. Lo chạy lẹ lên 🏃‍♂️💨</span>
                     ) : partnerRouteDurationSeconds - displayDuration > 120 ? (
-                      <span>Bạn sẽ đến sớm hơn <strong className="text-blue-500">{Math.round((partnerRouteDurationSeconds - displayDuration)/60)} phút</strong> 🍹</span>
+                      <span>Bạn đến sớm hơn <strong className="text-blue-500">{Math.round((partnerRouteDurationSeconds - displayDuration)/60)} phút</strong>. Tha hồ order nước ngồi chờ 🍹</span>
                     ) : (
-                      <span className="text-emerald-600">Hai bạn sẽ đến cùng lúc! 🎯</span>
+                      <span className="text-emerald-600">Perfect timing! Hai bạn sẽ cập bến cùng lúc 🎯</span>
                     )}
                   </div>
                 )}
