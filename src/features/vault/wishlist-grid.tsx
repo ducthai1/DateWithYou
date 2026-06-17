@@ -38,7 +38,7 @@ export function WishlistGrid() {
   const toggle = trpc.wishlist.toggleBought.useMutation({ onSuccess: invalidate });
   const remove = trpc.wishlist.remove.useMutation({ onSuccess: invalidate });
   const redeem = trpc.wishlist.redeem.useMutation({
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       invalidate();
       // the confetti will be triggered from the button click
     },

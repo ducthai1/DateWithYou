@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Unlock, X, Loader2, HeartHandshake } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import confetti from "canvas-confetti";
@@ -15,7 +14,7 @@ export function CapsuleUnlockModal({
   onClose,
   onOpened,
 }: {
-  capsule: any;
+  capsule: { id: string; title: string; message: string | null; unlockDate: string | Date; isOpened: boolean };
   now: Date;
   onClose: () => void;
   onOpened: () => void;

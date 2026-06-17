@@ -28,7 +28,7 @@ export function CapsulesPanel() {
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState("");
 
-  const [selectedCapsule, setSelectedCapsule] = useState<any>(null);
+  const [selectedCapsule, setSelectedCapsule] = useState<{ id: string; title: string; message: string | null; unlockDate: string | Date; isOpened: boolean; creatorId?: string } | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

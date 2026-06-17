@@ -91,6 +91,7 @@ export function LocationsPage() {
   // ── "Meet Me Halfway" Feature ──
   const [isFindingMidpoint, setIsFindingMidpoint] = useState(false);
   const [midpointError, setMidpointError] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [midpointRecommendations, setMidpointRecommendations] = useState<any[] | null>(null);
   const [showMidpointModal, setShowMidpointModal] = useState(false);
   const [midpointIndex, setMidpointIndex] = useState(0);
@@ -371,12 +372,12 @@ export function LocationsPage() {
           setMidpointIndex(0);
           setShowMidpointModal(true);
           setIsFindingMidpoint(false);
-        } catch (err) {
+        } catch {
           setMidpointError("Lỗi kết nối khi tìm người ấy.");
           setIsFindingMidpoint(false);
         }
       },
-      (err) => {
+      () => {
         setMidpointError("Không lấy được vị trí của bạn.");
         setIsFindingMidpoint(false);
       },

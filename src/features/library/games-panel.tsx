@@ -70,7 +70,7 @@ export function GamesPanel() {
   return (
     <>
       <StaggerList className="grid gap-3 sm:grid-cols-2">
-        {games.map((game, idx) => {
+        {games.map((game) => {
           const color = CARD_COLORS[hashStr(game.title) % CARD_COLORS.length];
           const isExpanded = expanded.has(game.id);
           const hasNote = !!game.note?.trim();
