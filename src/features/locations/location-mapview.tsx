@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Map, { Marker, Source, Layer, type MapRef } from "react-map-gl/maplibre";
+import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { calculateDistance, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
@@ -226,10 +226,12 @@ export function LocationMapView({
         ref={mapRef}
         initialViewState={DEFAULT_CENTER}
         mapStyle={MAP_STYLE}
+        attributionControl={false}
         onClick={(e) =>
           onMapClick?.({ lat: e.lngLat.lat, lng: e.lngLat.lng })
         }
       >
+        <AttributionControl compact={true} position="top-right" />
         {/* ── BIG HEART OVERLAY WHEN MEETING ── */}
         <AnimatePresence>
           {showKissOverlay && (
