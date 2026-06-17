@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
 import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
+import { AlertModal } from "@/components/ui/alert-modal";
 import { Utensils, Navigation, Loader2 } from "lucide-react";
 import { CATEGORIES, type Category } from "@/lib/districts-categories";
 
@@ -20,6 +21,7 @@ const SOURCE_TABS = [
 export function FoodWheel() {
   const [source, setSource] = useState<(typeof SOURCE_TABS)[number]["key"]>("place");
   const [category, setCategory] = useState("");
+  const [inviteError, setInviteError] = useState(false);
   const places = trpc.location.list.useQuery({
     status: "want_to_go",
     category: (category || undefined) as Category | undefined,
@@ -40,7 +42,7 @@ export function FoodWheel() {
           window.location.href = "/map";
         },
         onError: () => {
-          alert("Lỗi khi gửi lời mời!");
+          setInviteError(true);
         }
       }
     );
@@ -227,6 +229,15 @@ export function FoodWheel() {
           )}
         </ModalContent>
       </Modal>
+
+      <AlertModal
+        open={inviteError}
+        onClose={() => setInviteError(false)}
+        tone="error"
+        title="Ơ kìa!"
+        message="Lời mời chưa gửi được — thử lại nha 😢"
+        actionLabel="Thử lại"
+      />
     </div>
   );
 }

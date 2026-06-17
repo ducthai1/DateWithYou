@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Play, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface NavigationInviteModalProps {
@@ -34,8 +34,8 @@ export function NavigationInviteModal({
         >
           <div className="flex items-center justify-center">
             <div className="relative">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-100">
-                <Users className="h-8 w-8 text-rose-500" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-3xl">
+                💌
               </div>
               <span className="absolute -top-1 -right-1 flex h-5 w-5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
@@ -44,12 +44,12 @@ export function NavigationInviteModal({
             </div>
           </div>
           <div className="text-center space-y-1">
-            <h3 className="font-semibold text-lg">Lời mời cùng đi!</h3>
-            <p className="text-muted-foreground text-sm">Người ấy rủ bạn cùng đi đến</p>
+            <h3 className="font-semibold text-lg">Rủ rê nè! 💌</h3>
+            <p className="text-muted-foreground text-sm">Người ấy muốn cùng bạn phóng tới…</p>
             <p className="font-bold text-accent text-lg">{locationName}</p>
           </div>
           <p className="text-xs text-muted-foreground text-center">
-            Cả 2 sẽ cùng mở bản đồ và thấy avatar của nhau trên đường đi nha 💕
+            Mở bản đồ lên, hai đứa thấy nhau trên đường luôn nha 🥰
           </p>
           <div className="flex gap-2">
             <Button
@@ -58,7 +58,7 @@ export function NavigationInviteModal({
               disabled={isPending}
               onClick={onDecline}
             >
-              Để sau
+              Để lát nhaa
             </Button>
             <Button
               className="flex-1 gap-2"
@@ -68,9 +68,9 @@ export function NavigationInviteModal({
               {isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Play className="h-4 w-4" />
+                <span>🛵</span>
               )}
-              Cùng đi!
+              Đi liền!
             </Button>
           </div>
         </motion.div>

@@ -10,6 +10,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { SpaceGuard } from "@/components/layout/space-guard";
 import { MainWrapper } from "@/components/layout/main-wrapper";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
+import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
 import { THEME_COOKIE_NAME, resolveThemeKey } from "@/lib/theme-presets";
 
 const inter = Inter({
@@ -62,8 +63,12 @@ export default async function RootLayout({
           {/* Offset for the bottom nav on mobile, for the sidebar on desktop. */}
           <MainWrapper>
             <AppHeader />
-            <GlobalInviteListener />
-            {children}
+            {/* Single SSE connection for the whole app — both GlobalInviteListener
+                and LocationsPage consume this context instead of opening their own. */}
+            <NavigationInvitesProvider>
+              <GlobalInviteListener />
+              {children}
+            </NavigationInvitesProvider>
           </MainWrapper>
           <BottomNav />
         </Providers>

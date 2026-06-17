@@ -151,7 +151,10 @@ export async function GET(req: NextRequest) {
           if (sentId !== lastSentInviteId || sentStatus !== lastSentStatus) {
             lastSentInviteId = sentId;
             lastSentStatus = sentStatus;
-            if (sent) {
+            // Only push a response event when the invite has been acted on.
+            // Emitting "pending" here is a no-op for the sender and only adds
+            // noise — the sender already knows it sent the invite.
+            if (sent && sent.status !== "pending") {
               send("invite-response", {
                 id: String(sent._id),
                 targetId: sent.targetId,
@@ -176,7 +179,12 @@ export async function GET(req: NextRequest) {
           
           if (partnerLoc && partnerLoc.pingAction) {
             const updatedAtMs = partnerLoc.updatedAt.getTime();
-            // If the ping is new and happened recently
+            // Repeat-suppression invariant: a ping is emitted at most once per
+            // partner location write (updatedAt strictly newer than last sent)
+            // AND only inside a 10s freshness window. This is what stops a
+            // stale pingAction (paths that don't send pingAction:null, e.g.
+            // Meet-Me-Halfway, leave the stored value untouched) from re-firing
+            // every poll — do NOT remove either guard.
             if (updatedAtMs > lastPartnerPingAt && (Date.now() - updatedAtMs) < 10000) {
               lastPartnerPingAt = updatedAtMs;
               send("ping", { action: partnerLoc.pingAction, ts: updatedAtMs });

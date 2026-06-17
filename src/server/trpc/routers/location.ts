@@ -445,6 +445,13 @@ export const locationRouter = router({
         locationId: string;
         locationName: string;
         status: string;
+        waypoints: Array<{
+          lat: number;
+          lng: number;
+          name: string;
+          type: "partner_location" | "saved_place" | "custom";
+          status: "pending" | "arrived";
+        }>;
       }>();
 
       if (!invite)
@@ -456,7 +463,16 @@ export const locationRouter = router({
       return {
         id: String(invite._id),
         locationId: invite.locationId,
+        locationName: invite.locationName,
         status: invite.status,
+        // Return waypoints so both partners can reconstruct the multi-leg route
+        waypoints: (invite.waypoints ?? []).map((w) => ({
+          lat: w.lat,
+          lng: w.lng,
+          name: w.name,
+          type: w.type,
+          status: w.status,
+        })),
       };
     }),
 

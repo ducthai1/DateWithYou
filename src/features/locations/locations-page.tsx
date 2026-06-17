@@ -61,7 +61,8 @@ import {
 } from "@/lib/maps";
 import { authClient } from "@/lib/auth-client";
 import { LocationMapView } from "./location-mapview";
-import { useNavigationInvites } from "./use-navigation-invites";
+import { useNavigationInvitesContext } from "./navigation-invites-context";
+import { acceptedTripStore, type AcceptedTrip } from "./accepted-trip-store";
 import { LocationForm, type LocationFormValues } from "./location-form";
 
 export function LocationsPage() {
@@ -117,7 +118,15 @@ export function LocationsPage() {
   const [showTrafficWarning, setShowTrafficWarning] = useState(false);
   const stationaryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  const navInvites = useNavigationInvites();
+  // Consume the single shared SSE connection (opened by NavigationInvitesProvider).
+  const navInvites = useNavigationInvitesContext();
+  // Track accepted trip from the store (populated by GlobalInviteListener when
+  // either partner accepts an invite — carries waypoints for multi-leg routing).
+  const [acceptedTrip, setAcceptedTrip] = useState<AcceptedTrip | null>(null);
+  const [acceptedMessage, setAcceptedMessage] = useState<string | null>(null);
+  // Destination id of the trip we already auto-started, so the effect fires
+  // once per accepted trip even though the redirect URL keeps its loc/nav params.
+  const autoStartedTripRef = useRef<string | null>(null);
   const nav = useLiveNavigation({
     onOffRoute: async (currentGeo) => {
       if (!selectedId || isRecalculating.current) return;
@@ -231,25 +240,65 @@ export function LocationsPage() {
         // ignore
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, nav.partnerLocation?.lat, nav.partnerLocation?.lng, partnerRouteGeometry, utils.location]);
 
-  // Auto-start navigation if redirected from GlobalInviteListener
+  // Subscribe to the accepted-trip store so we react when GlobalInviteListener
+  // writes a new accepted trip (either sender or receiver path).
   useEffect(() => {
-    const locId = searchParams.get('loc');
+    // Sync initial value (in case store was set before this component mounted).
+    setAcceptedTrip(acceptedTripStore.get());
+    return acceptedTripStore.subscribe((t) => {
+      // Re-arm the one-shot guard whenever a genuinely new trip arrives so the
+      // same destination can be re-invited later.
+      if (t) autoStartedTripRef.current = null;
+      setAcceptedTrip(t);
+    });
+  }, []);
+
+  // Auto-start navigation when an accepted trip lands — triggered either by the
+  // URL params (redirect from GlobalInviteListener) or by the store update
+  // (already on /map when partner accepts). The old guard `!selectedId` blocked
+  // this when a pin was already selected, requiring a reload to clear it.
+  useEffect(() => {
+    const locId = searchParams.get('loc') ?? acceptedTrip?.locationId ?? null;
     const startNav = searchParams.get('nav');
-    if (locId && startNav === "1" && list.data && !selectedId) {
-      const loc = list.data.find(l => l.id === locId);
-      if (loc?.geo) {
-        goToLocation(loc.id, loc.geo);
-        setPendingSentInviteId(null);
-        setTimeout(() => {
-          setFocusGeo(null);
-          nav.start();
-        }, 2000);
-      }
+    const fromStore = acceptedTrip != null;
+
+    // Trigger when: URL has nav=1 param, OR the store just received an accepted trip.
+    const shouldStart = (locId && startNav === "1") || fromStore;
+    if (!shouldStart || !list.data || !locId) return;
+
+    // One-shot per accepted trip: the redirect URL keeps carrying loc&nav after
+    // we consume the store, so without this guard the effect re-runs and fires a
+    // second geolocation prompt + getRoute (last-writer-wins race on the route).
+    if (autoStartedTripRef.current === locId) return;
+    autoStartedTripRef.current = locId;
+
+    const tripWaypoints = acceptedTrip?.waypoints ?? [];
+    // Clear the store regardless of whether the pin resolves, so a deleted /
+    // missing pin can't leave a stale accepted trip stuck forever.
+    acceptedTripStore.set(null);
+
+    const loc = list.data.find(l => l.id === locId);
+    if (!loc?.geo) return;
+
+    // Convert invite Waypoint[] to the {lat,lng}[] shape getRoute expects.
+    const waypointGeos = tripWaypoints.map(w => ({ lat: w.lat, lng: w.lng }));
+
+    goToLocation(loc.id, loc.geo, waypointGeos);
+    setPendingSentInviteId(null);
+    // Show friendly accepted notice for the sender (receiver sees the modal).
+    if (fromStore) {
+      setAcceptedMessage("Yayy! Người ấy đồng ý rồi, mình xuất phát thôi 💞");
+      setTimeout(() => setAcceptedMessage(null), 4000);
     }
+    setTimeout(() => {
+      setFocusGeo(null);
+      nav.start();
+    }, 2000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, list.data]);
+  }, [searchParams, list.data, acceptedTrip]);
 
   // Listen for invite rejection from GlobalInviteListener
   useEffect(() => {
@@ -257,7 +306,7 @@ export function LocationsPage() {
       const customEvent = e as CustomEvent;
       if (customEvent.detail?.id === pendingSentInviteId) {
         setPendingSentInviteId(null);
-        setRejectedMessage("Người ấy đang bận hoặc đã lỡ tay đóng lời mời!");
+        setRejectedMessage("Hí, người ấy bận xíu hoặc lỡ tay rồi — rủ lại sau nha 🥺");
         setTimeout(() => setRejectedMessage(null), 4000);
       }
     };
@@ -312,11 +361,17 @@ export function LocationsPage() {
 
   // In-app "Chỉ đường": select the pin, fly to it, then get the user's location
   // and draw the route. Errors surface to the user instead of failing silently.
-  function goToLocation(id: string, dest: LatLng | null) {
+  // waypoints: optional intermediate stops from an accepted companion trip — passed
+  // straight through to getRoute so the multi-leg route is drawn correctly.
+  function goToLocation(
+    id: string,
+    dest: LatLng | null,
+    waypoints?: Array<{ lat: number; lng: number }>,
+  ) {
     if (!dest) return;
     setSelectedId(id);
     setFocusGeo({ ...dest }); // new object each call so the map re-flies
-    
+
     // Cuộn màn hình tới bản đồ trên thiết bị di động
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
       document.getElementById("map-view")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -333,13 +388,20 @@ export function LocationsPage() {
         const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserGeo(origin);
         try {
-          const reqs = [utils.location.getRoute.fetch({ destinationId: id, origin })];
-          
+          // Pass waypoints to getRoute so multi-stop companion trips draw correctly.
+          const routeArgs = {
+            destinationId: id,
+            origin,
+            ...(waypoints && waypoints.length > 0 ? { waypoints } : {}),
+          };
+          const reqs = [utils.location.getRoute.fetch(routeArgs)];
+
           // If partner is currently active, fetch a route for them too
           if (nav.partnerLocation) {
-            reqs.push(utils.location.getRoute.fetch({ 
-              destinationId: id, 
-              origin: { lat: nav.partnerLocation.lat, lng: nav.partnerLocation.lng } 
+            reqs.push(utils.location.getRoute.fetch({
+              destinationId: id,
+              origin: { lat: nav.partnerLocation.lat, lng: nav.partnerLocation.lng },
+              ...(waypoints && waypoints.length > 0 ? { waypoints } : {}),
             }));
           }
 
@@ -348,7 +410,7 @@ export function LocationsPage() {
           setRouteGeometry(r.geometry);
           setRouteDistanceMeters(r.distanceMeters);
           setRouteDurationSeconds(r.durationSeconds);
-          
+
           if (partnerR) {
             setPartnerRouteGeometry(partnerR.geometry);
             setPartnerRouteDistanceMeters(partnerR.distanceMeters);
@@ -1334,6 +1396,21 @@ export function LocationsPage() {
             <div className="flex items-center gap-3 rounded-2xl bg-rose-50 text-rose-600 px-5 py-3 shadow-xl border border-rose-200">
               <span className="shrink-0 text-lg">💔</span>
               <span className="text-sm font-medium">{rejectedMessage}</span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Accepted message (sender sees this when partner says yes) ── */}
+        {acceptedMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 left-1/2 z-50 w-[90%] max-w-sm -translate-x-1/2"
+          >
+            <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 text-emerald-700 px-5 py-3 shadow-xl border border-emerald-200">
+              <span className="shrink-0 text-lg">💞</span>
+              <span className="text-sm font-medium">{acceptedMessage}</span>
             </div>
           </motion.div>
         )}
