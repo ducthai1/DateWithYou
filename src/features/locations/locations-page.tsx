@@ -53,6 +53,7 @@ import {
 } from "@/lib/maps";
 import { authClient } from "@/lib/auth-client";
 import { LocationMapView } from "./location-mapview";
+import { useNavigationInvites } from "./use-navigation-invites";
 import { LocationForm, type LocationFormValues } from "./location-form";
 
 export function LocationsPage() {
@@ -102,6 +103,7 @@ export function LocationsPage() {
   const [showTrafficWarning, setShowTrafficWarning] = useState(false);
   const stationaryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  const navInvites = useNavigationInvites();
   const nav = useLiveNavigation({
     onOffRoute: async (currentGeo) => {
       if (!selectedId || isRecalculating.current) return;
@@ -681,6 +683,7 @@ export function LocationsPage() {
               focusGeo={focusGeo}
               userGeo={liveUser}
               partnerLocation={nav.partnerLocation}
+              partnerPingAction={navInvites.partnerPingAction}
               userPingAction={nav.userPingAction}
               followGeo={nav.isNavigating ? nav.userGeo : null}
               heading={nav.isNavigating ? nav.heading : null}

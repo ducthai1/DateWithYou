@@ -32,6 +32,7 @@ export function useNavigationInvites() {
   );
   const [inviteResponse, setInviteResponse] =
     useState<InviteResponse | null>(null);
+  const [partnerPingAction, setPartnerPingAction] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const esRef = useRef<EventSource | null>(null);
 
@@ -59,6 +60,17 @@ export function useNavigationInvites() {
       try {
         const data = JSON.parse(e.data) as InviteResponse;
         setInviteResponse(data);
+      } catch {
+        /* ignore malformed */
+      }
+    });
+
+    es.addEventListener("ping", (e) => {
+      try {
+        const data = JSON.parse(e.data) as { action: string; ts: number };
+        setPartnerPingAction(data.action);
+        // Reset ping action state after a few seconds so it can be re-triggered
+        setTimeout(() => setPartnerPingAction(null), 4000);
       } catch {
         /* ignore malformed */
       }
@@ -96,6 +108,8 @@ export function useNavigationInvites() {
     incomingInvite,
     /** The latest response to an invite this user sent (null = none). */
     inviteResponse,
+    /** The real-time ping action from partner. Reset automatically. */
+    partnerPingAction,
     isConnected,
     clearIncoming,
     clearResponse,

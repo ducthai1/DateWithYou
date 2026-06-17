@@ -3,6 +3,7 @@ import { auth } from "@/server/auth/auth";
 import { connectToDatabase } from "@/server/db/connect";
 import { SpaceModel } from "@/server/db/models/space";
 import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
+import { LiveLocationModel } from "@/server/db/models/live-location";
 
 /**
  * SSE endpoint for navigation invites.
@@ -83,8 +84,12 @@ export async function GET(req: NextRequest) {
       let lastInviteId: string | null = null;
       let lastStatus: string | null = null;
       // Also track invites the current user SENT (to know when accepted).
+      // Also track invites the current user SENT (to know when accepted).
       let lastSentInviteId: string | null = null;
       let lastSentStatus: string | null = null;
+      
+      // Track the partner's last ping action time to avoid duplicate pushes
+      let lastPartnerPingAt = 0;
 
       const poll = async () => {
         if (closed) return;
@@ -150,14 +155,33 @@ export async function GET(req: NextRequest) {
               });
             }
           }
+
+          // 3. Check for recent partner pings (within the last 10 seconds)
+          const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+          const partnerLoc = await LiveLocationModel.findOne({
+            spaceId,
+            userId: { $ne: userId },
+            updatedAt: { $gt: fiveMinsAgo }
+          })
+            .select("pingAction updatedAt")
+            .lean<{ pingAction: string | null; updatedAt: Date }>();
+          
+          if (partnerLoc && partnerLoc.pingAction) {
+            const updatedAtMs = partnerLoc.updatedAt.getTime();
+            // If the ping is new and happened recently
+            if (updatedAtMs > lastPartnerPingAt && (Date.now() - updatedAtMs) < 10000) {
+              lastPartnerPingAt = updatedAtMs;
+              send("ping", { action: partnerLoc.pingAction, ts: updatedAtMs });
+            }
+          }
         } catch (err) {
           console.error("[SSE nav-invite poll]", err);
         }
       };
 
-      // Initial check, then every 3 seconds.
+      // Initial check, then every 1.5 seconds for snappier real-time feel.
       await poll();
-      const interval = setInterval(poll, 3000);
+      const interval = setInterval(poll, 1500);
 
       // Clean up when the client disconnects.
       req.signal.addEventListener("abort", () => {

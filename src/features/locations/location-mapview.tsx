@@ -40,6 +40,7 @@ export function LocationMapView({
   focusGeo,
   userGeo,
   partnerLocation,
+  partnerPingAction,
   userPingAction,
   followGeo,
   heading,
@@ -57,6 +58,7 @@ export function LocationMapView({
   focusGeo?: LatLng | null;
   userGeo?: LatLng | null;
   partnerLocation?: { lat: number; lng: number; pingAction?: string | null } | null;
+  partnerPingAction?: string | null;
   userPingAction?: string | null;
   followGeo?: LatLng | null;
   /** Device heading in degrees (0 = north). Rotates the map when following. */
@@ -132,6 +134,7 @@ export function LocationMapView({
   // ── QUICK PINGS (EMOTION BUBBLES) ──
   const [activePing, setActivePing] = useState<{ emoji: string; id: number } | null>(null);
   const [activeUserPing, setActiveUserPing] = useState<{ emoji: string; id: number } | null>(null);
+  const [globalPing, setGlobalPing] = useState<{ emoji: string; id: number; fromPartner: boolean } | null>(null);
   
   const getPingEmoji = (action: string, isPartner: boolean) => {
     let emoji = "";
@@ -148,16 +151,19 @@ export function LocationMapView({
   };
 
   useEffect(() => {
-    if (partnerLocation?.pingAction) {
-      const emoji = getPingEmoji(partnerLocation.pingAction, true);
+    // Prefer real-time ping from SSE, fallback to interval-based ping
+    const action = partnerPingAction || partnerLocation?.pingAction;
+    if (action) {
+      const emoji = getPingEmoji(action, true);
       if (emoji) {
         const pingId = Date.now();
         setActivePing({ emoji, id: pingId });
-        // Bubble disappears after 4 seconds
+        setGlobalPing({ emoji, id: pingId, fromPartner: true });
         setTimeout(() => setActivePing((prev) => (prev?.id === pingId ? null : prev)), 4000);
+        setTimeout(() => setGlobalPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
       }
     }
-  }, [partnerLocation?.pingAction]);
+  }, [partnerPingAction, partnerLocation?.pingAction]);
 
   useEffect(() => {
     if (userPingAction) {
@@ -165,8 +171,9 @@ export function LocationMapView({
       if (emoji) {
         const pingId = Date.now();
         setActiveUserPing({ emoji, id: pingId });
-        // Bubble disappears after 4 seconds
+        setGlobalPing({ emoji, id: pingId, fromPartner: false });
         setTimeout(() => setActiveUserPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
+        setTimeout(() => setGlobalPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
       }
     }
   }, [userPingAction]);
@@ -286,6 +293,26 @@ export function LocationMapView({
                   </span>
                 </motion.div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── GLOBAL PING OVERLAY (Always visible even if map is scrolled away) ── */}
+        <AnimatePresence>
+          {globalPing && (
+            <motion.div
+              key={globalPing.id}
+              initial={{ opacity: 0, scale: 0.5, y: globalPing.fromPartner ? -20 : 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.5, y: globalPing.fromPartner ? -20 : 20 }}
+              transition={{ type: "spring", damping: 15, stiffness: 300 }}
+              className={cn(
+                "absolute left-1/2 -translate-x-1/2 z-50 rounded-full px-5 py-2.5 text-base md:text-lg font-bold shadow-2xl border-2 backdrop-blur-md flex items-center gap-2",
+                globalPing.fromPartner ? "top-4 bg-white/95 border-rose-200 text-rose-600" : "bottom-4 bg-white/95 border-blue-200 text-blue-600"
+              )}
+            >
+              <span className="text-2xl">{globalPing.emoji.split(' ')[0]}</span>
+              <span>{globalPing.emoji.split(' ').slice(1).join(' ')}</span>
             </motion.div>
           )}
         </AnimatePresence>
