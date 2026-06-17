@@ -98,6 +98,10 @@ export function LocationsPage() {
 
   // ── Weather ──
   const [weather, setWeather] = useState<{ temp: number; desc: string } | null>(null);
+
+  // ── Traffic Warning ──
+  const [showTrafficWarning, setShowTrafficWarning] = useState(false);
+  const stationaryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const nav = useLiveNavigation({
     onOffRoute: async (currentGeo) => {
@@ -142,6 +146,30 @@ export function LocationsPage() {
     onSuccess: () => utils.location.list.invalidate(),
   });
   
+  // Detect if partner is stuck
+  useEffect(() => {
+    const speed = nav.partnerLocation?.speedKmH;
+    if (speed != null && speed < 3) {
+      if (!stationaryTimeoutRef.current) {
+        stationaryTimeoutRef.current = setTimeout(() => {
+          setShowTrafficWarning(true);
+          if (typeof navigator !== "undefined" && navigator.vibrate) {
+             navigator.vibrate([200, 100, 200]);
+          }
+        }, 10_000); // 10 seconds for testing
+      }
+    } else {
+      if (stationaryTimeoutRef.current) {
+        clearTimeout(stationaryTimeoutRef.current);
+        stationaryTimeoutRef.current = null;
+      }
+      setShowTrafficWarning(false);
+    }
+    
+    return () => {
+      if (stationaryTimeoutRef.current) clearTimeout(stationaryTimeoutRef.current);
+    };
+  }, [nav.partnerLocation?.speedKmH]);
   const { data: session } = authClient.useSession();
   const members = trpc.space.members.useQuery();
   
@@ -517,6 +545,15 @@ export function LocationsPage() {
                 )}
               </div>
             </div>
+
+            {/* Traffic Warning Banner */}
+            {showTrafficWarning && (
+              <div className="absolute top-28 inset-x-0 flex justify-center z-50 pointer-events-none animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="bg-rose-500 text-white shadow-xl rounded-full px-5 py-2.5 flex items-center gap-2 text-sm font-bold border-2 border-white/20 backdrop-blur-md">
+                  <span className="animate-bounce">🛑</span> Người ấy đang dừng xe hoặc kẹt cứng rồi!
+                </div>
+              </div>
+            )}
 
             {/* Floating Speed Indicator */}
             {nav.speedKmH != null && (
