@@ -15,6 +15,9 @@
 import type { Waypoint } from "./use-navigation-invites";
 
 export type AcceptedTrip = {
+  /** The invite this trip came from — used to start each trip exactly once,
+   *  even when delivered by both the SSE event and the polling fallback. */
+  inviteId: string;
   locationId: string;
   waypoints: Waypoint[];
   /** Who is starting this trip — drives the right "let's go" copy per side. */

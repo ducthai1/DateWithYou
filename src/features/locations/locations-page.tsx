@@ -40,7 +40,6 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { useLiveNavigation } from "./use-live-navigation";
-import { useSearchParams } from "next/navigation";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
 import type { Category } from "@/lib/districts-categories";
@@ -100,7 +99,6 @@ export function LocationsPage() {
   const [stopPickerOpen, setStopPickerOpen] = useState(false);
   const [pendingSentInviteId, setPendingSentInviteId] = useState<string | null>(null);
   const [rejectedMessage, setRejectedMessage] = useState<string | null>(null);
-  const searchParams = useSearchParams();
   const sendInvite = trpc.location.sendNavInvite.useMutation();
   const cancelInvite = trpc.location.cancelNavInvite.useMutation();
   const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
@@ -126,9 +124,9 @@ export function LocationsPage() {
   // either partner accepts an invite — carries waypoints for multi-leg routing).
   const [acceptedTrip, setAcceptedTrip] = useState<AcceptedTrip | null>(null);
   const [acceptedMessage, setAcceptedMessage] = useState<string | null>(null);
-  // Destination id of the trip we already auto-started, so the effect fires
-  // once per accepted trip even though the redirect URL keeps its loc/nav params.
-  const autoStartedTripRef = useRef<string | null>(null);
+  // Invite id of the trip we already auto-started, so each accepted trip starts
+  // exactly once even when it arrives twice (SSE event + polling fallback).
+  const handledInviteRef = useRef<string | null>(null);
   const nav = useLiveNavigation({
     onOffRoute: async (currentGeo) => {
       if (!selectedId || isRecalculating.current) return;
@@ -245,67 +243,80 @@ export function LocationsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, nav.partnerLocation?.lat, nav.partnerLocation?.lng, partnerRouteGeometry, utils.location]);
 
-  // Subscribe to the accepted-trip store so we react when GlobalInviteListener
-  // writes a new accepted trip (either sender or receiver path).
+  // Subscribe to the accepted-trip store so we react when an invite is accepted
+  // (either partner). The store survives client navigation (module-level) and is
+  // read on mount, so it drives auto-start for both "already on /map" and
+  // "navigated here" cases — no URL params needed.
   useEffect(() => {
-    // Sync initial value (in case store was set before this component mounted).
     setAcceptedTrip(acceptedTripStore.get());
-    return acceptedTripStore.subscribe((t) => {
-      // Re-arm the one-shot guard whenever a genuinely new trip arrives so the
-      // same destination can be re-invited later.
-      if (t) autoStartedTripRef.current = null;
-      setAcceptedTrip(t);
-    });
+    return acceptedTripStore.subscribe(setAcceptedTrip);
   }, []);
 
-  // Auto-start navigation when an accepted trip lands — triggered either by the
-  // URL params (redirect from GlobalInviteListener) or by the store update
-  // (already on /map when partner accepts). The old guard `!selectedId` blocked
-  // this when a pin was already selected, requiring a reload to clear it.
+  // Auto-start navigation when an accepted trip lands in the store. Guarded by
+  // invite id so it runs exactly once per trip even if the same trip arrives via
+  // both the SSE event and the polling fallback. The old `!selectedId` guard
+  // blocked this when a pin was already selected (required a reload).
   useEffect(() => {
-    const locId = searchParams.get('loc') ?? acceptedTrip?.locationId ?? null;
-    const startNav = searchParams.get('nav');
-    const fromStore = acceptedTrip != null;
+    if (!acceptedTrip || !list.data) return;
+    if (handledInviteRef.current === acceptedTrip.inviteId) return;
+    handledInviteRef.current = acceptedTrip.inviteId;
 
-    // Trigger when: URL has nav=1 param, OR the store just received an accepted trip.
-    const shouldStart = (locId && startNav === "1") || fromStore;
-    if (!shouldStart || !list.data || !locId) return;
-
-    // One-shot per accepted trip: the redirect URL keeps carrying loc&nav after
-    // we consume the store, so without this guard the effect re-runs and fires a
-    // second geolocation prompt + getRoute (last-writer-wins race on the route).
-    if (autoStartedTripRef.current === locId) return;
-    autoStartedTripRef.current = locId;
-
-    const tripWaypoints = acceptedTrip?.waypoints ?? [];
-    // Clear the store regardless of whether the pin resolves, so a deleted /
-    // missing pin can't leave a stale accepted trip stuck forever.
+    const { locationId, waypoints, role } = acceptedTrip;
+    // Consume the store now so a missing/deleted pin can't leave a stale trip.
     acceptedTripStore.set(null);
+    // The invite is handled regardless of whether the destination renders in the
+    // current (possibly filtered) list — clear the waiting spinner unconditionally
+    // so the sender never gets stuck (and the status poll stops) when the pin is
+    // filtered out or deleted.
+    setPendingSentInviteId(null);
 
-    const loc = list.data.find(l => l.id === locId);
+    const loc = list.data.find(l => l.id === locationId);
     if (!loc?.geo) return;
 
     // Convert invite Waypoint[] to the {lat,lng}[] shape getRoute expects.
-    const waypointGeos = tripWaypoints.map(w => ({ lat: w.lat, lng: w.lng }));
+    const waypointGeos = waypoints.map(w => ({ lat: w.lat, lng: w.lng }));
 
     goToLocation(loc.id, loc.geo, waypointGeos);
-    setPendingSentInviteId(null);
     // Friendly notice tailored to each side: the sender hears their invite was
     // accepted; the receiver (who just tapped "Đi liền") gets a go-together nudge.
-    if (fromStore) {
-      setAcceptedMessage(
-        acceptedTrip?.role === "receiver"
-          ? "Cùng xuất phát nào 🛵"
-          : "Yayy! Người ấy đồng ý rồi, mình xuất phát thôi 💞",
-      );
-      setTimeout(() => setAcceptedMessage(null), 4000);
-    }
+    setAcceptedMessage(
+      role === "receiver"
+        ? "Cùng xuất phát nào 🛵"
+        : "Yayy! Người ấy đồng ý rồi, mình xuất phát thôi 💞",
+    );
+    setTimeout(() => setAcceptedMessage(null), 4000);
     setTimeout(() => {
       setFocusGeo(null);
       nav.start();
     }, 2000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, list.data, acceptedTrip]);
+  }, [list.data, acceptedTrip]);
+
+  // Reconciliation fallback: while waiting for the partner to accept, poll the
+  // sent invite's status. The SSE invite-response is pushed only once on the
+  // transition, so a single dropped frame would otherwise hang the sender here.
+  // Whichever source (SSE or this poll) lands first wins; the invite-id guard in
+  // the auto-start effect makes the duplicate a no-op.
+  const sentInviteStatus = trpc.location.sentInviteStatus.useQuery(
+    { inviteId: pendingSentInviteId ?? "" },
+    { enabled: !!pendingSentInviteId, refetchInterval: 2500 },
+  );
+  useEffect(() => {
+    if (!pendingSentInviteId || !sentInviteStatus.data) return;
+    const { status, locationId, waypoints } = sentInviteStatus.data;
+    if (status === "accepted" && locationId) {
+      acceptedTripStore.set({
+        inviteId: pendingSentInviteId,
+        locationId,
+        waypoints,
+        role: "sender",
+      });
+    } else if (status === "rejected" || status === "expired") {
+      setPendingSentInviteId(null);
+      setRejectedMessage("Hí, người ấy bận xíu hoặc lỡ tay rồi — rủ lại sau nha 🥺");
+      setTimeout(() => setRejectedMessage(null), 4000);
+    }
+  }, [sentInviteStatus.data, pendingSentInviteId]);
 
   // Listen for invite rejection from GlobalInviteListener
   useEffect(() => {

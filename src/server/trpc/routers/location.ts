@@ -478,6 +478,51 @@ export const locationRouter = router({
       };
     }),
 
+  /**
+   * Poll the status of an invite the current user SENT. Reconciliation fallback
+   * for the sender: the SSE `invite-response` event is pushed only once on the
+   * status transition, so a single dropped frame (proxy buffering, reconnect
+   * gap) would otherwise leave the sender waiting forever. Returns "expired"
+   * when the invite is gone (TTL) so the client can stop waiting.
+   */
+  sentInviteStatus: protectedProcedure
+    .input(z.object({ inviteId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const invite = await NavigationInviteModel.findOne({
+        _id: input.inviteId,
+        initiatorId: ctx.userId,
+      })
+        .select("status locationId locationName waypoints")
+        .lean<{
+          status: string;
+          locationId: string;
+          locationName: string;
+          waypoints: {
+            lat: number;
+            lng: number;
+            name: string;
+            type: "partner_location" | "saved_place" | "custom";
+            status: "pending" | "arrived";
+          }[];
+        }>();
+      if (!invite) {
+        return { status: "expired", locationId: null, locationName: null, waypoints: [] };
+      }
+      return {
+        status: invite.status,
+        locationId: invite.locationId,
+        locationName: invite.locationName,
+        waypoints: (invite.waypoints ?? []).map((w) => ({
+          lat: w.lat,
+          lng: w.lng,
+          name: w.name,
+          type: w.type,
+          status: w.status,
+        })),
+      };
+    }),
+
   /** Cancel a pending invite the current user sent. */
   cancelNavInvite: protectedProcedure
     .input(z.object({ inviteId: z.string().min(1) }))

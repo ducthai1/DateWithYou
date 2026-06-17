@@ -34,7 +34,7 @@ export function GlobalInviteListener() {
       navInvites.clearResponse();
       // Write the full trip (destination + waypoints) into the shared store so
       // LocationsPage can start navigation with the correct multi-leg route.
-      acceptedTripStore.set({ locationId, waypoints, role: "sender" });
+      acceptedTripStore.set({ inviteId: id, locationId, waypoints, role: "sender" });
       // Navigate to map; the store is read on mount / on store change.
       router.push(`/map?loc=${locationId}&nav=1&t=${Date.now()}`);
     } else if (status === "rejected") {
@@ -57,6 +57,7 @@ export function GlobalInviteListener() {
         // Receiver: write the accepted trip into the store so LocationsPage starts
         // with waypoints when it mounts on /map.
         acceptedTripStore.set({
+          inviteId,
           locationId: result.locationId,
           waypoints: result.waypoints ?? [],
           role: "receiver",
