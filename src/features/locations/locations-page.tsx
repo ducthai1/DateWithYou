@@ -587,8 +587,8 @@ export function LocationsPage() {
 
       {/* ── Normal page layout ── */}
       <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px]">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-h1 font-serif">Bản đồ ăn chơi</h1>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-y-3 gap-x-2">
+        <h1 className="text-3xl sm:text-h1 font-serif">Bản đồ ăn chơi</h1>
         <div className="flex gap-2">
           {hasTwoMembers && (
             <Button
@@ -639,7 +639,7 @@ export function LocationsPage() {
       {/* Mobile: filters top, list middle, map bottom */}
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start">
         <div className="contents lg:block lg:sticky lg:top-6 lg:self-start lg:space-y-3">
-          <div className="order-1 grid grid-cols-3 gap-2 lg:order-none">
+          <div className="order-1 grid grid-cols-2 md:grid-cols-3 gap-2 lg:order-none">
             <Select
               aria-label="Lọc theo quận"
               value={district}
@@ -662,6 +662,7 @@ export function LocationsPage() {
               aria-label="Lọc theo trạng thái"
               value={status}
               onChange={setStatus}
+              className="col-span-2 md:col-span-1"
               options={[
                 { value: "", label: "Tất cả" },
                 { value: "want_to_go", label: "Muốn đi" },
