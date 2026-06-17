@@ -22,9 +22,6 @@ export type MapPin = {
   status: "want_to_go" | "visited";
 };
 
-// Distinct colours cycled per trip leg so each segment reads as its own line.
-const LEG_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#06b6d4"];
-
 // Generates a distinctly different color for coordinates, even if they are very close.
 function getPinColor(lat: number, lng: number, status: string): string {
   const val = Math.floor(lat * 111111) * 73856093 ^ Math.floor(lng * 111111) * 19349663;
@@ -520,14 +517,15 @@ export function LocationMapView({
           </Source>
         )}
 
-        {/* MULTI-STOP TRIP: one coloured line per leg. Done legs dim, the
-            active leg is bold, upcoming legs sit in between so the whole plan
-            stays readable while only the current segment is "live". */}
-        {legGeometries?.length
-          ? legGeometries.map((leg, i) => {
-              const color = LEG_COLORS[i % LEG_COLORS.length];
+        {/* MULTI-STOP TRIP. Upcoming/done legs are drawn as faint dashed greys
+            — just enough to preview the shape — while the leg currently being
+            ridden is rendered last (on top), bold, with a soft pastel gradient
+            flowing along it so it's unmistakably the active one. */}
+        {legGeometries?.length ? (
+          <>
+            {legGeometries.map((leg, i) => {
+              if (i === currentLegIndex) return null; // active leg drawn below
               const done = i < currentLegIndex;
-              const active = i === currentLegIndex;
               return (
                 <Source
                   key={`leg-${i}`}
@@ -544,30 +542,75 @@ export function LocationMapView({
                     type="line"
                     layout={{ "line-cap": "round", "line-join": "round" }}
                     paint={{
-                      "line-color": color,
-                      "line-width": active ? 9 : 6,
-                      "line-opacity": done ? 0.3 : active ? 0.95 : 0.6,
-                      ...(done ? { "line-dasharray": [1, 2] } : {}),
+                      "line-color": done ? "#cbd5e1" : "#94a3b8", // slate: done paler than upcoming
+                      "line-width": 4,
+                      "line-opacity": done ? 0.35 : 0.55,
+                      "line-dasharray": [1.5, 2.5],
                     }}
                   />
                 </Source>
               );
-            })
-          : /* USER'S ROUTE (BLUE) — single-destination trips */
-            routeGeometry != null && (
+            })}
+
+            {/* ACTIVE LEG — bold pastel gradient + soft glow, drawn on top. */}
+            {legGeometries[currentLegIndex] && (
               <Source
-                id="route"
+                id="leg-active"
                 type="geojson"
-                data={{ type: "Feature", properties: {}, geometry: routeGeometry as never }}
+                lineMetrics
+                data={{
+                  type: "Feature",
+                  properties: {},
+                  geometry: {
+                    type: "LineString",
+                    coordinates: legGeometries[currentLegIndex].geometry.coordinates,
+                  } as never,
+                }}
               >
+                {/* Diffuse glow underlay so the active line "lifts" off the map. */}
                 <Layer
-                  id="route-line"
+                  id="leg-active-glow"
                   type="line"
                   layout={{ "line-cap": "round", "line-join": "round" }}
-                  paint={{ "line-color": "#60a5fa", "line-width": 8, "line-opacity": 0.8 }}
+                  paint={{ "line-color": "#c4b5fd", "line-width": 20, "line-opacity": 0.35, "line-blur": 12 }}
+                />
+                <Layer
+                  id="leg-active-line"
+                  type="line"
+                  layout={{ "line-cap": "round", "line-join": "round" }}
+                  paint={{
+                    "line-width": 11,
+                    "line-opacity": 0.98,
+                    // Gentle pastel sweep along the leg (start → end).
+                    "line-gradient": [
+                      "interpolate", ["linear"], ["line-progress"],
+                      0, "#a5b4fc",     // indigo-300
+                      0.35, "#c4b5fd",  // violet-300
+                      0.65, "#f0abfc",  // fuchsia-300
+                      1, "#fda4af",     // rose-300
+                    ],
+                  }}
                 />
               </Source>
             )}
+          </>
+        ) : (
+          /* USER'S ROUTE (BLUE) — single-destination trips */
+          routeGeometry != null && (
+            <Source
+              id="route"
+              type="geojson"
+              data={{ type: "Feature", properties: {}, geometry: routeGeometry as never }}
+            >
+              <Layer
+                id="route-line"
+                type="line"
+                layout={{ "line-cap": "round", "line-join": "round" }}
+                paint={{ "line-color": "#60a5fa", "line-width": 8, "line-opacity": 0.8 }}
+              />
+            </Source>
+          )
+        )}
       </Map>
     </div>
   );
