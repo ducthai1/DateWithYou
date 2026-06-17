@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
-import { useLiveNavigation } from "./use-live-navigation";
+import { useLiveNavigation, type LegInfo } from "./use-live-navigation";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
 import type { Category } from "@/lib/districts-categories";
@@ -61,6 +61,18 @@ import {
   type LatLng,
 } from "@/lib/maps";
 import { authClient } from "@/lib/auth-client";
+
+// Within this many metres of a leg's end point we treat the leg as reached and
+// prompt to start the next one. Loose enough to fire despite GPS jitter.
+const LEG_ARRIVE_THRESHOLD_M = 40;
+
+// The end point of a leg is the last coordinate of its polyline ([lng,lat]).
+function legEndpoint(leg: LegInfo): LatLng {
+  const c = leg.geometry.coordinates;
+  const last = c[c.length - 1];
+  return { lat: last[1], lng: last[0] };
+}
+
 import { LocationMapView } from "./location-mapview";
 import { useNavigationInvitesContext } from "./navigation-invites-context";
 import { acceptedTripStore, type AcceptedTrip } from "./accepted-trip-store";
@@ -86,6 +98,23 @@ export function LocationsPage() {
   const [partnerRouteDurationSeconds, setPartnerRouteDurationSeconds] = useState<number | null>(null);
   
   const isRecalculating = useRef(false);
+
+  // ── Multi-leg trip navigation ──
+  // When a companion trip has intermediate stops, the route is split into legs
+  // (4 points → 3 legs). All legs are drawn up-front in distinct colours; only
+  // `currentLegIndex` is "live" (its distance/off-route/arrival are tracked).
+  // Re-routing only ever touches the active leg, so upcoming legs stay put.
+  const [legGeometries, setLegGeometries] = useState<LegInfo[] | null>(null);
+  const [currentLegIndex, setCurrentLegIndex] = useState(0);
+  // True once the active leg's end point is reached, gating the "next leg" prompt.
+  const [legArrived, setLegArrived] = useState(false);
+  // Arming guard: a leg can only register "arrived" after the rider has first
+  // been clearly en route (remaining > threshold). Without this, the stale
+  // small `remainingMeters` carried over from the previous leg would instantly
+  // re-trigger arrival the moment we advance.
+  const legArmedRef = useRef(false);
+  // Transient banner shown when a leg starts/completes ("Bắt đầu chặng 2", …).
+  const [legMessage, setLegMessage] = useState<string | null>(null);
 
   // ── Companion navigation ("Cùng khởi hành") ──
   const [showCompanionChoice, setShowCompanionChoice] = useState(false);
@@ -129,7 +158,30 @@ export function LocationsPage() {
   const handledInviteRef = useRef<string | null>(null);
   const nav = useLiveNavigation({
     onOffRoute: async (currentGeo) => {
-      if (!selectedId || isRecalculating.current) return;
+      if (isRecalculating.current) return;
+      // On a multi-leg trip, re-route ONLY the active leg: current position →
+      // that leg's end point. Upcoming legs are left untouched on the map.
+      if (legGeometries && !legArrived) {
+        isRecalculating.current = true;
+        try {
+          const endpoint = legEndpoint(legGeometries[currentLegIndex]);
+          const r = await utils.location.getRoute.fetch({ destination: endpoint, origin: currentGeo });
+          const leg = r.legs[0];
+          const coords = leg?.geometry.coordinates ?? [];
+          setLegGeometries((prev) =>
+            prev ? prev.map((l, i) => (i === currentLegIndex ? (leg ?? l) : l)) : prev,
+          );
+          if (coords.length) {
+            nav.setRouteInfo(coords, leg?.distanceMeters ?? r.distanceMeters, leg?.durationSeconds ?? r.durationSeconds);
+          }
+        } catch (err) {
+          console.error("Lỗi tính lại chặng đang đi", err);
+        } finally {
+          setTimeout(() => { isRecalculating.current = false; }, 5000);
+        }
+        return;
+      }
+      if (!selectedId) return;
       isRecalculating.current = true;
       try {
         const r = await utils.location.getRoute.fetch({ destinationId: selectedId, origin: currentGeo });
@@ -397,6 +449,11 @@ export function LocationsPage() {
 
     setRouteError(null);
     setRouteGeometry(null);
+    // Reset any prior multi-leg trip before drawing the new one.
+    setLegGeometries(null);
+    setCurrentLegIndex(0);
+    setLegArrived(false);
+    legArmedRef.current = false;
     if (!navigator.geolocation) {
       setRouteError("Trình duyệt không hỗ trợ định vị.");
       return;
@@ -425,9 +482,27 @@ export function LocationsPage() {
 
           const [r, partnerR] = await Promise.all(reqs);
 
-          setRouteGeometry(r.geometry);
           setRouteDistanceMeters(r.distanceMeters);
           setRouteDurationSeconds(r.durationSeconds);
+
+          // Multi-stop trip: split into coloured legs and navigate the first one.
+          // Otherwise keep the single merged polyline (the common case).
+          const isMultiLeg = !!waypoints && waypoints.length > 0 && r.legs.length > 1;
+          if (isMultiLeg) {
+            setLegGeometries(r.legs);
+            setCurrentLegIndex(0);
+            setLegArrived(false);
+            setRouteGeometry(null); // legs are drawn instead of the merged line
+            const first = r.legs[0];
+            nav.setRouteInfo(first.geometry.coordinates, first.distanceMeters, first.durationSeconds, r.legs);
+          } else {
+            setLegGeometries(null);
+            setRouteGeometry(r.geometry);
+            const coords = (r.geometry as { coordinates?: Array<[number, number]> }).coordinates;
+            if (coords) {
+              nav.setRouteInfo(coords, r.distanceMeters, r.durationSeconds);
+            }
+          }
 
           if (partnerR) {
             setPartnerRouteGeometry(partnerR.geometry);
@@ -437,12 +512,6 @@ export function LocationsPage() {
             setPartnerRouteGeometry(null);
             setPartnerRouteDistanceMeters(null);
             setPartnerRouteDurationSeconds(null);
-          }
-
-          // Feed the route polyline to the nav hook so it can compute remaining distance.
-          const coords = (r.geometry as { coordinates?: Array<[number, number]> }).coordinates;
-          if (coords) {
-            nav.setRouteInfo(coords, r.distanceMeters, r.durationSeconds);
           }
         } catch {
           setRouteError("Không vẽ được đường đi (kiểm tra STADIA_API_KEY).");
@@ -462,6 +531,64 @@ export function LocationsPage() {
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
     );
   }
+
+  // Detect reaching the active leg's end point. `remainingMeters` is measured
+  // against the active leg only, so this fires per stop rather than per trip.
+  useEffect(() => {
+    if (!legGeometries || legArrived) return;
+    const rem = nav.remainingMeters;
+    if (rem == null) return;
+    // Arm only after the rider is genuinely under way on this leg.
+    if (!legArmedRef.current) {
+      if (rem > LEG_ARRIVE_THRESHOLD_M) legArmedRef.current = true;
+      return;
+    }
+    if (rem < LEG_ARRIVE_THRESHOLD_M) {
+      legArmedRef.current = false;
+      setLegArrived(true);
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([120, 80, 120]);
+    }
+  }, [nav.remainingMeters, legGeometries, legArrived]);
+
+  // Confirm the current stop and start the next leg. Re-routes the next leg from
+  // the rider's current position so only its two end points drive the new route.
+  const handleAdvanceLeg = async () => {
+    if (!legGeometries) return;
+    const total = legGeometries.length;
+    const nextIdx = currentLegIndex + 1;
+    // Final leg just finished → whole trip done.
+    if (nextIdx >= total) {
+      setLegArrived(false);
+      setLegMessage("Tới nơi rồi! Chuyến đi hoàn tất 🎉");
+      setTimeout(() => setLegMessage(null), 5000);
+      nav.stop();
+      return;
+    }
+    const cur = nav.userGeo ?? userGeo;
+    const planned = legGeometries[nextIdx];
+    setCurrentLegIndex(nextIdx);
+    setLegArrived(false);
+    legArmedRef.current = false;
+    if (cur) {
+      try {
+        const r = await utils.location.getRoute.fetch({ destination: legEndpoint(planned), origin: cur });
+        const leg = r.legs[0];
+        if (leg) {
+          setLegGeometries((prev) => (prev ? prev.map((l, i) => (i === nextIdx ? leg : l)) : prev));
+          nav.setRouteInfo(leg.geometry.coordinates, leg.distanceMeters, leg.durationSeconds);
+        } else {
+          nav.setRouteInfo(planned.geometry.coordinates, planned.distanceMeters, planned.durationSeconds);
+        }
+      } catch {
+        nav.setRouteInfo(planned.geometry.coordinates, planned.distanceMeters, planned.durationSeconds);
+      }
+    } else {
+      nav.setRouteInfo(planned.geometry.coordinates, planned.distanceMeters, planned.durationSeconds);
+    }
+    setLegMessage(`Bắt đầu chặng ${nextIdx + 1}/${total} 🛵`);
+    setTimeout(() => setLegMessage(null), 4000);
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(80);
+  };
 
   const pins = (list.data ?? []).map((l) => ({
     id: l.id,
@@ -578,6 +705,8 @@ export function LocationsPage() {
             <LocationMapView
               pins={pins}
               routeGeometry={routeGeometry}
+              legGeometries={legGeometries}
+              currentLegIndex={currentLegIndex}
               partnerRouteGeometry={partnerRouteGeometry}
               selectedId={selectedId}
               focusGeo={focusGeo}
@@ -608,7 +737,7 @@ export function LocationsPage() {
                         <div className="text-[10px] font-semibold text-white bg-red-500 px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap animate-pulse">
                           <WifiOff className="h-3 w-3" /> Mất mạng
                         </div>
-                      ) : nav.error ? (
+                      ) : nav.gpsLost ? (
                         <div className="text-[10px] font-semibold text-amber-900 bg-amber-200 border border-amber-300 px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap animate-pulse">
                           <LocateOff className="h-3 w-3" /> Mất định vị
                         </div>
@@ -723,6 +852,49 @@ export function LocationsPage() {
             <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4"
                  style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
             >
+              {/* Multi-leg progress + per-leg arrival prompt */}
+              {legGeometries && (
+                <>
+                  <div className="flex items-center gap-1.5 bg-white/90 rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-md backdrop-blur-sm">
+                    {legGeometries.map((_, i) => (
+                      <span
+                        key={i}
+                        className={cn(
+                          "h-2 w-2 rounded-full transition-all",
+                          i < currentLegIndex
+                            ? "bg-emerald-400"
+                            : i === currentLegIndex
+                              ? "bg-blue-500 scale-125"
+                              : "bg-slate-300",
+                        )}
+                      />
+                    ))}
+                    <span className="ml-1">Chặng {currentLegIndex + 1}/{legGeometries.length}</span>
+                  </div>
+                  {legArrived && (
+                    <div className="w-full max-w-sm flex flex-col items-center gap-2 rounded-2xl border border-emerald-100 bg-white px-4 py-3 shadow-xl animate-in fade-in slide-in-from-bottom-4">
+                      <p className="text-center text-sm font-semibold text-slate-800">
+                        {currentLegIndex + 1 >= legGeometries.length
+                          ? "Đã tới đích cuối cùng 🎉"
+                          : `Đã tới điểm dừng ${currentLegIndex + 1}! Mình đi tiếp chặng ${currentLegIndex + 2} nha 🛵`}
+                      </p>
+                      <Button
+                        className="w-full gap-2 bg-emerald-500 text-white hover:bg-emerald-600"
+                        onClick={handleAdvanceLeg}
+                      >
+                        {currentLegIndex + 1 >= legGeometries.length
+                          ? "Hoàn tất chuyến đi"
+                          : `Bắt đầu chặng ${currentLegIndex + 2} ▶`}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+              {legMessage && (
+                <p className="bg-emerald-500 text-white rounded-full px-4 py-1.5 text-sm font-semibold shadow-lg">
+                  {legMessage}
+                </p>
+              )}
               {(routeError || nav.error) && (
                 <p className="bg-black/60 text-destructive rounded-lg px-3 py-1.5 text-xs backdrop-blur-sm">
                   {routeError ?? nav.error}
@@ -827,6 +999,8 @@ export function LocationsPage() {
             <LocationMapView
               pins={pins}
               routeGeometry={routeGeometry}
+              legGeometries={legGeometries}
+              currentLegIndex={currentLegIndex}
               partnerRouteGeometry={partnerRouteGeometry}
               selectedId={selectedId}
               focusGeo={focusGeo}
@@ -853,7 +1027,7 @@ export function LocationsPage() {
                 <WifiOff className="h-3.5 w-3.5" /> Mất kết nối mạng
               </div>
             )}
-            {!nav.isOffline && nav.error && (
+            {!nav.isOffline && nav.gpsLost && (
               <div className="flex self-center items-center gap-2 rounded-full bg-amber-500 px-3 py-1.5 text-xs font-medium text-white shadow-md mb-1 animate-in fade-in slide-in-from-bottom-2">
                 <LocateOff className="h-3.5 w-3.5" /> Mất định vị GPS
               </div>

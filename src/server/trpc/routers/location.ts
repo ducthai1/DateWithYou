@@ -225,21 +225,31 @@ export const locationRouter = router({
   // Server-side Directions proxy — keeps the secret token off the client and
   // validates the destination belongs to the caller's space.
   getRoute: protectedProcedure
-    .input(z.object({ 
-      destinationId: z.string(), 
+    .input(z.object({
+      // Either a saved-place id (looked up) or a raw destination coordinate.
+      // The raw form lets the client re-route a single leg toward an arbitrary
+      // intermediate stop (waypoint) that isn't a saved location.
+      destinationId: z.string().optional(),
+      destination: geo.optional(),
       origin: geo,
       waypoints: z.array(z.object({ lat: z.number(), lng: z.number() })).optional()
     }))
     .query(async ({ ctx, input }) => {
       await connectToDatabase();
-      const dest = await LocationModel.findOne({
-        _id: input.destinationId,
-        spaceId: ctx.spaceId,
-      })
-        .select("geo")
-        .lean<{ geo?: { lat: number; lng: number } }>();
-      if (!dest?.geo || dest.geo.lat == null)
-        throw new TRPCError({ code: "NOT_FOUND", message: "NO_DESTINATION_GEO" });
+      let destGeo = input.destination;
+      if (!destGeo) {
+        if (!input.destinationId)
+          throw new TRPCError({ code: "BAD_REQUEST", message: "NO_DESTINATION" });
+        const dest = await LocationModel.findOne({
+          _id: input.destinationId,
+          spaceId: ctx.spaceId,
+        })
+          .select("geo")
+          .lean<{ geo?: { lat: number; lng: number } }>();
+        if (!dest?.geo || dest.geo.lat == null)
+          throw new TRPCError({ code: "NOT_FOUND", message: "NO_DESTINATION_GEO" });
+        destGeo = { lat: dest.geo.lat, lng: dest.geo.lng };
+      }
 
       // Valhalla via Stadia Maps. The `motor_scooter` costing is purpose-built
       // for motorbikes: it obeys one-way streets (no illegal contraflow) yet may
@@ -255,7 +265,7 @@ export const locationRouter = router({
             locations: [
               { lat: input.origin.lat, lon: input.origin.lng },
               ...(input.waypoints?.map(w => ({ lat: w.lat, lon: w.lng })) || []),
-              { lat: dest.geo.lat, lon: dest.geo.lng },
+              { lat: destGeo.lat, lon: destGeo.lng },
             ],
             costing: "motor_scooter",
             directions_options: { units: "kilometers" },

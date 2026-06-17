@@ -22,6 +22,12 @@ export type PartnerConnection = "online" | "stale" | "weak";
 const PARTNER_STALE_MS = 20_000;
 /** Horizontal GPS accuracy worse than this (metres) → "weak GPS". */
 const WEAK_ACCURACY_M = 50;
+/** No new GPS fix within this window while navigating → "lost GPS". Kept short
+ *  (fixes normally arrive every 1-2s) so turning location off surfaces fast.
+ *  Catches the silent-stall case where watchPosition fires no error. */
+const GPS_STALE_MS = 4_000;
+/** How often own-GPS / partner staleness is re-evaluated between events. */
+const STALE_TICK_MS = 1_500;
 
 /** Minimal screen Wake Lock shape (avoids relying on lib.dom typings). */
 type WakeLockLike = { release: () => Promise<void> };
@@ -32,7 +38,9 @@ type NavigatorWithWakeLock = Navigator & {
 export type LegInfo = {
   distanceMeters: number;
   durationSeconds: number;
-  geometry: { type: "LineString"; coordinates: Array<[number, number]> };
+  // `type` is a plain string (not the "LineString" literal) so a leg returned
+  // straight from the tRPC route query assigns without a cast.
+  geometry: { type: string; coordinates: Array<[number, number]> };
 };
 
 export type LiveNavigation = {
@@ -45,6 +53,9 @@ export type LiveNavigation = {
   speedKmH: number | null;
   /** Network connection status */
   isOffline: boolean;
+  /** True while navigating but the device has no fresh GPS fix (location off /
+   *  signal lost). Derived from fix staleness, not just the watchPosition error. */
+  gpsLost: boolean;
   /** Partner's latest live location (if available in the same space) */
   partnerLocation: PartnerLocation | null;
   /** Partner link health, or null when no partner is being tracked. */
@@ -155,7 +166,9 @@ export function useLiveNavigation(options?: {
   const [heading, setHeading] = useState<number | null>(null);
   const [speedKmH, setSpeedKmH] = useState<number | null>(null);
   const [accuracyM, setAccuracyM] = useState<number | null>(null);
-  // Ticks while navigating so partner staleness is re-evaluated between pings.
+  // Timestamp of the last successful GPS fix; drives own "lost GPS" detection.
+  const [lastFixTs, setLastFixTs] = useState<number>(() => Date.now());
+  // Ticks while navigating so partner + GPS staleness re-evaluate between events.
   const [nowTs, setNowTs] = useState<number>(() => Date.now());
   const [traveled, setTraveled] = useState<Array<[number, number]>>([]);
   const [remainingMeters, setRemainingMeters] = useState<number | null>(null);
@@ -297,12 +310,15 @@ export function useLiveNavigation(options?: {
     setRemainingMeters(null);
     setRemainingSeconds(null);
     setEverHadPartner(false);
+    setLastFixTs(Date.now()); // count "lost GPS" from when tracking begins
     setIsNavigating(true);
     acquireWakeLock();
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
         const g = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserGeo(g);
+        setLastFixTs(Date.now()); // fresh fix → clears any "lost GPS" state
+        setError(null);
         setTraveled((t) => [...t, [g.lng, g.lat]]);
 
         // Heading: only set when the device reports a valid value.
@@ -421,7 +437,7 @@ export function useLiveNavigation(options?: {
   // poll alone would leave `nowTs` frozen between fetches).
   useEffect(() => {
     if (!isNavigating) return;
-    const t = setInterval(() => setNowTs(Date.now()), 3000);
+    const t = setInterval(() => setNowTs(Date.now()), STALE_TICK_MS);
     return () => clearInterval(t);
   }, [isNavigating]);
 
@@ -436,6 +452,11 @@ export function useLiveNavigation(options?: {
       window.removeEventListener("online", handleOnline);
     };
   }, []);
+
+  // Own GPS considered lost while navigating if no fix landed recently, or the
+  // watch reported an error. Staleness catches "location turned off" where the
+  // browser silently stops delivering positions without firing the error cb.
+  const gpsLost = isNavigating && (error != null || nowTs - lastFixTs > GPS_STALE_MS);
 
   // Derive partner link health from ping freshness + accuracy. A partner who
   // dropped out entirely (null) but was seen earlier still reads as "stale".
@@ -455,6 +476,7 @@ export function useLiveNavigation(options?: {
     heading,
     speedKmH,
     isOffline,
+    gpsLost,
     partnerLocation,
     partnerConnection,
     userPingAction,
