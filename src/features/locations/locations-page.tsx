@@ -17,6 +17,7 @@ import {
   Trash2,
   Utensils,
   Play,
+  Pause,
   Square,
   Clock,
   Route,
@@ -1452,10 +1453,11 @@ export function LocationsPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4 max-h-[85vh] overflow-y-auto"
+              className="bg-card rounded-2xl shadow-xl max-w-sm w-full flex flex-col max-h-[85vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="space-y-4">
+              {/* Only the content scrolls; the action buttons stay pinned below. */}
+              <div className="space-y-4 overflow-y-auto p-6 flex-1">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 shrink-0 shadow-inner">
                     <Users className="h-6 w-6 text-accent" />
@@ -1558,7 +1560,7 @@ export function LocationsPage() {
                   Người ấy sẽ nhận được thông báo lộ trình. Khi đồng ý, cả 2 sẽ cùng thấy nhau trên bản đồ.
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 shrink-0 border-t border-border p-4">
                 <Button variant="outline" className="flex-1" onClick={() => { setShowCompanionChoice(false); setPlannedStops([]); setStopPickerOpen(false); }}>
                   Hủy
                 </Button>
