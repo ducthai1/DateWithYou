@@ -40,18 +40,26 @@ export function SpaceSettings() {
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   
   const PRESET_AVATARS = [
-    // 3D Cute Animals (Fluent UI 3D Emojis)
+    // Requested Animals (Fluent 3D)
     "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cat%20face/3D/cat_face_3d.png",
     "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Dog%20face/3D/dog_face_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Rabbit%20face/3D/rabbit_face_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Bear/3D/bear_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Fox/3D/fox_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Owl/3D/owl_3d.png",
     "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Panda/3D/panda_3d.png",
     "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Koala/3D/koala_3d.png",
+
+    // Requested Characters (Fluent 3D)
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ninja/3D/ninja_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Woman%20astronaut/3D/woman_astronaut_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Mage/3D/mage_3d.png", // Wizard
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Guard/3D/guard_3d.png", // Knight
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Superhero/3D/superhero_3d.png",
+    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Fairy/3D/fairy_3d.png",
+
+    // Additional Cute Animals
     "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Tiger%20face/3D/tiger_face_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Hatching%20chick/3D/hatching_chick_3d.png",
     "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Penguin/3D/penguin_3d.png",
     "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Frog/3D/frog_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Monkey%20face/3D/monkey_face_3d.png",
     "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Pig%20face/3D/pig_face_3d.png",
   ];
 
