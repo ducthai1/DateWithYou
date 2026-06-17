@@ -55,7 +55,7 @@ export function LocationMapView({
   selectedId?: string | null;
   focusGeo?: LatLng | null;
   userGeo?: LatLng | null;
-  partnerLocation?: { lat: number; lng: number } | null;
+  partnerLocation?: { lat: number; lng: number; pingAction?: string | null } | null;
   followGeo?: LatLng | null;
   /** Device heading in degrees (0 = north). Rotates the map when following. */
   heading?: number | null;
@@ -116,13 +116,44 @@ export function LocationMapView({
       // 2. Haptic Heartbeat (Vibration)
       // Pattern: beat, pause, beat, pause, loooong beat
       if (typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate([100, 50, 100, 50, 300]);
+        navigator.vibrate([100, 100, 100, 100, 400]);
       }
 
       // Hide overlay after 5 seconds
       setTimeout(() => setShowKissOverlay(false), 5000);
+    } else if (distance >= 50) {
+      // Reset if they move apart
+      setHasKissed(false);
     }
   }, [userGeo, partnerLocation, hasKissed]);
+
+  // ── QUICK PINGS (EMOTION BUBBLES) ──
+  const [activePing, setActivePing] = useState<{ emoji: string; id: number } | null>(null);
+  
+  useEffect(() => {
+    if (partnerLocation?.pingAction) {
+      const action = partnerLocation.pingAction;
+      let emoji = "";
+      if (action === "HOT") emoji = "🥵 Nóng quá!";
+      if (action === "JAM") emoji = "🐌 Kẹt xe cứng ngắc!";
+      if (action === "WAIT") emoji = "🥺 Đợi xíu nha!";
+      if (action === "HURRY") {
+        emoji = "🚨 Rung rinh!";
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          navigator.vibrate([200, 100, 200, 100, 500]); // Urgent pattern
+        }
+      }
+      
+      if (emoji) {
+        const pingId = Date.now();
+        setActivePing({ emoji, id: pingId });
+        // Bubble disappears after 4 seconds
+        setTimeout(() => {
+          setActivePing((prev) => (prev?.id === pingId ? null : prev));
+        }, 4000);
+      }
+    }
+  }, [partnerLocation?.pingAction]);
 
   const handleInteraction = () => {
     setIsUserInteracting(true);
@@ -361,14 +392,29 @@ export function LocationMapView({
             style={{ zIndex: 9 }}
           >
             <div className="relative flex items-center justify-center group">
+              {/* Emotion Bubble */}
+              <AnimatePresence>
+                {activePing && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.5, y: -10 }}
+                    className="absolute -top-12 z-20 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-sm font-bold shadow-lg border-2 border-rose-100 flex items-center"
+                  >
+                    {activePing.emoji}
+                    <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <span className="absolute -top-6 whitespace-nowrap rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-200 opacity-0 group-hover:opacity-100 group-hover:-translate-y-1">
                 Người ấy
               </span>
               <span className="absolute h-12 w-12 animate-ping rounded-full bg-rose-400/30" />
               {partnerAvatar ? (
-                <img src={partnerAvatar} alt="Người ấy" className="h-8 w-8 rounded-full border-[2.5px] border-white object-cover shadow-md ring-4 ring-rose-500/30 bg-muted" />
+                <img src={partnerAvatar} alt="Người ấy" className="relative z-10 h-8 w-8 rounded-full border-[2.5px] border-white object-cover shadow-md ring-4 ring-rose-500/30 bg-muted" />
               ) : (
-                <span className="block h-5 w-5 rounded-full border-[2.5px] border-white bg-rose-500 shadow ring-4 ring-rose-500/30" />
+                <span className="relative z-10 block h-5 w-5 rounded-full border-[2.5px] border-white bg-rose-500 shadow ring-4 ring-rose-500/30" />
               )}
             </div>
           </Marker>

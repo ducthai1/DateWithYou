@@ -7,6 +7,9 @@ const liveLocationSchema = new Schema(
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
     heading: { type: Number, default: null },
+    speedKmH: { type: Number, default: null },
+    batteryLevel: { type: Number, default: null },
+    pingAction: { type: String, default: null },
     // Auto-delete records after 1 hour (3600 seconds) of inactivity
     updatedAt: { type: Date, default: Date.now, expires: 3600 },
   },

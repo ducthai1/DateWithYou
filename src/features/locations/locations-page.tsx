@@ -95,6 +95,9 @@ export function LocationsPage() {
   const [midpointRecommendations, setMidpointRecommendations] = useState<any[] | null>(null);
   const [showMidpointModal, setShowMidpointModal] = useState(false);
   const [midpointIndex, setMidpointIndex] = useState(0);
+
+  // ── Weather ──
+  const [weather, setWeather] = useState<{ temp: number; desc: string } | null>(null);
   
   const nav = useLiveNavigation({
     onOffRoute: async (currentGeo) => {
@@ -145,6 +148,30 @@ export function LocationsPage() {
   const userAvatar = session?.user.image || undefined;
   const partnerAvatar = members.data?.find((m) => m.id !== session?.user.id)?.image || undefined;
   const hasTwoMembers = (members.data?.length ?? 0) >= 2;
+
+  // Fetch weather when destination is selected
+  useEffect(() => {
+    if (selectedId && list.data) {
+      const loc = list.data.find(l => l.id === selectedId);
+      if (loc?.geo) {
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.geo.lat}&longitude=${loc.geo.lng}&current=temperature_2m,weather_code`)
+          .then(res => res.json())
+          .then(data => {
+            if (data?.current) {
+               const code = data.current.weather_code;
+               let desc = "Trời quang";
+               if (code >= 50 && code <= 69) desc = "Mưa rào nhẹ";
+               if (code >= 80 && code <= 99) desc = "Mưa to rào";
+               if (code >= 1 && code <= 3) desc = "Nhiều mây";
+               setWeather({ temp: data.current.temperature_2m, desc });
+            }
+          })
+          .catch(() => {});
+      }
+    } else {
+      setWeather(null);
+    }
+  }, [selectedId, list.data]);
 
   // ── SSE event handlers ──
 
@@ -427,7 +454,12 @@ export function LocationsPage() {
                 )}
                 <div className="flex rounded-2xl bg-white/90 shadow-lg backdrop-blur-sm overflow-hidden divide-x divide-border">
                   {/* YOU */}
-                  <div className="flex flex-col px-4 py-2 bg-blue-50/50">
+                  <div className="flex flex-col px-4 py-2 bg-blue-50/50 relative">
+                    {weather && (
+                      <div className="absolute top-1 right-2 text-[10px] font-medium text-blue-800/60 bg-blue-100/50 px-1.5 rounded-full flex items-center gap-1">
+                        ⛅ {weather.temp}°C
+                      </div>
+                    )}
                     <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Bạn</span>
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1">
@@ -443,8 +475,20 @@ export function LocationsPage() {
 
                   {/* PARTNER */}
                   {partnerRouteGeometry != null && (
-                    <div className="flex flex-col px-4 py-2 bg-rose-50/50">
-                      <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mb-1">Người ấy</span>
+                    <div className="flex flex-col px-4 py-2 bg-rose-50/50 relative">
+                      {nav.partnerLocation?.batteryLevel != null && (
+                        <div className="absolute top-1 right-2 text-[10px] font-medium text-rose-800/60 bg-rose-100/50 px-1.5 rounded-full flex items-center gap-1">
+                          🔋 {nav.partnerLocation.batteryLevel}%
+                        </div>
+                      )}
+                      <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mb-1">
+                        Người ấy
+                        {nav.partnerLocation?.speedKmH != null && (
+                          <span className="ml-2 lowercase font-normal opacity-70">
+                            ({nav.partnerLocation.speedKmH < 4 ? "dừng/chậm" : "chạy xe"})
+                          </span>
+                        )}
+                      </span>
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1">
                           <Route className="h-3.5 w-3.5 text-rose-500" />
@@ -458,18 +502,39 @@ export function LocationsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* ETA GAP Analysis */}
+                {displayDuration != null && partnerRouteDurationSeconds != null && (
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-md">
+                    {displayDuration - partnerRouteDurationSeconds > 120 ? (
+                      <span>Bạn sẽ đến trễ hơn <strong className="text-rose-500">{Math.round((displayDuration - partnerRouteDurationSeconds)/60)} phút</strong> 🏃‍♂️</span>
+                    ) : partnerRouteDurationSeconds - displayDuration > 120 ? (
+                      <span>Bạn sẽ đến sớm hơn <strong className="text-blue-500">{Math.round((partnerRouteDurationSeconds - displayDuration)/60)} phút</strong> 🍹</span>
+                    ) : (
+                      <span className="text-emerald-600">Hai bạn sẽ đến cùng lúc! 🎯</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Floating Speed Indicator */}
             {nav.speedKmH != null && (
               <div 
-                className="absolute right-4 top-1/2 flex -translate-y-1/2 flex-col items-center justify-center rounded-full border-[3px] border-accent bg-white/95 shadow-lg backdrop-blur-sm h-16 w-16"
+                className="absolute right-4 top-[40%] flex flex-col items-center justify-center rounded-full border-[3px] border-accent bg-white/95 shadow-lg backdrop-blur-sm h-16 w-16"
               >
                 <span className="text-xl font-bold leading-none tracking-tighter text-slate-800">{nav.speedKmH}</span>
                 <span className="text-[9px] font-bold text-muted-foreground uppercase leading-none mt-0.5">km/h</span>
               </div>
             )}
+
+            {/* Quick Pings */}
+            <div className="absolute right-4 top-[60%] flex flex-col items-center gap-2">
+               <button onClick={() => nav.sendPingAction?.("HOT")} className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🥵</button>
+               <button onClick={() => nav.sendPingAction?.("JAM")} className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🐌</button>
+               <button onClick={() => nav.sendPingAction?.("WAIT")} className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🥺</button>
+               <button onClick={() => nav.sendPingAction?.("HURRY")} className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90 border-2 border-rose-400">🚨</button>
+            </div>
 
             {/* Floating stop button — always visible over the map */}
             <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4"

@@ -7,6 +7,9 @@ export type PartnerLocation = {
   lat: number;
   lng: number;
   heading: number | null;
+  speedKmH: number | null;
+  batteryLevel: number | null;
+  pingAction: string | null;
   updatedAt: Date;
 };
 
@@ -39,6 +42,8 @@ export type LiveNavigation = {
   stop: () => void;
   /** Feed the route polyline + totals so the hook can compute remaining distance live. */
   setRouteInfo: (coords: Array<[number, number]>, totalMeters: number, totalSeconds: number) => void;
+  /** Send a quick ping emotion to the partner */
+  sendPingAction: (action: string) => void;
 };
 
 // ── Geo helpers ──────────────────────────────────────────────────────────────
@@ -136,6 +141,12 @@ export function useLiveNavigation(options?: {
     typeof navigator !== "undefined" ? !navigator.onLine : false,
   );
   const [partnerLocation, setPartnerLocation] = useState<PartnerLocation | null>(null);
+  
+  const [pendingPingAction, setPendingPingAction] = useState<string | null>(null);
+
+  const sendPingAction = useCallback((action: string) => {
+    setPendingPingAction(action);
+  }, []);
   
   const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
   
@@ -268,13 +279,26 @@ export function useLiveNavigation(options?: {
   useEffect(() => {
     if (!isNavigating || !userGeo || isOffline) return;
     
-    // Immediate ping when we get a fresh userGeo, but we want to throttle it
-    // Using a simple interval is easier.
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
+      let batteryLevel = null;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const nav = navigator as any;
+        if (nav.getBattery) {
+          const battery = await nav.getBattery();
+          batteryLevel = Math.round(battery.level * 100);
+        }
+      } catch {
+        // ignore
+      }
+
       pingLiveLocation.mutate({
         lat: userGeo.lat,
         lng: userGeo.lng,
         heading: heading,
+        speedKmH: speedKmH,
+        batteryLevel,
+        pingAction: pendingPingAction,
       }, {
         onSuccess: (partners) => {
           if (partners && partners.length > 0) {
@@ -282,12 +306,13 @@ export function useLiveNavigation(options?: {
           } else {
             setPartnerLocation(null);
           }
+          if (pendingPingAction) setPendingPingAction(null);
         }
       });
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [isNavigating, userGeo, heading, isOffline, pingLiveLocation]);
+  }, [isNavigating, userGeo, heading, speedKmH, pendingPingAction, isOffline, pingLiveLocation]);
 
   // Track network connection status
   useEffect(() => {
@@ -315,5 +340,6 @@ export function useLiveNavigation(options?: {
     start,
     stop,
     setRouteInfo,
+    sendPingAction,
   };
 }
