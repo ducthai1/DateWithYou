@@ -40,27 +40,23 @@ export function SpaceSettings() {
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   
   const PRESET_AVATARS = [
-    // Requested Animals (Fluent 3D)
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Cat%20face/3D/cat_face_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Dog%20face/3D/dog_face_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Fox/3D/fox_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Owl/3D/owl_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Panda/3D/panda_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Koala/3D/koala_3d.png",
+    // Animals (Twemoji SVGs - 100% reliable flat vectors)
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f431.svg", // Cat
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f436.svg", // Dog
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f98a.svg", // Fox
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f989.svg", // Owl
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f43c.svg", // Panda
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f428.svg", // Koala
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f42f.svg", // Tiger
 
-    // Requested Characters (Fluent 3D)
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Ninja/3D/ninja_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Woman%20astronaut/3D/woman_astronaut_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Mage/3D/mage_3d.png", // Wizard
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Guard/3D/guard_3d.png", // Knight
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Superhero/3D/superhero_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Fairy/3D/fairy_3d.png",
-
-    // Additional Cute Animals
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Tiger%20face/3D/tiger_face_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Penguin/3D/penguin_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Frog/3D/frog_3d.png",
-    "https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Pig%20face/3D/pig_face_3d.png",
+    // Characters (Twemoji SVGs)
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f977.svg", // Ninja
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f468-200d-1f680.svg", // Astronaut
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f9d9.svg", // Wizard
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f482.svg", // Knight/Guard
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f9b8.svg", // Superhero
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f9da.svg", // Fairy
+    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f9db.svg", // Vampire
   ];
 
   const displayAvatars = [
