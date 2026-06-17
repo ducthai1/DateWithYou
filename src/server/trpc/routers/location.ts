@@ -36,41 +36,54 @@ async function geoFromGoogleMapsUrl(
       const res = await fetch(url, {
         redirect: "follow",
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept-Language": "en-US,en;q=0.9",
+          // Pre-consent so datacenter IPs don't get the consent interstitial
+          // (which carries no coordinates) instead of the real maps page.
+          Cookie: "CONSENT=YES+; SOCS=CAISEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg",
+        },
       });
       finalUrl = res.url || url;
       html = await res.text();
-    } catch {
-      // redirect/network failure → parse the original URL as-is
+    } catch (err) {
+      // redirect/network failure → fall back to parsing the original URL as-is
+      console.error("geoFromGoogleMapsUrl: redirect/fetch failed", url, err);
     }
   }
-  // Order matters: !3d!4d is the actual place; @lat,lng is only the camera
-  // centre (often ~1km off), so it must be the last resort.
-  const patterns = [
-    /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
-    /[?&](?:q|ll|destination|daddr)=(-?\d+\.\d+),(-?\d+\.\d+)/,
-    /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+
+  // Coordinates can live in the resolved URL *or* in the page HTML, so scan both.
+  const haystack = `${finalUrl}\n${html}`;
+
+  // Accuracy order:
+  //   1. !3d!4d        → the exact place marker.
+  //   2. q/ll/...      → explicit coordinate query params.
+  //   3. staticmap pin → the rendered pin centre (accurate for shared places).
+  //   4. @lat,lng      → only the camera/viewport centre, often offset from the
+  //                      real pin, so it is the last resort.
+  const patterns: RegExp[] = [
+    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
+    /[?&](?:q|ll|destination|daddr)=(-?\d+(?:\.\d+)?)(?:,|%2C)(-?\d+(?:\.\d+)?)/i,
+    /staticmap\?[^"'<>]*?center=(-?\d+(?:\.\d+)?)(?:,|%2C)(-?\d+(?:\.\d+)?)/i,
+    /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
   ];
   for (const re of patterns) {
-    const m = finalUrl.match(re);
+    const m = haystack.match(re);
     if (m) {
       const lat = Number(m[1]);
       const lng = Number(m[2]);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+      if (
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        Math.abs(lat) <= 90 &&
+        Math.abs(lng) <= 180
+      ) {
+        return { lat, lng };
+      }
     }
   }
 
-  // If the URL didn't contain coordinates, try to extract from the OpenGraph image tag in the HTML
-  if (html) {
-    const metaMatch = html.match(/<meta content="https:\/\/maps\.google\.com\/maps\/api\/staticmap\?center=(-?\d+\.\d+)%2C(-?\d+\.\d+)/);
-    if (metaMatch) {
-      const lat = Number(metaMatch[1]);
-      const lng = Number(metaMatch[2]);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
-    }
-  }
-
+  console.warn("geoFromGoogleMapsUrl: no coordinates found", { url, finalUrl });
   return null;
 }
 
