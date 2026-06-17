@@ -484,12 +484,14 @@ export function LocationsPage() {
                 <div className="flex rounded-2xl bg-white/90 shadow-lg backdrop-blur-sm overflow-hidden divide-x divide-border">
                   {/* YOU */}
                   <div className="flex flex-col px-3 py-2 sm:px-4 bg-blue-50/50 relative flex-1 min-w-0">
-                    {weather && (
-                      <div className="absolute top-1 right-2 text-[10px] font-medium text-blue-800/60 bg-blue-100/50 px-1.5 rounded-full flex items-center gap-1 whitespace-nowrap">
-                        ⛅ {weather.temp}°C
-                      </div>
-                    )}
-                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1 truncate">Bạn</span>
+                    <div className="flex items-center justify-between gap-1 mb-1 pr-1">
+                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider truncate">Bạn</span>
+                      {weather && (
+                        <div className="text-[10px] font-medium text-blue-800/60 bg-blue-100/50 px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap">
+                          ⛅ {weather.temp}°C
+                        </div>
+                      )}
+                    </div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-3 mt-0.5">
                       <div className="flex items-center gap-1">
                         <Route className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500 shrink-0" />
@@ -505,22 +507,24 @@ export function LocationsPage() {
                   {/* PARTNER */}
                   {partnerRouteGeometry != null && (
                     <div className="flex flex-col px-3 py-2 sm:px-4 bg-rose-50/50 relative flex-1 min-w-0">
-                      {nav.partnerLocation?.batteryLevel != null && (
-                        <div className={`absolute top-1 right-2 text-[10px] font-medium px-1.5 rounded-full flex items-center gap-1 whitespace-nowrap ${
-                          nav.partnerLocation.batteryLevel < 20 ? "text-red-700 bg-red-100/80 animate-pulse border border-red-300" : "text-rose-800/60 bg-rose-100/50"
-                        }`}>
-                          {nav.partnerLocation.batteryLevel < 20 ? "🪫" : "🔋"} {nav.partnerLocation.batteryLevel}% {nav.partnerLocation.batteryLevel < 20 && "Cấp cứu!"}
-                        </div>
-                      )}
-                      <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mb-1 truncate">
-                        Người ấy
-                        {nav.partnerLocation?.speedKmH != null && (
-                          <span className="ml-1 sm:ml-2 font-normal opacity-90 lowercase text-[9px] sm:text-xs">
-                            {nav.partnerLocation.speedKmH < 4 ? "🛑 Đứng im lìm" : 
-                             nav.partnerLocation.speedKmH > 15 ? "🏍️ Vù vù" : "🛵 Tàng tàng"}
-                          </span>
+                      <div className="flex items-center justify-between gap-1 mb-1 pr-1">
+                        <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider truncate">
+                          Người ấy
+                          {nav.partnerLocation?.speedKmH != null && (
+                            <span className="ml-1 sm:ml-2 font-normal opacity-90 lowercase text-[9px] sm:text-xs">
+                              {nav.partnerLocation.speedKmH < 4 ? "🛑 Đứng im lìm" : 
+                               nav.partnerLocation.speedKmH > 15 ? "🏍️ Vù vù" : "🛵 Tàng tàng"}
+                            </span>
+                          )}
+                        </span>
+                        {nav.partnerLocation?.batteryLevel != null && (
+                          <div className={`text-[10px] font-medium px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap ${
+                            nav.partnerLocation.batteryLevel < 20 ? "text-red-700 bg-red-100/80 animate-pulse border border-red-300" : "text-rose-800/60 bg-rose-100/50"
+                          }`}>
+                            {nav.partnerLocation.batteryLevel < 20 ? "🪫" : "🔋"} {nav.partnerLocation.batteryLevel}% {nav.partnerLocation.batteryLevel < 20 && "Cấp cứu!"}
+                          </div>
                         )}
-                      </span>
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-3 mt-0.5">
                         <div className="flex items-center gap-1">
                           <Route className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-500 shrink-0" />
@@ -547,17 +551,15 @@ export function LocationsPage() {
                     )}
                   </div>
                 )}
+
+                {/* Traffic Warning Banner */}
+                {showTrafficWarning && (
+                  <div className="bg-rose-500 text-white shadow-xl rounded-full px-5 py-2.5 flex items-center gap-2 text-sm font-bold border-2 border-white/20 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-500">
+                    <span className="animate-bounce">🛑</span> Người ấy đang dừng xe hoặc kẹt cứng rồi!
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Traffic Warning Banner */}
-            {showTrafficWarning && (
-              <div className="absolute top-28 inset-x-0 flex justify-center z-50 pointer-events-none animate-in fade-in slide-in-from-top-4 duration-500">
-                <div className="bg-rose-500 text-white shadow-xl rounded-full px-5 py-2.5 flex items-center gap-2 text-sm font-bold border-2 border-white/20 backdrop-blur-md">
-                  <span className="animate-bounce">🛑</span> Người ấy đang dừng xe hoặc kẹt cứng rồi!
-                </div>
-              </div>
-            )}
 
             {/* Floating Speed Indicator */}
             {nav.speedKmH != null && (
