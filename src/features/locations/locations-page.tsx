@@ -458,16 +458,6 @@ export function LocationsPage() {
               style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
             >
               <div className="flex flex-col items-center gap-2">
-                {nav.isOffline && (
-                  <div className="flex items-center gap-2 rounded-full bg-red-500 px-3 py-1 text-xs font-medium text-white shadow-lg">
-                    <WifiOff className="h-3.5 w-3.5" /> Mất kết nối mạng
-                  </div>
-                )}
-                {isRecalculating.current && !nav.isOffline && (
-                  <div className="flex items-center gap-2 rounded-full bg-yellow-500 px-3 py-1 text-xs font-medium text-white shadow-lg animate-in fade-in zoom-in">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tính lại đường...
-                  </div>
-                )}
                 <div className="flex rounded-2xl bg-white/90 shadow-lg backdrop-blur-sm overflow-hidden divide-x divide-border">
                   {/* YOU */}
                   <div className="flex flex-col px-3 py-2 sm:px-4 bg-blue-50/50 relative flex-1 min-w-0">
@@ -698,8 +688,19 @@ export function LocationsPage() {
           </div>
 
           {/* Follow-me controls appear once a route is on the map. */}
-          {routeGeometry != null &&
-            (nav.isNavigating ? (
+          <div className="flex flex-col gap-2">
+            {nav.isOffline && (
+              <div className="flex self-center items-center gap-2 rounded-full bg-red-500 px-3 py-1.5 text-xs font-medium text-white shadow-md mb-1 animate-in fade-in slide-in-from-bottom-2">
+                <WifiOff className="h-3.5 w-3.5" /> Mất kết nối mạng
+              </div>
+            )}
+            {isRecalculating.current && !nav.isOffline && (
+              <div className="flex self-center items-center gap-2 rounded-full bg-yellow-500 px-3 py-1.5 text-xs font-medium text-white shadow-md mb-1 animate-in fade-in slide-in-from-bottom-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tính lại đường...
+              </div>
+            )}
+            {routeGeometry != null &&
+              (nav.isNavigating ? (
               <Button
                 variant="outline"
                 className="text-destructive hover:bg-destructive-soft w-full gap-2"
@@ -746,6 +747,7 @@ export function LocationsPage() {
                 <Play className="h-4 w-4" /> Bắt đầu đi
               </Button>
             ))}
+          </div>
           {(routeError || nav.error) && (
             <p className="text-destructive text-xs">{routeError ?? nav.error}</p>
           )}
