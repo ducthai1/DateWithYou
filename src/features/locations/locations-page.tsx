@@ -379,6 +379,9 @@ export function LocationsPage() {
   const displayDuration = nav.remainingSeconds ?? routeDurationSeconds;
 
   // ── Logic for Meet Me Halfway ──
+  const partnerLocationRef = useRef(nav.partnerLocation);
+  partnerLocationRef.current = nav.partnerLocation;
+
   const handleFindMidpoint = useCallback(() => {
     setIsFindingMidpoint(true);
     setMidpointError(null);
@@ -395,18 +398,27 @@ export function LocationsPage() {
         setUserGeo(origin);
 
         try {
-          // Ping to get partner location
-          const partners = await pingLiveLocation.mutateAsync(origin);
-          const partner = partners[0]; // Assuming 1 partner in the space
+          // Priority 1: Use the last known partner location from SSE/polling
+          let partnerGeo: LatLng | null = null;
+          const cached = partnerLocationRef.current;
+          if (cached && cached.lat && cached.lng) {
+            partnerGeo = { lat: cached.lat, lng: cached.lng };
+          } else {
+            // Priority 2: Ping API to try to get partner
+            const partners = await pingLiveLocation.mutateAsync(origin);
+            const partner = partners[0];
+            if (partner && partner.lat && partner.lng) {
+              partnerGeo = { lat: partner.lat, lng: partner.lng };
+            }
+          }
 
-          if (!partner || !partner.lat || !partner.lng) {
-            setMidpointError("Người ấy chưa mở app hoặc chưa bật định vị.");
+          if (!partnerGeo) {
+            setMidpointError("Người ấy chưa mở trang Bản đồ gần đây nên mình chưa biết vị trí của họ. Nhờ người ấy vào trang Bản đồ trước nhé! 💕");
             setIsFindingMidpoint(false);
             return;
           }
 
-          // We have both! Calculate midpoint.
-          const partnerGeo = { lat: partner.lat, lng: partner.lng };
+          // Calculate midpoint
           const midpoint = calculateMidpoint(origin, partnerGeo);
 
           // Find the 3 closest locations from our saved pins to the midpoint
@@ -420,7 +432,7 @@ export function LocationsPage() {
             .slice(0, 3); // top 3
 
           if (validPins.length === 0) {
-            setMidpointError("Chưa có địa điểm nào được lưu để gợi ý.");
+            setMidpointError("Chưa có địa điểm nào được lưu có toạ độ. Hãy thêm địa điểm và gắn link Google Maps trước nhé!");
             setIsFindingMidpoint(false);
             return;
           }
@@ -430,12 +442,16 @@ export function LocationsPage() {
           setShowMidpointModal(true);
           setIsFindingMidpoint(false);
         } catch {
-          setMidpointError("Lỗi kết nối khi tìm người ấy.");
+          setMidpointError("Lỗi kết nối mạng khi tìm vị trí người ấy. Hãy thử lại.");
           setIsFindingMidpoint(false);
         }
       },
-      () => {
-        setMidpointError("Không lấy được vị trí của bạn.");
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setMidpointError("Trình duyệt chưa cấp quyền GPS — hãy cho phép rồi thử lại.");
+        } else {
+          setMidpointError("Không lấy được vị trí hiện tại — hãy bật GPS rồi bấm lại.");
+        }
         setIsFindingMidpoint(false);
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
@@ -601,7 +617,7 @@ export function LocationsPage() {
               variant="outline"
               size="icon"
               className={cn(
-                "relative overflow-hidden border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all",
+                "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all",
                 isFindingMidpoint && "opacity-50 pointer-events-none"
               )}
               onClick={handleFindMidpoint}
@@ -611,11 +627,6 @@ export function LocationsPage() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <MapPinned className="h-4 w-4" />
-              )}
-              {midpointError && (
-                <span className="absolute -bottom-8 bg-black/80 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap">
-                  {midpointError}
-                </span>
               )}
             </Button>
           )}
@@ -677,7 +688,7 @@ export function LocationsPage() {
             />
           </div>
 
-          <div className="order-3 space-y-3 lg:order-none">
+          <div className="order-3 space-y-3 lg:order-none pb-28 md:pb-0">
             <div id="map-view" className="h-72 lg:h-[calc(100dvh-13rem)]">
             <LocationMapView
               pins={pins}
@@ -768,7 +779,7 @@ export function LocationsPage() {
           </div>
         </div>
 
-        <div className="order-2 space-y-4 lg:order-none pb-28 md:pb-0">
+        <div className="order-2 space-y-4 lg:order-none">
           <AnimatePresence initial={false}>
             {formOpen && (
               <motion.div
@@ -977,6 +988,31 @@ export function LocationsPage() {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+
+      {/* ── Midpoint Error Toast ── */}
+      <AnimatePresence>
+        {midpointError && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            className="fixed bottom-20 md:bottom-6 left-1/2 z-[70] w-[92%] max-w-sm -translate-x-1/2"
+          >
+            <div className="flex items-start gap-3 rounded-2xl bg-card px-5 py-4 shadow-2xl border border-border ring-1 ring-rose-100">
+              <span className="text-xl shrink-0 mt-0.5">📍</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium leading-snug">{midpointError}</p>
+              </div>
+              <button
+                className="text-muted-foreground hover:text-foreground transition-colors shrink-0 p-1"
+                onClick={() => setMidpointError(null)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Meet Me Halfway Modal ── */}
       <AnimatePresence>
