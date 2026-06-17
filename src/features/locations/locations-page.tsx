@@ -24,6 +24,8 @@ import {
   CheckCircle2,
   Circle,
   WifiOff,
+  LocateOff,
+  Satellite,
   Loader2,
   Users,
   UserRound,
@@ -590,11 +592,20 @@ export function LocationsPage() {
                   <div className="flex flex-col px-3 py-2 sm:px-4 bg-blue-50/50 relative flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1 mb-1 pr-1">
                       <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider truncate">Bạn</span>
-                      {weather && (
+                      {/* Own connection/GPS health takes priority over the weather chip. */}
+                      {nav.isOffline ? (
+                        <div className="text-[10px] font-semibold text-white bg-red-500 px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap animate-pulse">
+                          <WifiOff className="h-3 w-3" /> Mất mạng
+                        </div>
+                      ) : nav.error ? (
+                        <div className="text-[10px] font-semibold text-amber-900 bg-amber-200 border border-amber-300 px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap animate-pulse">
+                          <LocateOff className="h-3 w-3" /> Mất định vị
+                        </div>
+                      ) : weather ? (
                         <div className="text-[10px] font-medium text-blue-800/60 bg-blue-100/50 px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap">
                           ⛅ {weather.temp}°C
                         </div>
-                      )}
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-3 mt-0.5">
                       <div className="flex items-center gap-1">
@@ -614,20 +625,34 @@ export function LocationsPage() {
                       <div className="flex items-center justify-between gap-1 mb-1 pr-1">
                         <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider truncate">
                           Người ấy
-                          {nav.partnerLocation?.speedKmH != null && (
+                          {/* Hide the (now stale) speed hint once the partner link drops. */}
+                          {nav.partnerConnection !== "stale" && nav.partnerLocation?.speedKmH != null && (
                             <span className="ml-1 sm:ml-2 font-normal opacity-90 lowercase text-[9px] sm:text-xs">
-                              {nav.partnerLocation.speedKmH < 4 ? "🛑 Đứng im lìm" : 
+                              {nav.partnerLocation.speedKmH < 4 ? "🛑 Đứng im lìm" :
                                nav.partnerLocation.speedKmH > 15 ? "🏍️ Vù vù" : "🛵 Tàng tàng"}
                             </span>
                           )}
                         </span>
-                        {nav.partnerLocation?.batteryLevel != null && (
-                          <div className={`text-[10px] font-medium px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap ${
-                            nav.partnerLocation.batteryLevel < 20 ? "text-red-700 bg-red-100/80 animate-pulse border border-red-300" : "text-rose-800/60 bg-rose-100/50"
-                          }`}>
-                            {nav.partnerLocation.batteryLevel < 20 ? "🪫" : "🔋"} {nav.partnerLocation.batteryLevel}% {nav.partnerLocation.batteryLevel < 20 && "Cấp cứu!"}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* Partner link health. Both badges are suppressed while OUR
+                              own network is down — we can't judge the partner then. */}
+                          {nav.isOffline ? null : nav.partnerConnection === "stale" ? (
+                            <div className="text-[10px] font-semibold text-white bg-red-500 px-1.5 rounded-full flex items-center gap-1 whitespace-nowrap animate-pulse">
+                              <WifiOff className="h-3 w-3" /> Mất kết nối
+                            </div>
+                          ) : nav.partnerConnection === "weak" ? (
+                            <div className="text-[10px] font-semibold text-amber-900 bg-amber-200 border border-amber-300 px-1.5 rounded-full flex items-center gap-1 whitespace-nowrap">
+                              <Satellite className="h-3 w-3" /> Định vị yếu
+                            </div>
+                          ) : null}
+                          {nav.partnerLocation?.batteryLevel != null && (
+                            <div className={`text-[10px] font-medium px-1.5 rounded-full flex items-center gap-1 whitespace-nowrap ${
+                              nav.partnerLocation.batteryLevel < 20 ? "text-red-700 bg-red-100/80 animate-pulse border border-red-300" : "text-rose-800/60 bg-rose-100/50"
+                            }`}>
+                              {nav.partnerLocation.batteryLevel < 20 ? "🪫" : "🔋"} {nav.partnerLocation.batteryLevel}% {nav.partnerLocation.batteryLevel < 20 && "Cấp cứu!"}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-3 mt-0.5">
                         <div className="flex items-center gap-1">
@@ -815,6 +840,11 @@ export function LocationsPage() {
             {nav.isOffline && (
               <div className="flex self-center items-center gap-2 rounded-full bg-red-500 px-3 py-1.5 text-xs font-medium text-white shadow-md mb-1 animate-in fade-in slide-in-from-bottom-2">
                 <WifiOff className="h-3.5 w-3.5" /> Mất kết nối mạng
+              </div>
+            )}
+            {!nav.isOffline && nav.error && (
+              <div className="flex self-center items-center gap-2 rounded-full bg-amber-500 px-3 py-1.5 text-xs font-medium text-white shadow-md mb-1 animate-in fade-in slide-in-from-bottom-2">
+                <LocateOff className="h-3.5 w-3.5" /> Mất định vị GPS
               </div>
             )}
             {isRecalculating.current && !nav.isOffline && (

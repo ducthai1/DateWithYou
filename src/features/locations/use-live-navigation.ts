@@ -8,10 +8,20 @@ export type PartnerLocation = {
   lng: number;
   heading: number | null;
   speedKmH: number | null;
+  accuracy: number | null;
   batteryLevel: number | null;
   pingAction: string | null;
   updatedAt: Date;
 };
+
+/** Partner link health derived from ping freshness + GPS accuracy.
+ *  "stale" = no fresh ping (lost network/GPS); "weak" = online but poor fix. */
+export type PartnerConnection = "online" | "stale" | "weak";
+
+/** No fresh partner ping within this window → treated as disconnected. */
+const PARTNER_STALE_MS = 20_000;
+/** Horizontal GPS accuracy worse than this (metres) → "weak GPS". */
+const WEAK_ACCURACY_M = 50;
 
 /** Minimal screen Wake Lock shape (avoids relying on lib.dom typings). */
 type WakeLockLike = { release: () => Promise<void> };
@@ -37,6 +47,8 @@ export type LiveNavigation = {
   isOffline: boolean;
   /** Partner's latest live location (if available in the same space) */
   partnerLocation: PartnerLocation | null;
+  /** Partner link health, or null when no partner is being tracked. */
+  partnerConnection: PartnerConnection | null;
   /** Accumulated travelled path as [lng, lat] pairs for a map line. */
   traveled: Array<[number, number]>;
   /** Estimated remaining distance in metres (null before first fix). */
@@ -142,6 +154,9 @@ export function useLiveNavigation(options?: {
   const [userGeo, setUserGeo] = useState<LatLng | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
   const [speedKmH, setSpeedKmH] = useState<number | null>(null);
+  const [accuracyM, setAccuracyM] = useState<number | null>(null);
+  // Ticks while navigating so partner staleness is re-evaluated between pings.
+  const [nowTs, setNowTs] = useState<number>(() => Date.now());
   const [traveled, setTraveled] = useState<Array<[number, number]>>([]);
   const [remainingMeters, setRemainingMeters] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
@@ -152,12 +167,17 @@ export function useLiveNavigation(options?: {
     typeof navigator !== "undefined" ? !navigator.onLine : false,
   );
   const [partnerLocation, setPartnerLocation] = useState<PartnerLocation | null>(null);
+  // True once a partner has appeared this session, so a partner who later drops
+  // out of the server's 5-min window still reads as "disconnected" rather than
+  // silently vanishing (which would look like they reconnected).
+  const [everHadPartner, setEverHadPartner] = useState(false);
 
   // Store the latest data in a ref so the interval doesn't get cleared on every GPS update
   const pingPayloadRef = useRef({
     userGeo,
     heading,
     speedKmH,
+    accuracyM,
   });
 
   // Keep the ref up-to-date with every state change
@@ -166,8 +186,9 @@ export function useLiveNavigation(options?: {
       userGeo,
       heading,
       speedKmH,
+      accuracyM,
     };
-  }, [userGeo, heading, speedKmH]);
+  }, [userGeo, heading, speedKmH, accuracyM]);
   
   const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
   const lastPingTime = useRef<number>(0);
@@ -199,6 +220,7 @@ export function useLiveNavigation(options?: {
       lng: p.userGeo.lng,
       heading: p.heading,
       speedKmH: p.speedKmH,
+      accuracy: p.accuracyM,
       batteryLevel,
       pingAction: action,
     }, {
@@ -206,6 +228,7 @@ export function useLiveNavigation(options?: {
         setUserPingAction(action);
         if (partners && partners.length > 0) {
           setPartnerLocation(partners[0]);
+          setEverHadPartner(true);
         } else {
           setPartnerLocation(null);
         }
@@ -273,6 +296,7 @@ export function useLiveNavigation(options?: {
     setTraveled([]);
     setRemainingMeters(null);
     setRemainingSeconds(null);
+    setEverHadPartner(false);
     setIsNavigating(true);
     acquireWakeLock();
     watchId.current = navigator.geolocation.watchPosition(
@@ -292,6 +316,13 @@ export function useLiveNavigation(options?: {
         } else {
           setSpeedKmH(null);
         }
+
+        // GPS horizontal accuracy in metres (used to flag a weak fix).
+        setAccuracyM(
+          pos.coords.accuracy != null && !isNaN(pos.coords.accuracy)
+            ? Math.round(pos.coords.accuracy)
+            : null,
+        );
 
         // Remaining distance along route.
         const rc = routeCoordsRef.current;
@@ -365,12 +396,14 @@ export function useLiveNavigation(options?: {
         lng: p.userGeo.lng,
         heading: p.heading,
         speedKmH: p.speedKmH,
+        accuracy: p.accuracyM,
         batteryLevel,
         pingAction: null, // Regular interval clears the action so it doesn't get stuck
       }, {
         onSuccess: (partners) => {
           if (partners && partners.length > 0) {
             setPartnerLocation(partners[0]);
+            setEverHadPartner(true);
           } else {
             setPartnerLocation(null);
           }
@@ -384,6 +417,14 @@ export function useLiveNavigation(options?: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNavigating, isOffline]);
 
+  // Re-evaluate partner staleness on a steady tick while navigating (the ping
+  // poll alone would leave `nowTs` frozen between fetches).
+  useEffect(() => {
+    if (!isNavigating) return;
+    const t = setInterval(() => setNowTs(Date.now()), 3000);
+    return () => clearInterval(t);
+  }, [isNavigating]);
+
   // Track network connection status
   useEffect(() => {
     const handleOffline = () => setIsOffline(true);
@@ -396,6 +437,18 @@ export function useLiveNavigation(options?: {
     };
   }, []);
 
+  // Derive partner link health from ping freshness + accuracy. A partner who
+  // dropped out entirely (null) but was seen earlier still reads as "stale".
+  const partnerConnection: PartnerConnection | null = !partnerLocation
+    ? everHadPartner
+      ? "stale"
+      : null
+    : nowTs - new Date(partnerLocation.updatedAt).getTime() > PARTNER_STALE_MS
+      ? "stale"
+      : partnerLocation.accuracy != null && partnerLocation.accuracy > WEAK_ACCURACY_M
+        ? "weak"
+        : "online";
+
   return {
     isNavigating,
     userGeo,
@@ -403,6 +456,7 @@ export function useLiveNavigation(options?: {
     speedKmH,
     isOffline,
     partnerLocation,
+    partnerConnection,
     userPingAction,
     traveled,
     remainingMeters,

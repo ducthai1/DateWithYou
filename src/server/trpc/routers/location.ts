@@ -337,6 +337,7 @@ export const locationRouter = router({
       lng: z.number(),
       heading: z.number().nullable().optional(),
       speedKmH: z.number().nullable().optional(),
+      accuracy: z.number().nullable().optional(),
       batteryLevel: z.number().nullable().optional(),
       pingAction: z.string().nullable().optional(),
     }))
@@ -347,13 +348,14 @@ export const locationRouter = router({
       await LiveLocationModel.findOneAndUpdate(
         { spaceId: ctx.spaceId, userId: ctx.userId },
         { 
-          lat: input.lat, 
-          lng: input.lng, 
-          heading: input.heading, 
+          lat: input.lat,
+          lng: input.lng,
+          heading: input.heading,
           speedKmH: input.speedKmH,
+          accuracy: input.accuracy,
           batteryLevel: input.batteryLevel,
           pingAction: input.pingAction,
-          updatedAt: new Date() 
+          updatedAt: new Date()
         },
         { upsert: true, new: true }
       );
@@ -364,7 +366,7 @@ export const locationRouter = router({
         spaceId: ctx.spaceId,
         userId: { $ne: ctx.userId },
         updatedAt: { $gt: fiveMinutesAgo }
-      }).lean<{ userId: string; lat: number; lng: number; heading: number | null; speedKmH: number | null; batteryLevel: number | null; pingAction: string | null; updatedAt: Date }[]>();
+      }).lean<{ userId: string; lat: number; lng: number; heading: number | null; speedKmH: number | null; accuracy: number | null; batteryLevel: number | null; pingAction: string | null; updatedAt: Date }[]>();
 
       return partners;
     }),

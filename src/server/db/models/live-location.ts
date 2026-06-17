@@ -8,6 +8,8 @@ const liveLocationSchema = new Schema(
     lng: { type: Number, required: true },
     heading: { type: Number, default: null },
     speedKmH: { type: Number, default: null },
+    // GPS horizontal accuracy in metres (lower = better). Used to flag "weak GPS".
+    accuracy: { type: Number, default: null },
     batteryLevel: { type: Number, default: null },
     pingAction: { type: String, default: null },
     // Auto-delete records after 1 hour (3600 seconds) of inactivity
