@@ -5,15 +5,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RoadmapBoard } from "@/features/vault/roadmap-board";
 import { WishlistGrid } from "@/features/vault/wishlist-grid";
 import { RewardsPanel } from "@/features/vault/rewards-panel";
+import { CapsulesPanel } from "@/features/vault/capsules-panel";
 import { Tabs } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { Target, Gift, Coins } from "lucide-react";
+import { Target, Gift, Coins, Hourglass } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { key: "roadmap", label: "Kế hoạch", icon: Target },
   { key: "wishlist", label: "Wishlist", icon: Gift },
   { key: "rewards", label: "Phiếu bé ngoan", icon: Coins },
+  { key: "capsules", label: "Hộp thời gian", icon: Hourglass },
 ] as const;
 
 export default function VaultPage() {
@@ -39,7 +41,7 @@ export default function VaultPage() {
         <p className="text-muted-foreground text-sm">Nơi lưu giữ những dự định, mong ước và phần thưởng dành cho nhau.</p>
         
         {/* Summary Stats Row */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div 
             onClick={() => setTab("roadmap")}
             className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-3 transition-colors", tab === "roadmap" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
@@ -73,6 +75,17 @@ export default function VaultPage() {
               {totalPoints}đ
             </p>
           </div>
+          <div 
+            onClick={() => setTab("capsules")}
+            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-3 transition-colors", tab === "capsules" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+          >
+            <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium">
+              <Hourglass className="h-3.5 w-3.5" /> Hộp thời gian
+            </div>
+            <p className="text-xl font-bold tracking-tight">
+              Bí mật
+            </p>
+          </div>
         </div>
       </div>
 
@@ -90,6 +103,7 @@ export default function VaultPage() {
             {tab === "roadmap" && <RoadmapBoard />}
             {tab === "wishlist" && <WishlistGrid />}
             {tab === "rewards" && <RewardsPanel />}
+            {tab === "capsules" && <CapsulesPanel />}
           </motion.div>
         </AnimatePresence>
       </div>
