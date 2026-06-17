@@ -27,6 +27,20 @@ function spotify(u: URL): { kind: string; id: string } | null {
 }
 
 /**
+ * Extract an Instagram post/reel/tv shortcode. The `/embed` URL is publicly
+ * iframe-embeddable (no auth/app token needed), so we can show posts inline.
+ *   - https://www.instagram.com/p/CODE/
+ *   - https://www.instagram.com/reel/CODE/  (and /reels/CODE/)
+ *   - https://www.instagram.com/tv/CODE/
+ */
+function instagram(u: URL): { kind: string; code: string } | null {
+  const m = u.pathname.match(/\/(p|reel|reels|tv)\/([\w-]+)/);
+  if (!m) return null;
+  const kind = m[1] === "reels" ? "reel" : m[1];
+  return { kind, code: m[2] };
+}
+
+/**
  * Extract a TikTok video ID from the URL path.
  * Handles formats:
  *   - https://www.tiktok.com/@user/video/1234567890
@@ -109,7 +123,18 @@ export function parseEmbed(rawUrl: string): ParsedEmbed {
     // TikTok link that we couldn't parse — still tag as tiktok for the label
     return { ...base, provider: "tiktok" };
   }
-  if (host.includes("instagram.com")) return { ...base, provider: "instagram" };
+  if (host.includes("instagram.com")) {
+    const ig = instagram(u);
+    if (ig)
+      return {
+        provider: "instagram",
+        url: rawUrl,
+        embedId: `${ig.kind}/${ig.code}`,
+        embedUrl: `https://www.instagram.com/${ig.kind}/${ig.code}/embed`,
+        thumbnailUrl: null,
+      };
+    return { ...base, provider: "instagram" };
+  }
   return base;
 }
 

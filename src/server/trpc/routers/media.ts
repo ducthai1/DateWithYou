@@ -3,16 +3,17 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { MediaItemModel } from "@/server/db/models/media-item";
-import { parseEmbed } from "@/lib/embed";
+import { resolveEmbed } from "@/server/lib/resolve-embed";
 
 const kindEnum = z.enum(["music", "food_video", "recipe", "game"]);
 const httpsUrl = z.string().url().startsWith("https://");
 
 // Embed metadata is ALWAYS derived server-side from the URL — never trusted from
 // the client — so a crafted request can't point an iframe at arbitrary content.
-function embedFields(url: string | undefined) {
+// Async because TikTok links are resolved via oEmbed (short-links + thumbnails).
+async function embedFields(url: string | undefined) {
   if (!url) return { provider: undefined, embedId: undefined, embedUrl: undefined, thumbnailUrl: undefined };
-  const e = parseEmbed(url);
+  const e = await resolveEmbed(url);
   return {
     provider: e.provider,
     embedId: e.embedId ?? undefined,
@@ -79,7 +80,7 @@ export const mediaRouter = router({
     await connectToDatabase();
     const doc = await MediaItemModel.create({
       ...input,
-      ...embedFields(input.url),
+      ...(await embedFields(input.url)),
       spaceId: ctx.spaceId,
       createdBy: ctx.userId,
     });
@@ -92,7 +93,7 @@ export const mediaRouter = router({
       await connectToDatabase();
       const { id, ...patch } = input;
       // Re-derive embed metadata whenever the URL changes.
-      const derived = patch.url !== undefined ? embedFields(patch.url) : {};
+      const derived = patch.url !== undefined ? await embedFields(patch.url) : {};
       const res = await MediaItemModel.findOneAndUpdate(
         { _id: id, spaceId: ctx.spaceId },
         { $set: { ...patch, ...derived } },

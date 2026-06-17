@@ -5,21 +5,25 @@ import { connectToDatabase } from "@/server/db/connect";
 import { MemoryModel } from "@/server/db/models/memory";
 import { LocationModel } from "@/server/db/models/location";
 import { destroyAssets } from "@/server/cloudinary";
-import { parseEmbed } from "@/lib/embed";
+import { resolveEmbed } from "@/server/lib/resolve-embed";
 
 // Re-derive embed metadata server-side from each URL so iframe srcs are never
-// attacker-controlled (the client only needs to send the pasted URL).
-function deriveEmbeds(embeds: { url: string }[] | undefined) {
-  return (embeds ?? []).map((e) => {
-    const p = parseEmbed(e.url);
-    return {
-      provider: p.provider,
-      url: e.url,
-      embedId: p.embedId ?? undefined,
-      embedUrl: p.embedUrl ?? undefined,
-      thumbnailUrl: p.thumbnailUrl ?? undefined,
-    };
-  });
+// attacker-controlled (the client only needs to send the pasted URL). Async
+// because TikTok links are resolved via oEmbed (short-links + thumbnails).
+async function deriveEmbeds(embeds: { url: string }[] | undefined) {
+  return Promise.all(
+    (embeds ?? []).map(async (e) => {
+      const p = await resolveEmbed(e.url);
+      return {
+        provider: p.provider,
+        url: e.url,
+        embedId: p.embedId ?? undefined,
+        embedUrl: p.embedUrl ?? undefined,
+        thumbnailUrl: p.thumbnailUrl ?? undefined,
+        title: p.title ?? undefined,
+      };
+    }),
+  );
 }
 
 const photo = z.object({
@@ -92,7 +96,7 @@ export const memoryRouter = router({
       await assertLocationInSpace(input.locationId, ctx.spaceId);
       const doc = await MemoryModel.create({
         ...input,
-        embeds: deriveEmbeds(input.embeds),
+        embeds: await deriveEmbeds(input.embeds),
         spaceId: ctx.spaceId,
         createdBy: ctx.userId,
       });
@@ -119,7 +123,7 @@ export const memoryRouter = router({
       }
       existing.set({
         ...patch,
-        ...(patch.embeds ? { embeds: deriveEmbeds(patch.embeds) } : {}),
+        ...(patch.embeds ? { embeds: await deriveEmbeds(patch.embeds) } : {}),
       });
       await existing.save();
       await destroyAssets(removed);
