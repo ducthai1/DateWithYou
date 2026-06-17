@@ -11,9 +11,10 @@ import { MediaItemModel } from "../src/server/db/models/media-item";
 import { RoadmapPlanModel } from "../src/server/db/models/roadmap-plan";
 import { PlanItemModel } from "../src/server/db/models/plan-item";
 import { format, addDays, subDays } from "date-fns";
+import { readFileSync } from "fs";
 
 async function run() {
-  const uri = process.env.MONGODB_URI || (require("fs").readFileSync(".env", "utf8").split("\n").find((l: string) => l.startsWith("MONGODB_URI=")).split("=")[1]);
+  const uri = process.env.MONGODB_URI || (readFileSync(".env", "utf8").split("\n").find((l: string) => l.startsWith("MONGODB_URI="))!.split("=")[1]);
   await mongoose.connect(uri);
   
   const spaceId = "6a327c1b7e6a9d5a8394e65a";

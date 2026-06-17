@@ -7,7 +7,7 @@ async function run() {
   const space = await SpaceModel.findById(spaceId);
   if (space) {
     space.members = space.members.filter((m: string) => m === "6a23ff579fdcc76e494592bf");
-    space.memberProfiles = space.memberProfiles.filter((p: any) => p.userId === "6a23ff579fdcc76e494592bf");
+    space.memberProfiles = space.memberProfiles.filter((p: { userId: string }) => p.userId === "6a23ff579fdcc76e494592bf");
     await space.save();
     console.log("Removed partner from space", spaceId);
   } else {

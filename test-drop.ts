@@ -1,12 +1,12 @@
 import { MongoClient } from "mongodb";
+import { readFileSync } from "fs";
 
 async function main() {
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     console.log("No MONGODB_URI in env");
     // read from .env
-    const fs = require('fs');
-    const env = fs.readFileSync('.env', 'utf8');
+    const env = readFileSync('.env', 'utf8');
     const match = env.match(/MONGODB_URI=(.*)/);
     if (!match) {
         console.log("Not found in .env");
@@ -21,8 +21,8 @@ async function main() {
   try {
     await db.collection("spaces").dropIndex("members_1");
     console.log("Index dropped successfully.");
-  } catch (err: any) {
-    console.log("Error dropping index (might not exist):", err.message);
+  } catch (err) {
+    console.log("Error dropping index (might not exist):", err instanceof Error ? err.message : String(err));
   }
   await client.close();
   process.exit(0);
