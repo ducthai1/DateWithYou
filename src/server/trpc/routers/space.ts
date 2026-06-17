@@ -144,10 +144,20 @@ export const spaceRouter = router({
   // Issues a single-use, hashed, TTL'd code. Returns plaintext once.
   createInvite: authedProcedure.mutation(async ({ ctx }) => {
     await connectToDatabase();
-    const space = await SpaceModel.findOne({ members: ctx.userId });
+    let space = null;
+    
+    if (ctx.activeSpaceId) {
+      space = await SpaceModel.findOne({ _id: ctx.activeSpaceId, members: ctx.userId });
+    }
+    
+    if (!space) {
+      space = await SpaceModel.findOne({ members: ctx.userId });
+    }
+
     if (!space) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
     if (space.members.length >= 2)
       throw new TRPCError({ code: "CONFLICT", message: "SPACE_FULL" });
+    
     const code = generateInviteCode();
     space.inviteCodeHash = hashCode(code);
     space.inviteCodeExpiresAt = new Date(Date.now() + INVITE_TTL_MS);
