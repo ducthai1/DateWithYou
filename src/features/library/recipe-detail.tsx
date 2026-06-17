@@ -4,6 +4,7 @@ import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
 import { EmbedPlayer } from "@/components/ui/embed-player";
 import { type EmbedProvider } from "@/lib/embed";
 import { Clock, Users } from "lucide-react";
+import Zoom from "react-medium-image-zoom";
 import type { MediaListItem } from "./media-card";
 
 export function RecipeDetail({ item, onClose }: { item: MediaListItem; onClose: () => void }) {
@@ -13,8 +14,9 @@ export function RecipeDetail({ item, onClose }: { item: MediaListItem; onClose: 
       <ModalHeader title={item.title} onClose={onClose} />
       <ModalContent className="space-y-4">
         {r?.coverImage && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={r.coverImage} alt={item.title} className="aspect-video w-full rounded-xl object-cover" />
+          <Zoom>
+            <img src={r.coverImage} alt={item.title} className="aspect-video w-full rounded-xl object-cover" />
+          </Zoom>
         )}
         <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
           {r?.cookTime && <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" />{r.cookTime}</span>}
