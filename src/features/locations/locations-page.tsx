@@ -31,6 +31,9 @@ import {
   MapPinned,
   ChevronRight,
   ChevronLeft,
+  Plus,
+  Heart,
+  MapPin,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
@@ -81,6 +84,7 @@ export function LocationsPage() {
   const [showCompanionChoice, setShowCompanionChoice] = useState(false);
   const [companionLocationId, setCompanionLocationId] = useState<string | null>(null);
   const [companionLocationName, setCompanionLocationName] = useState("");
+  const [waypointType, setWaypointType] = useState<"none" | "partner_location">("none");
   const [pendingSentInviteId, setPendingSentInviteId] = useState<string | null>(null);
   const [rejectedMessage, setRejectedMessage] = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -250,21 +254,31 @@ export function LocationsPage() {
     window.addEventListener("invite-rejected", handleRejected);
     return () => window.removeEventListener("invite-rejected", handleRejected);
   }, [pendingSentInviteId]);
-
-  // Handle sending a companion invite.
-  const handleSendCompanionInvite = useCallback(
-    async (locationId: string, locationName: string) => {
-      try {
-        const result = await sendInvite.mutateAsync({ locationId, locationName });
-        setPendingSentInviteId(result.id);
-        setShowCompanionChoice(false);
-      } catch (err) {
-        console.error("Failed to send invite", err);
-        setShowCompanionChoice(false);
-      }
-    },
-    [sendInvite],
-  );
+  // Cùng khởi hành: Target a specific saved location to navigate together.
+  const handleSendCompanionInvite = (destId: string, destName: string) => {
+    let waypoints = undefined;
+    if (waypointType === "partner_location" && nav.partnerLocation) {
+      waypoints = [{
+        lat: nav.partnerLocation.lat,
+        lng: nav.partnerLocation.lng,
+        name: "Vị trí của người ấy",
+        type: "partner_location" as const,
+        status: "pending" as const,
+      }];
+    }
+    
+    sendInvite.mutate(
+      { locationId: destId, locationName: destName, waypoints },
+      {
+        onSuccess: (res) => {
+          setPendingSentInviteId(res.id);
+          setShowCompanionChoice(false);
+          setCompanionLocationId(null);
+          setWaypointType("none");
+        },
+      },
+    );
+  };
 
   // In-app "Chỉ đường": select the pin, fly to it, then get the user's location
   // and draw the route. Errors surface to the user instead of failing silently.
@@ -1092,19 +1106,57 @@ export function LocationsPage() {
               className="bg-card rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
-                  <Users className="h-6 w-6 text-accent" />
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 shrink-0 shadow-inner">
+                    <Users className="h-6 w-6 text-accent" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg leading-tight">Lập kế hoạch đi chung</h3>
+                    <p className="text-sm text-muted-foreground">Tạo lộ trình cho 2 người</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold">Cùng khởi hành</h3>
-                  <p className="text-sm text-muted-foreground">Rủ người ấy cùng đi đến</p>
+                
+                <div className="space-y-3 bg-muted/30 p-4 rounded-xl border border-border/50">
+                  <div className="flex items-center gap-3">
+                    <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">1</div>
+                    <span className="text-sm font-medium">Bạn xuất phát từ đây</span>
+                  </div>
+                  
+                  {waypointType === "none" ? (
+                    <div className="pl-3 border-l-2 border-dashed border-muted-foreground/30 ml-3 py-2">
+                      <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground border border-dashed bg-background/50" onClick={() => setWaypointType("partner_location")}>
+                        <Plus className="h-4 w-4 mr-2" /> Ghé đón người ấy
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="pl-3 border-l-2 border-rose-200 ml-3 py-2">
+                      <div className="flex items-center justify-between p-3 bg-rose-50 text-rose-700 rounded-lg shadow-sm border border-rose-100 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
+                        <div className="flex items-center gap-3">
+                          <div className="h-6 w-6 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">2</div>
+                          <span className="text-sm font-medium">Ghé đón người ấy</span>
+                        </div>
+                        <button onClick={() => setWaypointType("none")} className="p-1 hover:bg-rose-200 rounded-full transition-colors"><X className="h-4 w-4" /></button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold shrink-0">
+                      {waypointType === "none" ? "2" : "3"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm text-muted-foreground block text-xs">Đích đến cuối cùng</span>
+                      <span className="text-sm font-semibold truncate block">{companionLocationName}</span>
+                    </div>
+                  </div>
                 </div>
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  Người ấy sẽ nhận được thông báo lộ trình. Khi đồng ý, cả 2 sẽ cùng thấy nhau trên bản đồ.
+                </p>
               </div>
-              <p className="text-center font-medium text-lg">{companionLocationName}</p>
-              <p className="text-xs text-muted-foreground text-center">
-                Người ấy sẽ nhận được thông báo mời. Khi đồng ý, cả 2 sẽ cùng mở bản đồ và thấy avatar của nhau trên đường đi.
-              </p>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setShowCompanionChoice(false)}>
                   Hủy

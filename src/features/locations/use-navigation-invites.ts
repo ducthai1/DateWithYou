@@ -2,12 +2,22 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
+export type Waypoint = {
+  lat: number;
+  lng: number;
+  name: string;
+  type: "partner_location" | "saved_place" | "custom";
+  status: "pending" | "arrived";
+};
+
 export type IncomingInvite = {
   id: string;
   initiatorId: string;
   locationId: string;
   locationName: string;
   status: string;
+  waypoints?: Waypoint[];
+  merged?: boolean;
 };
 
 export type InviteResponse = {
@@ -16,6 +26,8 @@ export type InviteResponse = {
   locationId: string;
   locationName: string;
   status: string;
+  waypoints?: Waypoint[];
+  merged?: boolean;
 };
 
 /**

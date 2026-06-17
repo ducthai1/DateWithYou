@@ -17,6 +17,19 @@ const navigationInviteSchema = new Schema(
     /** The location they want to navigate to together. */
     locationId: { type: String, required: true },
     locationName: { type: String, required: true },
+    waypoints: {
+      type: [
+        {
+          lat: { type: Number, required: true },
+          lng: { type: Number, required: true },
+          name: { type: String, required: true },
+          type: { type: String, enum: ["partner_location", "saved_place", "custom"], default: "custom" },
+          status: { type: String, enum: ["pending", "arrived"], default: "pending" },
+        }
+      ],
+      default: []
+    },
+    merged: { type: Boolean, default: false },
     status: {
       type: String,
       enum: ["pending", "accepted", "rejected"],

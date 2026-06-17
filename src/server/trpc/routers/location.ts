@@ -212,7 +212,11 @@ export const locationRouter = router({
   // Server-side Directions proxy — keeps the secret token off the client and
   // validates the destination belongs to the caller's space.
   getRoute: protectedProcedure
-    .input(z.object({ destinationId: z.string(), origin: geo }))
+    .input(z.object({ 
+      destinationId: z.string(), 
+      origin: geo,
+      waypoints: z.array(z.object({ lat: z.number(), lng: z.number() })).optional()
+    }))
     .query(async ({ ctx, input }) => {
       await connectToDatabase();
       const dest = await LocationModel.findOne({
@@ -237,6 +241,7 @@ export const locationRouter = router({
           body: JSON.stringify({
             locations: [
               { lat: input.origin.lat, lon: input.origin.lng },
+              ...(input.waypoints?.map(w => ({ lat: w.lat, lon: w.lng })) || []),
               { lat: dest.geo.lat, lon: dest.geo.lng },
             ],
             costing: "motor_scooter",
@@ -249,21 +254,27 @@ export const locationRouter = router({
       const data = (await res.json()) as {
         trip?: {
           summary?: { length?: number; time?: number };
-          legs?: Array<{ shape?: string }>;
+          legs?: Array<{ shape?: string; length?: number; time?: number }>;
         };
       };
       const trip = data.trip;
       if (!trip?.legs?.length)
         throw new TRPCError({ code: "NOT_FOUND", message: "NO_ROUTE" });
-      // Valhalla returns each leg as a precision-6 encoded polyline; stitch them
-      // into a single GeoJSON LineString the map can render directly.
-      const coordinates = trip.legs.flatMap((leg) =>
-        leg.shape ? decodePolyline(leg.shape, 6) : [],
-      );
+      const legs = trip.legs.map((leg) => ({
+        distanceMeters: Math.round((leg.length ?? 0) * 1000),
+        durationSeconds: Math.round(leg.time ?? 0),
+        geometry: {
+          type: "LineString",
+          coordinates: leg.shape ? decodePolyline(leg.shape, 6) : [],
+        },
+      }));
+      const allCoordinates = legs.flatMap((l) => l.geometry.coordinates);
+
       return {
         distanceMeters: Math.round((trip.summary?.length ?? 0) * 1000),
         durationSeconds: Math.round(trip.summary?.time ?? 0),
-        geometry: { type: "LineString", coordinates },
+        geometry: { type: "LineString", coordinates: allCoordinates },
+        legs,
       };
     }),
 
@@ -356,6 +367,13 @@ export const locationRouter = router({
       z.object({
         locationId: z.string().min(1),
         locationName: z.string().min(1),
+        waypoints: z.array(z.object({
+          lat: z.number(),
+          lng: z.number(),
+          name: z.string(),
+          type: z.enum(["partner_location", "saved_place", "custom"]).default("custom"),
+          status: z.enum(["pending", "arrived"]).default("pending")
+        })).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -385,6 +403,7 @@ export const locationRouter = router({
         targetId: partnerId,
         locationId: input.locationId,
         locationName: input.locationName,
+        waypoints: input.waypoints || [],
       });
 
       return { id: String(invite._id) };

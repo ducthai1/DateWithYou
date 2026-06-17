@@ -105,6 +105,8 @@ export async function GET(req: NextRequest) {
             locationId: string;
             locationName: string;
             status: string;
+            waypoints: unknown[];
+            merged: boolean;
           }>();
 
           const inId = incoming ? String(incoming._id) : null;
@@ -120,6 +122,8 @@ export async function GET(req: NextRequest) {
                 locationId: incoming.locationId,
                 locationName: incoming.locationName,
                 status: incoming.status,
+                waypoints: incoming.waypoints,
+                merged: incoming.merged,
               });
             }
           }
@@ -137,6 +141,8 @@ export async function GET(req: NextRequest) {
               locationId: string;
               locationName: string;
               status: string;
+              waypoints: unknown[];
+              merged: boolean;
             }>();
 
           const sentId = sent ? String(sent._id) : null;
@@ -152,6 +158,8 @@ export async function GET(req: NextRequest) {
                 locationId: sent.locationId,
                 locationName: sent.locationName,
                 status: sent.status,
+                waypoints: sent.waypoints,
+                merged: sent.merged,
               });
             }
           }

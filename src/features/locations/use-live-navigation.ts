@@ -19,6 +19,12 @@ type NavigatorWithWakeLock = Navigator & {
   wakeLock?: { request: (type: "screen") => Promise<WakeLockLike> };
 };
 
+export type LegInfo = {
+  distanceMeters: number;
+  durationSeconds: number;
+  geometry: { type: "LineString"; coordinates: Array<[number, number]> };
+};
+
 export type LiveNavigation = {
   isNavigating: boolean;
   /** Latest live position (null until the first fix). */
@@ -41,7 +47,8 @@ export type LiveNavigation = {
   start: () => void;
   stop: () => void;
   /** Feed the route polyline + totals so the hook can compute remaining distance live. */
-  setRouteInfo: (coords: Array<[number, number]>, totalMeters: number, totalSeconds: number) => void;
+  setRouteInfo: (coords: Array<[number, number]>, totalMeters: number, totalSeconds: number, legs?: LegInfo[]) => void;
+  legs: LegInfo[];
   /** Send a quick ping emotion to the partner */
   sendPingAction: (action: string) => void;
   /** User's own latest ping action to show their own emotion locally */
@@ -138,6 +145,7 @@ export function useLiveNavigation(options?: {
   const [traveled, setTraveled] = useState<Array<[number, number]>>([]);
   const [remainingMeters, setRemainingMeters] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [legs, setLegs] = useState<LegInfo[]>([]);
   const [userPingAction, setUserPingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(
@@ -216,10 +224,11 @@ export function useLiveNavigation(options?: {
 
   /** Call this after fetching a route to feed the hook the polyline + totals. */
   const setRouteInfo = useCallback(
-    (coords: Array<[number, number]>, totalMeters: number, totalSeconds: number) => {
+    (coords: Array<[number, number]>, totalMeters: number, totalSeconds: number, routeLegs?: LegInfo[]) => {
       routeCoordsRef.current = coords;
       routeTotalMetersRef.current = totalMeters;
       routeTotalSecondsRef.current = totalSeconds;
+      if (routeLegs) setLegs(routeLegs);
     },
     [],
   );
@@ -403,5 +412,6 @@ export function useLiveNavigation(options?: {
     stop,
     setRouteInfo,
     sendPingAction,
+    legs,
   };
 }
