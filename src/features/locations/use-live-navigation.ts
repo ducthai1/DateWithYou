@@ -249,7 +249,47 @@ export function useLiveNavigation(options?: {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  
+
+  // Push the current location to the server and pull the partner's back. Shared
+  // by the 5s interval and the one-shot "ping as soon as we get a fix" so the
+  // partner's HUD/route appears within a second of starting — not up to 5s later.
+  const sendLivePing = useCallback(async () => {
+    const p = pingPayloadRef.current;
+    if (!p.userGeo) return;
+    let batteryLevel = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const n = navigator as any;
+      if (n.getBattery) batteryLevel = Math.round((await n.getBattery()).level * 100);
+    } catch {
+      /* battery API unavailable — fine */
+    }
+    pingLiveLocation.mutate(
+      {
+        lat: p.userGeo.lat,
+        lng: p.userGeo.lng,
+        heading: p.heading,
+        speedKmH: p.speedKmH,
+        accuracy: p.accuracyM,
+        batteryLevel,
+        pingAction: null,
+      },
+      {
+        onSuccess: (partners) => {
+          if (partners && partners.length > 0) {
+            setPartnerLocation(partners[0]);
+            setEverHadPartner(true);
+          } else {
+            setPartnerLocation(null);
+          }
+        },
+      },
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const sendLivePingRef = useRef(sendLivePing);
+  sendLivePingRef.current = sendLivePing;
+
   const watchId = useRef<number | null>(null);
   const wakeLock = useRef<WakeLockLike | null>(null);
 
@@ -387,51 +427,32 @@ export function useLiveNavigation(options?: {
   // Always clean up the watch + wake lock when the page unmounts.
   useEffect(() => () => stop(), [stop]);
 
-  // Ping interval: every 5 seconds, send userGeo to server and fetch partner's position
+  // Ping interval: every 5 seconds, send userGeo to server and fetch partner's
+  // position. Fires once immediately too so we don't wait a full cycle.
   useEffect(() => {
     if (!isNavigating || isOffline) return;
-    
-    const interval = setInterval(async () => {
-      const p = pingPayloadRef.current;
-      if (!p.userGeo) return; // Wait until we have a location to ping
-
-      let batteryLevel = null;
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const nav = navigator as any;
-        if (nav.getBattery) {
-          const battery = await nav.getBattery();
-          batteryLevel = Math.round(battery.level * 100);
-        }
-      } catch {
-        // ignore
-      }
-
-      pingLiveLocation.mutate({
-        lat: p.userGeo.lat,
-        lng: p.userGeo.lng,
-        heading: p.heading,
-        speedKmH: p.speedKmH,
-        accuracy: p.accuracyM,
-        batteryLevel,
-        pingAction: null, // Regular interval clears the action so it doesn't get stuck
-      }, {
-        onSuccess: (partners) => {
-          if (partners && partners.length > 0) {
-            setPartnerLocation(partners[0]);
-            setEverHadPartner(true);
-          } else {
-            setPartnerLocation(null);
-          }
-        }
-      });
-    }, 5000);
-
+    sendLivePingRef.current();
+    const interval = setInterval(() => sendLivePingRef.current(), 5000);
     return () => clearInterval(interval);
-    // ONLY depend on isNavigating & isOffline. 
+    // ONLY depend on isNavigating & isOffline.
     // Do NOT depend on userGeo or pingLiveLocation to prevent infinite reset loops!
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNavigating, isOffline]);
+
+  // Ping the moment the first GPS fix lands, so the partner discovers us (and we
+  // them) right away instead of after the first 5s interval — this is what makes
+  // both riders' HUD/route render promptly regardless of how far apart they are.
+  const didInitialPingRef = useRef(false);
+  useEffect(() => {
+    if (!isNavigating) {
+      didInitialPingRef.current = false;
+      return;
+    }
+    if (didInitialPingRef.current || !userGeo) return;
+    didInitialPingRef.current = true;
+    sendLivePingRef.current();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNavigating, userGeo]);
 
   // Re-evaluate partner staleness on a steady tick while navigating (the ping
   // poll alone would leave `nowTs` frozen between fetches).
