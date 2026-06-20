@@ -24,10 +24,10 @@ export function AppHeader() {
         href="/settings"
         aria-label="Cài đặt"
         className={
-          "rounded-lg p-1.5 transition-colors " +
+          "flex h-10 w-10 items-center justify-center rounded-lg transition-colors touch-manipulation " +
           (pathname.startsWith("/settings")
-            ? "text-accent bg-accent-soft"
-            : "text-muted-foreground hover:bg-muted")
+            ? "text-accent bg-accent-soft active:bg-accent/20"
+            : "text-muted-foreground hover:bg-muted active:bg-muted")
         }
       >
         <Settings className="h-5 w-5" />

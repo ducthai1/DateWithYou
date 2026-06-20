@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display, Lora } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
@@ -36,6 +36,22 @@ const lora = Lora({
 export const metadata: Metadata = {
   title: "Vivu No Plan",
   description: "Nơi lưu kỷ niệm và lên kế hoạch hẹn hò của tụi mình.",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Vivu" },
+  formatDetection: { telephone: false },
+};
+
+/*
+ * Mobile-first viewport. `viewportFit: "cover"` is what makes the CSS
+ * env(safe-area-inset-*) values resolve to real notch / home-indicator insets —
+ * without it every safe-area pad in the app silently collapses to 0. We keep
+ * pinch-zoom enabled (no maximumScale) for accessibility, and themeColor follows
+ * the parchment background so the iOS status bar / Android chrome blends in.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f1ece3",
 };
 
 export default async function RootLayout({

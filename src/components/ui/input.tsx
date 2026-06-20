@@ -94,12 +94,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         </fieldset>
 
         {(suffixIcon || isPassword) && (
-          <span className="absolute inset-y-0 right-1 z-20 flex items-center justify-center w-9">
+          <span className="absolute inset-y-0 right-0 z-20 flex items-center justify-center w-10">
             {isPassword ? (
               <button
                 type="button"
                 tabIndex={-1}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                className="flex h-10 w-10 items-center justify-center text-muted-foreground hover:text-foreground transition-colors active:opacity-70 touch-manipulation -mr-1"
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
               >

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { AnimatePresence, motion } from "framer-motion";
@@ -45,9 +45,11 @@ import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
 import type { Category } from "@/lib/districts-categories";
 
-// Shared styling for the small icon+label actions on a location card.
+// Shared styling for the small icon+label actions on a location card. Padding +
+// min-height give a ≥40px touch target on mobile (was px-2 py-1 ≈ 22px tall);
+// touch-manipulation removes the 300ms tap delay and active: gives tap feedback.
 const ACTION_CLS =
-  "inline-flex items-center gap-1 rounded-lg px-2 py-1 transition-colors";
+  "inline-flex min-h-9 items-center gap-1 rounded-lg px-2.5 py-2 transition-colors touch-manipulation active:scale-95";
 
 // An intermediate stop in a companion trip plan (pickup + extra stops).
 type PlannedStop =
@@ -241,13 +243,35 @@ export function LocationsPage() {
   const categories = configQuery.data?.categories || [];
   const districts = configQuery.data?.districts || [];
 
-  const list = trpc.location.list.useQuery({
-    district: district || undefined,
-    category: category || undefined,
-    status: (status || undefined) as "want_to_go" | "visited" | undefined,
-  });
+  const listInput = useMemo(
+    () => ({
+      district: district || undefined,
+      category: category || undefined,
+      status: (status || undefined) as "want_to_go" | "visited" | undefined,
+    }),
+    [district, category, status],
+  );
+  const list = trpc.location.list.useQuery(listInput);
   const toggle = trpc.location.toggleStatus.useMutation({
-    onSuccess: () => utils.location.list.invalidate(),
+    // Optimistic flip: the status pill switches the instant it's tapped instead
+    // of waiting for the server + a list refetch. On error we roll the cache
+    // back; either way we re-sync on settle so a filtered view self-corrects.
+    onMutate: async ({ id }) => {
+      await utils.location.list.cancel(listInput);
+      const prev = utils.location.list.getData(listInput);
+      utils.location.list.setData(listInput, (old) =>
+        old?.map((l) =>
+          l.id === id
+            ? { ...l, status: l.status === "visited" ? "want_to_go" : "visited" }
+            : l,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) utils.location.list.setData(listInput, ctx.prev);
+    },
+    onSettled: () => utils.location.list.invalidate(),
   });
   const remove = trpc.location.remove.useMutation({
     onSuccess: () => utils.location.list.invalidate(),
@@ -697,12 +721,26 @@ export function LocationsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navInvites.endedTrip, nav.isNavigating, pausedTrip, legGeometries, routeGeometry]);
 
-  const pins = (list.data ?? []).map((l) => ({
-    id: l.id,
-    name: l.name,
-    geo: l.geo,
-    status: l.status,
-  }));
+  // Stable pin array so the memoised map only re-renders when the underlying
+  // list actually changes — not on every filter/modal/form keystroke.
+  const pins = useMemo(
+    () =>
+      (list.data ?? []).map((l) => ({
+        id: l.id,
+        name: l.name,
+        geo: l.geo,
+        status: l.status,
+      })),
+    [list.data],
+  );
+
+  // Stable click handler for the same reason (inline arrow would bust the memo).
+  const handleMapClick = useCallback(
+    (geo: LatLng) => {
+      if (formOpen) setFormInitial((p) => ({ ...p, geo }));
+    },
+    [formOpen],
+  );
 
   // Format helpers for the HUD.
   const fmtDistance = (m: number | null) => {
@@ -1130,9 +1168,7 @@ export function LocationsPage() {
               partnerAvatar={partnerAvatar}
               traveled={nav.traveled}
               onSelect={setSelectedId}
-              onMapClick={(geo) =>
-                formOpen && setFormInitial((p) => ({ ...p, geo }))
-              }
+              onMapClick={handleMapClick}
             />
           </div>
 

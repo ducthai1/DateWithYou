@@ -77,6 +77,7 @@ export function CalendarView() {
                 else if (info.offset.x > 60) prev();
               }}
               className="touch-pan-y"
+              style={{ touchAction: "pan-y" }}
             >
               <CalendarGrid year={year} month={month} summary={summary.data ?? {}} onSelectDay={setSelected} />
             </motion.div>

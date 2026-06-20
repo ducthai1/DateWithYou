@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,15 +49,17 @@ export function WishlistGrid() {
 
   const celebrate = useCelebrate();
 
-  const items = list.data ?? [];
-  const boughtCount = items.filter(i => i.bought).length;
+  // Stable ref via query data (structural sharing) — wrapped so the memos below
+  // don't see a fresh `[]` every render when the list is empty.
+  const items = useMemo(() => list.data ?? [], [list.data]);
+  const boughtCount = useMemo(() => items.filter(i => i.bought).length, [items]);
   const progressPercent = items.length > 0 ? (boughtCount / items.length) * 100 : 0;
 
-  const filteredItems = items.filter(i => {
+  const filteredItems = useMemo(() => items.filter(i => {
     if (filter === "active") return !i.bought;
     if (filter === "bought") return i.bought;
     return true;
-  });
+  }), [items, filter]);
 
   function openNewForm() {
     setItemName("");

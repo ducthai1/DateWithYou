@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Coins, Gift, ListChecks, Plus, CheckCircle2, History, Ticket } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -35,16 +35,25 @@ export function RewardsPanel() {
 
   const celebrate = useCelebrate();
 
+  // Memoize filtered voucher list and next-voucher lookup; data is stable across
+  // renders when tRPC cache hasn't changed — avoids re-sorting on every keystroke.
+  const rawVouchers = data.data?.vouchers;
+  const rawBalances = data.data?.balances;
+  const myBalance = rawBalances?.find(b => b.isMe)?.balance ?? 0;
+  const availableVouchers = useMemo(
+    () => (rawVouchers ?? []).filter(v => !v.redeemed).sort((a, b) => a.cost - b.cost),
+    [rawVouchers],
+  );
+  const nextVoucher = useMemo(
+    () => availableVouchers.find(v => v.cost > myBalance),
+    [availableVouchers, myBalance],
+  );
+
   if (data.isLoading || !data.data)
     return <div className="py-10 text-center"><p className="text-muted-foreground text-sm">Đang tải…</p></div>;
-    
+
   const { tasks, vouchers, balances, recentLogs } = data.data;
   const label = (b: { isMe: boolean }) => (b.isMe ? "Bạn" : "Người ấy");
-
-  // Determine progress to next voucher for "Me"
-  const myBalance = balances.find(b => b.isMe)?.balance || 0;
-  const availableVouchers = vouchers.filter(v => !v.redeemed).sort((a, b) => a.cost - b.cost);
-  const nextVoucher = availableVouchers.find(v => v.cost > myBalance);
   
   function handleComplete(taskId: string, forUserId: string, anchorEl?: HTMLElement | null) {
     complete.mutate({ taskId, forUserId });

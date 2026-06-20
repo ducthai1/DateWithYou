@@ -46,12 +46,22 @@ export function MemoryTimeline() {
     () => [...new Set((list.data ?? []).flatMap((m) => m.tags ?? []))],
     [list.data],
   );
-  const memories: Memo[] = filter ? all.filter((m) => (m.tags ?? []).includes(filter)) : all;
+  // Memoised so the tag-filter and month grouping (a reduce over the whole feed)
+  // don't re-run on every unrelated re-render — opening the detail modal, typing
+  // in the add form, etc. Recompute only when the data or active filter changes.
+  const memories: Memo[] = useMemo(() => {
+    const data = list.data ?? [];
+    return filter ? data.filter((m) => (m.tags ?? []).includes(filter)) : data;
+  }, [list.data, filter]);
   const selectedMemo = selected ? all.find((m) => m.id === selected) ?? null : null;
-  const groups = memories.reduce<Record<string, Memo[]>>((acc, m) => {
-    (acc[monthKey(m.date)] ??= []).push(m);
-    return acc;
-  }, {});
+  const groups = useMemo(
+    () =>
+      memories.reduce<Record<string, Memo[]>>((acc, m) => {
+        (acc[monthKey(m.date)] ??= []).push(m);
+        return acc;
+      }, {}),
+    [memories],
+  );
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-28 md:pb-6 md:px-[30px]">
@@ -291,7 +301,7 @@ function FilterChip({ label, active, onClick }: { label: string; active: boolean
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full border px-3 py-1 text-xs transition-colors",
+        "inline-flex min-h-9 items-center rounded-full border px-3.5 py-1.5 text-xs transition-colors touch-manipulation active:scale-95",
         active ? "bg-accent border-accent text-accent-foreground" : "bg-card border-border text-muted-foreground hover:bg-muted",
       )}
     >

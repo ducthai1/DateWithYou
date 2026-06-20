@@ -197,11 +197,35 @@
 
 /* ─── 4. Base styles ─────────────────────────────────────────────────────── */
 
+html {
+  /* Stop iOS/Android from auto-inflating font sizes in landscape, which breaks
+     our carefully tuned type scale and causes reflow jank. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Kill the grey flash iOS Safari paints over every tap target — we provide our
+     own :active states instead, which feel instant and on-brand. */
+  -webkit-tap-highlight-color: transparent;
+  /* Prevent the whole page from rubber-band scrolling / pull-to-refresh behind
+     fixed chrome (bottom nav, headers, sheets). */
+  overscroll-behavior-y: none;
+}
+
+/* Inputs ≥16px never trigger iOS's zoom-on-focus. Guard the whole app: any
+   control the browser would zoom into gets a 16px floor on small screens.
+   Visual sizing stays via line-height / padding in component classes. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
 }
 
 /*

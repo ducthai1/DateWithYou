@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { calculateDistance, type LatLng } from "@/lib/maps";
@@ -32,7 +32,7 @@ function getPinColor(lat: number, lng: number, status: string): string {
   return `hsl(${hue}, 85%, ${status === "visited" ? "45%" : "60%"})`;
 }
 
-export function LocationMapView({
+function LocationMapViewImpl({
   pins,
   routeGeometry,
   legGeometries,
@@ -615,3 +615,13 @@ export function LocationMapView({
     </div>
   );
 }
+
+/*
+ * Memoised so the whole map subtree (and every Marker reconciliation) is skipped
+ * when the parent re-renders for unrelated reasons — filter changes, modal opens,
+ * form typing. It still re-renders when its OWN props change (live position,
+ * traveled path, route), which is exactly when the map must update. For this to
+ * pay off the parent must pass stable refs for array/callback props (pins,
+ * onSelect, onMapClick) — see locations-page memoisation.
+ */
+export const LocationMapView = memo(LocationMapViewImpl);

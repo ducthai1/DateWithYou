@@ -14,7 +14,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex cursor-pointer items-center justify-center rounded-xl text-sm font-medium transition-all active:scale-[.98]",
+        "inline-flex cursor-pointer items-center justify-center rounded-xl text-sm font-medium transition-all active:scale-[.98] touch-manipulation",
         size === "default" && "h-11 px-4",
         size === "icon" && "h-11 w-11 p-0 shrink-0",
         "focus-visible:ring-ring/50 outline-none focus-visible:ring-2 focus-visible:ring-offset-2",

@@ -31,7 +31,7 @@ export function CapsuleEnvelope({
 
   return (
     <motion.div
-      className="relative flex flex-col items-center"
+      className="relative flex flex-col items-center touch-manipulation"
       animate={opening ? { y: 0 } : { y: [0, -10, 0] }}
       transition={opening ? { duration: 0 } : { duration: 4, repeat: Infinity, ease: "easeInOut" }}
     >

@@ -216,6 +216,12 @@ export function useLiveNavigation(options?: {
 
     lastPingTime.current = now;
 
+    // Optimistic: show the user's own emotion the instant they tap, instead of
+    // after the network round-trip. The mutation still runs to deliver it to the
+    // partner; if it fails the emotion simply isn't propagated (no rollback
+    // needed — it's an ephemeral self-affordance).
+    setUserPingAction(action);
+
     let batteryLevel = null;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,7 +244,6 @@ export function useLiveNavigation(options?: {
       pingAction: action,
     }, {
       onSuccess: (partners) => {
-        setUserPingAction(action);
         if (partners && partners.length > 0) {
           setPartnerLocation(partners[0]);
           setEverHadPartner(true);
@@ -432,7 +437,10 @@ export function useLiveNavigation(options?: {
   useEffect(() => {
     if (!isNavigating || isOffline) return;
     sendLivePingRef.current();
-    const interval = setInterval(() => sendLivePingRef.current(), 5000);
+    // 2.5s cadence: partner HUD/route stay within ~2.5s of reality (was 5s).
+    // The extra writes are cheap for a 2-person space and the responsiveness
+    // gain on a live shared trip is the whole point of the feature.
+    const interval = setInterval(() => sendLivePingRef.current(), 2500);
     return () => clearInterval(interval);
     // ONLY depend on isNavigating & isOffline.
     // Do NOT depend on userGeo or pingLiveLocation to prevent infinite reset loops!

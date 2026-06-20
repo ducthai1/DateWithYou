@@ -20,6 +20,8 @@ const liveLocationSchema = new Schema(
 
 // One active session per user per space
 liveLocationSchema.index({ spaceId: 1, userId: 1 }, { unique: true });
+// Covers SSE partner-ping query: { spaceId, userId: {$ne:...}, updatedAt: {$gt:...} }
+liveLocationSchema.index({ spaceId: 1, updatedAt: 1 });
 
 export type LiveLocation = InferSchemaType<typeof liveLocationSchema>;
 

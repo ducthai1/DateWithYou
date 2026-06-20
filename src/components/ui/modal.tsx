@@ -76,7 +76,7 @@ export function ModalHeader({ title, onClose }: { title: React.ReactNode; onClos
         type="button"
         onClick={onClose}
         aria-label="Đóng"
-        className="text-muted-foreground hover:bg-muted -mr-1 rounded-lg p-1.5 transition-colors"
+        className="flex h-10 w-10 items-center justify-center text-muted-foreground hover:bg-muted active:bg-muted -mr-2 rounded-lg transition-colors touch-manipulation"
       >
         <X className="h-5 w-5" />
       </button>

@@ -48,9 +48,14 @@ export function GlobalInviteListener() {
   const handleRespond = async (accept: boolean) => {
     if (!navInvites.incomingInvite) return;
     const inviteId = navInvites.incomingInvite.id;
+    // Dismiss the modal the instant they tap instead of holding it on a spinner
+    // for the whole round-trip — the response is fire-and-navigate, so the only
+    // thing the await gates is the redirect, not the dismissal. We keep the
+    // incoming invite in context (don't clear yet) so that if the request fails
+    // we can bring the modal back and let them retry.
+    setShow(false);
     try {
       const result = await respondInvite.mutateAsync({ inviteId, accept });
-      setShow(false);
       navInvites.clearIncoming();
 
       if (accept && result.locationId) {
@@ -66,8 +71,9 @@ export function GlobalInviteListener() {
       }
     } catch (err) {
       console.error(err);
-      setShow(false);
-      navInvites.clearIncoming();
+      // Request failed — the invite is still pending on the server, so bring the
+      // modal back (incoming was never cleared) and let them try again.
+      setShow(true);
     }
   };
 

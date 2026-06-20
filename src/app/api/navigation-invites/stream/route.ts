@@ -215,9 +215,11 @@ export async function GET(req: NextRequest) {
         }
       };
 
-      // Initial check, then every 1.5 seconds for snappier real-time feel.
+      // Initial check, then every 1 second. Trade-off: ~50% more DB polls per
+      // connection vs. ~500 ms lower invite/ping delivery latency. Acceptable for
+      // a couples app with at most 2 concurrent SSE connections per space.
       await poll();
-      const interval = setInterval(poll, 1500);
+      const interval = setInterval(poll, 1000);
 
       // Clean up when the client disconnects.
       req.signal.addEventListener("abort", () => {

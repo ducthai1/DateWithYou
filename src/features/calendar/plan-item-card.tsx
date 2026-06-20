@@ -194,7 +194,7 @@ function IconBtn({
       title={label}
       onClick={onClick}
       className={cn(
-        "rounded-lg p-1 transition-colors",
+        "flex h-9 w-9 items-center justify-center rounded-lg p-2.5 -m-1 transition-colors touch-manipulation active:bg-muted",
         danger ? "text-muted-foreground hover:bg-destructive-soft hover:text-destructive" : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >

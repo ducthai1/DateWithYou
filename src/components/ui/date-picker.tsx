@@ -99,16 +99,24 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
         <div
           data-calendar-popup
           className="fixed z-[100] mt-2 w-72 rounded-xl border border-border bg-card p-4 shadow-xl"
-          style={{ top: rect.bottom, left: rect.left }}
+          style={{
+            top: (() => {
+              const estimatedHeight = 320;
+              return rect.bottom + estimatedHeight > window.innerHeight
+                ? Math.max(0, rect.top - estimatedHeight - 8)
+                : rect.bottom + 8;
+            })(),
+            left: Math.min(rect.left, window.innerWidth - 288 - 8),
+          }}
         >
           <div className="flex items-center justify-between mb-4">
-            <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground transition-colors" onClick={prevMonth}>
+            <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-muted transition-colors touch-manipulation" onClick={prevMonth}>
               <ChevronLeft className="h-5 w-5" />
             </button>
             <div className="font-medium text-sm">
               {MONTHS[month]} năm {year}
             </div>
-            <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground transition-colors" onClick={nextMonth}>
+            <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-muted transition-colors touch-manipulation" onClick={nextMonth}>
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
@@ -134,12 +142,12 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
                   type="button"
                   onClick={() => handleSelect(day)}
                   className={`
-                    flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors
-                    ${isSelected 
-                      ? "bg-accent text-accent-foreground font-semibold" 
-                      : isToday 
-                        ? "bg-accent-soft text-accent font-semibold hover:bg-accent/20" 
-                        : "hover:bg-muted text-foreground"
+                    flex h-9 w-9 items-center justify-center rounded-lg text-sm transition-colors touch-manipulation
+                    ${isSelected
+                      ? "bg-accent text-accent-foreground font-semibold active:opacity-80"
+                      : isToday
+                        ? "bg-accent-soft text-accent font-semibold hover:bg-accent/20 active:bg-accent/30"
+                        : "hover:bg-muted active:bg-muted text-foreground"
                     }
                   `}
                 >

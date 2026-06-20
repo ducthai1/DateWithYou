@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, memo } from "react";
 import { cn } from "@/lib/utils";
 import type { GridCell } from "@/lib/date-keys";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
@@ -41,7 +42,7 @@ const LAYOUTS: [number, number, number][][] = [
 ];
 
 /** One day cell in the month grid – sticky-note style. */
-export function CalendarCell({
+export const CalendarCell = memo(function CalendarCell({
   cell,
   summary,
   isToday,
@@ -58,18 +59,20 @@ export function CalendarCell({
 
   // Mobile shows compact colored dots instead of sticky notes (legibility).
   // Dots convey activity variety; the top-right badge conveys quantity.
-  const dotColors = (() => {
-    const fromTags = summary?.tagColors ?? [];
+  const tagColors = summary?.tagColors;
+  const plans = summary?.plans;
+  const dotColors = useMemo(() => {
+    const fromTags = tagColors ?? [];
     if (fromTags.length) return fromTags.slice(0, 4);
-    const fromPlans = (summary?.plans ?? []).map((p) => p.color).filter(Boolean);
+    const fromPlans = (plans ?? []).map((p) => p.color).filter(Boolean);
     if (fromPlans.length) return Array.from(new Set(fromPlans)).slice(0, 4);
     return count > 0 ? ["var(--accent)"] : [];
-  })();
+  }, [tagColors, plans, count]);
   // Mirror desktop notes: dim the dot row when every plan that day is done.
   const allDone = count > 0 && (summary?.doneCount ?? 0) >= count;
 
-  // pick a layout for this cell based on the date
-  const dayHash = hash(cell.key);
+  // pick a layout for this cell based on the date — stable per cell.key
+  const dayHash = useMemo(() => hash(cell.key), [cell.key]);
   const layout = LAYOUTS[dayHash % LAYOUTS.length];
 
   // Resolve Lucide icon for special date
@@ -228,4 +231,4 @@ export function CalendarCell({
       )}
     </button>
   );
-}
+});

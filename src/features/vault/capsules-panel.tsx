@@ -127,7 +127,7 @@ export function CapsulesPanel() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedCapsule(capsule)}
-                className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-colors p-5 ${
+                className={`relative overflow-hidden rounded-2xl border cursor-pointer transition-colors p-5 touch-manipulation ${
                   isLocked
                     ? "bg-muted/30 border-muted-foreground/20 hover:border-accent/50"
                     : capsule.isOpened

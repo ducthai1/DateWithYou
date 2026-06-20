@@ -49,24 +49,19 @@ export const authedProcedure = t.procedure.use(async ({ ctx, next }) => {
  */
 export const protectedProcedure = authedProcedure.use(async ({ ctx, next }) => {
   await connectToDatabase();
-  
-  let space = null;
-  
-  // Try to load the active space from cookie first
-  if (ctx.activeSpaceId) {
-    space = await SpaceModel.findOne({ _id: ctx.activeSpaceId, members: ctx.userId })
-      .select("_id")
-      .lean<{ _id: unknown }>();
-  }
 
-  // Fallback to finding any space the user belongs to (e.g. they just joined or haven't selected)
-  if (!space) {
-    space = await SpaceModel.findOne({ members: ctx.userId })
-      .select("_id")
-      .lean<{ _id: unknown }>();
-  }
+  // Single round-trip: fetch all spaces this user belongs to (couples app → 1-2 max),
+  // then pick the activeSpaceId one when valid, otherwise fall back to the first.
+  // Previously two sequential findOne calls; now one find() saves one Atlas RTT.
+  const spaces = await SpaceModel.find({ members: ctx.userId })
+    .select("_id")
+    .lean<{ _id: unknown }[]>();
 
-  if (!space) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
+  if (!spaces.length) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
+
+  const activeSpaceIdStr = ctx.activeSpaceId ?? "";
+  const space =
+    spaces.find((s) => String(s._id) === activeSpaceIdStr) ?? spaces[0]!;
   
   return next({ ctx: { userId: ctx.userId, spaceId: String(space._id), activeSpaceId: ctx.activeSpaceId } });
 });

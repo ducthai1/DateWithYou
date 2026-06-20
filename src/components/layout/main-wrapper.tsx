@@ -15,7 +15,11 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
       // Match the sidebar: skip the padding transition until the saved collapse
       // state is loaded, so content doesn't slide on first paint.
       ready && "transition-[padding] duration-300 ease-in-out",
-      !hidden && (isCollapsed ? "pb-16 md:pb-0 md:pl-20" : "pb-16 md:pb-0 md:pl-64")
+      // Reserve the bottom-nav height PLUS the home-indicator inset so the last
+      // row of content never hides behind the nav on notched phones. Desktop
+      // drops the bottom pad and offsets for the sidebar (width depends on collapse).
+      !hidden && "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0",
+      !hidden && (isCollapsed ? "md:pl-20" : "md:pl-64")
     )}>
       {children}
     </div>
