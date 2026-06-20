@@ -1,0 +1,24 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Vivu No Plan">
+  <defs>
+    <!-- Warm terracotta tile gradient (design-system accent → gradient-from). -->
+    <linearGradient id="tile" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e8846a"/>
+      <stop offset="1" stop-color="#bf6038"/>
+    </linearGradient>
+    <!-- Soft top-light on the heart for a little depth. -->
+    <linearGradient id="heart" x1="32" y1="14" x2="32" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#fdeee7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded app tile -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#tile)"/>
+  <!-- Subtle inner highlight sweep, top-left -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#heart)" opacity="0.08"/>
+
+  <!-- Heart: two lobes meeting at a centre seam = two people, one heart -->
+  <path d="M32 49C32 49 14.5 37.6 14.5 25.8C14.5 20.1 18.6 16 24 16C27.7 16 30.7 18 32 20.8C33.3 18 36.3 16 40 16C45.4 16 49.5 20.1 49.5 25.8C49.5 37.6 32 49 32 49Z" fill="url(#heart)"/>
+  <!-- Centre seam: hints the heart is formed from two halves -->
+  <path d="M32 20.8V47.5" stroke="#c2693f" stroke-width="1.4" stroke-linecap="round" opacity="0.14"/>
+</svg>
