@@ -155,7 +155,9 @@ export function PlanItemCard({
           </div>
         )}
 
-        <div className="mt-1.5 flex items-center gap-1">
+        {/* On mobile: assignee and actions wrap to separate lines so 5 icons never
+            compete with content in a 360px card. On sm+ they stay inline. */}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-1 sm:flex-nowrap">
           {assignee ? (
             <Avatar member={assignee} />
           ) : (
@@ -163,7 +165,7 @@ export function PlanItemCard({
               <Users className="h-3 w-3" /> Cả hai
             </span>
           )}
-          <div className="ml-auto flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 sm:ml-auto">
             <IconBtn label="Lên" onClick={() => move.mutate({ id: item.id, direction: "up" })}><ChevronUp className="h-4 w-4" /></IconBtn>
             <IconBtn label="Xuống" onClick={() => move.mutate({ id: item.id, direction: "down" })}><ChevronDown className="h-4 w-4" /></IconBtn>
             <IconBtn label="Lưu thành kỷ niệm" onClick={onSaveAsMemory}><ImagePlus className="h-4 w-4" /></IconBtn>

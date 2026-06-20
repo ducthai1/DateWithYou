@@ -89,7 +89,9 @@ export function PlanItemForm({
           <Textarea placeholder="Ghi chú (tuỳ chọn)" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        {/* Bucket + time: stack on mobile so each control gets full width;
+            side-by-side on sm+ where there is room. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div className="space-y-2.5">
             <label className="text-xs font-medium text-muted-foreground ml-1">Buổi trong ngày</label>
             <Select

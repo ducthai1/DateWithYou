@@ -33,8 +33,10 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
   return (
     <Card className="space-y-2 p-3">
       <div className="flex items-start justify-between gap-2">
-        <p className="font-medium">{item.title}</p>
-        <ConfirmButton idle="" className="text-xs" onConfirm={() => remove.mutate({ id: item.id })} />
+        <p className="font-medium leading-snug min-w-0 flex-1">{item.title}</p>
+        <div className="shrink-0">
+          <ConfirmButton idle="" className="text-xs" onConfirm={() => remove.mutate({ id: item.id })} />
+        </div>
       </div>
 
       {item.kind === "recipe" ? (

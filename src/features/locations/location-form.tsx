@@ -112,7 +112,8 @@ export function LocationForm({
         value={v.name}
         onChange={(e) => set("name", e.target.value)}
       />
-      <div className="flex gap-2">
+      {/* Stack on mobile (<sm) so each select gets its full width. Side-by-side on sm+. */}
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Select
           aria-label="Quận"
           value={v.district}
@@ -188,7 +189,7 @@ export function LocationForm({
         <Button onClick={submit} disabled={!v.name.trim() || pending} className="flex-1">
           {pending ? "Đang lưu…" : v.id ? "Cập nhật" : "Thêm địa điểm"}
         </Button>
-        <Button variant="ghost" onClick={onCancel}>
+        <Button variant="ghost" onClick={onCancel} className="shrink-0">
           Huỷ
         </Button>
       </div>

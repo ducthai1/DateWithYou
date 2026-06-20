@@ -878,79 +878,81 @@ export function LocationsPage() {
               <div className="flex flex-col items-center gap-2">
                 <div className="flex rounded-2xl bg-white/90 shadow-lg backdrop-blur-sm overflow-hidden divide-x divide-border">
                   {/* YOU */}
-                  <div className="flex flex-col px-3 py-2 sm:px-4 bg-blue-50/50 relative flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1 mb-1 pr-1">
-                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider truncate">Bạn</span>
+                  <div className="flex flex-col px-2.5 py-2 sm:px-4 bg-blue-50/50 relative flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-1 mb-1">
+                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider shrink-0">Bạn</span>
                       {/* Own connection/GPS health takes priority over the weather chip. */}
                       {nav.isOffline ? (
-                        <div className="text-[10px] font-semibold text-white bg-red-500 px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap animate-pulse">
-                          <WifiOff className="h-3 w-3" /> Mất mạng
+                        <div className="text-[9px] font-semibold text-white bg-red-500 px-1 rounded-full flex items-center gap-0.5 shrink-0 animate-pulse leading-tight py-0.5">
+                          <WifiOff className="h-2.5 w-2.5" /> Mất mạng
                         </div>
                       ) : nav.gpsLost ? (
-                        <div className="text-[10px] font-semibold text-amber-900 bg-amber-200 border border-amber-300 px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap animate-pulse">
-                          <LocateOff className="h-3 w-3" /> Mất định vị
+                        <div className="text-[9px] font-semibold text-amber-900 bg-amber-200 border border-amber-300 px-1 rounded-full flex items-center gap-0.5 shrink-0 animate-pulse leading-tight py-0.5">
+                          <LocateOff className="h-2.5 w-2.5" /> GPS
                         </div>
                       ) : weather ? (
-                        <div className="text-[10px] font-medium text-blue-800/60 bg-blue-100/50 px-1.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap">
-                          ⛅ {weather.temp}°C
+                        <div className="text-[9px] font-medium text-blue-800/60 bg-blue-100/50 px-1 rounded-full flex items-center gap-0.5 shrink-0 leading-tight py-0.5">
+                          ⛅ {weather.temp}°
                         </div>
                       ) : null}
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-3 mt-0.5">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
                       <div className="flex items-center gap-1">
-                        <Route className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500 shrink-0" />
-                        <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmtDistance(displayDistance)}</span>
+                        <Route className="h-3 w-3 text-blue-500 shrink-0" />
+                        <span className="text-xs font-semibold whitespace-nowrap">{fmtDistance(displayDistance)}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500 shrink-0" />
-                        <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmtDuration(displayDuration)}</span>
+                        <Clock className="h-3 w-3 text-blue-500 shrink-0" />
+                        <span className="text-xs font-semibold whitespace-nowrap">{fmtDuration(displayDuration)}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* PARTNER */}
                   {partnerRouteGeometry != null && (
-                    <div className="flex flex-col px-3 py-2 sm:px-4 bg-rose-50/50 relative flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1 mb-1 pr-1">
-                        <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider truncate">
-                          Người ấy
-                          {/* Hide the (now stale) speed hint once the partner link drops. */}
+                    <div className="flex flex-col px-2.5 py-2 sm:px-4 bg-rose-50/50 relative flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-1 mb-1">
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block leading-tight">
+                            Người ấy
+                          </span>
+                          {/* Speed hint below label so it doesn't crowd the badge row */}
                           {nav.partnerConnection !== "stale" && nav.partnerLocation?.speedKmH != null && (
-                            <span className="ml-1 sm:ml-2 font-normal opacity-90 lowercase text-[9px] sm:text-xs">
-                              {nav.partnerLocation.speedKmH < 4 ? "🛑 Đứng im lìm" :
-                               nav.partnerLocation.speedKmH > 15 ? "🏍️ Vù vù" : "🛵 Tàng tàng"}
+                            <span className="text-[9px] font-normal text-rose-400 leading-tight">
+                              {nav.partnerLocation.speedKmH < 4 ? "🛑 Đứng" :
+                               nav.partnerLocation.speedKmH > 15 ? "🏍️ Vù vù" : "🛵 Tàng"}
                             </span>
                           )}
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
+                        </div>
+                        <div className="flex flex-col items-end gap-0.5 shrink-0">
                           {/* Partner link health. Both badges are suppressed while OUR
                               own network is down — we can't judge the partner then. */}
                           {nav.isOffline ? null : nav.partnerConnection === "stale" ? (
-                            <div className="text-[10px] font-semibold text-white bg-red-500 px-1.5 rounded-full flex items-center gap-1 whitespace-nowrap animate-pulse">
-                              <WifiOff className="h-3 w-3" /> Mất kết nối
+                            <div className="text-[9px] font-semibold text-white bg-red-500 px-1 rounded-full flex items-center gap-0.5 animate-pulse leading-tight py-0.5">
+                              <WifiOff className="h-2.5 w-2.5" /> Mất
                             </div>
                           ) : nav.partnerConnection === "weak" ? (
-                            <div className="text-[10px] font-semibold text-amber-900 bg-amber-200 border border-amber-300 px-1.5 rounded-full flex items-center gap-1 whitespace-nowrap">
-                              <Satellite className="h-3 w-3" /> Định vị yếu
+                            <div className="text-[9px] font-semibold text-amber-900 bg-amber-200 border border-amber-300 px-1 rounded-full flex items-center gap-0.5 leading-tight py-0.5">
+                              <Satellite className="h-2.5 w-2.5" /> Yếu
                             </div>
                           ) : null}
                           {nav.partnerLocation?.batteryLevel != null && (
-                            <div className={`text-[10px] font-medium px-1.5 rounded-full flex items-center gap-1 whitespace-nowrap ${
+                            <div className={`text-[9px] font-medium px-1 rounded-full flex items-center gap-0.5 leading-tight py-0.5 ${
                               nav.partnerLocation.batteryLevel < 20 ? "text-red-700 bg-red-100/80 animate-pulse border border-red-300" : "text-rose-800/60 bg-rose-100/50"
                             }`}>
-                              {nav.partnerLocation.batteryLevel < 20 ? "🪫" : "🔋"} {nav.partnerLocation.batteryLevel}% {nav.partnerLocation.batteryLevel < 20 && "Cấp cứu!"}
+                              {nav.partnerLocation.batteryLevel < 20 ? "🪫" : "🔋"} {nav.partnerLocation.batteryLevel}%
                             </div>
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-3 mt-0.5">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
                         <div className="flex items-center gap-1">
-                          <Route className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-500 shrink-0" />
-                          <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmtDistance(partnerRouteDistanceMeters)}</span>
+                          <Route className="h-3 w-3 text-rose-500 shrink-0" />
+                          <span className="text-xs font-semibold whitespace-nowrap">{fmtDistance(partnerRouteDistanceMeters)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-500 shrink-0" />
-                          <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">{fmtDuration(partnerRouteDurationSeconds)}</span>
+                          <Clock className="h-3 w-3 text-rose-500 shrink-0" />
+                          <span className="text-xs font-semibold whitespace-nowrap">{fmtDuration(partnerRouteDurationSeconds)}</span>
                         </div>
                       </div>
                     </div>
@@ -1074,14 +1076,15 @@ export function LocationsPage() {
       {/* ── Normal page layout ── */}
       <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px]">
       {/* Action bar stays pinned; only the cards below scroll under it. */}
-      <div className="sticky top-0 z-30 -mx-4 mb-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur-sm md:-mx-[30px] md:px-[30px]">
-        <h1 className="text-3xl sm:text-h1 font-serif">Bản đồ ăn chơi</h1>
-        <div className="flex gap-2">
+      {/* Mobile: title row + actions row stacked. Desktop: single flex row. */}
+      <div className="sticky top-0 z-30 -mx-4 mb-4 flex flex-col gap-y-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur-sm md:-mx-[30px] md:px-[30px] sm:flex-row sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
+        <h1 className="text-3xl sm:text-h1 font-serif leading-tight">Bản đồ ăn chơi</h1>
+        <div className="flex flex-wrap items-center gap-2">
           {hasTwoMembers && (
             <Button
               variant="outline"
               className={cn(
-                "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all gap-1.5",
+                "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all gap-1.5 h-9 px-3",
                 isFindingMidpoint && "opacity-50 pointer-events-none"
               )}
               onClick={handleFindMidpoint}
@@ -1099,14 +1102,15 @@ export function LocationsPage() {
             href="/wheel"
             aria-label="Hôm nay ăn gì?"
             title="Hôm nay ăn gì?"
-            className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 items-center justify-center rounded-xl border shadow-sm"
+            className="border-border bg-card hover:bg-muted inline-flex h-9 w-9 items-center justify-center rounded-xl border shadow-sm"
           >
             <Utensils className="h-4 w-4" />
           </a>
-          <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)}>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setSettingsOpen(true)}>
             <Settings className="h-4 w-4" />
           </Button>
           <Button
+            className="h-9 px-3"
             onClick={() => {
               setFormInitial({});
               setFormOpen((o) => !o);
@@ -1324,12 +1328,14 @@ export function LocationsPage() {
                         <Icon className="h-5 w-5" />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="flex-1 font-medium leading-tight">{l.name}</p>
+                        {/* Name + toggle: on mobile stack vertically so name has full width;
+                            on sm+ sit side-by-side as before. */}
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                          <p className="font-medium leading-tight">{l.name}</p>
                           <button
                             onClick={() => toggle.mutate({ id: l.id })}
                             className={cn(
-                              "shrink-0 relative inline-flex items-center w-24 h-[26px] rounded-full border px-2.5 text-xs font-medium transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-sm overflow-hidden",
+                              "self-start relative inline-flex items-center w-24 h-[26px] rounded-full border px-2.5 text-xs font-medium transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-sm overflow-hidden shrink-0",
                               l.status === "visited"
                                 ? "border-success/30 bg-success/10 text-success hover:bg-success/20"
                                 : "border-border bg-card text-muted-foreground hover:border-accent hover:text-accent hover:bg-accent/5 hover:shadow-md"

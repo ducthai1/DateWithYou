@@ -39,51 +39,51 @@ export default function VaultPage() {
       <div className="space-y-4">
         <h1 className="text-h1 font-serif">Góc bí mật</h1>
         <p className="text-muted-foreground text-sm">Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn.</p>
-        
-        {/* Summary Stats Row */}
+
+        {/* Summary Stats — 2 cols on mobile, 4 on md+ */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div 
+          <div
             onClick={() => setTab("roadmap")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-3 transition-colors", tab === "roadmap" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 transition-colors", tab === "roadmap" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
           >
-            <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium">
-              <Target className="h-3.5 w-3.5" /> Kế hoạch
+            <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
+              <Target className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Kế hoạch</span>
             </div>
             <p className="text-xl font-bold tracking-tight">
               {donePlans} <span className="text-muted-foreground text-sm font-medium">/ {totalPlans}</span>
             </p>
-            <p className="text-muted-foreground mt-0.5 text-[10px]">đã xong / tổng</p>
+            <p className="text-muted-foreground mt-1 text-[10px] leading-tight">đã xong / tổng</p>
           </div>
-          <div 
+          <div
             onClick={() => setTab("wishlist")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-3 transition-colors", tab === "wishlist" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 transition-colors", tab === "wishlist" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
           >
-            <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium">
-              <Gift className="h-3.5 w-3.5" /> Wishlist
+            <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
+              <Gift className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Wishlist</span>
             </div>
             <p className="text-xl font-bold tracking-tight">
               {boughtWishlist} <span className="text-muted-foreground text-sm font-medium">/ {totalWishlist}</span>
             </p>
-            <p className="text-muted-foreground mt-0.5 text-[10px]">đã mua / tổng</p>
+            <p className="text-muted-foreground mt-1 text-[10px] leading-tight">đã mua / tổng</p>
           </div>
-          <div 
+          <div
             onClick={() => setTab("rewards")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-3 transition-colors", tab === "rewards" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 transition-colors", tab === "rewards" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
           >
-            <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium">
-              <Coins className="h-3.5 w-3.5" /> Tổng điểm
+            <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
+              <Coins className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Tổng điểm</span>
             </div>
             <p className="text-accent text-xl font-bold tracking-tight">
               {totalPoints}đ
             </p>
-            <p className="text-muted-foreground mt-0.5 text-[10px]">từ Phiếu bé ngoan</p>
+            <p className="text-muted-foreground mt-1 text-[10px] leading-tight">từ Phiếu bé ngoan</p>
           </div>
-          <div 
+          <div
             onClick={() => setTab("capsules")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-3 transition-colors", tab === "capsules" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 transition-colors", tab === "capsules" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
           >
-            <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium">
-              <Hourglass className="h-3.5 w-3.5" /> Hộp thời gian
+            <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
+              <Hourglass className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Hộp thời gian</span>
             </div>
             <p className="text-xl font-bold tracking-tight">
               Bí mật
@@ -92,7 +92,10 @@ export default function VaultPage() {
         </div>
       </div>
 
-      <Tabs tabs={TABS} value={tab} onChange={setTab} />
+      {/* Tab strip: scrollable on mobile so all 4 tabs stay tappable at 360px */}
+      <div className="overflow-x-auto pb-0.5 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible">
+        <Tabs tabs={TABS} value={tab} onChange={setTab} className="min-w-[400px] md:min-w-0" />
+      </div>
       
       <div className="relative pt-2">
         <AnimatePresence mode="popLayout" initial={false}>

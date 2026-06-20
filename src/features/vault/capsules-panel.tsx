@@ -49,11 +49,11 @@ export function CapsulesPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-bold font-serif flex items-center gap-2">
-          <Hourglass className="h-5 w-5 text-accent" /> Hộp Thời Gian
+          <Hourglass className="h-5 w-5 text-accent shrink-0" /> Hộp Thời Gian
         </h2>
-        <Button onClick={() => setFormOpen(true)} className="gap-2 rounded-full shadow-md bg-accent hover:bg-accent/90 text-white">
+        <Button onClick={() => setFormOpen(true)} className="gap-2 rounded-full shadow-md bg-accent hover:bg-accent/90 text-white w-full sm:w-auto shrink-0">
           <Plus className="h-4 w-4" /> Giấu kỷ niệm
         </Button>
       </div>
@@ -144,21 +144,23 @@ export function CapsulesPanel() {
                 </div>
 
                 <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-lg font-serif line-clamp-1">{capsule.title}</h3>
-                    {isLocked ? (
-                      <div className="bg-muted px-2 py-1 rounded-full flex items-center text-xs font-semibold text-muted-foreground">
-                        <Lock className="h-3 w-3 mr-1" /> Bị Khóa
-                      </div>
-                    ) : capsule.isOpened ? (
-                      <div className="bg-green-100 dark:bg-green-900/30 text-green-600 px-2 py-1 rounded-full flex items-center text-xs font-semibold">
-                        <Unlock className="h-3 w-3 mr-1" /> Đã Mở
-                      </div>
-                    ) : (
-                      <div className="bg-accent px-2 py-1 rounded-full flex items-center text-xs font-semibold text-white animate-pulse">
-                        <Unlock className="h-3 w-3 mr-1" /> Có thể mở!
-                      </div>
-                    )}
+                  <div className="flex flex-col gap-1.5 mb-2 sm:flex-row sm:justify-between sm:items-start">
+                    <h3 className="font-bold text-lg font-serif line-clamp-2 min-w-0">{capsule.title}</h3>
+                    <div className="shrink-0">
+                      {isLocked ? (
+                        <div className="bg-muted px-2 py-1 rounded-full inline-flex items-center text-xs font-semibold text-muted-foreground">
+                          <Lock className="h-3 w-3 mr-1" /> Bị Khóa
+                        </div>
+                      ) : capsule.isOpened ? (
+                        <div className="bg-green-100 dark:bg-green-900/30 text-green-600 px-2 py-1 rounded-full inline-flex items-center text-xs font-semibold">
+                          <Unlock className="h-3 w-3 mr-1" /> Đã Mở
+                        </div>
+                      ) : (
+                        <div className="bg-accent px-2 py-1 rounded-full inline-flex items-center text-xs font-semibold text-white animate-pulse">
+                          <Unlock className="h-3 w-3 mr-1" /> Có thể mở!
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <p className="text-sm text-muted-foreground">

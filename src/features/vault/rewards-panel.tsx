@@ -91,21 +91,21 @@ export function RewardsPanel() {
             <Card
               key={b.userId}
               className={cn(
-                "relative overflow-hidden p-5 transition-all",
-                b.isMe 
-                  ? "border-accent/30 bg-gradient-to-br from-accent-soft to-background shadow-md" 
+                "relative overflow-hidden p-4 transition-all",
+                b.isMe
+                  ? "border-accent/30 bg-gradient-to-br from-accent-soft to-background shadow-md"
                   : "bg-muted/30"
               )}
             >
               <div className="relative z-10 flex flex-col gap-1">
-                <p className={cn("text-sm font-medium", b.isMe ? "text-accent-foreground/80" : "text-muted-foreground")}>
+                <p className={cn("text-xs font-medium truncate", b.isMe ? "text-accent-foreground/80" : "text-muted-foreground")}>
                   Điểm của {label(b).toLowerCase()}
                 </p>
-                <div className="flex items-baseline gap-1">
-                  <span className={cn("text-4xl font-bold tracking-tight", b.isMe ? "text-accent-foreground" : "")}>
+                <div className="flex items-baseline gap-0.5 min-w-0">
+                  <span className={cn("text-3xl font-bold tracking-tight", b.isMe ? "text-accent-foreground" : "")}>
                     {b.balance}
                   </span>
-                  <span className={cn("text-lg font-semibold", b.isMe ? "text-accent-foreground/70" : "text-muted-foreground")}>đ</span>
+                  <span className={cn("text-base font-semibold", b.isMe ? "text-accent-foreground/70" : "text-muted-foreground")}>đ</span>
                 </div>
               </div>
               <div className="absolute -right-4 -top-4 opacity-[0.08]">

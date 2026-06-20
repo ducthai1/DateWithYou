@@ -32,27 +32,29 @@ export function LibraryPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-28 md:pb-6 md:px-[30px]">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-h1 font-serif">Bộ sưu tập</h1>
           <p className="text-muted-foreground mt-0.5 text-sm">
             Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau.
           </p>
         </div>
-        <div className="flex shrink-0 gap-2 ml-3">
+        <div className="flex gap-2 sm:shrink-0">
           <a
             href="/wheel"
             aria-label="Vòng quay chọn món"
             title="Vòng quay chọn món"
-            className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 items-center justify-center rounded-xl border shadow-sm"
+            className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm"
           >
             <Disc3 className="h-5 w-5 text-accent" />
           </a>
-          <Button onClick={() => setAdding(true)}>+ Thêm</Button>
+          <Button className="flex-1 sm:flex-none" onClick={() => setAdding(true)}>+ Thêm</Button>
         </div>
       </div>
 
-      <Tabs tabs={TABS} value={kind} onChange={setKind} />
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <Tabs tabs={TABS} value={kind} onChange={setKind} className="min-w-max sm:min-w-0" />
+      </div>
 
       {isGame ? (
         <GamesPanel />

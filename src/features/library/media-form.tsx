@@ -79,7 +79,7 @@ export function MediaForm({
           <>
             <Input placeholder="Link ảnh bìa (https)" value={cover} onChange={(e) => setCover(e.target.value)} />
             <Input placeholder="Link video hướng dẫn (tuỳ chọn)" value={url} onChange={(e) => setUrl(e.target.value)} />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Input placeholder="Thời gian nấu (vd: 30 phút)" value={cookTime} onChange={(e) => setCookTime(e.target.value)} />
               <Input placeholder="Khẩu phần (vd: 2 người)" value={servings} onChange={(e) => setServings(e.target.value)} />
             </div>

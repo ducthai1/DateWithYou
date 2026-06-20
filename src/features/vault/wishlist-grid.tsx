@@ -158,24 +158,24 @@ export function WishlistGrid() {
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* Filters — full width on mobile so buttons don't get squeezed */}
       {items.length > 0 && (
-        <div className="bg-muted inline-flex rounded-xl p-1 text-sm">
+        <div className="bg-muted flex rounded-xl p-1 text-sm">
           <button
             onClick={() => setFilter("all")}
-            className={cn("rounded-lg px-4 py-1.5 font-medium transition-colors outline-none", filter === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+            className={cn("flex-1 rounded-lg px-3 py-1.5 font-medium transition-colors outline-none", filter === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
           >
             Tất cả
           </button>
           <button
             onClick={() => setFilter("active")}
-            className={cn("rounded-lg px-4 py-1.5 font-medium transition-colors outline-none", filter === "active" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+            className={cn("flex-1 rounded-lg px-3 py-1.5 font-medium transition-colors outline-none", filter === "active" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
           >
             Chưa mua
           </button>
           <button
             onClick={() => setFilter("bought")}
-            className={cn("rounded-lg px-4 py-1.5 font-medium transition-colors outline-none", filter === "bought" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+            className={cn("flex-1 rounded-lg px-3 py-1.5 font-medium transition-colors outline-none", filter === "bought" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
           >
             Đã mua
           </button>

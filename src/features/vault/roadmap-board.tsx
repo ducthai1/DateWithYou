@@ -127,9 +127,9 @@ export function RoadmapBoard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-muted-foreground text-sm">Lên kế hoạch những dự định cùng nhau: từ Ý tưởng → Đang lên kế hoạch → Đã làm. Kéo thả thẻ để đổi trạng thái. (Khác Lịch: đây là bucket planning, không gắn ngày cụ thể.)</p>
-        <Button onClick={openNewForm} className="shrink-0 gap-1.5" variant="primary">
+        <Button onClick={openNewForm} className="shrink-0 gap-1.5 w-full sm:w-auto" variant="primary">
           <Plus className="h-4 w-4" /> Thêm dự định
         </Button>
       </div>

@@ -65,14 +65,14 @@ export function MemoryTimeline() {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-28 md:pb-6 md:px-[30px]">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-h1 font-serif">Dòng kỷ niệm</h1>
           <p className="text-muted-foreground mt-0.5 text-sm">
             Lưu lại khoảnh khắc đã qua: ảnh, cảm xúc, nhạc/video kỷ niệm.
           </p>
         </div>
-        <Button className="shrink-0 ml-3" onClick={() => setAdding(true)}>+ Thêm</Button>
+        <Button className="w-full sm:w-auto sm:shrink-0" onClick={() => setAdding(true)}>+ Thêm</Button>
       </div>
 
       {allTags.length > 0 && (
@@ -128,17 +128,17 @@ export function MemoryTimeline() {
                     className="cursor-pointer p-3"
                     onClick={() => setSelected(m.id)}
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium">{m.title}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {new Date(m.date).toLocaleDateString("vi-VN")}
-                        </p>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium leading-snug">{m.title}</p>
+                        {/* Stop click bubbling so deleting doesn't open the detail. */}
+                        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <ConfirmButton idle="" className="text-xs" onConfirm={() => remove.mutate({ id: m.id })} />
+                        </div>
                       </div>
-                      {/* Stop click bubbling so deleting doesn't open the detail. */}
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <ConfirmButton idle="" className="text-xs" onConfirm={() => remove.mutate({ id: m.id })} />
-                      </div>
+                      <p className="text-muted-foreground text-xs">
+                        {new Date(m.date).toLocaleDateString("vi-VN")}
+                      </p>
                     </div>
                     {m.caption && <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">{m.caption}</p>}
                     {(m.tags ?? []).length > 0 && (
