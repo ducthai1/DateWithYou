@@ -1,6 +1,7 @@
 "use client";
 
 import { monthGridWeeks, todayKey } from "@/lib/date-keys";
+import { cn } from "@/lib/utils";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
 import { CalendarCell } from "./calendar-cell";
 
@@ -22,12 +23,14 @@ export function CalendarGrid({
 
   return (
     <div>
-      <div className="text-muted-foreground mb-1 grid grid-cols-7 gap-1 text-center text-xs font-medium">
-        {WEEKDAYS.map((d) => (
-          <div key={d} className="py-1">{d}</div>
+      <div className="text-muted-foreground mb-1.5 grid grid-cols-7 gap-1.5 text-center text-xs font-semibold md:mb-1 md:gap-1 md:font-medium">
+        {WEEKDAYS.map((d, i) => (
+          <div key={d} className={cn("py-1", i >= 5 && "text-accent/80 md:text-muted-foreground")}>
+            {d}
+          </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1.5 md:gap-1">
         {weeks.flat().map((cell) => (
           <CalendarCell
             key={cell.key}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, memo } from "react";
+import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GridCell } from "@/lib/date-keys";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
@@ -89,13 +90,18 @@ export const CalendarCell = memo(function CalendarCell({
         (hasSpecial ? `, ${summary!.special!.title}` : "")
       }
       className={cn(
-        "relative flex aspect-square flex-col items-start justify-start overflow-hidden rounded-xl border p-1 text-sm transition-colors",
-        cell.inMonth
-          ? "bg-card border-border hover:border-accent"
-          : "border-transparent bg-transparent text-muted-foreground/40",
-        isToday && "ring-accent ring-2",
-        // Special date gets a pink border highlight
-        hasSpecial && cell.inMonth && "border-pink-300 dark:border-pink-700",
+        // Mobile: soft borderless tile with tap feedback. Desktop (md+): the
+        // original bordered square with hover + sticky-note layout is restored.
+        "relative flex aspect-square flex-col items-start justify-start overflow-hidden p-1 text-sm transition-all touch-manipulation",
+        "rounded-2xl md:rounded-xl md:border md:transition-colors",
+        cell.inMonth && !hasSpecial &&
+          "bg-card shadow-sm active:scale-[0.96] md:shadow-none md:border-border md:hover:border-accent md:active:scale-100",
+        cell.inMonth && hasSpecial &&
+          "bg-pink-50 shadow-sm active:scale-[0.96] md:bg-card md:shadow-none md:border-pink-300 md:active:scale-100 dark:md:border-pink-700",
+        !cell.inMonth &&
+          "bg-transparent text-muted-foreground/40 md:border-transparent",
+        // Today: filled accent ring on desktop; mobile uses the circled number.
+        isToday && "md:ring-accent md:ring-2",
       )}
     >
       {/* Soft radial glow background for special dates */}
@@ -108,37 +114,57 @@ export const CalendarCell = memo(function CalendarCell({
         />
       )}
 
-      {/* Background memory thumbnail */}
+      {/* Background memory thumbnail. Mobile shows it almost fully (reads as a
+          real photo of the day) with a soft top scrim so the date stays legible;
+          desktop keeps the faint 25% wash behind the sticky notes. */}
       {summary?.thumbnailUrl && cell.inMonth && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={summary.thumbnailUrl}
-          alt=""
-          loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover opacity-25"
-        />
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={summary.thumbnailUrl}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover opacity-90 md:opacity-25"
+          />
+          <div className="absolute inset-0 z-0 bg-gradient-to-b from-card via-card/40 to-transparent md:hidden" />
+        </>
       )}
 
       {/* ── Top row: day number + count badge ── */}
       <div className="relative flex w-full items-start justify-between z-20">
         <div className="flex items-center gap-1">
-          <span className={cn("font-medium leading-none", isToday && "text-accent")}>
+          {/* Mobile today = filled accent disc around the number; desktop keeps
+              the plain accent-coloured number (today ring is on the cell). */}
+          <span
+            className={cn(
+              "leading-none",
+              isToday
+                ? "flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[13px] font-bold text-accent-foreground shadow-sm md:h-auto md:w-auto md:rounded-none md:bg-transparent md:font-medium md:text-accent md:shadow-none"
+                : "font-medium",
+            )}
+          >
             {cell.day}
           </span>
           {summary && summary.memoryCount > 0 && !summary.thumbnailUrl && (
             <span className="h-1.5 w-1.5 rounded-full bg-stone-400" title="Kỷ niệm" />
           )}
         </div>
-        {count > 0 && (
-          <span className="bg-accent text-accent-foreground flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none shadow-sm">
+        {/* Mobile special-date marker: a small filled heart (the desktop ribbon
+            below is hidden on mobile). Count badge takes priority when present. */}
+        {count > 0 ? (
+          <span className="bg-accent text-accent-foreground flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none shadow-sm md:h-4 md:min-w-4">
             {count}
           </span>
+        ) : (
+          hasSpecial && (
+            <Heart className="h-3.5 w-3.5 shrink-0 fill-pink-400 text-pink-400 md:hidden" />
+          )
         )}
       </div>
 
-      {/* ── Special date ribbon with proper Lucide icon ── */}
+      {/* ── Special date ribbon (desktop only; mobile uses the heart badge) ── */}
       {hasSpecial && SpecialIcon && (
-        <div className="relative w-full z-20 mt-0.5">
+        <div className="relative z-20 mt-0.5 hidden w-full md:block">
           <div
             className="flex items-center gap-1 rounded-md px-1.5 py-[3px] shadow-sm"
             style={{
@@ -217,13 +243,14 @@ export const CalendarCell = memo(function CalendarCell({
         </div>
       )}
 
-      {/* Mobile: compact colored dots (sticky notes are desktop-only) */}
+      {/* Mobile: compact colored dots (sticky notes are desktop-only). A thin
+          white ring keeps them legible when they sit over a photo thumbnail. */}
       {cell.inMonth && dotColors.length > 0 && (
         <div className={cn("absolute inset-x-0 bottom-1.5 z-20 flex items-center justify-center gap-1 md:hidden", allDone && "opacity-50")}>
           {dotColors.map((c, i) => (
             <span
               key={i}
-              className="h-1.5 w-1.5 rounded-full shadow-sm"
+              className="h-1.5 w-1.5 rounded-full ring-1 ring-white/70"
               style={{ backgroundColor: c }}
             />
           ))}
