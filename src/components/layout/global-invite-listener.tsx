@@ -6,8 +6,10 @@ import { useNavigationInvitesContext } from "@/features/locations/navigation-inv
 import { NavigationInviteModal } from "@/features/locations/navigation-invite-modal";
 import { acceptedTripStore } from "@/features/locations/accepted-trip-store";
 import { trpc } from "@/lib/trpc";
+import { useToast } from "@/components/ui/toast";
 
 export function GlobalInviteListener() {
+  const toast = useToast();
   const router = useRouter();
   const navInvites = useNavigationInvitesContext();
   const [show, setShow] = useState(false);
@@ -74,6 +76,7 @@ export function GlobalInviteListener() {
       // Request failed — the invite is still pending on the server, so bring the
       // modal back (incoming was never cleared) and let them try again.
       setShow(true);
+      toast("Không gửi được phản hồi, thử lại", "error");
     }
   };
 

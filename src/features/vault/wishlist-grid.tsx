@@ -13,6 +13,7 @@ import { AlertModal } from "@/components/ui/alert-modal";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useCelebrate } from "@/components/ui/celebrate";
+import { useToast } from "@/components/ui/toast";
 import { Trash2, Check, Undo2, Plus, Gift, Link as LinkIcon, User, Users, Coins, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,19 +33,29 @@ export function WishlistGrid() {
   const [note, setNote] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
 
+  const toast = useToast();
   const list = trpc.wishlist.list.useQuery();
   const utils = trpc.useUtils();
   const invalidate = () => utils.wishlist.list.invalidate();
-  const create = trpc.wishlist.create.useMutation({ onSuccess: () => { closeForm(); invalidate(); } });
-  const update = trpc.wishlist.update.useMutation({ onSuccess: () => { closeForm(); invalidate(); } });
+  const create = trpc.wishlist.create.useMutation({
+    onSuccess: () => { closeForm(); invalidate(); toast("Đã lưu vào wishlist ✓"); },
+    onError: () => toast("Lưu thất bại, thử lại nhé", "error"),
+  });
+  const update = trpc.wishlist.update.useMutation({
+    onSuccess: () => { closeForm(); invalidate(); toast("Đã lưu vào wishlist ✓"); },
+    onError: () => toast("Lưu thất bại, thử lại nhé", "error"),
+  });
   const toggle = trpc.wishlist.toggleBought.useMutation({ onSuccess: invalidate });
-  const remove = trpc.wishlist.remove.useMutation({ onSuccess: invalidate });
+  const remove = trpc.wishlist.remove.useMutation({
+    onSuccess: () => { invalidate(); toast("Đã xoá"); },
+  });
   const redeem = trpc.wishlist.redeem.useMutation({
     onSuccess: () => {
       invalidate();
+      toast("Đã đổi quà 🎁");
       // the confetti will be triggered from the button click
     },
-    onError: (err) => setRedeemError(err.message),
+    onError: (err) => { setRedeemError(err.message); toast(err.message, "error"); },
   });
 
   const celebrate = useCelebrate();

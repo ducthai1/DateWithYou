@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { useCelebrate } from "@/components/ui/celebrate";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
 // Small grant/redeem chip — min 40px tall for touch targets
@@ -19,6 +20,7 @@ const CHIP =
   "inline-flex items-center gap-1 rounded-lg bg-accent-soft px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none touch-manipulation active:scale-95";
 
 export function RewardsPanel() {
+  const toast = useToast();
   const data = trpc.reward.overview.useQuery();
   const utils = trpc.useUtils();
   const invalidate = () => utils.reward.overview.invalidate();
@@ -30,8 +32,14 @@ export function RewardsPanel() {
 
   const createTask = trpc.reward.createTask.useMutation({ onSuccess: () => { setTaskTitle(""); invalidate(); } });
   const createVoucher = trpc.reward.createVoucher.useMutation({ onSuccess: () => { setVTitle(""); invalidate(); } });
-  const complete = trpc.reward.completeTask.useMutation({ onSuccess: invalidate });
-  const redeem = trpc.reward.redeem.useMutation({ onSuccess: invalidate });
+  const complete = trpc.reward.completeTask.useMutation({
+    onSuccess: () => { invalidate(); toast("Đã cộng điểm ✓"); },
+    onError: () => toast("Cộng điểm thất bại, thử lại nhé", "error"),
+  });
+  const redeem = trpc.reward.redeem.useMutation({
+    onSuccess: () => { invalidate(); toast("Đã đổi voucher 🎉"); },
+    onError: (err) => toast(err.message === "INSUFFICIENT_POINTS" ? "Không đủ điểm để đổi voucher này." : "Voucher này đã được đổi rồi.", "error"),
+  });
 
   const celebrate = useCelebrate();
 

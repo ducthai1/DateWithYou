@@ -7,6 +7,7 @@ import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { trpc } from "@/lib/trpc";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
+import { ToastProvider } from "@/components/ui/toast";
 import { PhotoProvider } from "react-photo-view";
 
 // One Tap is browser-only (Google script + useSession). Load it client-side
@@ -58,8 +59,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <PhotoProvider maskOpacity={0.8} speed={() => 300}>
           <SidebarProvider>
-            <GoogleOneTap />
-            {children}
+            <ToastProvider>
+              <GoogleOneTap />
+              {children}
+            </ToastProvider>
           </SidebarProvider>
         </PhotoProvider>
       </QueryClientProvider>

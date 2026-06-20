@@ -103,8 +103,10 @@ import { LocationMapView } from "./location-mapview";
 import { useNavigationInvitesContext } from "./navigation-invites-context";
 import { acceptedTripStore, type AcceptedTrip } from "./accepted-trip-store";
 import { LocationForm, type LocationFormValues } from "./location-form";
+import { useToast } from "@/components/ui/toast";
 
 export function LocationsPage() {
+  const toast = useToast();
   const [district, setDistrict] = useState("");
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
@@ -491,7 +493,9 @@ export function LocationsPage() {
           setCompanionLocationId(null);
           setPlannedStops([]);
           setStopPickerOpen(false);
+          toast("Đã gửi lời mời 💌");
         },
+        onError: () => toast("Gửi lời mời thất bại", "error"),
       },
     );
   };

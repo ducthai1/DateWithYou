@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 
 import type { LatLng } from "@/lib/maps";
+import { useToast } from "@/components/ui/toast";
 
 export type LocationFormValues = {
   id?: string;
@@ -63,6 +64,7 @@ export function LocationForm({
   onDone: () => void;
   onCancel: () => void;
 }) {
+  const toast = useToast();
   const [v, setV] = useState<LocationFormValues>({
     ...empty,
     district: initial?.district || districts[0] || "",
@@ -77,10 +79,12 @@ export function LocationForm({
 
   const onSuccess = () => {
     utils.location.list.invalidate();
+    toast("Đã lưu địa điểm ✓");
     onDone();
   };
-  const create = trpc.location.create.useMutation({ onSuccess });
-  const update = trpc.location.update.useMutation({ onSuccess });
+  const onError = () => toast("Lưu thất bại, thử lại nhé", "error");
+  const create = trpc.location.create.useMutation({ onSuccess, onError });
+  const update = trpc.location.update.useMutation({ onSuccess, onError });
   const pending = create.isPending || update.isPending;
 
   function submit() {

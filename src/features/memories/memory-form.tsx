@@ -16,6 +16,7 @@ import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
 import { parseEmbed, normalizeUrl, PROVIDER_LABEL, type ParsedEmbed } from "@/lib/embed";
 import { PhotoView } from "react-photo-view";
+import { useToast } from "@/components/ui/toast";
 
 
 /** Try to extract valid URLs from a string (caption, pasted text, etc.) */
@@ -73,6 +74,7 @@ export function MemoryForm({
     }
     return [];
   });
+  const toast = useToast();
   const [linkInput, setLinkInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -115,10 +117,12 @@ export function MemoryForm({
     // Memories surface on the unified calendar, so refresh it too.
     utils.calendar.dayDetail.invalidate();
     utils.calendar.monthSummary.invalidate();
+    toast("Đã lưu kỷ niệm ✓");
     onDone();
   };
-  const create = trpc.memory.create.useMutation({ onSuccess });
-  const update = trpc.memory.update.useMutation({ onSuccess });
+  const onError = () => toast("Lưu thất bại, thử lại nhé", "error");
+  const create = trpc.memory.create.useMutation({ onSuccess, onError });
+  const update = trpc.memory.update.useMutation({ onSuccess, onError });
 
   async function onFiles(files: FileList | null) {
     if (!files) return;

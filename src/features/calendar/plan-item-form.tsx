@@ -10,6 +10,7 @@ import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TimePicker } from "@/components/ui/time-picker";
 import { BUCKETS, type BucketKey } from "@/lib/plan-meta";
 import { TagPicker } from "./tag-picker";
+import { useToast } from "@/components/ui/toast";
 
 export type EditableItem = {
   id: string;
@@ -43,6 +44,7 @@ export function PlanItemForm({
   const [assigneeId, setAssigneeId] = useState(item?.assigneeId ?? "");
   const [locationId, setLocationId] = useState(item?.locationId ?? "");
 
+  const toast = useToast();
   const members = trpc.space.members.useQuery();
   const locations = trpc.location.list.useQuery(undefined);
   const utils = trpc.useUtils();
@@ -50,8 +52,14 @@ export function PlanItemForm({
     utils.calendar.dayDetail.invalidate({ date });
     utils.calendar.monthSummary.invalidate();
   };
-  const create = trpc.planItem.create.useMutation({ onSuccess: () => { invalidate(); onDone(); } });
-  const update = trpc.planItem.update.useMutation({ onSuccess: () => { invalidate(); onDone(); } });
+  const create = trpc.planItem.create.useMutation({
+    onSuccess: () => { invalidate(); onDone(); toast("Đã lưu kế hoạch ✓"); },
+    onError: () => toast("Lưu thất bại, thử lại nhé", "error"),
+  });
+  const update = trpc.planItem.update.useMutation({
+    onSuccess: () => { invalidate(); onDone(); toast("Đã lưu kế hoạch ✓"); },
+    onError: () => toast("Lưu thất bại, thử lại nhé", "error"),
+  });
   const pending = create.isPending || update.isPending;
 
   function submit() {

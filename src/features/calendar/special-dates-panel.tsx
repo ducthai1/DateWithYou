@@ -12,6 +12,7 @@ import { Trash2 } from "lucide-react";
 import { todayKey } from "@/lib/date-keys";
 import { resolveIcon } from "@/lib/icon-registry";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
 
 // Registry keys available in the special-date icon picker.
 // Subset chosen to cover the most common couple milestones.
@@ -41,14 +42,21 @@ const DEFAULT_ICON: SpecialDateIconKey = "heart";
 
 /** Manage recurring/one-off special dates (anniversary, birthdays…). */
 export function SpecialDatesPanel() {
+  const toast = useToast();
   const list = trpc.specialDate.list.useQuery();
   const utils = trpc.useUtils();
   const invalidate = () => {
     utils.specialDate.list.invalidate();
     utils.calendar.monthSummary.invalidate();
   };
-  const create = trpc.specialDate.create.useMutation({ onSuccess: invalidate });
-  const remove = trpc.specialDate.remove.useMutation({ onSuccess: invalidate });
+  const create = trpc.specialDate.create.useMutation({
+    onSuccess: () => { invalidate(); toast("Đã lưu ngày đặc biệt 💖"); },
+    onError: () => toast("Lưu thất bại, thử lại nhé", "error"),
+  });
+  const remove = trpc.specialDate.remove.useMutation({
+    onSuccess: () => { invalidate(); toast("Đã xoá ngày đặc biệt"); },
+    onError: () => toast("Xoá thất bại, thử lại nhé", "error"),
+  });
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(todayKey);
