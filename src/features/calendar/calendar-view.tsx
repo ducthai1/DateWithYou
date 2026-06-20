@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { todayKey } from "@/lib/date-keys";
 import { useIsMobile } from "@/hooks/use-media-query";
@@ -11,6 +10,7 @@ import { Modal, ModalHeader } from "@/components/ui/modal";
 import { Star } from "lucide-react";
 import { CalendarHeader } from "./calendar-header";
 import { CalendarGrid } from "./calendar-grid";
+import { CalendarWeekView } from "./calendar-week-view";
 import { CountdownBanner } from "./countdown-banner";
 import { AgendaView } from "./agenda-view";
 import { SpecialDatesPanel } from "./special-dates-panel";
@@ -34,12 +34,12 @@ export function CalendarView() {
 
   const summary = trpc.calendar.monthSummary.useQuery({ year, month });
 
-  // Swipe-to-change-month: mobile only, enabled after mount so the server and
-  // first client render agree (drag stays off → identical markup → no mismatch).
+  // Mobile gets the week view, desktop the month grid. We resolve the viewport
+  // only after mount so the first client render matches the server (no hydration
+  // mismatch) — until then a neutral skeleton stands in.
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const swipeEnabled = mounted && isMobile;
 
   const prev = () => setYM((s) => (s.month === 1 ? { year: s.year - 1, month: 12 } : { ...s, month: s.month - 1 }));
   const next = () => setYM((s) => (s.month === 12 ? { year: s.year + 1, month: 1 } : { ...s, month: s.month + 1 }));
@@ -63,26 +63,23 @@ export function CalendarView() {
       </div>
 
       {view === "month" ? (
-        <>
-          <CalendarHeader year={year} month={month} onPrev={prev} onNext={next} onToday={goToday} />
-          {summary.isLoading ? (
-            <Skeleton className="h-80 w-full" />
-          ) : (
-            <motion.div
-              drag={swipeEnabled ? "x" : false}
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.18}
-              onDragEnd={(_, info) => {
-                if (info.offset.x < -60) next();
-                else if (info.offset.x > 60) prev();
-              }}
-              className="touch-pan-y"
-              style={{ touchAction: "pan-y" }}
-            >
+        // Before mount we can't know the viewport without risking a hydration
+        // mismatch, so render a neutral skeleton, then swap to the mobile
+        // week view or the desktop grid once the media query is known.
+        !mounted ? (
+          <Skeleton className="h-80 w-full" />
+        ) : isMobile ? (
+          <CalendarWeekView />
+        ) : (
+          <>
+            <CalendarHeader year={year} month={month} onPrev={prev} onNext={next} onToday={goToday} />
+            {summary.isLoading ? (
+              <Skeleton className="h-80 w-full" />
+            ) : (
               <CalendarGrid year={year} month={month} summary={summary.data ?? {}} onSelectDay={setSelected} />
-            </motion.div>
-          )}
-        </>
+            )}
+          </>
+        )
       ) : (
         <AgendaView onSelectDay={setSelected} />
       )}

@@ -91,6 +91,23 @@ export function monthGridWeeks(year: number, month1: number): GridCell[][] {
   return weeks;
 }
 
+/** Shift a date key by N days (N may be negative). Crosses month/year safely.
+ *  Uses UTC-noon math so it never trips over the Saigon offset. */
+export function addDaysKey(key: string, n: number): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d, 12));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** The 7 day keys (Monday-first) of the week containing `key`. */
+export function weekDaysOf(key: string): string[] {
+  const [y, m, d] = key.split("-").map(Number);
+  const dow = (new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay() + 6) % 7; // 0=Mon
+  const monday = addDaysKey(key, -dow);
+  return Array.from({ length: 7 }, (_, i) => addDaysKey(monday, i));
+}
+
 /**
  * Days until the next occurrence of a special date from today (Saigon).
  * For yearly events, rolls to next year once this year's date has passed.
