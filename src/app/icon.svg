@@ -1,39 +1,32 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Vivu No Plan">
   <defs>
-    <!-- Rich multi-stop terracotta→coral→rose tile (more depth than a 2-stop). -->
-    <linearGradient id="tile" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#d2734a"/>
-      <stop offset="0.55" stop-color="#e8846a"/>
-      <stop offset="1" stop-color="#f3a98f"/>
+    <!-- Sunset terracotta tile (travel / golden-hour vibe), layered for depth. -->
+    <linearGradient id="tile" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c8633a"/>
+      <stop offset="0.5" stop-color="#e07a4f"/>
+      <stop offset="1" stop-color="#eaa15c"/>
     </linearGradient>
-    <!-- Soft top-left light for a glossy, modern app-icon feel. -->
-    <radialGradient id="glow" cx="0.3" cy="0.24" r="0.9">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.34"/>
-      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    <radialGradient id="glow" cx="0.3" cy="0.22" r="0.95">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
     </radialGradient>
-    <!-- Warm-white heart so it doesn't look flat against the tile. -->
-    <linearGradient id="mark" x1="32" y1="16" x2="32" y2="54" gradientUnits="userSpaceOnUse">
+    <linearGradient id="mk" x1="32" y1="9" x2="32" y2="50" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#ffe7dc"/>
+      <stop offset="1" stop-color="#fdeae0"/>
     </linearGradient>
   </defs>
 
   <!-- Squircle tile -->
   <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#tile)"/>
   <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#glow)"/>
-  <!-- Hairline inner edge highlight (premium iOS-style rim) -->
   <rect x="2.75" y="2.75" width="58.5" height="58.5" rx="15.25" fill="none" stroke="#ffffff" stroke-opacity="0.14"/>
 
-  <!-- Heart-pin: a heart whose bottom tapers to a map-pin tip → love + places.
-       Soft offset copy below for a subtle lift, then the warm-white mark. -->
-  <path d="M32 54.5C24.6 45.2 15 37.2 15 27.8C15 21.6 19.1 17.4 24.3 17.4C28.1 17.4 31 19.6 32 22.7C33 19.6 35.9 17.4 39.7 17.4C44.9 17.4 49 21.6 49 27.8C49 37.2 39.4 45.2 32 54.5Z"
-        fill="#8a3a1c" opacity="0.16" transform="translate(0 1.4)"/>
-  <path d="M32 53.5C24.8 44.4 15.5 36.7 15.5 27.6C15.5 21.7 19.4 17.7 24.3 17.7C27.9 17.7 30.7 19.8 32 22.8C33.3 19.8 36.1 17.7 39.7 17.7C44.6 17.7 48.5 21.7 48.5 27.6C48.5 36.7 39.2 44.4 32 53.5Z"
-        fill="url(#mark)"/>
-  <!-- Glossy sheen on the upper-left lobe -->
-  <ellipse cx="24.5" cy="26" rx="4.4" ry="5.4" fill="#ffffff" opacity="0.45" transform="rotate(-20 24.5 26)"/>
-
-  <!-- Sparkle accent — a little romance/“vivu” magic, top-right -->
-  <path d="M47 13C47 16.1 48.1 17.2 51 17.2C48.1 17.2 47 18.3 47 21.4C47 18.3 45.9 17.2 43 17.2C45.9 17.2 47 16.1 47 13Z"
-        fill="#ffffff" opacity="0.92"/>
+  <!-- Brand mark: a bold "V" (Vivu) cradling a location pin → wander + places.
+       Not a heart — a journey monogram for an explore-together app. -->
+  <path d="M18 20 L32 48 L46 20" fill="none" stroke="url(#mk)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 9 C26.2 9 22 13.1 22 18.3 C22 25.1 32 31.5 32 31.5 C32 31.5 42 25.1 42 18.3 C42 13.1 37.8 9 32 9 Z" fill="url(#mk)"/>
+  <!-- Pin eye (negative-space dot showing the tile through) -->
+  <circle cx="32" cy="18.1" r="3.2" fill="#d56f3d"/>
+  <!-- Soft sheen on the pin head -->
+  <ellipse cx="28" cy="14.5" rx="2.6" ry="3.4" fill="#ffffff" opacity="0.4" transform="rotate(-24 28 14.5)"/>
 </svg>
