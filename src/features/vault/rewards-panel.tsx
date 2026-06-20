@@ -14,9 +14,9 @@ import { StaggerList } from "@/components/ui/stagger-list";
 import { useCelebrate } from "@/components/ui/celebrate";
 import { cn } from "@/lib/utils";
 
-// Small grant/redeem chip
+// Small grant/redeem chip — min 40px tall for touch targets
 const CHIP =
-  "inline-flex items-center gap-1 rounded-lg bg-accent-soft px-2.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex items-center gap-1 rounded-lg bg-accent-soft px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none touch-manipulation active:scale-95";
 
 export function RewardsPanel() {
   const data = trpc.reward.overview.useQuery();
@@ -61,7 +61,11 @@ export function RewardsPanel() {
   }
 
   function handleRedeem(voucherId: string, forUserId: string, anchorEl?: HTMLElement | null) {
-    redeem.mutate({ voucherId, forUserId });
+    redeem.mutate({ voucherId, forUserId }, {
+      onSuccess: () => {
+        navigator.vibrate?.(30);
+      }
+    });
     celebrate(anchorEl);
   }
 
@@ -101,7 +105,7 @@ export function RewardsPanel() {
         {/* Progress to next voucher */}
         {nextVoucher && (
           <div className="bg-muted rounded-xl p-4 text-sm">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-muted-foreground font-medium">Đổi &quot;{nextVoucher.title}&quot;</span>
               <span className="font-semibold">{myBalance} / {nextVoucher.cost}đ</span>
             </div>
@@ -152,13 +156,13 @@ export function RewardsPanel() {
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
           <ListChecks className="text-accent h-4 w-4" /> Danh sách nhiệm vụ
         </h3>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             placeholder="Nhiệm vụ (vd: Đấm lưng 15p)"
             value={taskTitle}
             onChange={(e) => setTaskTitle(e.target.value)}
           />
-          <div className="relative w-24 shrink-0">
+          <div className="relative w-full shrink-0 sm:w-24">
             <Input
               type="number"
               className="pr-7 text-right"
@@ -171,7 +175,7 @@ export function RewardsPanel() {
           </div>
           <Button
             aria-label="Thêm nhiệm vụ"
-            className="shrink-0 px-3"
+            className="w-full touch-manipulation sm:w-auto sm:shrink-0 sm:px-3"
             disabled={!taskTitle.trim() || createTask.isPending}
             onClick={() => createTask.mutate({ title: taskTitle.trim(), points: Number(taskPoints) || 1 })}
           >
@@ -220,13 +224,13 @@ export function RewardsPanel() {
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
           <Gift className="text-accent h-4 w-4" /> Phần thưởng (Voucher)
         </h3>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             placeholder="Voucher (vd: Chọn món cuối tuần)"
             value={vTitle}
             onChange={(e) => setVTitle(e.target.value)}
           />
-          <div className="relative w-24 shrink-0">
+          <div className="relative w-full shrink-0 sm:w-24">
             <Input
               type="number"
               className="pr-7 text-right"
@@ -239,7 +243,7 @@ export function RewardsPanel() {
           </div>
           <Button
             aria-label="Thêm voucher"
-            className="shrink-0 px-3"
+            className="w-full touch-manipulation sm:w-auto sm:shrink-0 sm:px-3"
             disabled={!vTitle.trim() || createVoucher.isPending}
             onClick={() => createVoucher.mutate({ title: vTitle.trim(), cost: Number(vCost) || 1 })}
           >

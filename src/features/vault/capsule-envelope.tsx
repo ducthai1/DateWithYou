@@ -6,9 +6,15 @@ import { WaxSeal } from "./wax-seal";
 const DISPLAY = "var(--font-display), ui-serif, Georgia, serif";
 const GOLD = "#c8a24c";
 
+// Fluid sizing: clamps between 220px and 300px so envelope never overflows
+// a narrow viewport (≤375px) while staying full-sized on larger screens.
+// All geometry constants below are computed from W at render time via CSS custom
+// property — the SVG triangles use percentage-based border tricks so they scale.
 const W = 300;
 const H = 188;
 const FLAP = 96;
+// Fractional equivalents used for fluid CSS (percentages of W)
+const FLAP_RATIO = FLAP / W; // ≈0.32
 
 /** A sealed wax envelope. While locked it floats and shows the countdown (or a
  *  "tap the seal" hint once unlockable). On `unlocking` the wax seal cracks and
@@ -28,6 +34,15 @@ export function CapsuleEnvelope({
   onSealClick: () => void;
 }) {
   const opening = state === "unlocking";
+
+  // Fluid envelope: min(280px, 78vw) on tiny phones, max 300px.
+  // We compute in JS so the triangle borders (which must be px values) stay
+  // geometrically consistent with the container.
+  const envW = typeof window !== "undefined"
+    ? Math.min(W, Math.max(220, Math.floor(window.innerWidth * 0.78)))
+    : W;
+  const envH = Math.round(envW * (H / W));
+  const envFlap = Math.round(envW * FLAP_RATIO);
 
   return (
     <motion.div
@@ -50,7 +65,7 @@ export function CapsuleEnvelope({
       />
 
       {/* Envelope */}
-      <div className="relative" style={{ width: W, height: H, perspective: 900 }}>
+      <div className="relative" style={{ width: envW, height: envH, perspective: 900 }}>
         {/* Body */}
         <div
           className="absolute inset-0 rounded-xl"
@@ -64,9 +79,9 @@ export function CapsuleEnvelope({
           className="absolute bottom-0 left-0"
           style={{
             width: 0, height: 0,
-            borderLeft: `${W / 2}px solid transparent`,
-            borderRight: `${W / 2}px solid transparent`,
-            borderBottom: `${H * 0.7}px solid rgba(0,0,0,0.12)`,
+            borderLeft: `${envW / 2}px solid transparent`,
+            borderRight: `${envW / 2}px solid transparent`,
+            borderBottom: `${envH * 0.7}px solid rgba(0,0,0,0.12)`,
           }}
         />
         {/* Flap (downward triangle), hinged at the top edge */}
@@ -74,9 +89,9 @@ export function CapsuleEnvelope({
           className="absolute left-0 top-0 origin-top"
           style={{
             width: 0, height: 0,
-            borderLeft: `${W / 2}px solid transparent`,
-            borderRight: `${W / 2}px solid transparent`,
-            borderTop: `${FLAP}px solid #93203a`,
+            borderLeft: `${envW / 2}px solid transparent`,
+            borderRight: `${envW / 2}px solid transparent`,
+            borderTop: `${envFlap}px solid #93203a`,
             filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.25))",
             transformStyle: "preserve-3d",
           }}
@@ -90,12 +105,12 @@ export function CapsuleEnvelope({
           type="button"
           onClick={onSealClick}
           aria-label={isTimeArrived ? "Mở kén thư" : "Chưa tới ngày mở"}
-          className="absolute left-1/2 -translate-x-1/2 outline-none"
-          style={{ top: FLAP - 32, zIndex: 5 }}
+          className="absolute left-1/2 -translate-x-1/2 touch-manipulation outline-none"
+          style={{ top: envFlap - 32, zIndex: 5, minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <motion.div
             whileHover={isTimeArrived && !opening ? { scale: 1.08 } : {}}
-            whileTap={!opening ? { scale: 0.94 } : {}}
+            whileTap={!opening ? { scale: 0.92 } : {}}
             animate={opening ? { scale: [1, 1.18, 0], rotate: [0, 10, -6, 0], opacity: [1, 1, 0] } : { scale: 1, opacity: 1 }}
             transition={opening ? { duration: 0.6, ease: "easeIn" } : { type: "spring", stiffness: 300 }}
           >
@@ -111,7 +126,7 @@ export function CapsuleEnvelope({
               <motion.span
                 key={i}
                 className="absolute left-1/2 rounded-full"
-                style={{ top: FLAP - 6, width: 6, height: 6, background: GOLD }}
+                style={{ top: envFlap - 6, width: 6, height: 6, background: GOLD }}
                 initial={{ x: 0, y: 0, opacity: 0 }}
                 animate={{ x: Math.cos(angle) * 90, y: Math.sin(angle) * 90, opacity: [0, 1, 0], scale: [1, 0.4] }}
                 transition={{ duration: 0.9, delay: 0.45, ease: "easeOut" }}
@@ -121,8 +136,8 @@ export function CapsuleEnvelope({
       </div>
 
       {/* Title + status */}
-      <motion.div className="mt-9 text-center" animate={{ opacity: opening ? 0 : 1 }} transition={{ duration: 0.4 }}>
-        <h2 className="mb-3 text-2xl md:text-3xl" style={{ fontFamily: DISPLAY, color: "#fbf3e6", fontWeight: 600 }}>
+      <motion.div className="mt-9 text-center px-4" animate={{ opacity: opening ? 0 : 1 }} transition={{ duration: 0.4 }}>
+        <h2 className="mb-3 text-xl sm:text-2xl md:text-3xl" style={{ fontFamily: DISPLAY, color: "#fbf3e6", fontWeight: 600 }}>
           {title}
         </h2>
         {isTimeArrived ? (

@@ -16,9 +16,16 @@ export function AppHeader() {
 
   return (
     <header className="border-border bg-background/85 sticky top-0 z-20 flex items-center justify-between border-b px-4 py-2.5 backdrop-blur md:hidden">
-      <Link href="/calendar" className="flex items-center gap-1.5 font-serif text-lg font-semibold">
-        <HeartHandshake className="h-5 w-5 shrink-0 text-accent" />
-        Vivu No Plan
+      <Link href="/calendar" className="flex items-center gap-1.5 text-lg font-semibold">
+        <HeartHandshake className="text-accent h-5 w-5 shrink-0" />
+        {/* Display serif + accent→gradient wordmark gives the bar a little warmth
+            instead of plain body text. */}
+        <span
+          className="bg-clip-text text-transparent [font-family:var(--font-display)]"
+          style={{ backgroundImage: "linear-gradient(100deg, var(--accent), var(--gradient-from))" }}
+        >
+          Vivu No Plan
+        </span>
       </Link>
       <Link
         href="/settings"

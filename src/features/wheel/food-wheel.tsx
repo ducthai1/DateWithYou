@@ -131,7 +131,7 @@ export function FoodWheel() {
         />
       )}
 
-      <div className="relative h-72 w-72">
+      <div className="relative h-60 w-60 sm:h-72 sm:w-72">
         {/* Pointer (fixed, above the spinning wheel). */}
         <div className="border-t-accent absolute top-0 left-1/2 z-20 h-0 w-0 -translate-x-1/2 border-x-[11px] border-t-[18px] border-x-transparent drop-shadow" />
 
@@ -150,7 +150,7 @@ export function FoodWheel() {
             return (
               <span
                 key={it.id}
-                className="absolute max-w-[78px] truncate text-center text-xs font-bold text-white"
+                className="absolute max-w-[68px] truncate text-center text-[10px] sm:max-w-[78px] sm:text-xs font-bold text-white"
                 style={{
                   left: `${left}%`,
                   top: `${top}%`,
@@ -165,8 +165,8 @@ export function FoodWheel() {
         </motion.div>
 
         {/* Center hub (does not rotate). */}
-        <div className="bg-card absolute top-1/2 left-1/2 z-10 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full text-center shadow-md ring-4 ring-white">
-          <span className="text-lg leading-none font-semibold">
+        <div className="bg-card absolute top-1/2 left-1/2 z-10 flex h-16 w-16 sm:h-20 sm:w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full text-center shadow-md ring-4 ring-white">
+          <span className="text-base sm:text-lg leading-none font-semibold">
             {items.length}
           </span>
           <span className="text-muted-foreground text-[10px]">món</span>
@@ -182,7 +182,7 @@ export function FoodWheel() {
             : "Chưa có công thức nào. Lưu vài món ở Bộ sưu tập trước nhé."}
         </p>
       ) : (
-        <Button onClick={spin} disabled={spinning} className="w-40">
+        <Button onClick={spin} disabled={spinning} className="w-32 sm:w-40 touch-manipulation" style={{ minHeight: 44 }}>
           {spinning ? "Đang quay…" : "Quay!"}
         </Button>
       )}
@@ -195,8 +195,8 @@ export function FoodWheel() {
         <ModalContent>
           {winner && (
             <div className="space-y-3 text-center">
-              <p className="text-5xl">🎉</p>
-              <p className="text-2xl font-semibold">{winner.name}</p>
+              <p className="text-4xl sm:text-5xl">🎉</p>
+              <p className="text-xl sm:text-2xl font-semibold">{winner.name}</p>
               {winner.mustTry && (
                 <p className="text-muted-foreground flex items-center justify-center gap-1 text-sm">
                   <Utensils className="h-4 w-4" />

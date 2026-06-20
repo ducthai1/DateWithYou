@@ -224,12 +224,12 @@ export function WishlistGrid() {
                 </p>
               )}
 
-              <div className="mt-auto flex items-center justify-between border-t border-border pt-3" onClick={(e) => e.stopPropagation()}>
-                <div className="flex gap-2">
+              <div className="mt-auto flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between" onClick={(e) => e.stopPropagation()}>
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <button
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all duration-200",
-                      w.bought 
+                      "inline-flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 touch-manipulation sm:w-auto",
+                      w.bought
                         ? "bg-muted text-muted-foreground hover:bg-muted/80"
                         : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                     )}
@@ -244,7 +244,7 @@ export function WishlistGrid() {
 
                   {!w.bought && w.pointCost > 0 && (
                     <button
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all duration-200 bg-amber-400 text-amber-950 hover:bg-amber-500 shadow-sm"
+                      className="inline-flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 bg-amber-400 text-amber-950 hover:bg-amber-500 shadow-sm touch-manipulation sm:w-auto"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleRedeem(w.id, (e.target as HTMLElement).closest('.group') as HTMLElement | null);
@@ -256,11 +256,11 @@ export function WishlistGrid() {
                     </button>
                   )}
                   {w.sourceUrl && (
-                    <a 
-                      href={w.sourceUrl} 
-                      target="_blank" 
+                    <a
+                      href={w.sourceUrl}
+                      target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center rounded-lg px-2.5 py-1.5 transition-colors"
+                      className="bg-muted text-muted-foreground hover:text-foreground inline-flex min-h-[40px] w-full items-center justify-center rounded-lg px-3 py-2 transition-colors touch-manipulation sm:w-auto"
                       title="Mở link"
                     >
                       <LinkIcon className="h-3.5 w-3.5" />
@@ -271,7 +271,7 @@ export function WishlistGrid() {
                   idle=""
                   confirmText="Xoá"
                   icon={<Trash2 className="h-3.5 w-3.5" />}
-                  className="rounded-lg px-2 py-1.5 text-muted-foreground hover:bg-destructive-soft hover:text-destructive opacity-0 transition-opacity group-hover:opacity-100"
+                  className="rounded-lg px-2 py-1.5 text-muted-foreground hover:bg-destructive-soft hover:text-destructive opacity-100 transition-opacity touch-manipulation sm:opacity-0 sm:group-hover:opacity-100"
                   onConfirm={() => remove.mutate({ id: w.id })}
                 />
               </div>

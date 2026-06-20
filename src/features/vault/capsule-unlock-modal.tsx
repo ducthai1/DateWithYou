@@ -69,17 +69,19 @@ export function CapsuleUnlockModal({
         exit={{ opacity: 0 }}
         role="dialog"
         aria-modal="true"
-        className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+        className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden p-4"
         style={{
+          // Contained radial — uses % units so it never overflows the viewport on mobile.
           background:
-            "radial-gradient(120% 120% at 50% 30%, rgba(60,12,22,0.86), rgba(10,6,8,0.95))",
+            "radial-gradient(ellipse 100% 100% at 50% 30%, rgba(60,12,22,0.86), rgba(10,6,8,0.95))",
           backdropFilter: "blur(10px)",
         }}
         onClick={unlockState === "opened" ? onClose : undefined}
       >
         <button
           onClick={(e) => { e.stopPropagation(); onClose(); }}
-          className="absolute right-5 top-5 z-50 rounded-full bg-white/10 p-2 text-white/90 transition-colors hover:bg-white/20"
+          className="absolute right-4 top-4 z-50 rounded-full bg-white/10 p-2 text-white/90 transition-colors hover:bg-white/20 touch-manipulation"
+          style={{ minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
           aria-label="Đóng"
         >
           <X className="h-6 w-6" />

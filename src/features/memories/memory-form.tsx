@@ -230,7 +230,7 @@ export function MemoryForm({
 
       {cloudinaryConfigured ? (
         <label
-          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200
+          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center transition-all duration-200 sm:p-6
             ${
               uploading || photos.length >= 10
                 ? "cursor-not-allowed border-border/50 bg-muted/20 opacity-60"
@@ -265,12 +265,15 @@ export function MemoryForm({
       )}
       {uploading && <p className="text-muted-foreground text-xs">Đang tải ảnh…</p>}
       {photos.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {photos.map((p) => (
-            <PhotoView key={p.publicId} src={p.url}>
-              <img src={p.url} alt="" className="h-16 w-16 cursor-zoom-in rounded-lg object-cover" />
-            </PhotoView>
-          ))}
+        <div className="space-y-1.5">
+          <p className="text-muted-foreground text-xs">{photos.length} ảnh</p>
+          <div className="flex flex-wrap gap-2">
+            {photos.map((p) => (
+              <PhotoView key={p.publicId} src={p.url}>
+                <img src={p.url} alt="" className="h-16 w-16 cursor-zoom-in rounded-lg object-cover" />
+              </PhotoView>
+            ))}
+          </div>
         </div>
       )}
       {err && <p className="text-destructive text-sm">{err}</p>}

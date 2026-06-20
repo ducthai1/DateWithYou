@@ -53,7 +53,7 @@ export function CapsuleLetter({
         style={{ border: `1px solid ${GOLD}55` }}
       />
 
-      <div className="relative max-h-[82vh] overflow-y-auto px-8 py-10 md:px-14 md:py-14">
+      <div className="relative max-h-[82vh] overflow-y-auto overflow-x-hidden px-5 py-8 sm:px-8 sm:py-10 md:px-14 md:py-14">
         {/* Wax seal emblem */}
         <div className="mb-6 flex justify-center">
           <WaxSeal size={56} />
@@ -63,7 +63,7 @@ export function CapsuleLetter({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.5 }}
-          className="text-center text-[1.9rem] leading-tight md:text-[2.4rem]"
+          className="text-center text-[1.4rem] leading-tight sm:text-[1.9rem] md:text-[2.4rem]"
           style={{ fontFamily: DISPLAY, color: WINE, fontWeight: 600 }}
         >
           {title}
@@ -83,7 +83,7 @@ export function CapsuleLetter({
         >
           {message ? (
             <p
-              className="whitespace-pre-wrap text-[1.08rem] leading-[1.95] md:text-[1.18rem]"
+              className="whitespace-pre-wrap text-[0.95rem] leading-[1.85] sm:text-[1.08rem] sm:leading-[1.95] md:text-[1.18rem]"
               style={{ fontFamily: LETTER, color: "#43352c" }}
             >
               {message}

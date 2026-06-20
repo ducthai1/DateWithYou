@@ -84,8 +84,8 @@ export function GamesPanel() {
                 color.border,
               )}
             >
-              {/* Decorative dice icon */}
-              <div className="absolute -right-3 -top-3 opacity-[0.08]">
+              {/* Decorative dice icon — hidden on mobile to avoid crowding title */}
+              <div className="absolute -right-3 -top-3 hidden opacity-[0.08] sm:block">
                 <Dices className="h-20 w-20 rotate-12" />
               </div>
 
@@ -96,7 +96,7 @@ export function GamesPanel() {
                     <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/60 shadow-sm", color.icon)}>
                       <Dices className="h-4 w-4" />
                     </div>
-                    <h3 className="font-bold text-sm text-stone-800 truncate">{game.title}</h3>
+                    <h3 className="font-bold text-sm text-stone-800 line-clamp-2 sm:truncate">{game.title}</h3>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button

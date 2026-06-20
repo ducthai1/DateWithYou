@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { POST_LOGIN_REDIRECT } from "@/components/layout/nav-items";
 import { Button } from "@/components/ui/button";
@@ -58,16 +59,55 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-6">
-      <div className="space-y-1 text-center">
-        <h1 className="text-3xl font-semibold">Vivu No Plan</h1>
-        <p className="text-muted-foreground text-sm">
-          {isSignUp ? "Tạo tài khoản để bắt đầu" : "Đăng nhập để tiếp tục"}
-        </p>
+      {/* Romantic hero header */}
+      <div className="relative flex flex-col items-center gap-3 py-6">
+        {/* Soft glow backdrop */}
+        <div
+          className="pointer-events-none absolute inset-0 rounded-3xl opacity-40"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 60%, var(--accent-soft) 0%, transparent 70%)",
+          }}
+        />
+        {/* Heart motif */}
+        <div
+          className="relative z-10 flex h-12 w-12 items-center justify-center rounded-2xl"
+          style={{ background: "var(--accent-soft)" }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-6 w-6"
+            style={{ fill: "var(--accent)" }}
+            aria-hidden="true"
+          >
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+        </div>
+        {/* Wordmark */}
+        <div className="relative z-10 text-center">
+          <h1
+            className="text-4xl font-bold tracking-tight"
+            style={{
+              fontFamily: "var(--font-display)",
+              background:
+                "linear-gradient(135deg, var(--gradient-from) 0%, var(--gradient-to) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            Vivu No Plan
+          </h1>
+          <p className="mt-1.5 text-sm" style={{ color: "var(--muted-foreground)" }}>
+            {isSignUp ? "Tạo tài khoản để bắt đầu hành trình" : "Chào mừng trở lại, mình nhớ bạn"}
+          </p>
+        </div>
       </div>
 
+      {/* Google sign-in */}
       <Button
         variant="outline"
-        className="flex w-full items-center justify-center gap-3 bg-card font-medium text-foreground hover:bg-muted border-border"
+        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border-border bg-card font-medium text-foreground transition-all hover:border-accent/40 hover:bg-accent/5 hover:shadow-sm touch-manipulation"
         onClick={() =>
           authClient.signIn.social({
             provider: "google",
@@ -75,7 +115,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           })
         }
       >
-        <GoogleIcon className="h-5 w-5" />
+        <GoogleIcon className="h-5 w-5 shrink-0" />
         Tiếp tục với Google
       </Button>
 
@@ -87,7 +127,9 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       <form onSubmit={handleSubmit} className="space-y-3">
         {isSignUp && (
           <Input
-            placeholder="Tên của bạn"
+            label="Tên của bạn"
+            autoComplete="name"
+            name="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -95,21 +137,45 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         )}
         <Input
           type="email"
-          placeholder="Email"
+          label="Email"
+          autoComplete="email"
+          name="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
         />
         <Input
           type="password"
-          placeholder="Mật khẩu"
+          label="Mật khẩu"
+          autoComplete={isSignUp ? "new-password" : "current-password"}
+          name="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Đang xử lý…" : isSignUp ? "Đăng ký" : "Đăng nhập"}
+
+        {error && (
+          <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          disabled={loading}
+          className="h-11 w-full touch-manipulation"
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Đang xử lý…
+            </span>
+          ) : isSignUp ? (
+            "Đăng ký"
+          ) : (
+            "Đăng nhập"
+          )}
         </Button>
       </form>
 
@@ -117,7 +183,8 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         {isSignUp ? "Đã có tài khoản? " : "Chưa có tài khoản? "}
         <Link
           href={isSignUp ? "/sign-in" : "/sign-up"}
-          className="text-accent font-medium"
+          className="font-medium"
+          style={{ color: "var(--accent)" }}
         >
           {isSignUp ? "Đăng nhập" : "Đăng ký"}
         </Link>

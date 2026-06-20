@@ -108,7 +108,7 @@ export function MemoryTimeline() {
       ) : (
         Object.entries(groups).map(([month, items]: [string, Memo[]]) => (
           <section key={month} className="space-y-3">
-            <h2 className="text-muted-foreground text-sm font-medium capitalize">{month}</h2>
+            <h2 className="text-foreground/80 text-sm font-medium capitalize sm:text-xs sm:text-muted-foreground">{month}</h2>
             <StaggerList className="gap-3 sm:columns-2 [&>*]:mb-3 [&>*]:break-inside-avoid">
               {items.map((m) => {
                 const photoCount = m.photos.length;
@@ -143,7 +143,7 @@ export function MemoryTimeline() {
                       </div>
                     )}
                     {photoCount > 0 && (
-                      <div className="mt-2 grid grid-cols-3 gap-2">
+                      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {m.photos.slice(0, 3).map((p: { url: string; publicId: string }) => (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img

@@ -40,8 +40,10 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
       {item.kind === "recipe" ? (
         <button type="button" onClick={onOpen} className="block w-full text-left">
           {item.recipe?.coverImage && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.recipe.coverImage} alt={item.title} loading="lazy" className="aspect-video w-full rounded-lg object-cover" />
+            <div className="relative aspect-video w-full overflow-hidden rounded-lg">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item.recipe.coverImage} alt={item.title} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+            </div>
           )}
           <div className="text-muted-foreground mt-1.5 flex flex-wrap items-center gap-3 text-xs">
             {item.recipe?.cookTime && <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{item.recipe.cookTime}</span>}

@@ -154,7 +154,7 @@ export function SpaceSettings() {
           
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Chọn ảnh đại diện có sẵn</p>
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-5 gap-2 sm:grid-cols-6 sm:gap-3">
               {displayAvatars.map((url, idx) => (
                 <button
                   key={url + idx}
@@ -165,7 +165,7 @@ export function SpaceSettings() {
                   }}
                   disabled={isUpdatingAvatar}
                   className={cn(
-                    "relative h-12 w-12 rounded-full border-2 transition-all hover:scale-105 active:scale-95 bg-muted",
+                    "relative h-10 w-10 rounded-full border-2 transition-all hover:scale-105 active:scale-95 bg-muted touch-manipulation sm:h-12 sm:w-12",
                     session?.user.image === url ? "border-accent ring-2 ring-accent/20 ring-offset-1" : "border-transparent hover:border-border"
                   )}
                 >
@@ -177,15 +177,15 @@ export function SpaceSettings() {
           
           <div className="space-y-2 pt-2 border-t border-border">
             <p className="text-xs font-medium text-muted-foreground">Hoặc dùng link ảnh khác</p>
-            <div className="flex gap-2">
-              <Input 
-                placeholder="Dán link ảnh (https://...)" 
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                placeholder="Dán link ảnh (https://...)"
                 value={customAvatarUrl}
                 onChange={(e) => setCustomAvatarUrl(e.target.value)}
               />
-              <Button 
+              <Button
                 variant="outline"
-                className="whitespace-nowrap"
+                className="w-full whitespace-nowrap touch-manipulation sm:w-auto"
                 disabled={!customAvatarUrl.trim() || isUpdatingAvatar}
                 onClick={async () => {
                   setIsUpdatingAvatar(true);
@@ -262,7 +262,7 @@ export function SpaceSettings() {
 
         <div className="pt-3 border-t border-border space-y-2">
           <p className="text-sm font-medium">Tham gia bằng mã mời</p>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               placeholder="Nhập mã mời"
               value={joinCode}
@@ -271,7 +271,7 @@ export function SpaceSettings() {
             <Button
               disabled={!joinCode.trim() || joinSpace.isPending}
               onClick={() => joinSpace.mutate({ code: joinCode.trim() })}
-              className="whitespace-nowrap"
+              className="w-full whitespace-nowrap touch-manipulation sm:w-auto"
             >
               Tham gia
             </Button>
@@ -298,7 +298,7 @@ export function SpaceSettings() {
       <Card className="space-y-3">
         <p className="text-sm font-medium">Màu chủ đạo</p>
         {/* 6-swatch preset grid — one swatch per ThemePresetKey */}
-        <div className="grid grid-cols-6 gap-2">
+        <div className="grid grid-cols-6 gap-3 sm:gap-2">
           {THEME_PRESET_KEYS.map((key) => {
             const preset = THEME_PRESETS[key];
             const isActive = activePreset === key;
@@ -311,7 +311,7 @@ export function SpaceSettings() {
                 aria-pressed={isActive}
                 onClick={() => handlePresetSelect(key)}
                 className={cn(
-                  "h-9 w-9 rounded-full transition-all active:scale-90",
+                  "h-10 w-10 rounded-full transition-all active:scale-90 touch-manipulation sm:h-9 sm:w-9",
                   // Ring indicates selected preset
                   isActive
                     ? "ring-2 ring-offset-2 scale-110"
@@ -363,7 +363,7 @@ export function SpaceSettings() {
         <Card className="space-y-3 border-destructive">
           <p className="text-sm font-medium text-destructive">Xoá không gian</p>
           <p className="text-xs text-muted-foreground">Chỉ người tạo mới có thể xoá không gian. Vui lòng nhập mã PIN đã đặt lúc tạo.</p>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               placeholder="Nhập mã PIN"
               value={deletePin}
@@ -371,7 +371,7 @@ export function SpaceSettings() {
             />
             <Button
               variant="destructive"
-              className="whitespace-nowrap"
+              className="w-full whitespace-nowrap touch-manipulation sm:w-auto"
               disabled={deleteSpace.isPending || !deletePin.trim()}
               onClick={() => deleteSpace.mutate({ pin: deletePin.trim() })}
             >
