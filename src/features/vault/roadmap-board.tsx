@@ -128,7 +128,7 @@ export function RoadmapBoard() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <p className="text-muted-foreground text-sm">Cùng nhau lên kế hoạch cho những dự định tương lai.</p>
+        <p className="text-muted-foreground text-sm">Lên kế hoạch những dự định cùng nhau: từ Ý tưởng → Đang lên kế hoạch → Đã làm. Kéo thả thẻ để đổi trạng thái. (Khác Lịch: đây là bucket planning, không gắn ngày cụ thể.)</p>
         <Button onClick={openNewForm} className="shrink-0 gap-1.5" variant="primary">
           <Plus className="h-4 w-4" /> Thêm dự định
         </Button>
@@ -158,6 +158,7 @@ export function RoadmapBoard() {
                 <EmptyState
                   icon="heart"
                   title="Trống"
+                  subtitle={col.key === "idea" ? "Thêm dự định mới hoặc kéo thả thẻ vào đây." : "Kéo thả thẻ vào đây để chuyển trạng thái."}
                   className="py-10"
                 />
               ) : (

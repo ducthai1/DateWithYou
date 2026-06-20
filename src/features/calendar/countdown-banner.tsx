@@ -11,7 +11,9 @@ export function CountdownBanner() {
   if (!next) return null;
 
   const label =
-    next.daysUntil === 0 ? "Hôm nay! 🎉" : `còn ${next.daysUntil} ngày`;
+    next.daysUntil === 0
+      ? `Hôm nay là ${next.title}! 🎉`
+      : `Sắp tới · ${next.title}: còn ${next.daysUntil} ngày`;
 
   // Render via resolveIcon so the icon is always a theme-tinted Lucide SVG.
   // Legacy docs may have emoji strings — resolveIcon falls back to MapPin
@@ -24,8 +26,7 @@ export function CountdownBanner() {
         <Icon className="h-5 w-5 text-accent" strokeWidth={1.8} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{next.title}</p>
-        <p className="text-accent text-sm font-semibold">{label}</p>
+        <p className="text-accent text-sm font-semibold leading-snug">{label}</p>
       </div>
     </div>
   );

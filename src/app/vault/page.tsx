@@ -38,7 +38,7 @@ export default function VaultPage() {
     <div className="mx-auto w-full max-w-[1400px] space-y-6 px-4 pt-6 pb-28 md:pb-6 md:px-[30px]">
       <div className="space-y-4">
         <h1 className="text-h1 font-serif">Góc bí mật</h1>
-        <p className="text-muted-foreground text-sm">Nơi lưu giữ những dự định, mong ước và phần thưởng dành cho nhau.</p>
+        <p className="text-muted-foreground text-sm">Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn.</p>
         
         {/* Summary Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -52,6 +52,7 @@ export default function VaultPage() {
             <p className="text-xl font-bold tracking-tight">
               {donePlans} <span className="text-muted-foreground text-sm font-medium">/ {totalPlans}</span>
             </p>
+            <p className="text-muted-foreground mt-0.5 text-[10px]">đã xong / tổng</p>
           </div>
           <div 
             onClick={() => setTab("wishlist")}
@@ -63,6 +64,7 @@ export default function VaultPage() {
             <p className="text-xl font-bold tracking-tight">
               {boughtWishlist} <span className="text-muted-foreground text-sm font-medium">/ {totalWishlist}</span>
             </p>
+            <p className="text-muted-foreground mt-0.5 text-[10px]">đã mua / tổng</p>
           </div>
           <div 
             onClick={() => setTab("rewards")}
@@ -74,6 +76,7 @@ export default function VaultPage() {
             <p className="text-accent text-xl font-bold tracking-tight">
               {totalPoints}đ
             </p>
+            <p className="text-muted-foreground mt-0.5 text-[10px]">từ Phiếu bé ngoan</p>
           </div>
           <div 
             onClick={() => setTab("capsules")}

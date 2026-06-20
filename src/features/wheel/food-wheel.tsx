@@ -9,6 +9,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { Utensils, Navigation, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { CATEGORIES, type Category } from "@/lib/districts-categories";
 
 const WEDGE_COLORS = ["#c2693f", "#d4a373", "#e9c46a", "#a3b18a", "#cb997e", "#9c5f3c"];
@@ -43,8 +44,8 @@ export function FoodWheel() {
         },
         onError: () => {
           setInviteError(true);
-        }
-      }
+        },
+      },
     );
   };
 
@@ -63,14 +64,14 @@ export function FoodWheel() {
   const filteredPlaces = (places.data ?? []).filter((p) => {
     const openMins = parseTime(p.openTime);
     const closeMins = parseTime(p.closeTime);
-    
+
     // If no open/close time specified, keep it
     if (openMins === null || closeMins === null) return true;
-    
+
     // Normal case: 08:00 to 22:00
     if (openMins <= closeMins) {
       return currentMins >= openMins && currentMins <= closeMins;
-    } 
+    }
     // Overnight case: 18:00 to 02:00
     else {
       return currentMins >= openMins || currentMins <= closeMins;
@@ -116,19 +117,30 @@ export function FoodWheel() {
     <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-8 pb-28 md:pb-8 md:px-[30px]">
       <h1 className="text-2xl font-semibold">Hôm nay ăn gì?</h1>
 
-      <Tabs tabs={SOURCE_TABS} value={source} onChange={setSource} className="w-full max-w-xs" />
+      {/* Source tabs + helper */}
+      <div className="flex w-full max-w-xs flex-col items-center gap-1">
+        <Tabs tabs={SOURCE_TABS} value={source} onChange={setSource} className="w-full" />
+        <p className="text-muted-foreground text-xs">
+          Chọn nguồn để quay: quán đã lưu hoặc công thức tự nấu.
+        </p>
+      </div>
 
+      {/* Category filter — only for places */}
       {source === "place" && (
-        <Select
-          aria-label="Lọc danh mục"
-          className="max-w-xs"
-          value={category}
-          onChange={setCategory}
-          options={[
-            { value: "", label: "Mọi danh mục" },
-            ...CATEGORIES.map((c) => ({ value: c, label: c })),
-          ]}
-        />
+        <div className="flex w-full max-w-xs flex-col gap-1">
+          <label className="text-muted-foreground text-xs font-medium">
+            Lọc theo danh mục (chỉ cho Quán xá)
+          </label>
+          <Select
+            aria-label="Lọc danh mục"
+            value={category}
+            onChange={setCategory}
+            options={[
+              { value: "", label: "Mọi danh mục" },
+              ...CATEGORIES.map((c) => ({ value: c, label: c })),
+            ]}
+          />
+        </div>
       )}
 
       <div className="relative h-60 w-60 sm:h-72 sm:w-72">
@@ -173,24 +185,40 @@ export function FoodWheel() {
         </div>
       </div>
 
+      {/* Empty state with actionable CTA */}
       {items.length === 0 ? (
-        <p className="text-muted-foreground text-center text-sm">
-          {source === "place"
-            ? (places.data && places.data.length > 0)
-              ? "Hiện tại không có quán nào trong danh mục này đang mở cửa. Thử đổi danh mục hoặc qua tab Tự nấu nhé!"
-              : "Chưa có địa điểm “Muốn đi”. Thêm vài chỗ ở Bản đồ trước nhé."
-            : "Chưa có công thức nào. Lưu vài món ở Bộ sưu tập trước nhé."}
-        </p>
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="text-muted-foreground text-sm">
+            {source === "place"
+              ? places.data && places.data.length > 0
+                ? "Hiện tại không có quán nào trong danh mục này đang mở cửa. Thử đổi danh mục hoặc qua tab Tự nấu nhé!"
+                : 'Chưa có địa điểm "Muốn đi". Thêm vài chỗ ở Bản đồ trước nhé.'
+              : "Chưa có công thức nào. Lưu vài món ở Bộ sưu tập trước nhé."}
+          </p>
+          {source === "place" && !(places.data && places.data.length > 0) && (
+            <Link
+              href="/map"
+              className="bg-accent text-accent-foreground hover:bg-accent-hover inline-flex h-9 items-center rounded-xl px-4 text-sm font-medium transition-colors"
+            >
+              Đi tới Bản đồ để thêm địa điểm
+            </Link>
+          )}
+          {source === "recipe" && (
+            <Link
+              href="/library"
+              className="bg-accent text-accent-foreground hover:bg-accent-hover inline-flex h-9 items-center rounded-xl px-4 text-sm font-medium transition-colors"
+            >
+              Thêm công thức ở Bộ sưu tập
+            </Link>
+          )}
+        </div>
       ) : (
         <Button onClick={spin} disabled={spinning} className="w-32 sm:w-40 touch-manipulation" style={{ minHeight: 44 }}>
           {spinning ? "Đang quay…" : "Quay!"}
         </Button>
       )}
 
-      <Modal
-        open={!!winner}
-        onClose={() => setWinner(null)}
-      >
+      <Modal open={!!winner} onClose={() => setWinner(null)}>
         <ModalHeader title="Tụi mình đi…" onClose={() => setWinner(null)} />
         <ModalContent>
           {winner && (
@@ -200,7 +228,9 @@ export function FoodWheel() {
               {winner.mustTry && (
                 <p className="text-muted-foreground flex items-center justify-center gap-1 text-sm">
                   <Utensils className="h-4 w-4" />
-                  {winner.mustTry}
+                  {source === "place"
+                    ? `Món nên thử: ${winner.mustTry}`
+                    : `Thời gian nấu: ${winner.mustTry}`}
                 </p>
               )}
               <div className="flex flex-col gap-2 pt-4">
@@ -218,7 +248,7 @@ export function FoodWheel() {
                     href="/library"
                     className="bg-accent text-accent-foreground hover:bg-accent-hover inline-flex h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-medium transition-colors"
                   >
-                    Xem công thức →
+                    Xem công thức
                   </a>
                 )}
                 <Button onClick={() => setWinner(null)} variant="ghost" className="w-full">

@@ -176,7 +176,7 @@ export function WishlistGrid() {
         <EmptyState
           icon="gift"
           title="Wishlist trống"
-          subtitle={items.length === 0 ? "Thêm món quà muốn có — cùng lên kế hoạch mua nhé." : "Không có món quà nào trong mục này."}
+          subtitle={items.length === 0 ? "Thêm món quà muốn có — ghi giá, gắn link và lên kế hoạch mua cùng nhau." : "Không có món quà nào trong mục này."}
         />
       ) : (
         <StaggerList gap="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -243,17 +243,20 @@ export function WishlistGrid() {
                   </button>
 
                   {!w.bought && w.pointCost > 0 && (
-                    <button
-                      className="inline-flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 bg-amber-400 text-amber-950 hover:bg-amber-500 shadow-sm touch-manipulation sm:w-auto"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRedeem(w.id, (e.target as HTMLElement).closest('.group') as HTMLElement | null);
-                      }}
-                      disabled={redeem.isPending}
-                    >
-                      {redeem.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Coins className="h-3.5 w-3.5" />}
-                      Đổi quà
-                    </button>
+                    <div className="flex flex-col gap-0.5 w-full sm:w-auto">
+                      <button
+                        className="inline-flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 bg-amber-400 text-amber-950 hover:bg-amber-500 shadow-sm touch-manipulation sm:w-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRedeem(w.id, (e.target as HTMLElement).closest('.group') as HTMLElement | null);
+                        }}
+                        disabled={redeem.isPending}
+                      >
+                        {redeem.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Coins className="h-3.5 w-3.5" />}
+                        Đổi quà
+                      </button>
+                      <span className="text-muted-foreground text-[10px] text-center">Dùng điểm từ Phiếu bé ngoan</span>
+                    </div>
                   )}
                   {w.sourceUrl && (
                     <a

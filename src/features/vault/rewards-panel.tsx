@@ -71,6 +71,11 @@ export function RewardsPanel() {
 
   return (
     <div className="space-y-8">
+      {/* Intro */}
+      <p className="text-muted-foreground text-sm">
+        Tích điểm khi hoàn thành nhiệm vụ nhỏ, rồi đổi lấy voucher do hai bạn tự đặt ra. Ai làm xong nhận điểm — đủ điểm thì đổi quà.
+      </p>
+
       {/* Balances Hero */}
       <section className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -186,7 +191,7 @@ export function RewardsPanel() {
           <EmptyState
             icon="list-checks"
             title="Chưa có nhiệm vụ"
-            subtitle="Thêm việc nhỏ để cùng tích điểm."
+            subtitle="Thêm nhiệm vụ nhỏ (vd: đấm lưng 15p). Ai hoàn thành sẽ nhận điểm — tích đủ thì đổi voucher."
           />
         ) : (
           <StaggerList gap="space-y-3">
@@ -201,17 +206,20 @@ export function RewardsPanel() {
                     <span className="text-accent mt-1 inline-block font-medium text-sm">+{t.points}đ</span>
                   </div>
                 </div>
-                <div className="flex shrink-0 gap-2 border-t border-border pt-3 sm:border-0 sm:pt-0">
-                  {balances.map((b) => (
-                    <button
-                      key={b.userId}
-                      className={CHIP}
-                      onClick={(e) => handleComplete(t.id, b.userId, (e.target as HTMLElement).closest('.group') as HTMLElement | null)}
-                      disabled={complete.isPending}
-                    >
-                      <Plus className="h-3.5 w-3.5" /> {label(b)}
-                    </button>
-                  ))}
+                <div className="flex shrink-0 flex-col gap-1.5 border-t border-border pt-3 sm:border-0 sm:pt-0">
+                  <span className="text-muted-foreground text-[10px] font-medium sm:hidden">Ai đã hoàn thành?</span>
+                  <div className="flex gap-2">
+                    {balances.map((b) => (
+                      <button
+                        key={b.userId}
+                        className={CHIP}
+                        onClick={(e) => handleComplete(t.id, b.userId, (e.target as HTMLElement).closest('.group') as HTMLElement | null)}
+                        disabled={complete.isPending}
+                      >
+                        <Plus className="h-3.5 w-3.5" /> {label(b)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </Card>
             ))}

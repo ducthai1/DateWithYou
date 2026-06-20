@@ -114,6 +114,7 @@ export function PlanItemForm({
                 ...(members.data ?? []).map((m) => ({ value: m.id, label: m.name })),
               ]}
             />
+            <p className="text-muted-foreground text-xs ml-1">Ai thực hiện việc này (Cả hai = việc chung).</p>
           </div>
           <div className="space-y-2.5">
             <label className="text-xs font-medium text-muted-foreground ml-1">Gắn địa điểm</label>

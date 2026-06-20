@@ -66,16 +66,24 @@ export function MemoryTimeline() {
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-28 md:pb-6 md:px-[30px]">
       <div className="flex items-center justify-between">
-        <h1 className="text-h1 font-serif">Dòng kỷ niệm</h1>
-        <Button onClick={() => setAdding(true)}>+ Thêm</Button>
+        <div>
+          <h1 className="text-h1 font-serif">Dòng kỷ niệm</h1>
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            Lưu lại khoảnh khắc đã qua: ảnh, cảm xúc, nhạc/video kỷ niệm.
+          </p>
+        </div>
+        <Button className="shrink-0 ml-3" onClick={() => setAdding(true)}>+ Thêm</Button>
       </div>
 
       {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <FilterChip label="Tất cả" active={!filter} onClick={() => setFilter(null)} />
-          {allTags.map((t) => (
-            <FilterChip key={t} label={t} active={filter === t} onClick={() => setFilter(t)} />
-          ))}
+        <div className="space-y-1.5">
+          <p className="text-muted-foreground text-xs font-medium ml-0.5">Lọc theo nhãn:</p>
+          <div className="flex flex-wrap gap-1.5">
+            <FilterChip label="Tất cả" active={!filter} onClick={() => setFilter(null)} />
+            {allTags.map((t) => (
+              <FilterChip key={t} label={t} active={filter === t} onClick={() => setFilter(t)} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -252,14 +260,14 @@ export function MemoryTimeline() {
           title={
             <span className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
               <AlertTriangle className="h-5 w-5" />
-              Cảnh báo sửa đổi
+              Sửa kỷ niệm này?
             </span>
           }
           onClose={() => setWarningEditId(null)}
         />
         <ModalContent>
           <p className="text-sm text-muted-foreground">
-            Việc chỉnh sửa có thể vô tình làm thay đổi thiết kế hoặc làm hỏng kỷ niệm hiện tại. Bạn có chắc chắn muốn tiếp tục chỉnh sửa không?
+            Sửa kỷ niệm có thể thay đổi bố cục ảnh/nội dung đã lưu. Tiếp tục nhé?
           </p>
         </ModalContent>
         <ModalFooter className="flex-row justify-end gap-3">

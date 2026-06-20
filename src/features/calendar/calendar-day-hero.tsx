@@ -98,6 +98,7 @@ export function CalendarDayHero({
           <div className="bg-accent-soft/50 rounded-2xl p-3">
             <p className="text-accent mb-1.5 flex items-center gap-1 text-xs font-semibold">
               <Sparkles className="h-3.5 w-3.5" /> Ngày này năm xưa
+              <span className="text-muted-foreground font-normal">(kỷ niệm các năm trước)</span>
             </p>
             <div className="flex gap-2 overflow-x-auto">
               {data.onThisDay.map((m) => (
@@ -179,7 +180,7 @@ export function CalendarDayHero({
           onClick={onOpenDay}
           className="bg-accent text-accent-foreground hover:bg-accent-hover flex w-full items-center justify-center gap-1.5 rounded-2xl py-3 text-sm font-semibold shadow-sm transition-colors touch-manipulation active:scale-[0.98]"
         >
-          <Plus className="h-4 w-4" /> Mở ngày này
+          <Plus className="h-4 w-4" /> Thêm / sửa kế hoạch
         </button>
       </div>
     </motion.div>

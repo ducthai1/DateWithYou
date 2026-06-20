@@ -132,6 +132,9 @@ export function LocationForm({
         value={v.googleMapsUrl}
         onChange={(e) => set("googleMapsUrl", e.target.value)}
       />
+      <p className="text-xs text-muted-foreground -mt-2 px-1">
+        Dán link Google Maps/Apple Maps (bắt đầu bằng https://) để tự lấy toạ độ.
+      </p>
       <Input
         placeholder="Link TikTok/Instagram (https://)"
         value={v.socialUrl}

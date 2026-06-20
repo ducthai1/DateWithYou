@@ -157,9 +157,9 @@ export function MemoryForm({
   return (
     <>
       <ModalContent className="space-y-5">
-        <Input placeholder="Tiêu đề kỷ niệm" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <Input placeholder="Tiêu đề (vd: Lần đầu đi Đà Lạt)" value={title} onChange={(e) => setTitle(e.target.value)} />
       <Textarea
-        placeholder="Kể lại một chút…"
+        placeholder="Kể lại cảm xúc, chi tiết (tuỳ chọn)"
         value={caption}
         onChange={(e) => setCaption(e.target.value)}
         rows={3}
@@ -178,10 +178,13 @@ export function MemoryForm({
             value={linkInput}
             onChange={(e) => setLinkInput(e.target.value)}
             onPaste={onPaste}
-            placeholder="Dán link YouTube / TikTok / Spotify vào đây…"
+            placeholder="Dán link YouTube / TikTok / Spotify / Instagram…"
             className="border-border bg-card h-11 w-full rounded-xl border pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-accent focus:ring-1 focus:ring-accent/20"
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addLink())}
           />
+          <p className="text-muted-foreground text-xs px-1">
+            Nhạc/video sẽ hiển thị &amp; phát ngay trong kỷ niệm.
+          </p>
         </div>
         {embeds.length > 0 && (
           <div className="space-y-2.5">
@@ -227,6 +230,8 @@ export function MemoryForm({
           </div>
         )}
       </div>
+
+      <p className="text-muted-foreground text-xs font-medium ml-0.5">Thêm ảnh (tuỳ chọn) · tối đa 10</p>
 
       {cloudinaryConfigured ? (
         <label

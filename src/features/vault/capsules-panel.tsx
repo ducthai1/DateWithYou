@@ -57,6 +57,9 @@ export function CapsulesPanel() {
           <Plus className="h-4 w-4" /> Giấu kỷ niệm
         </Button>
       </div>
+      <p className="text-muted-foreground text-sm">
+        Viết một bức thư bí mật, chọn ngày mở khoá. Đến hạn, người ấy mới đọc được — như một bất ngờ gửi từ hiện tại tới tương lai.
+      </p>
 
       <AnimatePresence>
         {formOpen && (
@@ -110,8 +113,8 @@ export function CapsulesPanel() {
       ) : list.data?.length === 0 ? (
         <EmptyState
           icon="gift"
-          title="Chưa có hộp thời gian nào"
-          subtitle="Hãy tạo một bức thư và hẹn giờ để tạo bất ngờ cho người ấy nhé!"
+          title="Chưa có hộp nào"
+          subtitle="Viết bức thư bí mật + chọn ngày mở khoá để tạo bất ngờ cho người ấy."
           action={{ label: "Tạo ngay", onClick: () => setFormOpen(true) }}
         />
       ) : (

@@ -81,7 +81,12 @@ export function CalendarWeekStrip({
             </span>
             {/* Indicator row — fixed height so pills stay aligned when empty. */}
             <span className="flex h-2 items-center justify-center gap-0.5">
-              {s?.special && <Heart className="h-2.5 w-2.5 fill-pink-400 text-pink-400" />}
+              {s?.special && (
+                <Heart
+                  className="h-2.5 w-2.5 fill-pink-400 text-pink-400"
+                  aria-label="Ngày đặc biệt"
+                />
+              )}
               {dots.map((c, di) => (
                 <span key={di} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c }} />
               ))}

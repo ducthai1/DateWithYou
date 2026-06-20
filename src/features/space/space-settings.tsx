@@ -135,6 +135,8 @@ export function SpaceSettings() {
     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 pt-12 pb-28 md:pb-12 md:px-[30px]">
       <h1 className="text-3xl font-semibold">Cài đặt</h1>
 
+      <h2 className="text-lg font-semibold mt-2">Hồ sơ</h2>
+
       {/* ── CÀI ĐẶT CÁ NHÂN ── */}
       <Card className="space-y-4 shadow-sm">
         <p className="text-sm font-semibold text-accent">Hồ sơ cá nhân</p>
@@ -212,6 +214,11 @@ export function SpaceSettings() {
         </div>
       </Card>
 
+      <h2 className="text-lg font-semibold mt-2">Không gian chung</h2>
+      <p className="text-muted-foreground -mt-4 text-sm">
+        Nếu bạn ở nhiều không gian (vd nhiều cặp/nhóm), chọn không gian đang dùng.
+      </p>
+
       {/* ── QUẢN LÝ KHÔNG GIAN ── */}
       <Card className="space-y-4 shadow-sm">
         <div>
@@ -245,7 +252,7 @@ export function SpaceSettings() {
               onChange={(e) => setNewSpaceName(e.target.value)}
             />
             <Input
-              placeholder="Mã PIN bảo vệ (để xoá không gian)"
+              placeholder="Mã PIN để xoá không gian sau này (nhớ kỹ nhé)"
               value={newSpacePin}
               onChange={(e) => setNewSpacePin(e.target.value)}
             />
@@ -262,6 +269,9 @@ export function SpaceSettings() {
 
         <div className="pt-3 border-t border-border space-y-2">
           <p className="text-sm font-medium">Tham gia bằng mã mời</p>
+          <p className="text-xs text-muted-foreground">
+            Bạn của bạn tạo mã mời rồi gửi cho bạn — dán vào đây.
+          </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               placeholder="Nhập mã mời"
@@ -279,6 +289,8 @@ export function SpaceSettings() {
           {joinSpace.isError && <p className="text-xs text-destructive">{joinSpace.error.message}</p>}
         </div>
       </Card>
+
+      <h2 className="text-lg font-semibold mt-2">Giao diện</h2>
 
       <Card className="space-y-3">
         <Input
@@ -347,6 +359,7 @@ export function SpaceSettings() {
             >
               {createInvite.isPending ? "Đang tạo…" : "Tạo mã mời"}
             </Button>
+            <p className="text-xs text-muted-foreground">Mã dùng 1 lần, hết hạn sau 7 ngày.</p>
             {invite && (
               <div className="border-border bg-muted rounded-xl border p-3 text-center">
                 <p className="text-muted-foreground text-xs">
@@ -360,6 +373,8 @@ export function SpaceSettings() {
       </Card>
 
       {mine.data && !mine.data.isPersonal && mine.data.createdBy === session?.user.id && (
+        <>
+        <h2 className="text-lg font-semibold mt-2 text-destructive">Vùng nguy hiểm</h2>
         <Card className="space-y-3 border-destructive">
           <p className="text-sm font-medium text-destructive">Xoá không gian</p>
           <p className="text-xs text-muted-foreground">Chỉ người tạo mới có thể xoá không gian. Vui lòng nhập mã PIN đã đặt lúc tạo.</p>
@@ -380,6 +395,7 @@ export function SpaceSettings() {
           </div>
           {deleteSpace.isError && <p className="text-xs text-destructive">{deleteSpace.error.message}</p>}
         </Card>
+        </>
       )}
 
       <ConfirmButton

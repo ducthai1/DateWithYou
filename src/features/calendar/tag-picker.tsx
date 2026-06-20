@@ -39,6 +39,9 @@ export function TagPicker({
 
   return (
     <div className="space-y-2">
+      <p className="text-muted-foreground text-xs">
+        (Tuỳ chọn) Nhãn giúp phân loại &amp; lọc; mỗi nhãn một màu hiện trên lịch.
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {(tags.data ?? []).map((t) => {
           const on = value.includes(t.name);

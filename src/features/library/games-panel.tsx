@@ -62,7 +62,7 @@ export function GamesPanel() {
       <EmptyState
         icon="sparkles"
         title="Chưa có trò chơi nào"
-        subtitle="Thêm các trò chơi vui nhộn để mở ra chơi cùng nhau lúc đi hẹn hò nhé!"
+        subtitle="Thêm trò chơi cho hai đứa (vd: Nối từ, 20 câu hỏi, Ai hiểu nhau hơn…)"
       />
     );
   }

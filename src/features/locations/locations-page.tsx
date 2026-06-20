@@ -987,10 +987,11 @@ export function LocationsPage() {
 
             {/* Quick Pings */}
             <div className="absolute right-4 top-[60%] flex flex-col items-center gap-2">
-               <button onClick={() => nav.sendPingAction?.("HOT")} className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🥵</button>
-               <button onClick={() => nav.sendPingAction?.("JAM")} className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🐌</button>
-               <button onClick={() => nav.sendPingAction?.("WAIT")} className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🥺</button>
-               <button onClick={() => nav.sendPingAction?.("HURRY")} className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90 border-2 border-rose-400">🚨</button>
+               <p className="text-[9px] font-semibold text-white/80 bg-black/30 rounded-full px-2 py-0.5 text-center leading-tight backdrop-blur-sm">Gửi cảm xúc<br/>cho người ấy:</p>
+               <button onClick={() => nav.sendPingAction?.("HOT")} title="Nóng quá!" aria-label="Nóng quá!" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🥵</button>
+               <button onClick={() => nav.sendPingAction?.("JAM")} title="Kẹt xe!" aria-label="Kẹt xe!" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🐌</button>
+               <button onClick={() => nav.sendPingAction?.("WAIT")} title="Đợi xíu nha" aria-label="Đợi xíu nha" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🥺</button>
+               <button onClick={() => nav.sendPingAction?.("HURRY")} title="Nhanh lên!" aria-label="Nhanh lên!" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90 border-2 border-rose-400">🚨</button>
             </div>
 
             {/* Floating stop button — always visible over the map */}
@@ -1075,19 +1076,19 @@ export function LocationsPage() {
           {hasTwoMembers && (
             <Button
               variant="outline"
-              size="icon"
               className={cn(
-                "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all",
+                "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all gap-1.5",
                 isFindingMidpoint && "opacity-50 pointer-events-none"
               )}
               onClick={handleFindMidpoint}
-              title="Tìm điểm hẹn ở giữa"
+              title={nav.partnerLocation ? "Tìm điểm hẹn ở giữa" : "Cần vị trí của người ấy trước"}
             >
               {isFindingMidpoint ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <MapPinned className="h-4 w-4" />
               )}
+              <span className="text-sm font-medium">Gặp ở giữa</span>
             </Button>
           )}
           <a
@@ -1171,6 +1172,13 @@ export function LocationsPage() {
               onMapClick={handleMapClick}
             />
           </div>
+
+          {/* Partner offline helper — shown when coupled but no partner live location */}
+          {hasTwoMembers && !nav.partnerLocation && (
+            <p className="text-xs text-muted-foreground bg-muted/50 border border-border rounded-lg px-3 py-2 text-center leading-snug">
+              Người ấy chưa mở trang Bản đồ gần đây nên chưa thấy vị trí. Nhờ người ấy mở trang này nhé 💕
+            </p>
+          )}
 
           {/* Follow-me controls appear once a route is on the map. */}
           <div className="flex flex-col gap-2">
@@ -1290,7 +1298,7 @@ export function LocationsPage() {
             <EmptyState
               icon="map-pin"
               title="Chưa có địa điểm nào"
-              subtitle="Bấm + Thêm để lưu chỗ hẹn hò đầu tiên."
+              subtitle="Nhấn + Thêm (hoặc chạm lên bản đồ) để lưu quán, café, chỗ hẹn hò…"
               action={{ label: "+ Thêm địa điểm", onClick: () => { setFormInitial({}); setFormOpen(true); } }}
             />
           ) : (
@@ -1701,6 +1709,9 @@ export function LocationsPage() {
                     <p className="text-sm text-muted-foreground">Tạo lộ trình cho 2 người</p>
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground bg-muted/40 border border-border/60 rounded-lg px-3 py-2 leading-snug">
+                  Lên lộ trình chung: Bạn → (đón người ấy / điểm dừng) → Đích. Người ấy sẽ nhận lời mời và cùng được chỉ đường.
+                </p>
                 
                 <div className="space-y-3 bg-muted/30 p-4 rounded-xl border border-border/50">
                   <div className="flex items-center gap-3">

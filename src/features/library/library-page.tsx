@@ -16,7 +16,7 @@ import { GamesPanel } from "./games-panel";
 
 const TABS = [
   { key: "music", label: "Nhạc" },
-  { key: "food_video", label: "Video món ngon" },
+  { key: "food_video", label: "Video nấu ăn" },
   { key: "recipe", label: "Công thức" },
   { key: "game", label: "Trò chơi" },
 ] as const;
@@ -33,12 +33,17 @@ export function LibraryPage() {
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-28 md:pb-6 md:px-[30px]">
       <div className="flex items-center justify-between">
-        <h1 className="text-h1 font-serif">Bộ sưu tập</h1>
-        <div className="flex gap-2">
+        <div>
+          <h1 className="text-h1 font-serif">Bộ sưu tập</h1>
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau.
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-2 ml-3">
           <a
             href="/wheel"
-            aria-label="Hôm nay ăn gì?"
-            title="Hôm nay ăn gì?"
+            aria-label="Vòng quay chọn món"
+            title="Vòng quay chọn món"
             className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 items-center justify-center rounded-xl border shadow-sm"
           >
             <Disc3 className="h-5 w-5 text-accent" />

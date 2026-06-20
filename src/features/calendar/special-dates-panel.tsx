@@ -27,6 +27,16 @@ const SPECIAL_DATE_ICON_KEYS = [
 
 type SpecialDateIconKey = (typeof SPECIAL_DATE_ICON_KEYS)[number];
 
+const ICON_LABELS: Record<SpecialDateIconKey, string> = {
+  heart: "Yêu thương",
+  cake: "Sinh nhật",
+  gift: "Kỷ niệm",
+  plane: "Du lịch",
+  star: "Cột mốc",
+  sparkles: "Đặc biệt",
+  "calendar-heart": "Ngày trọng đại",
+};
+
 const DEFAULT_ICON: SpecialDateIconKey = "heart";
 
 /** Manage recurring/one-off special dates (anniversary, birthdays…). */
@@ -71,12 +81,14 @@ export function SpecialDatesPanel() {
           {SPECIAL_DATE_ICON_KEYS.map((key) => {
             const Icon = resolveIcon(key);
             const isActive = iconKey === key;
+            const label = ICON_LABELS[key];
             return (
               <button
                 key={key}
                 type="button"
-                aria-label={key}
+                aria-label={label}
                 aria-pressed={isActive}
+                title={label}
                 onClick={() => setIconKey(key)}
                 className={cn(
                   "rounded-lg p-1.5 transition-colors",
@@ -97,14 +109,19 @@ export function SpecialDatesPanel() {
           })}
         </div>
 
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={recurYearly}
-            onChange={(e) => setRecurYearly(e.target.checked)}
-          />
-          Lặp lại hàng năm
-        </label>
+        <div className="space-y-1">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={recurYearly}
+              onChange={(e) => setRecurYearly(e.target.checked)}
+            />
+            Lặp lại hàng năm
+          </label>
+          <p className="text-muted-foreground ml-5 text-xs">
+            Bật: nhắc lại vào cùng ngày mỗi năm. Tắt: chỉ đếm ngược lần này.
+          </p>
+        </div>
 
         <Button
           className="w-full"
@@ -121,7 +138,7 @@ export function SpecialDatesPanel() {
           <EmptyState
             icon="calendar-heart"
             title="Chưa có ngày đặc biệt"
-            subtitle="Thêm kỷ niệm, sinh nhật… để đếm ngược cùng nhau."
+            subtitle="Thêm ngày đặc biệt (kỷ niệm yêu nhau, sinh nhật…) để app đếm ngược và nhắc bạn."
             className="py-8"
           />
         ) : (
