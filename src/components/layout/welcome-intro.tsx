@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { HeartHandshake } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "./brand-mark";
 import { NAV_ITEMS, NAV_HIDDEN_ON } from "./nav-items";
 
 const SEEN_KEY = "dwy:welcomeSeen";
@@ -54,7 +54,7 @@ export function WelcomeIntro() {
       <div className="space-y-5 p-6">
         <div className="space-y-2 text-center">
           <span className="bg-accent-soft text-accent mx-auto flex h-12 w-12 items-center justify-center rounded-2xl">
-            <HeartHandshake className="h-6 w-6" />
+            <BrandMark className="h-6 w-6" />
           </span>
           <h2
             className="text-2xl font-semibold [font-family:var(--font-display)]"

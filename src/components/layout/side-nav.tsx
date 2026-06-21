@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen, Settings, HeartHandshake } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { NAV_ITEMS, NAV_HIDDEN_ON } from "./nav-items";
+import { BrandMark } from "./brand-mark";
 import { useSidebar } from "./sidebar-context";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +33,7 @@ export function SideNav() {
             isCollapsed ? "justify-center px-0" : "justify-start px-2"
           )}
         >
-          <HeartHandshake className="h-6 w-6 shrink-0 text-accent" />
+          <BrandMark className="h-6 w-6 shrink-0 text-accent" />
           <span
             className={cn(
               "overflow-hidden whitespace-nowrap transition-all duration-300",

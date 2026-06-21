@@ -1,6 +1,5 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Vivu No Plan">
   <defs>
-    <!-- Sunset terracotta tile (travel / golden-hour vibe), layered for depth. -->
     <linearGradient id="tile" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#c8633a"/>
       <stop offset="0.5" stop-color="#e07a4f"/>
@@ -10,23 +9,18 @@
       <stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>
       <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="mk" x1="32" y1="9" x2="32" y2="50" gradientUnits="userSpaceOnUse">
+    <linearGradient id="mk" x1="32" y1="14" x2="32" y2="48" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ffffff"/>
       <stop offset="1" stop-color="#fdeae0"/>
     </linearGradient>
   </defs>
 
-  <!-- Squircle tile -->
   <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#tile)"/>
   <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#glow)"/>
   <rect x="2.75" y="2.75" width="58.5" height="58.5" rx="15.25" fill="none" stroke="#ffffff" stroke-opacity="0.14"/>
 
-  <!-- Brand mark: a bold "V" (Vivu) cradling a location pin → wander + places.
-       Not a heart — a journey monogram for an explore-together app. -->
-  <path d="M18 20 L32 48 L46 20" fill="none" stroke="url(#mk)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M32 9 C26.2 9 22 13.1 22 18.3 C22 25.1 32 31.5 32 31.5 C32 31.5 42 25.1 42 18.3 C42 13.1 37.8 9 32 9 Z" fill="url(#mk)"/>
-  <!-- Pin eye (negative-space dot showing the tile through) -->
-  <circle cx="32" cy="18.1" r="3.2" fill="#d56f3d"/>
-  <!-- Soft sheen on the pin head -->
-  <ellipse cx="28" cy="14.5" rx="2.6" ry="3.4" fill="#ffffff" opacity="0.4" transform="rotate(-24 28 14.5)"/>
+  <!-- "V" for Vivu — a confident lettermark; a small sparkle at the tip adds the
+       wander/discover spirit. Reads as a V at any size, matching the wordmark. -->
+  <path d="M17 18 L32 47 L47 18" fill="none" stroke="url(#mk)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M48 11.5 C48 14.8 49.2 16 52.5 16 C49.2 16 48 17.2 48 20.5 C48 17.2 46.8 16 43.5 16 C46.8 16 48 14.8 48 11.5 Z" fill="#ffffff"/>
 </svg>
