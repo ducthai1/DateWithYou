@@ -121,8 +121,14 @@ export function daysUntil(dateKey: string, recurYearly: boolean): number {
   const todayMid = Date.UTC(ty, tm - 1, td);
   let target: number;
   if (recurYearly) {
-    target = Date.UTC(ty, em - 1, ed);
-    if (target < todayMid) target = Date.UTC(ty + 1, em - 1, ed);
+    // Clamp the recurrence day to the month's last valid day for the target year
+    // so a Feb-29 anniversary lands on Feb-28 in non-leap years instead of
+    // silently rolling to Mar-1 (which made the countdown wrong and never matched
+    // the calendar's MM-DD highlight). Date.UTC(year, em, 0) = last day of month em.
+    const clampDay = (year: number) =>
+      Math.min(ed, new Date(Date.UTC(year, em, 0)).getUTCDate());
+    target = Date.UTC(ty, em - 1, clampDay(ty));
+    if (target < todayMid) target = Date.UTC(ty + 1, em - 1, clampDay(ty + 1));
   } else {
     target = Date.UTC(ey, em - 1, ed);
   }
