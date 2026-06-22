@@ -29,7 +29,7 @@ export const rewardRouter = router({
       RewardLogModel.find({ spaceId: ctx.spaceId }).sort({ doneAt: -1 }).limit(5).lean(),
     ]);
     const balanceOf = (uid: string) =>
-      accounts.find((a) => a.userId === uid)?.balance ?? 0;
+      accounts.find((a) => String(a.userId) === String(uid))?.balance ?? 0;
     return {
       tasks: tasks.map((t) => ({ id: String(t._id), title: t.title, points: t.points })),
       vouchers: vouchers.map((v) => ({
