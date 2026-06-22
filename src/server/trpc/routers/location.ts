@@ -447,6 +447,7 @@ export const locationRouter = router({
       const invite = await NavigationInviteModel.findOneAndUpdate(
         {
           _id: input.inviteId,
+          spaceId: ctx.spaceId,
           targetId: ctx.userId,
           status: "pending",
         },
@@ -507,6 +508,7 @@ export const locationRouter = router({
       await connectToDatabase();
       const invite = await NavigationInviteModel.findOne({
         _id: input.inviteId,
+        spaceId: ctx.spaceId,
         initiatorId: ctx.userId,
       })
         .select("status locationId locationName waypoints")
@@ -547,6 +549,7 @@ export const locationRouter = router({
       await NavigationInviteModel.findOneAndUpdate(
         {
           _id: input.inviteId,
+          spaceId: ctx.spaceId,
           initiatorId: ctx.userId,
           status: "pending",
         },
