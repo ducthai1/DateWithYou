@@ -215,6 +215,33 @@ export async function GET(req: NextRequest) {
         }
       };
 
+      // Prime the SENT-invite tracker from the state that already exists when
+      // this connection opens, so an invite that was accepted/rejected BEFORE
+      // now is NOT replayed as a fresh "invite-response". Without this, every
+      // page load (each load = a new SSE connection, starting from null trackers)
+      // re-pushes the sender's most recent "accepted" invite; the client then
+      // force-navigates into that trip and opens the full-screen navigation
+      // overlay — locking the entire app on every load for the ~6h an accepted
+      // invite lives. Only a status change that happens AFTER connect should
+      // drive the auto-navigation. Incoming (pending) invites are intentionally
+      // NOT primed: a user opening the app should still see a real pending invite.
+      try {
+        const primeSent = await NavigationInviteModel.findOne({
+          spaceId,
+          initiatorId: userId,
+          status: { $in: ["pending", "accepted", "rejected"] },
+        })
+          .sort({ createdAt: -1 })
+          .select("_id status")
+          .lean<{ _id: unknown; status: string }>();
+        if (primeSent) {
+          lastSentInviteId = String(primeSent._id);
+          lastSentStatus = primeSent.status;
+        }
+      } catch {
+        /* priming is best-effort — the poll loop below still runs normally */
+      }
+
       // Initial check, then every 1 second. Trade-off: ~50% more DB polls per
       // connection vs. ~500 ms lower invite/ping delivery latency. Acceptable for
       // a couples app with at most 2 concurrent SSE connections per space.
