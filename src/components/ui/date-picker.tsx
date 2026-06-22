@@ -32,34 +32,36 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
 
   const [rect, setRect] = useState<DOMRect | null>(null);
 
-  // Handle outside click & scroll
+  // Close on outside click / scroll / resize / Escape. The popup is fixed-position
+  // anchored to a one-time rect, so on scroll OR resize (mobile rotation, soft
+  // keyboard) it would otherwise float detached from the trigger — close instead.
   useEffect(() => {
+    if (!open) return; // symmetric add/remove: only bind while open
     function handle(e: MouseEvent) {
-      // Allow clicking inside the portal
       const target = e.target as HTMLElement;
-      if (target.closest("[data-calendar-popup]")) return;
-
+      if (target.closest("[data-calendar-popup]")) return; // clicks inside the popup
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
     function onScroll(e: Event) {
       const target = e.target as HTMLElement;
-      // Don't close if scrolling inside the popup itself
       if (target.closest && target.closest("[data-calendar-popup]")) return;
       setOpen(false);
     }
+    const onResize = () => setOpen(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
 
-    if (open) {
-      if (containerRef.current) {
-        setRect(containerRef.current.getBoundingClientRect());
-      }
-      document.addEventListener("mousedown", handle);
-      window.addEventListener("scroll", onScroll, true);
-    }
+    if (containerRef.current) setRect(containerRef.current.getBoundingClientRect());
+    document.addEventListener("mousedown", handle);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+    document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("mousedown", handle);
       window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("keydown", onKey);
     };
   }, [open]);
 

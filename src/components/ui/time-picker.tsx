@@ -19,7 +19,11 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
 
   const [hr, min] = value ? value.split(":") : ["", ""];
   
+  // Close on outside click / scroll / resize / Escape. The dropdown is fixed at a
+  // one-time rect, so without scroll+resize handling it detaches from the trigger
+  // when the surrounding form scrolls or the device rotates / keyboard opens.
   useEffect(() => {
+    if (!open) return;
     function handle(e: MouseEvent) {
       const target = e.target as HTMLElement;
       if (target.closest("[data-time-popup]")) return;
@@ -27,11 +31,25 @@ export function TimePicker({ value, onChange }: TimePickerProps) {
         setOpen(false);
       }
     }
-    if (open) {
-      if (containerRef.current) setRect(containerRef.current.getBoundingClientRect());
-      document.addEventListener("mousedown", handle);
+    function onScroll(e: Event) {
+      const target = e.target as HTMLElement;
+      if (target.closest && target.closest("[data-time-popup]")) return;
+      setOpen(false);
     }
-    return () => document.removeEventListener("mousedown", handle);
+    const onResize = () => setOpen(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+
+    if (containerRef.current) setRect(containerRef.current.getBoundingClientRect());
+    document.addEventListener("mousedown", handle);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", handle);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   const selectHour = (h: string) => {
