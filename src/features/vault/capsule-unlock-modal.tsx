@@ -21,6 +21,11 @@ export function CapsuleUnlockModal({
 }) {
   const isTimeArrived = new Date(capsule.unlockDate) <= now;
   const [unlockState, setUnlockState] = useState<UnlockState>(capsule.isOpened ? "opened" : "locked");
+  // The message actually shown in the letter. Seeded from the (possibly stripped)
+  // prop and replaced with the server's freshly-unlocked content on open, so the
+  // reveal never shows an empty letter for a capsule that unlocked while open.
+  const [revealedMessage, setRevealedMessage] = useState<string | null>(capsule.message);
+  const [revealError, setRevealError] = useState<string | null>(null);
 
   const markOpened = trpc.capsule.markOpened.useMutation();
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -44,21 +49,48 @@ export function CapsuleUnlockModal({
     timers.current.push(setTimeout(() => confetti({ particleCount: 50, spread: 100, decay: 0.92, scalar: 0.9, origin: { y: 0.5 }, colors }), 250));
   };
 
+  // Play the seal-crack animation, then reveal the letter.
+  const revealAfterAnimation = () => {
+    timers.current.push(setTimeout(() => {
+      setUnlockState("opened");
+      celebrate();
+    }, 1700));
+  };
+
   const handleSealClick = () => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate(isTimeArrived ? [60, 40, 80, 40, 160, 80, 300] : 50);
     }
     if (!isTimeArrived || unlockState !== "locked") return;
 
+    setRevealError(null);
     setUnlockState("unlocking");
-    if (!capsule.isOpened) {
-      markOpened.mutate({ id: capsule.id }, { onSuccess: () => onOpened() });
+
+    // Already opened before → content is present; just play the reveal.
+    if (capsule.isOpened) {
+      revealAfterAnimation();
+      return;
     }
-    // Let the seal crack + flap swing, then reveal the letter.
-    timers.current.push(setTimeout(() => {
-      setUnlockState("opened");
-      celebrate();
-    }, 1700));
+
+    // First open → the SERVER decides if it's really unlock time. Only reveal on
+    // success (using the content it returns); on rejection (e.g. the device clock
+    // is ahead of real time) fall back to the sealed state instead of animating
+    // open an empty letter.
+    markOpened.mutate(
+      { id: capsule.id },
+      {
+        onSuccess: (res) => {
+          if (res?.message != null) setRevealedMessage(res.message);
+          onOpened();
+          revealAfterAnimation();
+        },
+        onError: () => {
+          setUnlockState("locked");
+          setRevealError("Chưa đến giờ mở khoá nha, đợi xíu nữa nhé 💌");
+          if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(40);
+        },
+      },
+    );
   };
 
   return (
@@ -102,6 +134,11 @@ export function CapsuleUnlockModal({
                 unlockDate={capsule.unlockDate}
                 onSealClick={handleSealClick}
               />
+              {revealError && (
+                <p className="mt-4 text-center text-sm font-medium text-rose-100">
+                  {revealError}
+                </p>
+              )}
             </motion.div>
           ) : (
             <motion.div
@@ -114,7 +151,7 @@ export function CapsuleUnlockModal({
             >
               <CapsuleLetter
                 title={capsule.title}
-                message={capsule.message}
+                message={revealedMessage}
                 openedDateLabel={`Ngày ${new Date().toLocaleDateString("vi-VN")}`}
                 sender="Bí mật"
               />

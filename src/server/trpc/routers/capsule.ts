@@ -93,6 +93,10 @@ export const capsuleRouter = router({
       capsule.isOpened = true;
       await capsule.save();
 
-      return { success: true };
+      // Return the now-unlocked content. The list query strips message/mediaUrls
+      // while a capsule is locked, so a capsule that unlocks WHILE the panel is
+      // open still holds a stale null message client-side — returning it here lets
+      // the reveal show the real letter instead of an empty one.
+      return { success: true, message: capsule.message, mediaUrls: capsule.mediaUrls };
     }),
 });
