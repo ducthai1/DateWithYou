@@ -210,7 +210,11 @@ export const spaceRouter = router({
       if (!space) throw new TRPCError({ code: "NOT_FOUND", message: "Space not found" });
       if (space.isPersonal) throw new TRPCError({ code: "FORBIDDEN", message: "Cannot delete personal space" });
       if (space.createdBy !== ctx.userId) throw new TRPCError({ code: "FORBIDDEN", message: "Only creator can delete" });
-      if (space.pin !== input.pin) throw new TRPCError({ code: "FORBIDDEN", message: "Mã PIN không đúng" });
+      // Only enforce the PIN when one was actually set. Spaces created via the
+      // onboarding flow have no PIN, so requiring a match made them permanently
+      // undeletable; in that case any non-empty PIN the UI collects is accepted.
+      if (space.pin && space.pin !== input.pin)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Mã PIN không đúng" });
       
       await SpaceModel.findByIdAndDelete(ctx.spaceId);
       // We should also delete related collections (locations, memories, etc.) but for simplicity, we just delete the space doc for now.
@@ -295,7 +299,7 @@ export const spaceRouter = router({
       return { ok: true };
     }),
 
-  updateTheme: authedProcedure
+  updateTheme: protectedProcedure
     .input(
       z.object({
         name: z.string().trim().min(1).max(60).optional(),
@@ -311,8 +315,11 @@ export const spaceRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
+      // Scope to the ACTIVE space (ctx.spaceId), not just any space the user is in.
+      // A multi-space user editing settings was previously writing to whichever
+      // space matched {members} first — silently renaming/recoloring the wrong one.
       const res = await SpaceModel.findOneAndUpdate(
-        { members: ctx.userId },
+        { _id: ctx.spaceId, members: ctx.userId },
         { $set: input },
         { new: true },
       )
