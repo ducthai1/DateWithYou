@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, AlertCircle, Info } from "lucide-react";
@@ -28,6 +28,14 @@ const ICON = { success: Check, error: AlertCircle, info: Info } as const;
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
+  // Gate the body portal until after the first client render. `typeof document`
+  // is already true during hydration, so portaling on the first render adds a
+  // <body> child the server never emitted → React reports a hydration mismatch
+  // and *regenerates the whole tree on the client* (flash + a window of dead
+  // clicks app-wide). Rendering nothing until mounted keeps SSR and the first
+  // client render identical; the portal appears on the next paint.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const push = useCallback((message: string, variant: ToastVariant = "success") => {
     const id = (idRef.current += 1);
@@ -38,7 +46,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={push}>
       {children}
-      {typeof document !== "undefined" &&
+      {mounted &&
         createPortal(
           <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+4rem)] z-[100] flex flex-col items-center gap-2 px-4 md:top-6">
             <AnimatePresence>
