@@ -30,11 +30,25 @@ export function Onboarding() {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
 
+  // Enter the freshly created/joined space. We set the active-space cookie and do
+  // a FULL navigation (not router.replace) on purpose: a client-side replace keeps
+  // the React Query cache, where `space.getMine` is still the stale "no space"
+  // result fetched on this page (fresh for staleTime). The space guard + settings
+  // page would then read that stale null and bounce the user straight back here —
+  // the "stuck on step 2" loop. A full load starts a clean cache that refetches
+  // getMine and sees the new space. Mirrors space-settings' handleSpaceSwitch.
+  function enterSpace(id: string) {
+    const maxAge = 60 * 60 * 24 * 365;
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `active_space_id=${id}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
+    window.location.assign("/settings");
+  }
+
   const create = trpc.space.create.useMutation({
-    onSuccess: () => router.replace("/settings"),
+    onSuccess: (d) => enterSpace(d.id),
   });
   const join = trpc.space.joinByCode.useMutation({
-    onSuccess: () => router.replace("/settings"),
+    onSuccess: (d) => enterSpace(d.id),
   });
 
   // Already in a space → skip onboarding.
