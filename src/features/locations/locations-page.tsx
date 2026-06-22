@@ -390,7 +390,12 @@ export function LocationsPage() {
     setPendingSentInviteId(null);
 
     const loc = list.data.find(l => l.id === locationId);
-    if (!loc?.geo) return;
+    if (!loc?.geo) {
+      // Destination isn't in the current (possibly filtered) list, or was deleted.
+      // Don't silently swallow the accepted trip — tell the user why nothing happened.
+      toast("Không mở được chuyến đi: địa điểm không còn nữa hoặc đang bị bộ lọc ẩn đi.", "error");
+      return;
+    }
 
     // Convert invite Waypoint[] to the {lat,lng}[] shape getRoute expects.
     const waypointGeos = waypoints.map(w => ({ lat: w.lat, lng: w.lng }));

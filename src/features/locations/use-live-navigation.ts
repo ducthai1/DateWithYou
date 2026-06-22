@@ -247,9 +247,10 @@ export function useLiveNavigation(options?: {
         if (partners && partners.length > 0) {
           setPartnerLocation(partners[0]);
           setEverHadPartner(true);
-        } else {
-          setPartnerLocation(null);
         }
+        // Empty result is treated as transient: keep the last-known partner so the
+        // HUD/route don't flicker out on a single lapsed poll. The staleness
+        // derivation (PARTNER_STALE_MS) downgrades it to "stale" if it stays gone.
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -284,9 +285,9 @@ export function useLiveNavigation(options?: {
           if (partners && partners.length > 0) {
             setPartnerLocation(partners[0]);
             setEverHadPartner(true);
-          } else {
-            setPartnerLocation(null);
           }
+          // Keep the last-known partner on an empty result (see sendPingAction):
+          // avoids HUD/route flicker; staleness derivation handles a real drop.
         },
       },
     );
