@@ -99,36 +99,46 @@ export const wishlistRouter = router({
       if (doc.bought) throw new TRPCError({ code: "BAD_REQUEST", message: "Món đồ này đã được mua rồi" });
       if (!doc.pointCost || doc.pointCost <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Món đồ này không hỗ trợ đổi bằng điểm" });
 
-      // Check balance
-      const account = await RewardAccountModel.findOne({
-        spaceId: ctx.spaceId,
-        userId: ctx.userId,
-      });
+      const pointCost = doc.pointCost;
 
-      const currentBalance = account?.balance ?? 0;
-      if (currentBalance < doc.pointCost) {
+      // Deduct atomically: only succeeds when the balance still covers the cost,
+      // in a single conditional update. A read-then-write here let two concurrent
+      // redeems both pass the check and double-spend (or drive the balance
+      // negative). Mirrors reward.redeem's atomic pattern.
+      const charged = await RewardAccountModel.findOneAndUpdate(
+        { spaceId: ctx.spaceId, userId: ctx.userId, balance: { $gte: pointCost } },
+        { $inc: { balance: -pointCost } },
+        { new: true },
+      ).lean<{ balance: number }>();
+      if (!charged) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Bạn không đủ Phiếu bé ngoan để đổi món này!" });
       }
 
-      // Deduct points
-      await RewardAccountModel.updateOne(
-        { spaceId: ctx.spaceId, userId: ctx.userId },
-        { $inc: { balance: -doc.pointCost } },
-      );
+      // Claim the item atomically too; if another redeem won the race, refund the
+      // points we just deducted so they aren't lost.
+      const claimed = await WishlistItemModel.findOneAndUpdate(
+        { _id: doc._id, spaceId: ctx.spaceId, bought: false },
+        { $set: { bought: true } },
+      )
+        .select("_id")
+        .lean();
+      if (!claimed) {
+        await RewardAccountModel.updateOne(
+          { spaceId: ctx.spaceId, userId: ctx.userId },
+          { $inc: { balance: pointCost } },
+        );
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Món đồ này đã được mua rồi" });
+      }
 
-      // Log the transaction
+      // Log the transaction.
       await RewardLogModel.create({
         spaceId: ctx.spaceId,
         taskId: `wishlist_redeem_${doc._id}`,
         userId: ctx.userId,
-        points: -doc.pointCost,
+        points: -pointCost,
         doneAt: new Date(),
       });
 
-      // Mark as bought
-      doc.bought = true;
-      await doc.save();
-
-      return { success: true, remainingBalance: currentBalance - doc.pointCost };
+      return { success: true, remainingBalance: charged.balance };
     }),
 });
