@@ -37,8 +37,9 @@ export async function GET(req: NextRequest) {
   const cookieStr = req.headers.get("cookie");
   let activeSpaceId: string | null = null;
   if (cookieStr) {
-    const match = cookieStr.match(/active_space_id=([^;]+)/);
-    if (match) activeSpaceId = match[1];
+    // Anchor on a cookie boundary + decode, matching the tRPC context parser.
+    const match = cookieStr.match(/(?:^|;\s*)active_space_id=([^;]+)/);
+    if (match) activeSpaceId = decodeURIComponent(match[1]);
   }
 
   let space;
@@ -115,6 +116,7 @@ export async function GET(req: NextRequest) {
           const inStatus = incoming?.status ?? null;
 
           if (inId !== lastInviteId || inStatus !== lastStatus) {
+            const prevInviteId = lastInviteId;
             lastInviteId = inId;
             lastStatus = inStatus;
             if (incoming) {
@@ -127,6 +129,12 @@ export async function GET(req: NextRequest) {
                 waypoints: incoming.waypoints,
                 merged: incoming.merged,
               });
+            } else if (prevInviteId) {
+              // A previously-pending invite is gone (sender cancelled, it was
+              // responded to elsewhere, or it TTL-expired). Tell the client so the
+              // incoming-invite modal dismisses instead of sticking on a dead
+              // invite whose Accept/Decline now 404.
+              send("invite-cancelled", { id: prevInviteId });
             }
           }
 
@@ -215,16 +223,21 @@ export async function GET(req: NextRequest) {
         }
       };
 
-      // Prime the SENT-invite tracker from the state that already exists when
-      // this connection opens, so an invite that was accepted/rejected BEFORE
-      // now is NOT replayed as a fresh "invite-response". Without this, every
-      // page load (each load = a new SSE connection, starting from null trackers)
-      // re-pushes the sender's most recent "accepted" invite; the client then
-      // force-navigates into that trip and opens the full-screen navigation
-      // overlay — locking the entire app on every load for the ~6h an accepted
-      // invite lives. Only a status change that happens AFTER connect should
-      // drive the auto-navigation. Incoming (pending) invites are intentionally
-      // NOT primed: a user opening the app should still see a real pending invite.
+      // Prime trackers from the state that ALREADY exists when this connection
+      // opens, so events resolved before now aren't replayed as fresh ones on
+      // every (re)connect — each page load / EventSource reconnect starts a new
+      // stream with null trackers. Without this, the sender's last "accepted"
+      // invite (alive ~6h) re-fires on every load and force-navigates them into a
+      // finished trip behind the full-screen nav overlay; likewise a finished
+      // ("ended") trip re-opens the "partner ended — stop too?" prompt.
+      //
+      // A short grace window keeps a genuinely-recent change deliverable: if the
+      // accept/end landed during a brief reconnect blip (within the window), it is
+      // NOT primed away, so the first poll still emits it once. The client de-dupes
+      // by invite id, so a steady connection never double-handles it.
+      const CONNECT_GRACE_MS = 20_000;
+      const isStale = (updatedAt?: Date | null) =>
+        !!updatedAt && Date.now() - new Date(updatedAt).getTime() > CONNECT_GRACE_MS;
       try {
         const primeSent = await NavigationInviteModel.findOne({
           spaceId,
@@ -232,11 +245,25 @@ export async function GET(req: NextRequest) {
           status: { $in: ["pending", "accepted", "rejected"] },
         })
           .sort({ createdAt: -1 })
-          .select("_id status")
-          .lean<{ _id: unknown; status: string }>();
-        if (primeSent) {
+          .select("_id status updatedAt")
+          .lean<{ _id: unknown; status: string; updatedAt: Date }>();
+        // Suppress an old resolved invite. A pending one is primed too (pending
+        // never emits a response anyway, and a later accept still fires); a
+        // recently-resolved one is left unprimed so a reconnect-gap accept emits.
+        if (primeSent && (primeSent.status === "pending" || isStale(primeSent.updatedAt))) {
           lastSentInviteId = String(primeSent._id);
           lastSentStatus = primeSent.status;
+        }
+        const primeEnded = await NavigationInviteModel.findOne({
+          spaceId,
+          status: "ended",
+          $or: [{ initiatorId: userId }, { targetId: userId }],
+        })
+          .sort({ updatedAt: -1 })
+          .select("_id updatedAt")
+          .lean<{ _id: unknown; updatedAt: Date }>();
+        if (primeEnded && isStale(primeEnded.updatedAt)) {
+          lastEndedId = String(primeEnded._id);
         }
       } catch {
         /* priming is best-effort — the poll loop below still runs normally */

@@ -70,6 +70,12 @@ export function useNavigationInvites() {
       }
     });
 
+    // The pending invite went away (cancelled / responded elsewhere / expired) →
+    // clear it so the incoming-invite modal dismisses instead of sticking around.
+    es.addEventListener("invite-cancelled", () => {
+      setIncomingInvite(null);
+    });
+
     es.addEventListener("invite-response", (e) => {
       try {
         const data = JSON.parse(e.data) as InviteResponse;

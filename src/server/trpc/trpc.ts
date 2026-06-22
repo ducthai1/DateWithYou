@@ -19,8 +19,10 @@ export async function createTRPCContext(opts: FetchCreateContextFnOptions) {
   let activeSpaceId: string | null = null;
   const cookieStr = opts.req.headers.get("cookie");
   if (cookieStr) {
-    const match = cookieStr.match(/active_space_id=([^;]+)/);
-    if (match) activeSpaceId = match[1];
+    // Anchor on a cookie boundary so a differently-named cookie ending in
+    // "active_space_id" can't shadow ours; decode in case the value was encoded.
+    const match = cookieStr.match(/(?:^|;\s*)active_space_id=([^;]+)/);
+    if (match) activeSpaceId = decodeURIComponent(match[1]);
   }
 
   return { userId: session?.user?.id ?? null, activeSpaceId };
