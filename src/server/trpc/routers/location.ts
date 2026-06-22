@@ -12,6 +12,7 @@ import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
 import { SpaceModel } from "@/server/db/models/space";
 import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 import { requireEnv } from "@/lib/env";
+import { resolveGeoFromMapsUrl, extractFirstUrl } from "@/server/lib/resolve-maps-geo";
 
 const districtSchema = z.string().trim().min(1);
 const categorySchema = z.string().trim().min(1);
@@ -20,79 +21,25 @@ const statusEnum = z.enum(["want_to_go", "visited"]);
 const httpsUrl = z.string().url().startsWith("https://");
 const geo = z.object({ lat: z.number(), lng: z.number() });
 
-/**
- * Best-effort extraction of coordinates from a Google Maps URL so a pasted link
- * drops a pin automatically. Short links (maps.app.goo.gl / goo.gl) are resolved
- * by following the redirect to the full URL that carries @lat,lng or !3d!4d.
- * Returns null when the link has no embedded coordinates.
- */
-async function geoFromGoogleMapsUrl(
-  url: string,
-): Promise<{ lat: number; lng: number } | null> {
-  let finalUrl = url;
-  let html = "";
-  if (/(?:maps\.app\.goo\.gl|goo\.gl)\//.test(url) || url.includes("google.com/maps")) {
-    try {
-      const res = await fetch(url, {
-        redirect: "follow",
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept-Language": "en-US,en;q=0.9",
-          // Pre-consent so datacenter IPs don't get the consent interstitial
-          // (which carries no coordinates) instead of the real maps page.
-          Cookie: "CONSENT=YES+; SOCS=CAISEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg",
-        },
-      });
-      finalUrl = res.url || url;
-      html = await res.text();
-    } catch (err) {
-      // redirect/network failure → fall back to parsing the original URL as-is
-      console.error("geoFromGoogleMapsUrl: redirect/fetch failed", url, err);
-    }
-  }
-
-  // Coordinates can live in the resolved URL *or* in the page HTML, so scan both.
-  const haystack = `${finalUrl}\n${html}`;
-
-  // Accuracy order:
-  //   1. !3d!4d        → the exact place marker.
-  //   2. q/ll/...      → explicit coordinate query params.
-  //   3. staticmap pin → the rendered pin centre (accurate for shared places).
-  //   4. @lat,lng      → only the camera/viewport centre, often offset from the
-  //                      real pin, so it is the last resort.
-  const patterns: RegExp[] = [
-    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
-    /[?&](?:q|ll|destination|daddr)=(-?\d+(?:\.\d+)?)(?:,|%2C)(-?\d+(?:\.\d+)?)/i,
-    /staticmap\?[^"'<>]*?center=(-?\d+(?:\.\d+)?)(?:,|%2C)(-?\d+(?:\.\d+)?)/i,
-    /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
-  ];
-  for (const re of patterns) {
-    const m = haystack.match(re);
-    if (m) {
-      const lat = Number(m[1]);
-      const lng = Number(m[2]);
-      if (
-        Number.isFinite(lat) &&
-        Number.isFinite(lng) &&
-        Math.abs(lat) <= 90 &&
-        Math.abs(lng) <= 180
-      ) {
-        return { lat, lng };
-      }
-    }
-  }
-
-  console.warn("geoFromGoogleMapsUrl: no coordinates found", { url, finalUrl });
-  return null;
-}
+// Mobile clipboards often wrap the share link in prose ("Quán X https://…")
+// and the picker may hand back an http:// form. Pull out the first URL and
+// upgrade the scheme before the https-only guard runs, so a phone paste that
+// "looks" malformed still validates and stores cleanly.
+const mapsUrlInput = z.preprocess((val) => {
+  if (typeof val !== "string") return val;
+  const trimmed = val.trim();
+  if (!trimmed) return undefined;
+  const url = extractFirstUrl(trimmed);
+  if (!url) return trimmed; // let httpsUrl produce a clear validation error
+  return url.replace(/^http:\/\//i, "https://");
+}, httpsUrl.optional());
 
 const locationInput = z.object({
   name: z.string().trim().min(1).max(120),
   district: districtSchema,
   category: categorySchema,
   geo: geo.optional(),
-  googleMapsUrl: httpsUrl.optional(),
+  googleMapsUrl: mapsUrlInput,
   socialUrl: httpsUrl.optional(),
   mustTry: z.string().trim().max(200).optional(),
   rating: z.number().int().min(1).max(5).optional(),
@@ -146,7 +93,7 @@ export const locationRouter = router({
       // Auto-drop a pin from the pasted Google Maps link when no coords were set.
       let geoVal = input.geo;
       if (!geoVal && input.googleMapsUrl) {
-        geoVal = (await geoFromGoogleMapsUrl(input.googleMapsUrl)) ?? undefined;
+        geoVal = (await resolveGeoFromMapsUrl(input.googleMapsUrl)) ?? undefined;
       }
       const doc = await LocationModel.create({
         ...input,
@@ -166,7 +113,7 @@ export const locationRouter = router({
       const { id, ...patch } = input;
       // Re-resolve a pin when the maps link changed and no coords were provided.
       if (!patch.geo && patch.googleMapsUrl) {
-        const g = await geoFromGoogleMapsUrl(patch.googleMapsUrl);
+        const g = await resolveGeoFromMapsUrl(patch.googleMapsUrl);
         if (g) patch.geo = g;
       }
       const update: Record<string, unknown> = { $set: patch };
