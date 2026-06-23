@@ -1,34 +1,37 @@
 // Server-side coordinate extraction from any pasted map link, on any device.
 //
-// The hard part is that the *same* link, shared from different places, carries
-// its coordinates very differently:
-//   - Desktop "Copy link" / address bar  -> coords live in the URL (/@lat,lng, !3d!4d)
-//   - Mobile app "Share" (maps.app.goo.gl) -> redirects to a data-only place URL
-//        (…/place//data=!4m2!3m1!1s0x…) whose coords exist ONLY in the page HTML,
-//        surfaced through the rendered staticmap (…/staticmap?center=lat,lng).
-//   - Apple Maps                          -> coords in ?ll= / ?sll= / ?coordinate=
+// The same link carries its coordinates very differently by source:
+//   - Desktop "Copy link" / address bar    -> coords in the URL (/@lat,lng, !3d!4d)
+//   - Mobile app "Share" (maps.app.goo.gl)  -> redirects to a *data-only* place URL
+//        (…/place/Name/data=!4m2!3m1!1s0x…) carrying only a feature id — NO coords
+//        in the URL. They live only in the page HTML (the rendered
+//        …/staticmap?center=lat,lng and the camera triple !2d{lng}!3d{lat}).
+//   - Apple Maps                            -> coords in ?ll= / ?sll= / ?coordinate=
 //
-// So we: parse the URL string first (instant, no network), and only when that
-// is empty do we follow the redirect chain by hand — scanning every hop URL
-// (including percent-decoded consent `continue=` targets) plus the final HTML.
+// Critical: Google's HTML differs by user-agent. The DESKTOP page embeds the
+// staticmap + camera coords we can parse; the MOBILE page hides them (coords
+// survive only as a bare [lng,lat] array — too ambiguous to parse safely). So
+// resolution always fetches with a desktop UA, regardless of the user's device.
+//
+// We parse the URL string first (instant, no network), and only when that is
+// empty follow the redirect chain by hand — scanning every hop URL (incl.
+// percent-decoded consent `continue=` targets) plus the final desktop HTML.
 
 export type LatLng = { lat: number; lng: number };
 
 const DESKTOP_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-const IOS_UA =
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1";
 
 const MAX_HOPS = 6;
-const REQUEST_TIMEOUT_MS = 5000;
-// A healthy Google link resolves in ~0.1–0.3s, so the first (desktop-UA) pass
-// is held to a tight budget: it catches every legit link well inside this, and
-// the cap only ever bites a stalled/hostile first hop.
-const FAST_PASS_BUDGET_MS = 2000;
-// Hard ceiling across both passes so an interactive mutation can never hang on
-// a slow/dead redirect chain. Only ever reached by the fallback pass on a
-// genuinely dead/hostile host — and stays under the platform function timeout.
-const TOTAL_DEADLINE_MS = 8000;
+// Per-fetch ceiling. A real Google chain (short link 302 → place page + ~170KB
+// HTML) lands in ~1–2s, but Google's TTFB from a datacenter IP is variable, so
+// this is generous: cutting a fetch off early just to chase "<2s" was throwing
+// away the only response that actually carries the coordinates.
+const REQUEST_TIMEOUT_MS = 6000;
+// Hard ceiling across both attempts so an interactive mutation can never hang
+// on a slow/dead redirect chain. Healthy links finish far inside it; only a
+// genuinely slow/hostile host ever approaches it.
+const TOTAL_DEADLINE_MS = 10000;
 // Cap scanned HTML so a huge/hostile body can't blow up memory or regex time.
 const MAX_HTML_CHARS = 2_000_000;
 
@@ -44,15 +47,29 @@ const LAT = "(-?\\d{1,2}(?:\\.\\d+)?)";
 const LNG = "(-?\\d{1,3}(?:\\.\\d+)?)";
 const SEP = "(?:,|%2C|%2c)";
 
+// Each pattern says which capture group is latitude vs longitude — Google's
+// camera triple is (lng, lat), reversed from everything else. All regexes are
+// global so extractGeoFromText can scan every occurrence (see below).
+type CoordPattern = { re: RegExp; lat: 1 | 2; lng: 1 | 2 };
+
 // Most accurate first. The viewport (`@lat,lng`) is the camera centre and can
 // sit far from the real pin, so it is the last resort.
-const PATTERNS: RegExp[] = [
-  new RegExp(`!3d${LAT}!4d${LNG}`), // exact place marker
-  new RegExp(`staticmap\\?[^"'<>]*?center=${LAT}${SEP}${LNG}`, "i"), // rendered pin
-  new RegExp(`[?&](?:q|query|ll|sll|saddr|daddr|destination|coordinate|viewpoint)=${LAT}${SEP}${LNG}`, "i"),
-  new RegExp(`\\[null,null,${LAT},${LNG}\\]`), // modern maps HTML place array
-  new RegExp(`[?&]center=${LAT}${SEP}${LNG}`, "i"), // viewport-ish, acceptable fallback
-  new RegExp(`@${LAT},${LNG}`), // viewport — last resort
+const PATTERNS: CoordPattern[] = [
+  { re: new RegExp(`!3d${LAT}!4d${LNG}`, "g"), lat: 1, lng: 2 }, // exact place marker
+  // Rendered pin — unambiguously the page's subject. Ordered above the camera
+  // triple so a page's *nearby* places (each with their own camera triple)
+  // can't shadow the real pin.
+  { re: new RegExp(`staticmap\\?[^"'<>]*?center=${LAT}${SEP}${LNG}`, "gi"), lat: 1, lng: 2 },
+  // Camera/place triple `!2d{lng}!3d{lat}` — the form a mobile app-share's
+  // data-only place page embeds when no staticmap is present. Decimals required
+  // so it can't match integer zoom/index fields in the same `!Nd…` run.
+  { re: new RegExp(`!2d(-?\\d{1,3}\\.\\d+)!3d(-?\\d{1,2}\\.\\d+)`, "g"), lat: 2, lng: 1 },
+  { re: new RegExp(`[?&](?:q|query|ll|sll|saddr|daddr|destination|coordinate|viewpoint)=${LAT}${SEP}${LNG}`, "gi"), lat: 1, lng: 2 },
+  // Desktop place array `[null,null,lat,lng]` — distinct from the mobile bare
+  // `[lng,lat]` array we deliberately don't parse (too ambiguous).
+  { re: new RegExp(`\\[null,null,${LAT},${LNG}\\]`, "g"), lat: 1, lng: 2 },
+  { re: new RegExp(`[?&]center=${LAT}${SEP}${LNG}`, "gi"), lat: 1, lng: 2 }, // viewport-ish, acceptable fallback
+  { re: new RegExp(`@${LAT},${LNG}`, "g"), lat: 1, lng: 2 }, // viewport — last resort
 ];
 
 function inRange(lat: number, lng: number): boolean {
@@ -80,11 +97,14 @@ function safeDecode(s: string): string {
  */
 export function extractGeoFromText(haystack: string): LatLng | null {
   const text = `${haystack}\n${safeDecode(haystack)}`;
-  for (const re of PATTERNS) {
-    const m = text.match(re);
-    if (m) {
-      const lat = Number(m[1]);
-      const lng = Number(m[2]);
+  for (const { re, lat: latIdx, lng: lngIdx } of PATTERNS) {
+    // Scan every occurrence and take the first in-range one, so a leading
+    // junk/out-of-range hit (or a nearby-place coordinate) doesn't shadow a
+    // valid later match of the same pattern. matchAll needs the global flag
+    // and is safe to reuse — it doesn't mutate the regex's lastIndex.
+    for (const m of text.matchAll(re)) {
+      const lat = Number(m[latIdx]);
+      const lng = Number(m[lngIdx]);
       if (inRange(lat, lng)) return { lat, lng };
     }
   }
@@ -200,22 +220,18 @@ export async function resolveGeoFromMapsUrl(input: string): Promise<LatLng | nul
   const url = extractFirstUrl(input);
   if (!url) return null;
 
-  // 1. Fast path — coords already in the URL string (desktop/full/Apple links).
+  // 1. Fast path — coords already in the URL string (full/desktop/Apple links).
   const direct = extractGeoFromText(url);
   if (direct) return direct;
 
-  // 2. Network path — short links and data-only place URLs need resolving.
+  // 2. Network path — short links and data-only place URLs resolve only via the
+  // page HTML. Always fetch with the desktop UA (the mobile layout hides coords
+  // from any parseable form). A second desktop attempt covers a transient first
+  // failure (cold function, momentary TTFB spike, fleeting consent wall).
   if (!isFetchableMapsUrl(url)) return null;
-
-  const startedAt = Date.now();
-  // Fast pass: a healthy link resolves here in a fraction of a second; bounded
-  // so a slow/hostile first hop can never drag a normal paste past ~2s.
-  const desktop = await followAndScan(url, DESKTOP_UA, startedAt + FAST_PASS_BUDGET_MS);
-  if (desktop) return desktop;
-
-  // 3. Fallback: only on a miss, drawing the remaining budget up to the hard
-  // ceiling. The mobile layout returns different (often richer) HTML.
-  const totalDeadline = startedAt + TOTAL_DEADLINE_MS;
-  if (Date.now() >= totalDeadline) return null;
-  return followAndScan(url, IOS_UA, totalDeadline);
+  const deadline = Date.now() + TOTAL_DEADLINE_MS;
+  const first = await followAndScan(url, DESKTOP_UA, deadline);
+  if (first) return first;
+  if (Date.now() >= deadline) return null;
+  return followAndScan(url, DESKTOP_UA, deadline);
 }

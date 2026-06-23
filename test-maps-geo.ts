@@ -39,6 +39,23 @@ console.log("extractGeoFromText");
   ok("marker beats viewport", !!g && near(g.lat, 10.776));
 }
 {
+  // Google camera triple is (lng, lat) — must NOT come out swapped. This is the
+  // form a mobile app-share's data-only place page embeds.
+  const g = extractGeoFromText("!1d5000!2d106.7122688!3d10.819993599999998!2m3");
+  ok("camera !2d{lng}!3d{lat} (not swapped)", !!g && near(g.lat, 10.82) && near(g.lng, 106.712));
+}
+{
+  // Rendered staticmap (the subject pin) must win over a nearby-place camera
+  // triple that appears earlier in the HTML.
+  const g = extractGeoFromText("nearby !2d100.5!3d13.7 … staticmap?center=10.8199936%2C106.7122688&");
+  ok("staticmap beats earlier nearby camera", !!g && near(g.lat, 10.82) && near(g.lng, 106.712));
+}
+{
+  // A leading out-of-range hit of a pattern must not block a later valid one.
+  const g = extractGeoFromText("!2d200.0!3d10.8 … !2d106.7122688!3d10.819993599999998");
+  ok("out-of-range first match skipped for later valid", !!g && near(g.lat, 10.82) && near(g.lng, 106.712));
+}
+{
   const g = extractGeoFromText('staticmap?center=10.82%2C106.71&zoom=15');
   ok("staticmap center (encoded)", !!g && near(g.lat, 10.82) && near(g.lng, 106.71));
 }
