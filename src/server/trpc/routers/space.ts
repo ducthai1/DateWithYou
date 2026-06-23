@@ -6,6 +6,7 @@ import { router, authedProcedure, protectedProcedure } from "@/server/trpc/trpc"
 import { connectToDatabase } from "@/server/db/connect";
 import { SpaceModel } from "@/server/db/models/space";
 import { SpecialDateModel } from "@/server/db/models/special-date";
+import { deleteSpaceAndData } from "@/server/db/delete-space-cascade";
 import { resolveMemberProfiles } from "@/server/auth/member-profiles";
 import { mergeTags, type Tag } from "@/lib/plan-meta";
 import { THEME_PRESET_KEYS, resolveThemeKey } from "@/lib/theme-presets";
@@ -25,6 +26,10 @@ type MemberProfileOverride = {
 const generateInviteCode = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 10);
 const hashCode = (code: string) =>
   createHash("sha256").update(code.trim().toUpperCase()).digest("hex");
+// Delete-PINs are user-chosen secrets, so (unlike invite codes) we keep case
+// and don't uppercase — but still trim surrounding whitespace.
+const hashPin = (pin: string) =>
+  createHash("sha256").update(pin.trim()).digest("hex");
 const INVITE_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
 // MongoDB duplicate-key (unique index) error.
@@ -61,6 +66,8 @@ export const spaceRouter = router({
         members: string[];
         createdBy?: string;
         isPersonal?: boolean;
+        pin?: string;
+        pinHash?: string;
       }>();
     }
     
@@ -74,6 +81,8 @@ export const spaceRouter = router({
         members: string[];
         createdBy?: string;
         isPersonal?: boolean;
+        pin?: string;
+        pinHash?: string;
       }>();
     }
 
@@ -89,6 +98,8 @@ export const spaceRouter = router({
       memberCount: space.members.length,
       createdBy: space.createdBy ?? space.members[0],
       isPersonal: space.isPersonal ?? false,
+      // Lets the settings UI pick the right delete gate (PIN vs type-the-name).
+      hasPin: Boolean(space.pinHash || space.pin),
     };
   }),
 
@@ -101,11 +112,13 @@ export const spaceRouter = router({
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       try {
+        const pin = input.pin?.trim();
         const doc = await SpaceModel.create({
           name: input.name,
           members: [ctx.userId],
           themePreset: "terracotta",
-          pin: input.pin,
+          // Optional delete-PIN, stored hashed (never plaintext).
+          pinHash: pin ? hashPin(pin) : undefined,
           createdBy: ctx.userId,
           isPersonal: input.isPersonal ?? false,
         });
@@ -201,24 +214,59 @@ export const spaceRouter = router({
       return { id: String(joined._id) };
     }),
 
+  // Creator-only, irreversible. A space with a delete-PIN requires the exact
+  // PIN; one without (legacy/onboarding-skipped) requires typing the space name
+  // — so no space is ever deletable by an empty or arbitrary string. Removes
+  // every space-scoped record, not just the space doc.
   delete: protectedProcedure
-    .input(z.object({ pin: z.string().min(1) }))
+    .input(z.object({ pin: z.string().optional(), confirmName: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
-      const space = await SpaceModel.findById(ctx.spaceId).lean<{ createdBy?: string; pin?: string; isPersonal?: boolean }>();
-      
+      const space = await SpaceModel.findById(ctx.spaceId).lean<{
+        name: string;
+        createdBy?: string;
+        pin?: string;
+        pinHash?: string;
+        isPersonal?: boolean;
+      }>();
+
       if (!space) throw new TRPCError({ code: "NOT_FOUND", message: "Space not found" });
       if (space.isPersonal) throw new TRPCError({ code: "FORBIDDEN", message: "Cannot delete personal space" });
       if (space.createdBy !== ctx.userId) throw new TRPCError({ code: "FORBIDDEN", message: "Only creator can delete" });
-      // Only enforce the PIN when one was actually set. Spaces created via the
-      // onboarding flow have no PIN, so requiring a match made them permanently
-      // undeletable; in that case any non-empty PIN the UI collects is accepted.
-      if (space.pin && space.pin !== input.pin)
-        throw new TRPCError({ code: "FORBIDDEN", message: "Mã PIN không đúng" });
-      
-      await SpaceModel.findByIdAndDelete(ctx.spaceId);
-      // We should also delete related collections (locations, memories, etc.) but for simplicity, we just delete the space doc for now.
+
+      if (space.pinHash || space.pin) {
+        const pin = input.pin?.trim() ?? "";
+        // pinHash is canonical; fall back to a legacy plaintext compare.
+        const ok = space.pinHash ? hashPin(pin) === space.pinHash : pin === space.pin;
+        if (!pin || !ok)
+          throw new TRPCError({ code: "FORBIDDEN", message: "Mã PIN không đúng" });
+      } else if (input.confirmName?.trim() !== space.name.trim()) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Tên không gian không khớp" });
+      }
+
+      await deleteSpaceAndData(ctx.spaceId);
       return { ok: true };
+    }),
+
+  // Set, change, or clear (empty string) the creator's delete-PIN for the
+  // active space — so a space created without one can be protected later.
+  setPin: protectedProcedure
+    .input(z.object({ pin: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const space = await SpaceModel.findById(ctx.spaceId).lean<{ createdBy?: string }>();
+      if (!space) throw new TRPCError({ code: "NOT_FOUND", message: "Space not found" });
+      if (space.createdBy !== ctx.userId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only creator can set PIN" });
+
+      const pin = input.pin.trim();
+      await SpaceModel.findByIdAndUpdate(
+        ctx.spaceId,
+        pin
+          ? { $set: { pinHash: hashPin(pin) }, $unset: { pin: "" } }
+          : { $unset: { pinHash: "", pin: "" } },
+      );
+      return { ok: true, hasPin: pin.length > 0 };
     }),
 
   // Member display profiles (name + avatar from Better Auth, with optional

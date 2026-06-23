@@ -33,6 +33,8 @@ export function SpaceSettings() {
   const [newSpaceName, setNewSpaceName] = useState("");
   const [newSpacePin, setNewSpacePin] = useState("");
   const [deletePin, setDeletePin] = useState("");
+  const [confirmName, setConfirmName] = useState("");
+  const [managePin, setManagePin] = useState("");
   const { data: session } = authClient.useSession();
   
   // Avatar states
@@ -107,6 +109,12 @@ export function SpaceSettings() {
         router.replace("/onboarding");
       }
     }
+  });
+  const setSpacePin = trpc.space.setPin.useMutation({
+    onSuccess: () => {
+      utils.space.getMine.invalidate();
+      setManagePin("");
+    },
   });
 
   if (mine.isLoading || !mine.data || allMine.isLoading) {
@@ -375,24 +383,83 @@ export function SpaceSettings() {
       {mine.data && !mine.data.isPersonal && mine.data.createdBy === session?.user.id && (
         <>
         <h2 className="text-lg font-semibold mt-2 text-destructive">Vùng nguy hiểm</h2>
-        <Card className="space-y-3 border-destructive">
-          <p className="text-sm font-medium text-destructive">Xoá không gian</p>
-          <p className="text-xs text-muted-foreground">Chỉ người tạo mới có thể xoá không gian. Vui lòng nhập mã PIN đã đặt lúc tạo.</p>
+
+        {/* Set / change / clear the delete-PIN — so a space created without one
+            (e.g. via onboarding) can be protected later. */}
+        <Card className="space-y-3">
+          <p className="text-sm font-medium">Mã PIN xoá không gian</p>
+          <p className="text-xs text-muted-foreground">
+            {mine.data.hasPin
+              ? "Đang có mã PIN. Nhập mã mới để đổi, hoặc để trống rồi lưu để gỡ mã."
+              : "Chưa đặt mã PIN. Đặt mã để cần mã khi xoá; nếu không, xoá sẽ cần gõ đúng tên không gian."}
+          </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
-              placeholder="Nhập mã PIN"
-              value={deletePin}
-              onChange={(e) => setDeletePin(e.target.value)}
+              type="password"
+              placeholder={mine.data.hasPin ? "Mã PIN mới (để trống = gỡ)" : "Đặt mã PIN"}
+              value={managePin}
+              onChange={(e) => setManagePin(e.target.value)}
             />
             <Button
-              variant="destructive"
+              variant="outline"
               className="w-full whitespace-nowrap touch-manipulation sm:w-auto"
-              disabled={deleteSpace.isPending || !deletePin.trim()}
-              onClick={() => deleteSpace.mutate({ pin: deletePin.trim() })}
+              disabled={setSpacePin.isPending}
+              onClick={() => setSpacePin.mutate({ pin: managePin.trim() })}
             >
-              Xoá không gian
+              {setSpacePin.isPending ? "Đang lưu…" : "Lưu mã PIN"}
             </Button>
           </div>
+          {setSpacePin.isSuccess && <p className="text-xs text-accent">Đã cập nhật mã PIN ✓</p>}
+          {setSpacePin.isError && <p className="text-xs text-destructive">{setSpacePin.error.message}</p>}
+        </Card>
+
+        <Card className="space-y-3 border-destructive">
+          <p className="text-sm font-medium text-destructive">Xoá không gian</p>
+          <p className="text-xs text-muted-foreground">
+            Chỉ người tạo mới có thể xoá. Toàn bộ địa điểm, kỷ niệm, lịch… của không gian này sẽ bị xoá vĩnh viễn.
+          </p>
+          {mine.data.hasPin ? (
+            <>
+              <p className="text-xs text-muted-foreground">Nhập mã PIN đã đặt để xác nhận.</p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  type="password"
+                  placeholder="Nhập mã PIN"
+                  value={deletePin}
+                  onChange={(e) => setDeletePin(e.target.value)}
+                />
+                <Button
+                  variant="destructive"
+                  className="w-full whitespace-nowrap touch-manipulation sm:w-auto"
+                  disabled={deleteSpace.isPending || !deletePin.trim()}
+                  onClick={() => deleteSpace.mutate({ pin: deletePin.trim() })}
+                >
+                  Xoá không gian
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Gõ đúng tên <span className="font-medium text-foreground">“{mine.data.name}”</span> để xác nhận xoá.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  placeholder="Nhập tên không gian"
+                  value={confirmName}
+                  onChange={(e) => setConfirmName(e.target.value)}
+                />
+                <Button
+                  variant="destructive"
+                  className="w-full whitespace-nowrap touch-manipulation sm:w-auto"
+                  disabled={deleteSpace.isPending || confirmName.trim() !== mine.data.name.trim()}
+                  onClick={() => deleteSpace.mutate({ confirmName: confirmName.trim() })}
+                >
+                  Xoá không gian
+                </Button>
+              </div>
+            </>
+          )}
           {deleteSpace.isError && <p className="text-xs text-destructive">{deleteSpace.error.message}</p>}
         </Card>
         </>

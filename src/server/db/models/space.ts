@@ -22,7 +22,14 @@ const spaceSchema = new Schema(
     themePreset: { type: String, default: "terracotta" },
     anniversaryDate: { type: Date },
     members: { type: [String], required: true, default: [] },
+    /**
+     * @deprecated Legacy plaintext delete-PIN. Still read on delete for spaces
+     * created before hashing, but never written anymore. Use `pinHash`.
+     */
     pin: { type: String },
+    // SHA-256 of the creator's delete-PIN (case-sensitive, trimmed). Optional —
+    // a space with neither pin nor pinHash is deleted via type-the-name confirm.
+    pinHash: { type: String },
     createdBy: { type: String },
     isPersonal: { type: Boolean, default: false },
     inviteCodeHash: { type: String },

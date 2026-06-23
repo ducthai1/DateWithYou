@@ -28,6 +28,7 @@ export function Onboarding() {
   const mine = trpc.space.getMine.useQuery();
   const [tab, setTab] = useState<"create" | "join">("create");
   const [name, setName] = useState("");
+  const [pin, setPin] = useState("");
   const [code, setCode] = useState("");
 
   // Enter the freshly created/joined space. We set the active-space cookie and do
@@ -160,6 +161,16 @@ export function Onboarding() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
+                <Input
+                  label="Mã PIN xoá không gian (tuỳ chọn)"
+                  type="password"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                />
+                <p className="-mt-1 px-1 text-xs text-muted-foreground">
+                  Đặt mã PIN nếu muốn cần mã để xoá không gian sau này. Bỏ trống
+                  cũng được — khi đó xoá sẽ cần gõ đúng tên không gian.
+                </p>
                 {create.error && (
                   <ErrorCard
                     message={
@@ -172,7 +183,7 @@ export function Onboarding() {
                 <Button
                   className="h-11 w-full touch-manipulation"
                   disabled={!name.trim() || create.isPending}
-                  onClick={() => create.mutate({ name: name.trim() })}
+                  onClick={() => create.mutate({ name: name.trim(), pin: pin.trim() || undefined })}
                 >
                   {create.isPending ? (
                     <span className="flex items-center justify-center gap-2">
