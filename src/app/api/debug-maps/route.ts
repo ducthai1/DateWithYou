@@ -9,6 +9,7 @@ import {
   extractGeoFromText,
   isFetchableMapsUrl,
 } from "@/server/lib/resolve-maps-geo";
+import { geocodeAddress } from "@/server/lib/geocode-address";
 
 export const dynamic = "force-dynamic";
 
@@ -120,7 +121,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "not a fetchable Google maps URL", url }, { status: 400 });
 
   const [resolved, desktop] = await Promise.all([
-    resolveGeoFromMapsUrl(url),
+    resolveGeoFromMapsUrl(url, geocodeAddress),
     trace(url, UAS.desktop),
   ]);
 

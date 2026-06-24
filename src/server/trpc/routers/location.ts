@@ -13,6 +13,7 @@ import { SpaceModel } from "@/server/db/models/space";
 import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 import { requireEnv } from "@/lib/env";
 import { resolveGeoFromMapsUrl, extractFirstUrl } from "@/server/lib/resolve-maps-geo";
+import { geocodeAddress } from "@/server/lib/geocode-address";
 
 const districtSchema = z.string().trim().min(1);
 const categorySchema = z.string().trim().min(1);
@@ -93,7 +94,7 @@ export const locationRouter = router({
       // Auto-drop a pin from the pasted Google Maps link when no coords were set.
       let geoVal = input.geo;
       if (!geoVal && input.googleMapsUrl) {
-        geoVal = (await resolveGeoFromMapsUrl(input.googleMapsUrl)) ?? undefined;
+        geoVal = (await resolveGeoFromMapsUrl(input.googleMapsUrl, geocodeAddress)) ?? undefined;
       }
       const doc = await LocationModel.create({
         ...input,
@@ -113,7 +114,7 @@ export const locationRouter = router({
       const { id, ...patch } = input;
       // Re-resolve a pin when the maps link changed and no coords were provided.
       if (!patch.geo && patch.googleMapsUrl) {
-        const g = await resolveGeoFromMapsUrl(patch.googleMapsUrl);
+        const g = await resolveGeoFromMapsUrl(patch.googleMapsUrl, geocodeAddress);
         if (g) patch.geo = g;
       }
       const update: Record<string, unknown> = { $set: patch };

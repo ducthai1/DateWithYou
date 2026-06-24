@@ -6,6 +6,7 @@ import assert from "node:assert";
 import {
   extractFirstUrl,
   extractGeoFromText,
+  extractPlaceQuery,
   isFetchableMapsUrl,
 } from "./src/server/lib/resolve-maps-geo.ts";
 
@@ -70,6 +71,15 @@ console.log("extractGeoFromText");
 ok("0,0 rejected", extractGeoFromText("?q=0,0") === null);
 ok("out-of-range rejected", extractGeoFromText("@999,999") === null);
 ok("no coords", extractGeoFromText("https://maps.app.goo.gl/abc") === null);
+
+console.log("extractPlaceQuery (name+address from resolved place URL)");
+{
+  const u = "https://www.google.com/maps/place/Nh%C3%A0+Thu%E1%BB%91c+FPT+Long+Ch%C3%A2u,+404+Nguy%E1%BB%85n+Oanh,+An+Nh%C6%A1n,+H%E1%BB%93+Ch%C3%AD+Minh+700000/data=!4m2!3m1!1s0x317529e8652ccba9:0x5e195207235c6c98";
+  const q = extractPlaceQuery(u);
+  ok("decodes name+address (HCMC)", q === "Nhà Thuốc FPT Long Châu, 404 Nguyễn Oanh, An Nhơn, Hồ Chí Minh 700000");
+}
+ok("no /place/ segment -> null", extractPlaceQuery("https://www.google.com/maps/@10.8,106.7,17z") === null);
+ok("empty place segment -> null", extractPlaceQuery("https://www.google.com/maps/place//data=!1s0x0:0x0") === null);
 
 console.log("isFetchableMapsUrl — ALLOW");
 for (const u of [
