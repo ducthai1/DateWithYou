@@ -26,6 +26,45 @@ function inRange(lat: number, lng: number): boolean {
   );
 }
 
+// Google Maps Platform — the only source with the *exact* coordinates of a
+// specific place (its own data), and it isn't IP/region-biased like the scraped
+// page. Optional: only used when GOOGLE_MAPS_API_KEY is configured. Tries
+// Places "Find Place" (matches the business itself) then Geocoding (the street
+// address). Free tier ($200/mo credit) covers a couple-app's volume easily.
+async function viaGoogle(query: string, timeoutMs: number): Promise<LatLng | null> {
+  const key = process.env.GOOGLE_MAPS_API_KEY;
+  if (!key) return null;
+  // 1. Exact POI match for the business.
+  try {
+    const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?inputtype=textquery&fields=geometry&key=${key}&input=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (res.ok) {
+      const data = (await res.json()) as {
+        candidates?: Array<{ geometry?: { location?: { lat: number; lng: number } } }>;
+      };
+      const loc = data.candidates?.[0]?.geometry?.location;
+      if (loc && inRange(loc.lat, loc.lng)) return { lat: loc.lat, lng: loc.lng };
+    }
+  } catch (err) {
+    console.error("geocode-address: google find-place failed", err);
+  }
+  // 2. Street-address geocode fallback.
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?key=${key}&address=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (res.ok) {
+      const data = (await res.json()) as {
+        results?: Array<{ geometry?: { location?: { lat: number; lng: number } } }>;
+      };
+      const loc = data.results?.[0]?.geometry?.location;
+      if (loc && inRange(loc.lat, loc.lng)) return { lat: loc.lat, lng: loc.lng };
+    }
+  } catch (err) {
+    console.error("geocode-address: google geocode failed", err);
+  }
+  return null;
+}
+
 // Stadia Maps (the app's existing routing provider) — Pelias geocoder. Reliable
 // from datacenter IPs since it's an authenticated API, not a scraped page.
 async function viaStadia(query: string, timeoutMs: number): Promise<LatLng | null> {
@@ -99,6 +138,14 @@ export async function geocodeAddress(
   const q = query.trim();
   if (!q) return null;
   const budget = () => (deadline ? deadline - Date.now() : MAX_CALL_MS);
+
+  // Google first — exact when a key is configured (no-op otherwise).
+  if (budget() >= 300) {
+    const exact = await viaGoogle(q, Math.min(MAX_CALL_MS, budget()));
+    if (exact) return exact;
+  }
+
+  // Approximate, key-free fallbacks.
   for (const variant of queryVariants(q)) {
     for (const provider of [viaStadia, viaNominatim]) {
       const left = budget();

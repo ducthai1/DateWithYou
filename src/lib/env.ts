@@ -24,6 +24,10 @@ const serverEnvSchema = z.object({
 
   // Phase 3 — Stadia Maps (Valhalla motor_scooter directions, server only)
   STADIA_API_KEY: z.string().optional(),
+  // Google Maps Platform (server only) — exact place coords for pasted map
+  // links via Places/Geocoding. Optional: without it, link resolution falls
+  // back to approximate Stadia/OSM geocoding.
+  GOOGLE_MAPS_API_KEY: z.string().optional(),
 
   // Phase 5 — Cloudinary asset cleanup (server only)
   CLOUDINARY_API_KEY: z.string().optional(),
