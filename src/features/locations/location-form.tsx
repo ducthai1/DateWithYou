@@ -137,9 +137,22 @@ export function LocationForm({
         value={v.googleMapsUrl}
         onChange={(e) => set("googleMapsUrl", e.target.value)}
       />
-      <p className="text-xs text-muted-foreground -mt-2 px-1">
-        Dán link Google Maps/Apple Maps (bắt đầu bằng https://) để tự lấy toạ độ.
-      </p>
+      <div className="-mt-2 px-1 space-y-1">
+        <p className="text-xs text-muted-foreground">
+          Dán link Google Maps/Apple Maps để tự lấy toạ độ. Vị trí lấy từ link có thể{" "}
+          <span className="font-medium text-foreground">gần đúng</span> — chạm bản đồ để đặt pin chính xác.
+        </p>
+        {v.googleMapsUrl.trim().startsWith("http") && (
+          <a
+            href={v.googleMapsUrl.trim()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-xs font-medium text-accent underline"
+          >
+            ↗ Mở link để xem đúng vị trí (rồi chạm bản đồ cho khớp)
+          </a>
+        )}
+      </div>
       <Input
         placeholder="Link TikTok/Instagram (https://)"
         value={v.socialUrl}

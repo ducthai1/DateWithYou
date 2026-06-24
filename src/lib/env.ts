@@ -26,8 +26,11 @@ const serverEnvSchema = z.object({
   STADIA_API_KEY: z.string().optional(),
   // Google Maps Platform (server only) — exact place coords for pasted map
   // links via Places/Geocoding. Optional: without it, link resolution falls
-  // back to approximate Stadia/OSM geocoding.
+  // back to Mapbox then approximate Stadia/OSM geocoding.
   GOOGLE_MAPS_API_KEY: z.string().optional(),
+  // Mapbox (server only) — richer POI geocoding than OSM, free tier needs no
+  // credit card. Optional fallback used when no Google key is set.
+  MAPBOX_TOKEN: z.string().optional(),
 
   // Phase 5 — Cloudinary asset cleanup (server only)
   CLOUDINARY_API_KEY: z.string().optional(),

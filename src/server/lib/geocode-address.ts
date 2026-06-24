@@ -65,6 +65,28 @@ async function viaGoogle(query: string, timeoutMs: number): Promise<LatLng | nul
   return null;
 }
 
+// Mapbox — richer POI data than OSM (can find a chain business by name), and a
+// free token needs no credit card. Optional: only used when MAPBOX_TOKEN is set.
+async function viaMapbox(query: string, timeoutMs: number): Promise<LatLng | null> {
+  const token = process.env.MAPBOX_TOKEN;
+  if (!token) return null;
+  try {
+    const url = `https://api.mapbox.com/search/geocode/v6/forward?limit=1&access_token=${token}&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      features?: Array<{ geometry?: { coordinates?: [number, number] } }>;
+    };
+    const coords = data.features?.[0]?.geometry?.coordinates;
+    if (!coords) return null;
+    const [lng, lat] = coords; // GeoJSON order is [lng, lat]
+    return inRange(lat, lng) ? { lat, lng } : null;
+  } catch (err) {
+    console.error("geocode-address: mapbox failed", err);
+    return null;
+  }
+}
+
 // Stadia Maps (the app's existing routing provider) — Pelias geocoder. Reliable
 // from datacenter IPs since it's an authenticated API, not a scraped page.
 async function viaStadia(query: string, timeoutMs: number): Promise<LatLng | null> {
@@ -139,13 +161,15 @@ export async function geocodeAddress(
   if (!q) return null;
   const budget = () => (deadline ? deadline - Date.now() : MAX_CALL_MS);
 
-  // Google first — exact when a key is configured (no-op otherwise).
-  if (budget() >= 300) {
-    const exact = await viaGoogle(q, Math.min(MAX_CALL_MS, budget()));
-    if (exact) return exact;
+  // Best providers first, on the full "name, address" query: Google (exact) then
+  // Mapbox (rich POI). Both are no-ops unless their key/token is configured.
+  for (const provider of [viaGoogle, viaMapbox]) {
+    if (budget() < 300) return null;
+    const hit = await provider(q, Math.min(MAX_CALL_MS, budget()));
+    if (hit) return hit;
   }
 
-  // Approximate, key-free fallbacks.
+  // Approximate, key-free fallbacks (OSM-based) with a street-only variant.
   for (const variant of queryVariants(q)) {
     for (const provider of [viaStadia, viaNominatim]) {
       const left = budget();
