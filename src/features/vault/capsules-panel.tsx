@@ -10,17 +10,26 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatDistanceToNow, format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { CapsuleUnlockModal } from "./capsule-unlock-modal";
+import { useToast } from "@/components/ui/toast";
 
 export function CapsulesPanel() {
   const session = authClient.useSession();
   const user = session.data?.user;
   const utils = trpc.useUtils();
+  const toast = useToast();
   const list = trpc.capsule.list.useQuery();
   const create = trpc.capsule.create.useMutation({
     onSuccess: () => {
       utils.capsule.list.invalidate();
       setFormOpen(false);
+      toast("Đã giấu kín hộp thời gian!", "success");
+      setTitle("");
+      setMessage("");
+      setUnlockDate("");
     },
+    onError: (err) => {
+      toast(err.message, "error");
+    }
   });
 
   const [formOpen, setFormOpen] = useState(false);

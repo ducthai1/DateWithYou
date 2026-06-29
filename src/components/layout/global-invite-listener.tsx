@@ -70,6 +70,8 @@ export function GlobalInviteListener() {
           role: "receiver",
         });
         router.push(`/map?loc=${result.locationId}&nav=1&t=${Date.now()}`);
+      } else if (!accept) {
+        toast("Đã từ chối lời mời", "success");
       }
     } catch (err) {
       console.error(err);

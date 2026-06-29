@@ -6,6 +6,7 @@ import { Check, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, MapPin, Users
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useCelebrate } from "@/components/ui/celebrate";
+import { useToast } from "@/components/ui/toast";
 import type { Tag } from "@/lib/plan-meta";
 import { colorsForTags } from "@/lib/plan-meta";
 
@@ -57,6 +58,7 @@ export function PlanItemCard({
 }) {
   const utils = trpc.useUtils();
   const celebrate = useCelebrate();
+  const toast = useToast();
   // Ref on the card container so the burst anchors to the tapped item.
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -78,6 +80,7 @@ export function PlanItemCard({
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) utils.calendar.dayDetail.setData({ date }, ctx.prev);
+      toast(_e.message, "error");
     },
     onSettled: () => utils.calendar.monthSummary.invalidate(),
   });
@@ -93,7 +96,9 @@ export function PlanItemCard({
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) utils.calendar.dayDetail.setData({ date }, ctx.prev);
+      toast(_e.message, "error");
     },
+    onSuccess: () => toast("Đã xoá kế hoạch", "success"),
     onSettled: () => utils.calendar.monthSummary.invalidate(),
   });
 
@@ -101,6 +106,7 @@ export function PlanItemCard({
   // but only refetch the open day (not the whole month) on success.
   const move = trpc.planItem.move.useMutation({
     onSuccess: () => utils.calendar.dayDetail.invalidate({ date }),
+    onError: (err) => toast(err.message, "error")
   });
 
   const done = item.status === "done";

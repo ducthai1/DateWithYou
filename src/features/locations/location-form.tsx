@@ -79,10 +79,10 @@ export function LocationForm({
 
   const onSuccess = () => {
     utils.location.list.invalidate();
-    toast("Đã lưu địa điểm ✓");
+    toast("Đã lưu địa điểm ✓", "success");
     onDone();
   };
-  const onError = () => toast("Lưu thất bại, thử lại nhé", "error");
+  const onError = (err: any) => toast("Lưu thất bại: " + (err?.message || "Thử lại nhé"), "error");
   const create = trpc.location.create.useMutation({ onSuccess, onError });
   const update = trpc.location.update.useMutation({ onSuccess, onError });
   const pending = create.isPending || update.isPending;

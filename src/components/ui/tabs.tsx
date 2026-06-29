@@ -15,27 +15,33 @@ export function Tabs<T extends string>({
   onChange: (key: T) => void;
   className?: string;
 }) {
+  const activeIndex = tabs.findIndex((t) => t.key === value);
+
   return (
     <div className={cn("bg-muted flex rounded-xl p-1 text-sm relative", className)}>
+      <div className="absolute inset-y-1 left-1 right-1 pointer-events-none" aria-hidden="true">
+        <motion.div
+          className="h-full rounded-lg bg-background shadow-sm"
+          initial={false}
+          animate={{
+            width: `${100 / tabs.length}%`,
+            x: `${activeIndex * 100}%`,
+          }}
+          transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+        />
+      </div>
       {tabs.map((t) => (
         <button
           key={t.key}
           onClick={() => onChange(t.key)}
           className={cn(
-            "relative flex-1 rounded-lg py-2 transition-colors outline-none",
+            "relative flex-1 rounded-lg py-2 transition-colors outline-none z-10",
             value === t.key
               ? "font-medium text-foreground"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          {value === t.key && (
-            <motion.div
-              layoutId="tab-indicator"
-              className="absolute inset-0 rounded-lg bg-background shadow-sm"
-              transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
-            />
-          )}
-          <span className="relative z-10">{t.label}</span>
+          {t.label}
         </button>
       ))}
     </div>

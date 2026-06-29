@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useCelebrate } from "@/components/ui/celebrate";
 import { Trash2, Plus, Lightbulb, Map, CheckCircle2, GripVertical } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 type PlanStatus = "idea" | "planning" | "done";
 
@@ -36,9 +37,16 @@ export function RoadmapBoard() {
 
   const list = trpc.plan.list.useQuery();
   const utils = trpc.useUtils();
+  const toast = useToast();
   const invalidate = () => utils.plan.list.invalidate();
-  const create = trpc.plan.create.useMutation({ onSuccess: () => { closeForm(); invalidate(); } });
-  const update = trpc.plan.update.useMutation({ onSuccess: () => { closeForm(); invalidate(); } });
+  const create = trpc.plan.create.useMutation({ 
+    onSuccess: () => { closeForm(); invalidate(); toast("Đã thêm dự định mới!", "success"); },
+    onError: (err) => toast(err.message, "error")
+  });
+  const update = trpc.plan.update.useMutation({ 
+    onSuccess: () => { closeForm(); invalidate(); toast("Đã cập nhật dự định!", "success"); },
+    onError: (err) => toast(err.message, "error")
+  });
   const setStatus = trpc.plan.setStatus.useMutation({
     onMutate: async ({ id, status }) => {
       await utils.plan.list.cancel();
@@ -52,12 +60,20 @@ export function RoadmapBoard() {
       if (context?.previous) {
         utils.plan.list.setData(undefined, context.previous);
       }
+      toast("Lỗi khi chuyển trạng thái: " + err.message, "error");
     },
     onSettled: () => {
       invalidate();
     },
+    onSuccess: (_, variables) => {
+      const statusLabel = COLUMNS.find(c => c.key === variables.status)?.label || "trạng thái mới";
+      toast(`Đã chuyển sang "${statusLabel}"`, "success");
+    }
   });
-  const remove = trpc.plan.remove.useMutation({ onSuccess: invalidate });
+  const remove = trpc.plan.remove.useMutation({ 
+    onSuccess: () => { invalidate(); toast("Đã xóa dự định!", "success"); },
+    onError: (err) => toast(err.message, "error")
+  });
 
   const celebrate = useCelebrate();
 

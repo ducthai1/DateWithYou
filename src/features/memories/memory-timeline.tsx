@@ -24,11 +24,14 @@ type EmbedField = {
   title: string | null;
 };
 
+import { useToast } from "@/components/ui/toast";
+
 function monthKey(d: Date): string {
   return new Date(d).toLocaleDateString("vi-VN", { month: "long", year: "numeric" });
 }
 
 export function MemoryTimeline() {
+  const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -37,7 +40,8 @@ export function MemoryTimeline() {
   const list = trpc.memory.list.useQuery();
   const utils = trpc.useUtils();
   const remove = trpc.memory.remove.useMutation({
-    onSuccess: () => utils.memory.list.invalidate(),
+    onSuccess: () => { utils.memory.list.invalidate(); toast("Đã xoá kỷ niệm", "success"); },
+    onError: (err) => toast(err.message, "error")
   });
 
   const all = list.data ?? [];
@@ -64,7 +68,7 @@ export function MemoryTimeline() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-28 md:pb-6 md:px-[30px]">
+    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-6 md:px-[30px]">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-h1 font-serif">Dòng kỷ niệm</h1>

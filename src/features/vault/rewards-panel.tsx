@@ -30,15 +30,21 @@ export function RewardsPanel() {
   const [vTitle, setVTitle] = useState("");
   const [vCost, setVCost] = useState("50");
 
-  const createTask = trpc.reward.createTask.useMutation({ onSuccess: () => { setTaskTitle(""); invalidate(); } });
-  const createVoucher = trpc.reward.createVoucher.useMutation({ onSuccess: () => { setVTitle(""); invalidate(); } });
+  const createTask = trpc.reward.createTask.useMutation({ 
+    onSuccess: () => { setTaskTitle(""); invalidate(); toast("Đã thêm nhiệm vụ", "success"); },
+    onError: (err) => toast(err.message, "error")
+  });
+  const createVoucher = trpc.reward.createVoucher.useMutation({ 
+    onSuccess: () => { setVTitle(""); invalidate(); toast("Đã thêm voucher", "success"); },
+    onError: (err) => toast(err.message, "error")
+  });
   const complete = trpc.reward.completeTask.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã cộng điểm ✓"); },
-    onError: () => toast("Cộng điểm thất bại, thử lại nhé", "error"),
+    onSuccess: () => { invalidate(); toast("Đã cộng điểm ✓", "success"); },
+    onError: (err) => toast("Cộng điểm thất bại: " + err.message, "error"),
   });
   const redeem = trpc.reward.redeem.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã đổi voucher 🎉"); },
-    onError: (err) => toast(err.message === "INSUFFICIENT_POINTS" ? "Không đủ điểm để đổi voucher này." : "Voucher này đã được đổi rồi.", "error"),
+    onSuccess: () => { invalidate(); toast("Đã đổi voucher 🎉", "success"); },
+    onError: (err) => toast(err.message === "INSUFFICIENT_POINTS" ? "Không đủ điểm để đổi voucher này." : "Lỗi đổi voucher: " + err.message, "error"),
   });
 
   const celebrate = useCelebrate();

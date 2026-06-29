@@ -1,4 +1,4 @@
-import { Map, CalendarHeart, Images, Lock, Library, type LucideIcon } from "lucide-react";
+import { Map, CalendarHeart, Images, Settings, Library, type LucideIcon } from "lucide-react";
 
 // Shared navigation source for both the mobile bottom nav and the desktop
 // sidebar so the two never drift apart. `center` marks the hero tab (Lịch),
@@ -8,7 +8,7 @@ export const NAV_ITEMS: { href: string; label: string; Icon: LucideIcon; center?
   { href: "/library", label: "Bộ sưu tập", Icon: Library },
   { href: "/calendar", label: "Lịch", Icon: CalendarHeart, center: true },
   { href: "/timeline", label: "Kỷ niệm", Icon: Images },
-  { href: "/vault", label: "Bí mật", Icon: Lock },
+  { href: "/settings", label: "Cài đặt", Icon: Settings },
 ];
 
 // Routes with no app chrome (landing, auth, onboarding).

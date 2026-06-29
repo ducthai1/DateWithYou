@@ -18,10 +18,13 @@ import {
 } from "@/lib/theme-presets";
 import { cn } from "@/lib/utils";
 
+import { useToast } from "@/components/ui/toast";
+
 export function SpaceSettings() {
   const router = useRouter();
   const mine = trpc.space.getMine.useQuery();
   const utils = trpc.useUtils();
+  const toast = useToast();
 
   const allMine = trpc.space.getAllMine.useQuery();
   
@@ -88,33 +91,44 @@ export function SpaceSettings() {
     onSuccess: () => {
       utils.space.getMine.invalidate();
       utils.space.getAllMine.invalidate();
+      toast("Đã lưu thiết lập giao diện", "success");
     },
+    onError: (err) => toast(err.message, "error")
   });
   const createInvite = trpc.space.createInvite.useMutation({
-    onSuccess: (d) => setInvite(d.code),
+    onSuccess: (d) => { setInvite(d.code); toast("Đã tạo mã mời", "success"); },
+    onError: (err) => toast(err.message, "error")
   });
   const createSpace = trpc.space.create.useMutation({
-    onSuccess: (data) => handleSpaceSwitch(data.id),
+    onSuccess: (data) => { toast("Đã tạo không gian", "success"); handleSpaceSwitch(data.id); },
+    onError: (err) => toast(err.message, "error")
   });
   const joinSpace = trpc.space.joinByCode.useMutation({
-    onSuccess: (data) => handleSpaceSwitch(data.id),
+    onSuccess: (data) => { toast("Đã tham gia không gian", "success"); handleSpaceSwitch(data.id); },
+    onError: (err) => toast(err.message, "error")
   });
   const deleteSpace = trpc.space.delete.useMutation({
     onSuccess: () => {
+      toast("Đã xoá không gian", "success");
       // Find another space to switch to
       const nextSpace = allMine.data?.find(s => s.id !== mine.data?.id);
       if (nextSpace) {
         handleSpaceSwitch(nextSpace.id);
       } else {
-        router.replace("/onboarding");
+        document.cookie = `active_space_id=; path=/; max-age=0`;
+        utils.space.getMine.setData(undefined, null);
+        window.location.assign("/onboarding");
       }
-    }
+    },
+    onError: (err) => toast(err.message, "error")
   });
   const setSpacePin = trpc.space.setPin.useMutation({
     onSuccess: () => {
       utils.space.getMine.invalidate();
       setManagePin("");
+      toast("Đã cập nhật mã PIN", "success");
     },
+    onError: (err) => toast(err.message, "error")
   });
 
   if (mine.isLoading || !mine.data || allMine.isLoading) {
@@ -140,38 +154,67 @@ export function SpaceSettings() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 pt-12 pb-28 md:pb-12 md:px-[30px]">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 pt-12 pb-12 md:px-[30px]">
       <h1 className="text-3xl font-semibold">Cài đặt</h1>
 
       <h2 className="text-lg font-semibold mt-2">Hồ sơ</h2>
 
-      {/* ── CÀI ĐẶT CÁ NHÂN ── */}
+      {/* ── HỒ SƠ ── */}
       <Card className="space-y-4 shadow-sm">
-        <p className="text-sm font-semibold text-accent">Hồ sơ cá nhân</p>
+        <p className="text-sm font-semibold text-accent">
+          {full ? "Hồ sơ thành viên" : "Hồ sơ cá nhân"}
+        </p>
         
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <img 
-              src={session?.user.image || PRESET_AVATARS[0]} 
-              alt="Avatar" 
-              className="h-16 w-16 rounded-full border-2 border-border object-cover bg-muted"
-            />
-            <div>
-              <p className="font-medium">{session?.user.name}</p>
-              <p className="text-sm text-muted-foreground">{session?.user.email}</p>
+          {full && mine.data.membersData ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {mine.data.membersData.map((member: any) => (
+                <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-3 shadow-sm">
+                  <img 
+                    src={member.image || PRESET_AVATARS[0]} 
+                    alt={member.name} 
+                    className="h-14 w-14 shrink-0 rounded-full border-2 border-border object-cover bg-muted"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{member.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                    {member.id === session?.user.id && (
+                      <span className="inline-block mt-1 bg-accent-soft text-accent text-[10px] px-2 py-0.5 rounded-full font-medium">Bạn</span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-4 rounded-xl border border-border bg-card/50 p-3 shadow-sm w-fit pr-8">
+              <img 
+                src={session?.user.image || PRESET_AVATARS[0]} 
+                alt="Avatar" 
+                className="h-14 w-14 rounded-full border-2 border-border object-cover bg-muted"
+              />
+              <div>
+                <p className="font-medium">{session?.user.name}</p>
+                <p className="text-sm text-muted-foreground">{session?.user.email}</p>
+              </div>
+            </div>
+          )}
           
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Chọn ảnh đại diện có sẵn</p>
+          <div className="space-y-2 pt-2 border-t border-border">
+            <p className="text-xs font-medium text-muted-foreground">Đổi ảnh đại diện của bạn</p>
             <div className="grid grid-cols-5 gap-2 sm:grid-cols-6 sm:gap-3">
               {displayAvatars.map((url, idx) => (
                 <button
                   key={url + idx}
                   onClick={async () => {
                     setIsUpdatingAvatar(true);
-                    await authClient.updateUser({ image: url });
-                    window.location.reload();
+                    const res = await authClient.updateUser({ image: url });
+                    if (res.error) {
+                      toast(res.error.message || "Lỗi khi cập nhật ảnh", "error");
+                      setIsUpdatingAvatar(false);
+                    } else {
+                      toast("Đã cập nhật ảnh đại diện", "success");
+                      setTimeout(() => window.location.reload(), 500);
+                    }
                   }}
                   disabled={isUpdatingAvatar}
                   className={cn(
@@ -199,8 +242,14 @@ export function SpaceSettings() {
                 disabled={!customAvatarUrl.trim() || isUpdatingAvatar}
                 onClick={async () => {
                   setIsUpdatingAvatar(true);
-                  await authClient.updateUser({ image: customAvatarUrl.trim() });
-                  window.location.reload();
+                  const res = await authClient.updateUser({ image: customAvatarUrl.trim() });
+                  if (res.error) {
+                    toast(res.error.message || "Lỗi khi cập nhật ảnh", "error");
+                    setIsUpdatingAvatar(false);
+                  } else {
+                    toast("Đã cập nhật ảnh đại diện", "success");
+                    setTimeout(() => window.location.reload(), 500);
+                  }
                 }}
               >
                 {isUpdatingAvatar ? "Đang lưu..." : "Lưu ảnh"}

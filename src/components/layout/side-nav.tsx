@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Lock, Dices, Settings } from "lucide-react";
 import { NAV_ITEMS, NAV_HIDDEN_ON } from "./nav-items";
 import { BrandMark } from "./brand-mark";
 import { useSidebar } from "./sidebar-context";
+import { SyncButton } from "./sync-button";
 import { cn } from "@/lib/utils";
 
 /** Desktop-only sidebar (md+). Mobile uses the bottom nav instead. */
@@ -45,7 +46,14 @@ export function SideNav() {
         </Link>
         
         <div className="flex flex-col gap-1">
-          {NAV_ITEMS.map((it) => {
+          {/* We explicitly define the desktop top items here because mobile bottom nav
+              swapped Vault and Settings, but desktop wants Vault in the top section
+              and Settings in the bottom section. */}
+          {[
+            ...NAV_ITEMS.filter(it => it.href !== "/settings"),
+            { href: "/wheel", label: "Vòng quay", Icon: Dices },
+            { href: "/vault", label: "Bí mật", Icon: Lock }
+          ].map((it) => {
             const active = pathname.startsWith(it.href);
             const Icon = it.Icon;
             return (
@@ -100,6 +108,7 @@ export function SideNav() {
             Cài đặt
           </span>
         </Link>
+        <SyncButton mode="desktop" isCollapsed={isCollapsed} />
         <button
           onClick={toggleSidebar}
           className={cn(

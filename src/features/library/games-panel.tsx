@@ -8,7 +8,7 @@ import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/m
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
-import { Dices, ChevronDown, ChevronUp, Users, Sparkles } from "lucide-react";
+import { Dices, ChevronDown, ChevronUp, Users, Sparkles, Gamepad2, Swords, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ── Pastel card colours for variety ── */
@@ -34,11 +34,15 @@ type GameItem = {
   tags: string[];
 };
 
+import { useToast } from "@/components/ui/toast";
+
 export function GamesPanel() {
+  const toast = useToast();
   const list = trpc.media.list.useQuery({ kind: "game" });
   const utils = trpc.useUtils();
   const remove = trpc.media.remove.useMutation({
-    onSuccess: () => utils.media.list.invalidate(),
+    onSuccess: () => { utils.media.list.invalidate(); toast("Đã xoá trò chơi", "success"); },
+    onError: (err) => toast(err.message, "error")
   });
 
   const [selected, setSelected] = useState<GameItem | null>(null);
@@ -57,90 +61,115 @@ export function GamesPanel() {
 
   if (list.isLoading) return <div className="h-40 animate-pulse rounded-xl bg-muted" />;
 
-  if (games.length === 0) {
-    return (
-      <EmptyState
-        icon="sparkles"
-        title="Chưa có trò chơi nào"
-        subtitle="Thêm trò chơi cho hai đứa (vd: Nối từ, 20 câu hỏi, Ai hiểu nhau hơn…)"
-      />
-    );
-  }
-
   return (
-    <>
-      <StaggerList className="grid gap-3 sm:grid-cols-2">
-        {games.map((game) => {
-          const color = CARD_COLORS[hashStr(game.title) % CARD_COLORS.length];
-          const isExpanded = expanded.has(game.id);
-          const hasNote = !!game.note?.trim();
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Promotional Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 p-6 text-white shadow-lg group">
+        <div className="absolute -right-6 -top-6 opacity-20 transition-transform duration-700 group-hover:scale-110 group-hover:rotate-12 pointer-events-none">
+          <Gamepad2 className="h-40 w-40 sm:h-48 sm:w-48" />
+        </div>
+        <div className="relative z-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1.5 max-w-lg">
+            <h2 className="text-xl font-bold sm:text-2xl flex items-center gap-2 drop-shadow-md">
+              <Swords className="h-6 w-6 text-yellow-300 drop-shadow" />
+              Classic Arena
+            </h2>
+            <p className="text-sm font-medium text-white/90 sm:text-base leading-relaxed drop-shadow-sm">
+              Trải nghiệm đấu trường game kinh điển dành riêng cho 2 người. Rủ rê người ấy vào so tài ngay xem ai mới là "trùm" thực sự!
+            </p>
+          </div>
+          <a
+            href="https://classic-arena.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 flex items-center gap-2 rounded-xl bg-white/20 px-6 py-3 text-sm font-bold backdrop-blur-md transition-all hover:bg-white/30 hover:scale-105 active:scale-95 border border-white/30 shadow-xl"
+          >
+            Chơi ngay
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        </div>
+      </div>
 
-          return (
-            <Card
-              key={game.id}
-              className={cn(
-                "relative overflow-hidden border bg-gradient-to-br p-0 transition-all duration-300",
-                color.bg,
-                color.border,
-              )}
-            >
-              {/* Decorative dice icon — hidden on mobile to avoid crowding title */}
-              <div className="absolute -right-3 -top-3 hidden opacity-[0.08] sm:block">
-                <Dices className="h-20 w-20 rotate-12" />
-              </div>
+      {games.length === 0 ? (
+        <EmptyState
+          icon="sparkles"
+          title="Chưa có trò chơi nào"
+          subtitle="Thêm trò chơi cho hai đứa (vd: Nối từ, 20 câu hỏi, Ai hiểu nhau hơn…)"
+        />
+      ) : (
+        <StaggerList className="grid gap-3 sm:grid-cols-2">
+          {games.map((game) => {
+            const color = CARD_COLORS[hashStr(game.title) % CARD_COLORS.length];
+            const isExpanded = expanded.has(game.id);
+            const hasNote = !!game.note?.trim();
 
-              <div className="relative p-4">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/60 shadow-sm", color.icon)}>
-                      <Dices className="h-4 w-4" />
-                    </div>
-                    <h3 className="font-bold text-sm text-stone-800 line-clamp-2 sm:truncate">{game.title}</h3>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setSelected(game)}
-                      className="text-[10px] font-medium text-stone-500 hover:text-stone-700 bg-white/50 rounded-full px-2 py-0.5 transition-colors"
-                    >
-                      Chi tiết
-                    </button>
-                  </div>
+            return (
+              <Card
+                key={game.id}
+                className={cn(
+                  "relative overflow-hidden border bg-gradient-to-br p-0 transition-all duration-300",
+                  color.bg,
+                  color.border,
+                )}
+              >
+                {/* Decorative dice icon — hidden on mobile to avoid crowding title */}
+                <div className="absolute -right-3 -top-3 hidden opacity-[0.08] sm:block">
+                  <Dices className="h-20 w-20 rotate-12" />
                 </div>
 
-                {/* Tags */}
-                {game.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {game.tags.map((t) => (
-                      <span key={t} className="rounded-full bg-white/50 px-2 py-0.5 text-[10px] font-medium text-stone-600">
-                        {t}
-                      </span>
-                    ))}
+                <div className="relative p-4">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/60 shadow-sm", color.icon)}>
+                        <Dices className="h-4 w-4" />
+                      </div>
+                      <h3 className="font-bold text-sm text-stone-800 line-clamp-2 sm:truncate">{game.title}</h3>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelected(game)}
+                        className="text-[10px] font-medium text-stone-500 hover:text-stone-700 bg-white/50 rounded-full px-2 py-0.5 transition-colors"
+                      >
+                        Chi tiết
+                      </button>
+                    </div>
                   </div>
-                )}
 
-                {/* Expandable rules preview */}
-                {hasNote && (
-                  <button
-                    type="button"
-                    onClick={() => toggle(game.id)}
-                    className="mt-2 flex w-full items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-700 transition-colors"
-                  >
-                    {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                    {isExpanded ? "Ẩn luật chơi" : "Xem luật chơi"}
-                  </button>
-                )}
-                {isExpanded && hasNote && (
-                  <div className="mt-2 rounded-lg bg-white/40 p-3 text-xs text-stone-700 leading-relaxed whitespace-pre-line backdrop-blur-sm">
-                    {game.note}
-                  </div>
-                )}
-              </div>
-            </Card>
-          );
-        })}
-      </StaggerList>
+                  {/* Tags */}
+                  {game.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {game.tags.map((t) => (
+                        <span key={t} className="rounded-full bg-white/50 px-2 py-0.5 text-[10px] font-medium text-stone-600">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Expandable rules preview */}
+                  {hasNote && (
+                    <button
+                      type="button"
+                      onClick={() => toggle(game.id)}
+                      className="mt-2 flex w-full items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-700 transition-colors"
+                    >
+                      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      {isExpanded ? "Ẩn luật chơi" : "Xem luật chơi"}
+                    </button>
+                  )}
+                  {isExpanded && hasNote && (
+                    <div className="mt-2 rounded-lg bg-white/40 p-3 text-xs text-stone-700 leading-relaxed whitespace-pre-line backdrop-blur-sm">
+                      {game.note}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </StaggerList>
+      )}
 
       {/* Detail modal */}
       {selected && (
@@ -184,6 +213,6 @@ export function GamesPanel() {
           </ModalFooter>
         </Modal>
       )}
-    </>
+    </div>
   );
 }

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/modal";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 
+import { useToast } from "@/components/ui/toast";
+
 type LocationSettingsModalProps = {
   initialCategories: string[];
   initialDistricts: string[];
@@ -23,14 +25,17 @@ export function LocationSettingsModal({
   const [newCategory, setNewCategory] = useState("");
   const [newDistrict, setNewDistrict] = useState("");
 
+  const toast = useToast();
   const utils = trpc.useUtils();
   const updateConfig = trpc.location.updateConfig.useMutation({
     onSuccess: () => {
       utils.location.getConfig.invalidate();
       // Optional: invalidate list if removing things changes filters
       utils.location.list.invalidate();
+      toast("Đã lưu cấu hình", "success");
       onClose();
     },
+    onError: (err) => toast(err.message, "error")
   });
 
   const handleAddCategory = () => {

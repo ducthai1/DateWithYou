@@ -6,6 +6,8 @@ import { Plus, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveIcon } from "@/lib/icon-registry";
 
+import { useToast } from "@/components/ui/toast";
+
 const QUICK_COLORS = ["#c2693f", "#e8a598", "#d4a373", "#a3b18a", "#cb997e", "#8a9bb0", "#b08bbd"];
 
 /** Multi-select tag chips from the space palette + inline quick-add of a new tag. */
@@ -16,10 +18,12 @@ export function TagPicker({
   value: string[];
   onChange: (next: string[]) => void;
 }) {
+  const toast = useToast();
   const utils = trpc.useUtils();
   const tags = trpc.space.tags.useQuery();
   const addTag = trpc.space.addTag.useMutation({
-    onSuccess: () => utils.space.tags.invalidate(),
+    onSuccess: () => { utils.space.tags.invalidate(); toast("Đã thêm nhãn mới", "success"); },
+    onError: (err) => toast(err.message, "error")
   });
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");

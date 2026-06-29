@@ -38,21 +38,28 @@ export function WishlistGrid() {
   const utils = trpc.useUtils();
   const invalidate = () => utils.wishlist.list.invalidate();
   const create = trpc.wishlist.create.useMutation({
-    onSuccess: () => { closeForm(); invalidate(); toast("Đã lưu vào wishlist ✓"); },
-    onError: () => toast("Lưu thất bại, thử lại nhé", "error"),
+    onSuccess: () => { closeForm(); invalidate(); toast("Đã lưu vào wishlist ✓", "success"); },
+    onError: (err) => toast(err.message, "error"),
   });
   const update = trpc.wishlist.update.useMutation({
-    onSuccess: () => { closeForm(); invalidate(); toast("Đã lưu vào wishlist ✓"); },
-    onError: () => toast("Lưu thất bại, thử lại nhé", "error"),
+    onSuccess: () => { closeForm(); invalidate(); toast("Đã cập nhật wishlist ✓", "success"); },
+    onError: (err) => toast(err.message, "error"),
   });
-  const toggle = trpc.wishlist.toggleBought.useMutation({ onSuccess: invalidate });
+  const toggle = trpc.wishlist.toggleBought.useMutation({ 
+    onSuccess: (_, variables) => { 
+      invalidate(); 
+      toast("Đã cập nhật trạng thái mua", "success"); 
+    },
+    onError: (err) => toast(err.message, "error")
+  });
   const remove = trpc.wishlist.remove.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã xoá"); },
+    onSuccess: () => { invalidate(); toast("Đã xoá món quà khỏi danh sách", "success"); },
+    onError: (err) => toast(err.message, "error")
   });
   const redeem = trpc.wishlist.redeem.useMutation({
     onSuccess: () => {
       invalidate();
-      toast("Đã đổi quà 🎁");
+      toast("Đã đổi quà 🎁", "success");
       // the confetti will be triggered from the button click
     },
     onError: (err) => { setRedeemError(err.message); toast(err.message, "error"); },

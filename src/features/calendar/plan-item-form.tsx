@@ -53,12 +53,12 @@ export function PlanItemForm({
     utils.calendar.monthSummary.invalidate();
   };
   const create = trpc.planItem.create.useMutation({
-    onSuccess: () => { invalidate(); onDone(); toast("Đã lưu kế hoạch ✓"); },
-    onError: () => toast("Lưu thất bại, thử lại nhé", "error"),
+    onSuccess: () => { invalidate(); onDone(); toast("Đã lưu kế hoạch", "success"); },
+    onError: (err) => toast(err.message, "error"),
   });
   const update = trpc.planItem.update.useMutation({
-    onSuccess: () => { invalidate(); onDone(); toast("Đã lưu kế hoạch ✓"); },
-    onError: () => toast("Lưu thất bại, thử lại nhé", "error"),
+    onSuccess: () => { invalidate(); onDone(); toast("Đã cập nhật kế hoạch", "success"); },
+    onError: (err) => toast(err.message, "error"),
   });
   const pending = create.isPending || update.isPending;
 

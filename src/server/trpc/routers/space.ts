@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { customAlphabet } from "nanoid";
@@ -87,6 +88,14 @@ export const spaceRouter = router({
     }
 
     if (!space) return null;
+    
+    // Fetch members' details
+    const membersData = await mongoose.connection.db!
+      .collection("user")
+      .find({ _id: { $in: space.members } } as any)
+      .project({ _id: 1, name: 1, email: 1, image: 1 })
+      .toArray();
+
     return {
       id: String(space._id),
       name: space.name,
@@ -96,6 +105,12 @@ export const spaceRouter = router({
       themePreset: resolveThemeKey(space.themePreset),
       coverImage: space.coverImage ?? null,
       memberCount: space.members.length,
+      membersData: membersData.map((u: any) => ({
+        id: String(u._id),
+        name: u.name,
+        email: u.email,
+        image: u.image,
+      })),
       createdBy: space.createdBy ?? space.members[0],
       isPersonal: space.isPersonal ?? false,
       // Lets the settings UI pick the right delete gate (PIN vs type-the-name).

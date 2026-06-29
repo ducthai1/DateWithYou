@@ -19,7 +19,10 @@ const SOURCE_TABS = [
   { key: "recipe", label: "Tự nấu 👩‍🍳" },
 ] as const;
 
+import { useToast } from "@/components/ui/toast";
+
 export function FoodWheel() {
+  const toast = useToast();
   const [source, setSource] = useState<(typeof SOURCE_TABS)[number]["key"]>("place");
   const [category, setCategory] = useState("");
   const [inviteError, setInviteError] = useState(false);
@@ -39,11 +42,15 @@ export function FoodWheel() {
       {
         onSuccess: () => {
           setWinner(null);
-          // Redirect to map to see the invite waiting state
-          window.location.href = "/map";
+          toast("Đã gửi lời mời", "success");
+          setTimeout(() => {
+            // Redirect to map to see the invite waiting state
+            window.location.href = "/map";
+          }, 1000);
         },
-        onError: () => {
+        onError: (err) => {
           setInviteError(true);
+          toast(err.message || "Gửi lời mời thất bại", "error");
         },
       },
     );
@@ -114,21 +121,21 @@ export function FoodWheel() {
       : "var(--muted)";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-8 pb-28 md:pb-8 md:px-[30px]">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-8 pb-8 md:px-[30px]">
       <h1 className="text-2xl font-semibold">Hôm nay ăn gì?</h1>
 
       {/* Source tabs + helper */}
-      <div className="flex w-full max-w-xs flex-col items-center gap-1">
+      <div className="flex w-full max-w-xs sm:max-w-md flex-col items-center gap-2 text-center">
         <Tabs tabs={SOURCE_TABS} value={source} onChange={setSource} className="w-full" />
-        <p className="text-muted-foreground text-xs">
+        <p className="text-muted-foreground text-xs sm:text-sm">
           Chọn nguồn để quay: quán đã lưu hoặc công thức tự nấu.
         </p>
       </div>
 
       {/* Category filter — only for places */}
       {source === "place" && (
-        <div className="flex w-full max-w-xs flex-col gap-1">
-          <label className="text-muted-foreground text-xs font-medium">
+        <div className="flex w-full max-w-xs sm:max-w-md flex-col gap-1">
+          <label className="text-muted-foreground text-xs sm:text-sm font-medium">
             Lọc theo danh mục (chỉ cho Quán xá)
           </label>
           <Select
@@ -143,7 +150,7 @@ export function FoodWheel() {
         </div>
       )}
 
-      <div className="relative h-60 w-60 sm:h-72 sm:w-72">
+      <div className="relative h-64 w-64 sm:h-80 sm:w-80 md:h-[400px] md:w-[400px]">
         {/* Pointer (fixed, above the spinning wheel). */}
         <div className="border-t-accent absolute top-0 left-1/2 z-20 h-0 w-0 -translate-x-1/2 border-x-[11px] border-t-[18px] border-x-transparent drop-shadow" />
 
@@ -162,7 +169,7 @@ export function FoodWheel() {
             return (
               <span
                 key={it.id}
-                className="absolute max-w-[68px] truncate text-center text-[10px] sm:max-w-[78px] sm:text-xs font-bold text-white"
+                className="absolute max-w-[72px] truncate text-center text-[10px] sm:max-w-[90px] sm:text-xs md:max-w-[120px] md:text-sm font-bold text-white"
                 style={{
                   left: `${left}%`,
                   top: `${top}%`,
@@ -177,11 +184,11 @@ export function FoodWheel() {
         </motion.div>
 
         {/* Center hub (does not rotate). */}
-        <div className="bg-card absolute top-1/2 left-1/2 z-10 flex h-16 w-16 sm:h-20 sm:w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full text-center shadow-md ring-4 ring-white">
-          <span className="text-base sm:text-lg leading-none font-semibold">
+        <div className="bg-card absolute top-1/2 left-1/2 z-10 flex h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full text-center shadow-md ring-4 ring-white">
+          <span className="text-base sm:text-lg md:text-2xl leading-none font-semibold">
             {items.length}
           </span>
-          <span className="text-muted-foreground text-[10px]">món</span>
+          <span className="text-muted-foreground text-[10px] md:text-xs">món</span>
         </div>
       </div>
 

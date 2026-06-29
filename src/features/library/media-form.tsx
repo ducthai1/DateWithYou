@@ -7,36 +7,50 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
+import { useToast } from "@/components/ui/toast";
 import { normalizeUrl } from "@/lib/embed";
 
 export type MediaKind = "music" | "food_video" | "recipe" | "game";
 
 export function MediaForm({
   kind,
+  initialData,
   onDone,
   onCancel,
 }: {
   kind: MediaKind;
+  initialData?: any;
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
-  const [note, setNote] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [title, setTitle] = useState(initialData?.title ?? "");
+  const [url, setUrl] = useState(initialData?.url ?? "");
+  const [note, setNote] = useState(initialData?.note ?? "");
+  const [tags, setTags] = useState<string[]>(initialData?.tags ?? []);
   // Recipe-only fields.
-  const [ingredients, setIngredients] = useState("");
-  const [steps, setSteps] = useState("");
-  const [cookTime, setCookTime] = useState("");
-  const [servings, setServings] = useState("");
-  const [cover, setCover] = useState("");
+  const [ingredients, setIngredients] = useState(initialData?.recipe?.ingredients?.join("\n") ?? "");
+  const [steps, setSteps] = useState(initialData?.recipe?.steps?.join("\n") ?? "");
+  const [cookTime, setCookTime] = useState(initialData?.recipe?.cookTime ?? "");
+  const [servings, setServings] = useState(initialData?.recipe?.servings ?? "");
+  const [cover, setCover] = useState(initialData?.recipe?.coverImage ?? "");
 
+  const toast = useToast();
   const utils = trpc.useUtils();
   const create = trpc.media.create.useMutation({
     onSuccess: () => {
       utils.media.list.invalidate();
+      toast("Đã thêm vào bộ sưu tập", "success");
       onDone();
     },
+    onError: (err) => toast(err.message, "error")
+  });
+  const update = trpc.media.update.useMutation({
+    onSuccess: () => {
+      utils.media.list.invalidate();
+      toast("Đã cập nhật", "success");
+      onDone();
+    },
+    onError: (err) => toast(err.message, "error")
   });
 
   const isRecipe = kind === "recipe";
@@ -44,10 +58,7 @@ export function MediaForm({
   const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
 
   function submit() {
-    // Embed metadata is derived server-side from the URL — only send the URL.
-    // Normalize so a pasted "youtube.com/…" (no scheme) isn't rejected.
-    create.mutate({
-      kind,
+    const payload = {
       title: title.trim(),
       note: note.trim() || undefined,
       url: normalizeUrl(url) || undefined,
@@ -61,8 +72,17 @@ export function MediaForm({
             coverImage: normalizeUrl(cover) || undefined,
           }
         : undefined,
-    });
+    };
+    
+    if (initialData?.id) {
+      update.mutate({ id: initialData.id, ...payload });
+    } else {
+      create.mutate({ kind, ...payload });
+    }
   }
+
+  const isPending = create.isPending || update.isPending;
+  const isError = create.isError || update.isError;
 
   return (
     <>
@@ -98,15 +118,15 @@ export function MediaForm({
           <TagPicker value={tags} onChange={setTags} />
         </div>
       </ModalContent>
-      {create.error && (
+      {isError && (
         <p className="text-destructive px-5 text-sm">
           Lưu không được — kiểm tra lại link nhé.
         </p>
       )}
       <ModalFooter>
         <Button variant="ghost" onClick={onCancel}>Huỷ</Button>
-        <Button disabled={!title.trim() || create.isPending} onClick={submit}>
-          {create.isPending ? "Đang lưu…" : "Lưu"}
+        <Button disabled={!title.trim() || isPending} onClick={submit}>
+          {isPending ? "Đang lưu…" : "Lưu"}
         </Button>
       </ModalFooter>
     </>

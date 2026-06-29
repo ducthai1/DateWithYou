@@ -117,10 +117,10 @@ export function MemoryForm({
     // Memories surface on the unified calendar, so refresh it too.
     utils.calendar.dayDetail.invalidate();
     utils.calendar.monthSummary.invalidate();
-    toast("Đã lưu kỷ niệm ✓");
+    toast("Đã lưu kỷ niệm ✓", "success");
     onDone();
   };
-  const onError = () => toast("Lưu thất bại, thử lại nhé", "error");
+  const onError = (err: any) => toast("Lưu thất bại: " + (err?.message || "Thử lại nhé"), "error");
   const create = trpc.memory.create.useMutation({ onSuccess, onError });
   const update = trpc.memory.update.useMutation({ onSuccess, onError });
 

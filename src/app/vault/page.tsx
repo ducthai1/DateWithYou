@@ -35,7 +35,7 @@ export default function VaultPage() {
   const totalPoints = rewards.data?.balances.reduce((acc, b) => acc + b.balance, 0) ?? 0;
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-6 px-4 pt-6 pb-28 md:pb-6 md:px-[30px]">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6 px-4 pt-6 pb-6 md:px-[30px]">
       <div className="space-y-4">
         <h1 className="text-h1 font-serif">Góc bí mật</h1>
         <p className="text-muted-foreground text-sm">Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn.</p>

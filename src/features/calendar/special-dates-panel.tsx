@@ -50,12 +50,12 @@ export function SpecialDatesPanel() {
     utils.calendar.monthSummary.invalidate();
   };
   const create = trpc.specialDate.create.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã lưu ngày đặc biệt 💖"); },
-    onError: () => toast("Lưu thất bại, thử lại nhé", "error"),
+    onSuccess: () => { invalidate(); toast("Đã lưu ngày đặc biệt 💖", "success"); },
+    onError: (err) => toast(err.message, "error"),
   });
   const remove = trpc.specialDate.remove.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã xoá ngày đặc biệt"); },
-    onError: () => toast("Xoá thất bại, thử lại nhé", "error"),
+    onSuccess: () => { invalidate(); toast("Đã xoá ngày đặc biệt", "success"); },
+    onError: (err) => toast(err.message, "error"),
   });
 
   const [title, setTitle] = useState("");

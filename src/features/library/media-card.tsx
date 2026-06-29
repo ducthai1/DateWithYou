@@ -1,15 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmbedPlayer } from "@/components/ui/embed-player";
 import { type EmbedProvider } from "@/lib/embed";
-import { Clock, Users, ChefHat } from "lucide-react";
+import { Clock, Users, ChefHat, Edit } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { Modal, ModalHeader } from "@/components/ui/modal";
+import { MediaForm } from "./media-form";
 
 export type MediaListItem = {
   id: string;
-  kind: "music" | "food_video" | "recipe";
+  kind: "music" | "food_video" | "recipe" | "game";
   title: string;
   note: string | null;
   url: string | null;
@@ -27,20 +31,34 @@ export type MediaListItem = {
 };
 
 export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () => void }) {
+  const toast = useToast();
   const utils = trpc.useUtils();
-  const remove = trpc.media.remove.useMutation({ onSuccess: () => utils.media.list.invalidate() });
+  const [editing, setEditing] = useState(false);
+  
+  const remove = trpc.media.remove.useMutation({ 
+    onSuccess: () => { utils.media.list.invalidate(); toast("Đã xoá mục khỏi bộ sưu tập", "success"); },
+    onError: (err) => toast(err.message, "error")
+  });
 
   return (
-    <Card className="space-y-2 p-3">
-      <div className="flex items-start justify-between gap-2">
-        <p className="font-medium leading-snug min-w-0 flex-1">{item.title}</p>
-        <div className="shrink-0">
-          <ConfirmButton idle="" className="text-xs" onConfirm={() => remove.mutate({ id: item.id })} />
+    <>
+      <Card className="space-y-2 p-3 relative group">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-medium leading-snug min-w-0 flex-1 pr-14">{item.title}</p>
+          <div className="shrink-0 absolute top-3 right-3 flex items-center gap-1 bg-card/80 backdrop-blur-sm rounded-lg">
+            <button
+              onClick={() => setEditing(true)}
+              className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors"
+              aria-label="Sửa"
+            >
+              <Edit className="h-4 w-4" />
+            </button>
+            <ConfirmButton idle="" className="text-xs" onConfirm={() => remove.mutate({ id: item.id })} />
+          </div>
         </div>
-      </div>
 
-      {item.kind === "recipe" ? (
-        <button type="button" onClick={onOpen} className="block w-full text-left">
+        {item.kind === "recipe" ? (
+          <button type="button" onClick={onOpen} className="block w-full text-left">
           {item.recipe?.coverImage && (
             <div className="relative aspect-video w-full overflow-hidden rounded-lg">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -70,5 +88,16 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
         </div>
       )}
     </Card>
+    
+    <Modal open={editing} onClose={() => setEditing(false)}>
+      <ModalHeader title="Chỉnh sửa" onClose={() => setEditing(false)} />
+      <MediaForm
+        kind={item.kind}
+        initialData={item}
+        onDone={() => setEditing(false)}
+        onCancel={() => setEditing(false)}
+      />
+    </Modal>
+    </>
   );
 }

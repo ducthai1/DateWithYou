@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings } from "lucide-react";
+import { Lock } from "lucide-react";
 import { NAV_HIDDEN_ON } from "./nav-items";
 import { BrandMark } from "./brand-mark";
+import { SyncButton } from "./sync-button";
 
 /**
  * Mobile-only top bar. The desktop sidebar already exposes the app title and
@@ -28,18 +29,21 @@ export function AppHeader() {
           Vivu No Plan
         </span>
       </Link>
-      <Link
-        href="/settings"
-        aria-label="Cài đặt"
-        className={
-          "flex h-10 w-10 items-center justify-center rounded-lg transition-colors touch-manipulation " +
-          (pathname.startsWith("/settings")
-            ? "text-accent bg-accent-soft active:bg-accent/20"
-            : "text-muted-foreground hover:bg-muted active:bg-muted")
-        }
-      >
-        <Settings className="h-5 w-5" />
-      </Link>
+      <div className="flex items-center gap-1">
+        <SyncButton mode="mobile" />
+        <Link
+          href="/vault"
+          aria-label="Bí mật"
+          className={
+            "flex h-10 w-10 items-center justify-center rounded-lg transition-colors touch-manipulation " +
+            (pathname.startsWith("/vault")
+              ? "text-accent bg-accent-soft active:bg-accent/20"
+              : "text-muted-foreground hover:bg-muted active:bg-muted")
+          }
+        >
+          <Lock className="h-5 w-5" />
+        </Link>
+      </div>
     </header>
   );
 }

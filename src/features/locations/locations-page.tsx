@@ -165,8 +165,14 @@ export function LocationsPage() {
   const [pendingSentInviteId, setPendingSentInviteId] = useState<string | null>(null);
   const [rejectedMessage, setRejectedMessage] = useState<string | null>(null);
   const sendInvite = trpc.location.sendNavInvite.useMutation();
-  const cancelInvite = trpc.location.cancelNavInvite.useMutation();
-  const endNavTrip = trpc.location.endNavTrip.useMutation();
+  const cancelInvite = trpc.location.cancelNavInvite.useMutation({
+    onSuccess: () => toast("Đã huỷ lời mời", "success"),
+    onError: (err) => toast(err.message, "error")
+  });
+  const endNavTrip = trpc.location.endNavTrip.useMutation({
+    onSuccess: () => toast("Đã kết thúc chuyến đi", "success"),
+    onError: (err) => toast(err.message, "error")
+  });
   const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
 
   // ── "Meet Me Halfway" Feature ──
@@ -272,11 +278,14 @@ export function LocationsPage() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) utils.location.list.setData(listInput, ctx.prev);
+      toast(_err.message, "error");
     },
+    onSuccess: () => toast("Đã chuyển trạng thái", "success"),
     onSettled: () => utils.location.list.invalidate(),
   });
   const remove = trpc.location.remove.useMutation({
-    onSuccess: () => utils.location.list.invalidate(),
+    onSuccess: () => { utils.location.list.invalidate(); toast("Đã xoá địa điểm", "success"); },
+    onError: (err) => toast(err.message, "error")
   });
   
   // Detect if partner is stuck
@@ -1162,7 +1171,7 @@ export function LocationsPage() {
             />
           </div>
 
-          <div className="order-3 space-y-3 lg:order-none pb-28 md:pb-0">
+          <div className="order-3 space-y-3 lg:order-none pb-4 md:pb-0">
             <div id="map-view" className="h-72 lg:h-[calc(100dvh-13rem)]">
             <LocationMapView
               pins={pins}

@@ -51,7 +51,7 @@ export function WelcomeIntro() {
 
   return (
     <Modal open onClose={dismiss} className="max-w-md">
-      <div className="space-y-5 p-6">
+      <div className="space-y-5 p-6 overflow-y-auto max-h-[90dvh]">
         <div className="space-y-2 text-center">
           <span className="bg-accent-soft text-accent mx-auto flex h-12 w-12 items-center justify-center rounded-2xl">
             <BrandMark className="h-6 w-6" />

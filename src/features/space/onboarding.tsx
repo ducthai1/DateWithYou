@@ -27,6 +27,7 @@ export function Onboarding() {
   const router = useRouter();
   const mine = trpc.space.getMine.useQuery();
   const [tab, setTab] = useState<"create" | "join">("create");
+  const [createStep, setCreateStep] = useState<1 | 2>(1);
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
   const [code, setCode] = useState("");
@@ -64,8 +65,6 @@ export function Onboarding() {
       </div>
     );
   }
-
-  const step = tab === "create" ? 1 : 2;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-6">
@@ -116,25 +115,32 @@ export function Onboarding() {
       {/* Progress hint */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Bước {step}/2</span>
-          <span>{tab === "create" ? "Tạo không gian" : "Ghép đôi với người ấy"}</span>
+          <span>{tab === "create" ? `Bước ${createStep}/2` : "Bước 1/1"}</span>
+          <span>{tab === "create" ? (createStep === 1 ? "Tạo không gian" : "Mã bảo vệ") : "Ghép đôi với người ấy"}</span>
         </div>
         <div className="h-1 w-full overflow-hidden rounded-full bg-accent/15">
           <motion.div
             className="h-full rounded-full"
             style={{ background: "var(--accent)" }}
-            animate={{ width: tab === "create" ? "50%" : "100%" }}
+            animate={{ width: tab === "create" ? (createStep === 1 ? "50%" : "100%") : "100%" }}
             transition={{ duration: 0.35, ease: "easeInOut" }}
           />
         </div>
       </div>
 
-      <Tabs tabs={ONBOARDING_TABS} value={tab} onChange={setTab} />
+      <Tabs 
+        tabs={ONBOARDING_TABS} 
+        value={tab} 
+        onChange={(val) => {
+          setTab(val);
+          if (val === "create") setCreateStep(1);
+        }} 
+      />
 
       <div className="relative">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
-            key={tab}
+            key={tab === "create" ? `create-${createStep}` : "join"}
             initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             exit={{
@@ -151,49 +157,74 @@ export function Onboarding() {
             {tab === "create" ? (
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: "var(--accent)" }}>
-                    <Heart className="h-3.5 w-3.5" style={{ fill: "var(--accent)", color: "var(--accent)" }} />
-                    Tạo không gian của tụi mình
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: "var(--accent)" }}>
+                      <Heart className="h-3.5 w-3.5" style={{ fill: "var(--accent)", color: "var(--accent)" }} />
+                      {createStep === 1 ? "Tên không gian của tụi mình" : "Mật khẩu không gian"}
+                    </div>
+                    {createStep === 2 && (
+                      <button onClick={() => setCreateStep(1)} className="text-xs text-muted-foreground hover:text-foreground">
+                        Quay lại
+                      </button>
+                    )}
                   </div>
                 </div>
-                <Input
-                  label="Tên không gian (vd: Vivu No Plan)"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-                <Input
-                  label="Mã PIN xoá không gian (tuỳ chọn)"
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                />
-                <p className="-mt-1 px-1 text-xs text-muted-foreground">
-                  Đặt mã PIN nếu muốn cần mã để xoá không gian sau này. Bỏ trống
-                  cũng được — khi đó xoá sẽ cần gõ đúng tên không gian.
-                </p>
-                {create.error && (
-                  <ErrorCard
-                    message={
-                      create.error.message === "ALREADY_IN_SPACE"
-                        ? "Bạn đã có không gian rồi."
-                        : `Không tạo được: ${create.error.message}`
-                    }
-                  />
+                
+                {createStep === 1 ? (
+                  <>
+                    <Input
+                      label="Tên không gian (vd: Vivu No Plan)"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && name.trim()) setCreateStep(2);
+                      }}
+                    />
+                    <Button
+                      className="h-11 w-full touch-manipulation mt-1"
+                      disabled={!name.trim()}
+                      onClick={() => setCreateStep(2)}
+                    >
+                      Tiếp tục
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Input
+                      label="Mã PIN xoá không gian (tuỳ chọn)"
+                      type="password"
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value)}
+                    />
+                    <p className="-mt-1 px-1 text-xs text-muted-foreground">
+                      Đặt mã PIN nếu muốn cần mã để xoá không gian sau này. Bỏ trống
+                      cũng được — khi đó xoá sẽ cần gõ đúng tên không gian.
+                    </p>
+                    {create.error && (
+                      <ErrorCard
+                        message={
+                          create.error.message === "ALREADY_IN_SPACE"
+                            ? "Bạn đã có không gian rồi."
+                            : `Không tạo được: ${create.error.message}`
+                        }
+                      />
+                    )}
+                    <Button
+                      className="h-11 w-full touch-manipulation mt-1"
+                      disabled={create.isPending}
+                      onClick={() => create.mutate({ name: name.trim(), pin: pin.trim() || undefined })}
+                    >
+                      {create.isPending ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Đang tạo…
+                        </span>
+                      ) : (
+                        "Tạo không gian"
+                      )}
+                    </Button>
+                  </>
                 )}
-                <Button
-                  className="h-11 w-full touch-manipulation"
-                  disabled={!name.trim() || create.isPending}
-                  onClick={() => create.mutate({ name: name.trim(), pin: pin.trim() || undefined })}
-                >
-                  {create.isPending ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Đang tạo…
-                    </span>
-                  ) : (
-                    "Tạo không gian"
-                  )}
-                </Button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -220,7 +251,7 @@ export function Onboarding() {
                   />
                 )}
                 <Button
-                  className="h-11 w-full touch-manipulation"
+                  className="h-11 w-full touch-manipulation mt-1"
                   disabled={!code.trim() || join.isPending}
                   onClick={() => join.mutate({ code: code.trim() })}
                 >
