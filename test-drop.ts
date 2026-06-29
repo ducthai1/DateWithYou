@@ -2,28 +2,13 @@ import { MongoClient } from "mongodb";
 import { readFileSync } from "fs";
 
 async function main() {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    console.log("No MONGODB_URI in env");
-    // read from .env
-    const env = readFileSync('.env', 'utf8');
-    const match = env.match(/MONGODB_URI=(.*)/);
-    if (!match) {
-        console.log("Not found in .env");
-        process.exit(1);
-    }
-    process.env.MONGODB_URI = match[1];
-  }
-
-  const client = new MongoClient(process.env.MONGODB_URI!);
+  const env = readFileSync('.env', 'utf8');
+  const uri = env.match(/MONGODB_URI=(.*)/)?.[1];
+  const client = new MongoClient(uri!);
   await client.connect();
   const db = client.db();
-  try {
-    await db.collection("spaces").dropIndex("members_1");
-    console.log("Index dropped successfully.");
-  } catch (err) {
-    console.log("Error dropping index (might not exist):", err instanceof Error ? err.message : String(err));
-  }
+  const user = await db.collection('user').findOne({});
+  console.log("User _id type:", typeof user?._id, user?._id);
   await client.close();
   process.exit(0);
 }

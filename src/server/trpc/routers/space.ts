@@ -89,12 +89,17 @@ export const spaceRouter = router({
 
     if (!space) return null;
     
-    // Fetch members' details
+    // Fetch members' details. Handle both string IDs and ObjectIds to be safe.
+    const memberIds = space.members.flatMap((id) => {
+      try { return [id, new mongoose.Types.ObjectId(id)]; }
+      catch { return [id]; }
+    });
+    
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const membersData = await mongoose.connection.db!
       .collection("user")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .find({ _id: { $in: space.members } } as any)
+      .find({ _id: { $in: memberIds } } as any)
       .project({ _id: 1, name: 1, email: 1, image: 1 })
       .toArray();
 
