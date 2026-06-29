@@ -19,6 +19,7 @@ export function MediaForm({
   onCancel,
 }: {
   kind: MediaKind;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialData?: any;
   onDone: () => void;
   onCancel: () => void;

@@ -90,8 +90,10 @@ export const spaceRouter = router({
     if (!space) return null;
     
     // Fetch members' details
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const membersData = await mongoose.connection.db!
       .collection("user")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .find({ _id: { $in: space.members } } as any)
       .project({ _id: 1, name: 1, email: 1, image: 1 })
       .toArray();
@@ -105,6 +107,7 @@ export const spaceRouter = router({
       themePreset: resolveThemeKey(space.themePreset),
       coverImage: space.coverImage ?? null,
       memberCount: space.members.length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       membersData: membersData.map((u: any) => ({
         id: String(u._id),
         name: u.name,

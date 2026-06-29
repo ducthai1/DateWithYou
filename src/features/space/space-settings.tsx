@@ -168,6 +168,7 @@ export function SpaceSettings() {
         <div className="flex flex-col gap-4">
           {full && mine.data.membersData ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {mine.data.membersData.map((member: any) => (
                 <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-3 shadow-sm">
                   <img 

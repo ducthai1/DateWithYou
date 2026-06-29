@@ -75,7 +75,7 @@ export function GamesPanel() {
               Classic Arena
             </h2>
             <p className="text-sm font-medium text-white/90 sm:text-base leading-relaxed drop-shadow-sm">
-              Trải nghiệm đấu trường game kinh điển dành riêng cho 2 người. Rủ rê người ấy vào so tài ngay xem ai mới là "trùm" thực sự!
+              Trải nghiệm đấu trường game kinh điển dành riêng cho 2 người. Rủ rê người ấy vào so tài ngay xem ai mới là &quot;trùm&quot; thực sự!
             </p>
           </div>
           <a

@@ -120,6 +120,7 @@ export function MemoryForm({
     toast("Đã lưu kỷ niệm ✓", "success");
     onDone();
   };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onError = (err: any) => toast("Lưu thất bại: " + (err?.message || "Thử lại nhé"), "error");
   const create = trpc.memory.create.useMutation({ onSuccess, onError });
   const update = trpc.memory.update.useMutation({ onSuccess, onError });
