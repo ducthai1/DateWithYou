@@ -43,6 +43,7 @@ export function SpaceSettings() {
   // Avatar states
   const [customAvatarUrl, setCustomAvatarUrl] = useState("");
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
+  const [originalAvatar, setOriginalAvatar] = useState<string | null>(null);
   
   const PRESET_AVATARS = [
     // Animals
@@ -66,8 +67,23 @@ export function SpaceSettings() {
     "/avatars/default-1.svg"
   ];
 
+  useEffect(() => {
+    // Only run on client
+    if (typeof window === "undefined") return;
+
+    if (session?.user.image && !PRESET_AVATARS.includes(session.user.image)) {
+      // If the current image is NOT a preset, save it as the original avatar
+      localStorage.setItem("vivu_original_avatar", session.user.image);
+      setOriginalAvatar(session.user.image);
+    } else {
+      // Try to recover it from local storage
+      const saved = localStorage.getItem("vivu_original_avatar");
+      if (saved) setOriginalAvatar(saved);
+    }
+  }, [session?.user.image]);
+
   const displayAvatars = [
-    ...(session?.user.image && !PRESET_AVATARS.includes(session.user.image) ? [session.user.image] : []),
+    ...(originalAvatar ? [originalAvatar] : []),
     ...PRESET_AVATARS,
   ];
 
@@ -292,16 +308,6 @@ export function SpaceSettings() {
                     <path d="M1 1h22v22H1z" fill="none" />
                   </svg>
                   Liên kết với Google
-                </Button>
-                
-                <Button 
-                  variant="ghost" 
-                  className="text-xs text-muted-foreground hover:text-foreground w-auto h-10 px-3"
-                  onClick={() => {
-                    authClient.signIn.social({ provider: "google" });
-                  }}
-                >
-                  🔄 Đồng bộ lại ảnh từ Google
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
