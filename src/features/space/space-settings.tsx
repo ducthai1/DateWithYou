@@ -60,7 +60,7 @@ export function SpaceSettings() {
   const [deletePin, setDeletePin] = useState("");
   const [confirmName, setConfirmName] = useState("");
   const [managePin, setManagePin] = useState("");
-  const { data: session } = authClient.useSession();
+  const { data: session, refetch: refetchSession } = authClient.useSession();
   
   // Avatar states
   const [customAvatarUrl, setCustomAvatarUrl] = useState("");
@@ -80,8 +80,9 @@ export function SpaceSettings() {
     const maxAge = 60 * 60 * 24 * 365;
     const secure = window.location.protocol === "https:" ? "; Secure" : "";
     document.cookie = `active_space_id=${spaceId}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
-    // Force a full page reload so that all queries re-fetch under the new space context
-    window.location.reload();
+    // Force a full TRPC cache invalidate and React refresh to use the new space context
+    utils.invalidate();
+    router.refresh();
   }
 
   useEffect(() => {
@@ -219,7 +220,13 @@ export function SpaceSettings() {
                       setIsUpdatingAvatar(false);
                     } else {
                       toast("Đã cập nhật ảnh đại diện", "success");
-                      setTimeout(() => window.location.reload(), 500);
+                      await Promise.all([
+                        utils.space.getMine.invalidate(),
+                        utils.space.getAllMine.invalidate(),
+                        refetchSession(),
+                      ]);
+                      router.refresh();
+                      setIsUpdatingAvatar(false);
                     }
                   }}
                   disabled={isUpdatingAvatar}
@@ -254,7 +261,14 @@ export function SpaceSettings() {
                     setIsUpdatingAvatar(false);
                   } else {
                     toast("Đã cập nhật ảnh đại diện", "success");
-                    setTimeout(() => window.location.reload(), 500);
+                    await Promise.all([
+                      utils.space.getMine.invalidate(),
+                      utils.space.getAllMine.invalidate(),
+                      refetchSession(),
+                    ]);
+                    router.refresh();
+                    setIsUpdatingAvatar(false);
+                    setCustomAvatarUrl("");
                   }
                 }}
               >

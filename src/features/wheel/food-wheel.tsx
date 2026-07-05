@@ -10,6 +10,7 @@ import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
 import { AlertModal } from "@/components/ui/alert-modal";
 import { Utensils, Navigation, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CATEGORIES, type Category } from "@/lib/districts-categories";
 
 const WEDGE_COLORS = ["#c2693f", "#d4a373", "#e9c46a", "#a3b18a", "#cb997e", "#9c5f3c"];
@@ -22,6 +23,7 @@ const SOURCE_TABS = [
 import { useToast } from "@/components/ui/toast";
 
 export function FoodWheel() {
+  const router = useRouter();
   const toast = useToast();
   const [source, setSource] = useState<(typeof SOURCE_TABS)[number]["key"]>("place");
   const [category, setCategory] = useState("");
@@ -45,7 +47,7 @@ export function FoodWheel() {
           toast("Đã gửi lời mời", "success");
           setTimeout(() => {
             // Redirect to map to see the invite waiting state
-            window.location.href = "/map";
+            router.push("/map");
           }, 1000);
         },
         onError: (err) => {
