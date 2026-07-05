@@ -4,6 +4,7 @@ import { oneTap } from "better-auth/plugins";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { MongoClient } from "mongodb";
 import { env } from "@/lib/env";
+import { sendEmail } from "@/lib/email";
 
 /**
  * Better Auth needs a Db at synchronous construction time, while Mongoose's
@@ -66,6 +67,35 @@ export const auth = betterAuth({
     requireEmailVerification: false,
     minPasswordLength: 1,
     autoSignIn: true,
+    sendResetPassword: async ({ user, url }) => {
+      const html = `
+        <div style="font-family: 'Inter', Helvetica, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 20px;">
+          <div style="background-color: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.05); text-align: center;">
+            <div style="width: 50px; height: 50px; background-color: #FEE2E2; border-radius: 16px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            </div>
+            <h1 style="color: #111827; font-size: 24px; font-weight: 700; margin-bottom: 12px; margin-top: 0;">Khôi phục mật khẩu</h1>
+            <p style="color: #4B5563; font-size: 15px; line-height: 1.6; margin-bottom: 32px;">
+              Chào ${user.name || "bạn"},<br><br>
+              Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn tại <strong>Vivu No Plan</strong>. Nhấn vào nút bên dưới để tạo mật khẩu mới.
+            </p>
+            <a href="${url}" style="display: inline-block; background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%); color: #ffffff; font-weight: 600; font-size: 15px; text-decoration: none; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);">
+              Đặt lại mật khẩu
+            </a>
+            <p style="color: #9CA3AF; font-size: 13px; line-height: 1.5; margin-top: 32px; margin-bottom: 0;">
+              Nếu bạn không yêu cầu điều này, xin vui lòng bỏ qua email này. Link sẽ hết hạn sau một thời gian ngắn.
+            </p>
+          </div>
+        </div>
+      `;
+      await sendEmail({
+        to: user.email,
+        subject: "Khôi phục mật khẩu của bạn",
+        html,
+      });
+    },
   },
   socialProviders: {
     google: {

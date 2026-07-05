@@ -21,6 +21,8 @@ const serverEnvSchema = z.object({
 
   // Phase 2/7 — transactional email
   RESEND_API_KEY: z.string().optional(),
+  EMAIL_SERVER_USER: z.string().optional(),
+  EMAIL_SERVER_PASSWORD: z.string().optional(),
 
   // Phase 3 — Stadia Maps (Valhalla motor_scooter directions, server only)
   STADIA_API_KEY: z.string().optional(),

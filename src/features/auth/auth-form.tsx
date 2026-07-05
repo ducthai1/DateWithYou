@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { POST_LOGIN_REDIRECT } from "@/components/layout/nav-items";
@@ -32,13 +33,28 @@ const GoogleIcon = ({ className }: { className?: string }) => (
 );
 
 export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
+  return (
+    <Suspense fallback={<div className="flex h-dvh items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+      <AuthFormContent mode={mode} />
+    </Suspense>
+  );
+}
+
+function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isSignUp = mode === "sign-up";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  const oauthError = searchParams?.get("error");
+  const isAccountExistsError = 
+    oauthError === "AccountAlreadyExists" || 
+    oauthError === "OAuthAccountNotLinked" ||
+    oauthError?.includes("already");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -104,6 +120,18 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         </div>
       </div>
 
+      {isAccountExistsError && (
+        <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-destructive">Tài khoản đã tồn tại</p>
+            <p className="text-xs text-destructive/90">
+              Email này đã được đăng ký bằng mật khẩu trước đó. Vui lòng đăng nhập bằng mật khẩu bên dưới, sau đó vào <strong className="font-semibold">Cài đặt</strong> để liên kết với Google.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Google sign-in */}
       <Button
         variant="outline"
@@ -144,15 +172,27 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
-        <Input
-          type="password"
-          label="Mật khẩu"
-          autoComplete={isSignUp ? "new-password" : "current-password"}
-          name="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <div className="space-y-1">
+          <Input
+            type="password"
+            label="Mật khẩu"
+            autoComplete={isSignUp ? "new-password" : "current-password"}
+            name="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          {!isSignUp && (
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium text-muted-foreground hover:text-accent transition-colors"
+              >
+                Quên mật khẩu?
+              </Link>
+            </div>
+          )}
+        </div>
 
         {error && (
           <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3">
