@@ -31,12 +31,12 @@ export function SideNav() {
           href="/map"
           className={cn(
             "mb-4 flex items-center transition-all duration-300",
-            isCollapsed ? "justify-center px-0" : "justify-start px-2"
+            isCollapsed ? "justify-center px-0" : "justify-center"
           )}
         >
           <BrandMark className={cn(
-            "h-8 shrink-0 transition-all duration-300",
-            isCollapsed ? "w-10" : "w-32"
+            "shrink-0 transition-all duration-300",
+            isCollapsed ? "h-10 w-12" : "h-14 w-44"
           )} />
         </Link>
         

@@ -17,9 +17,9 @@ export function AppHeader() {
   if (NAV_HIDDEN_ON.includes(pathname)) return null;
 
   return (
-    <header className="border-border bg-background/85 sticky top-0 z-20 flex items-center justify-between border-b px-4 py-2.5 backdrop-blur md:hidden">
+    <header className="border-border bg-background/85 sticky top-0 z-20 flex items-center justify-between border-b px-4 py-2 backdrop-blur md:hidden">
       <Link href="/calendar" className="flex items-center gap-2 text-lg font-semibold">
-        <BrandMark className="h-8 w-32 shrink-0" />
+        <BrandMark className="h-10 w-40 shrink-0" />
       </Link>
       <div className="flex items-center gap-1">
         <SyncButton mode="mobile" />
