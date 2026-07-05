@@ -53,6 +53,55 @@ export const spaceRouter = router({
     }));
   }),
 
+  // Returns the user's Google profile picture URL by decoding the stored
+  // idToken JWT from the account collection. No OAuth redirect needed.
+  getGoogleAvatar: authedProcedure.query(async ({ ctx }) => {
+    await connectToDatabase();
+    const db = mongoose.connection.db!;
+
+    // Find the user's Google account in Better Auth's account collection
+    const account = await db.collection("account").findOne({
+      userId: ctx.userId,
+      providerId: "google",
+    });
+
+    if (!account) return { url: null };
+
+    // Try to extract picture from idToken (JWT)
+    if (account.idToken && typeof account.idToken === "string") {
+      try {
+        const parts = account.idToken.split(".");
+        if (parts.length >= 2) {
+          // Base64url decode the payload
+          const payload = JSON.parse(
+            Buffer.from(parts[1], "base64url").toString("utf-8"),
+          );
+          if (payload.picture) return { url: payload.picture as string };
+        }
+      } catch {
+        // idToken decode failed, continue to fallback
+      }
+    }
+
+    // Fallback: try the accessToken to call Google userinfo
+    if (account.accessToken && typeof account.accessToken === "string") {
+      try {
+        const res = await fetch(
+          "https://www.googleapis.com/oauth2/v2/userinfo",
+          { headers: { Authorization: `Bearer ${account.accessToken}` } },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.picture) return { url: data.picture as string };
+        }
+      } catch {
+        // API call failed, give up
+      }
+    }
+
+    return { url: null };
+  }),
+
   getMine: authedProcedure.query(async ({ ctx }) => {
     await connectToDatabase();
     let space = null;
