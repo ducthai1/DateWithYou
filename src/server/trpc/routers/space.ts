@@ -59,9 +59,14 @@ export const spaceRouter = router({
     await connectToDatabase();
     const db = mongoose.connection.db!;
 
-    // Find the user's Google account in Better Auth's account collection
+    // Find the user's Google account in Better Auth's account collection.
+    // Better Auth stores userId as ObjectId, but ctx.userId is a string,
+    // so we query with both formats to ensure a match.
+    const userIdVariants: unknown[] = [ctx.userId];
+    try { userIdVariants.push(new mongoose.Types.ObjectId(ctx.userId)); } catch { /* not a valid ObjectId */ }
+
     const account = await db.collection("account").findOne({
-      userId: ctx.userId,
+      userId: { $in: userIdVariants },
       providerId: "google",
     });
 
