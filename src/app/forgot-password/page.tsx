@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
     const redirectTo = `${window.location.origin}/reset-password`;
 
     // @ts-expect-error - better-auth types might not infer forgetPassword correctly without explicit plugin type
-    const { error } = await (authClient as any).forgetPassword({
+    const { error } = await (authClient as { forgetPassword: (args: { email: string; redirectTo: string }) => Promise<{ error: { message: string } | null }> }).forgetPassword({
       email,
       redirectTo,
     });

@@ -169,7 +169,7 @@ export function SpaceSettings() {
           {full && mine.data.membersData ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
-              {mine.data.membersData.map((member: any) => (
+              {mine.data.membersData.map((member: { id: string; name: string; email: string; image?: string | null }) => (
                 <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-3 shadow-sm">
                   <img 
                     src={member.image || PRESET_AVATARS[0]} 
