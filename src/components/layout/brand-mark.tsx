@@ -11,7 +11,7 @@ export function BrandMark({ className }: { className?: string }) {
         alt="Vivu No Plan"
         fill
         className="object-contain"
-        sizes="48px"
+        sizes="150px"
       />
     </div>
   );

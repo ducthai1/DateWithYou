@@ -30,19 +30,14 @@ export function SideNav() {
         <Link
           href="/map"
           className={cn(
-            "mb-4 flex items-center font-serif text-xl font-semibold transition-all duration-300",
+            "mb-4 flex items-center transition-all duration-300",
             isCollapsed ? "justify-center px-0" : "justify-start px-2"
           )}
         >
-          <BrandMark className="h-6 w-6 shrink-0 text-accent" />
-          <span
-            className={cn(
-              "overflow-hidden whitespace-nowrap transition-all duration-300",
-              isCollapsed ? "w-0 opacity-0 ml-0" : "w-auto opacity-100 ml-2"
-            )}
-          >
-            Vivu No Plan
-          </span>
+          <BrandMark className={cn(
+            "h-8 shrink-0 transition-all duration-300",
+            isCollapsed ? "w-10" : "w-32"
+          )} />
         </Link>
         
         <div className="flex flex-col gap-1">
