@@ -81,9 +81,12 @@ export default function ForgotPasswordPage() {
           <p className="text-xs text-muted-foreground mb-6">
             Vui lòng kiểm tra hộp thư đến (hoặc thư rác) và làm theo hướng dẫn.
           </p>
-          <Button variant="outline" className="w-full" asChild>
-            <Link href="/sign-in">Quay lại đăng nhập</Link>
-          </Button>
+          <Link 
+            href="/sign-in"
+            className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-border bg-card px-4 text-sm font-medium shadow-sm transition-all hover:bg-muted active:scale-[.98]"
+          >
+            Quay lại đăng nhập
+          </Link>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">

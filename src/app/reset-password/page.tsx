@@ -68,9 +68,12 @@ function ResetPasswordContent() {
         <p className="text-sm text-muted-foreground">
           Vui lòng kiểm tra lại đường dẫn trong email khôi phục của bạn.
         </p>
-        <Button asChild className="mt-4">
-          <Link href="/forgot-password">Yêu cầu liên kết mới</Link>
-        </Button>
+        <Link 
+          href="/forgot-password"
+          className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl bg-accent px-4 text-sm font-medium text-accent-foreground shadow-sm transition-all hover:bg-accent/90 active:scale-[.98]"
+        >
+          Yêu cầu liên kết mới
+        </Link>
       </div>
     );
   }
@@ -118,9 +121,12 @@ function ResetPasswordContent() {
       </div>
 
       {success ? (
-        <Button className="w-full h-11" asChild>
-          <Link href="/sign-in">Đến trang Đăng nhập</Link>
-        </Button>
+        <Link 
+          href="/sign-in"
+          className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-accent px-4 text-sm font-medium text-accent-foreground shadow-sm transition-all hover:bg-accent/90 active:scale-[.98]"
+        >
+          Đến trang Đăng nhập
+        </Link>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input

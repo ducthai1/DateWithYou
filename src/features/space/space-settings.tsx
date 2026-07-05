@@ -268,7 +268,7 @@ export function SpaceSettings() {
                       provider: "google",
                       callbackURL: "/settings",
                     }).then((res) => {
-                      if (res.error) toast(res.error.message, "error");
+                      if (res.error) toast(res.error.message || "Đã xảy ra lỗi", "error");
                     });
                   }}
                 >
