@@ -21,7 +21,8 @@ export default function ForgotPasswordPage() {
     // The redirect URL where Better Auth will send the user back after clicking the email link
     const redirectTo = `${window.location.origin}/reset-password`;
 
-    const { error } = await authClient.forgetPassword({
+    // @ts-expect-error - better-auth types might not infer forgetPassword correctly without explicit plugin type
+    const { error } = await (authClient as any).forgetPassword({
       email,
       redirectTo,
     });
