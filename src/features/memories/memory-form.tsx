@@ -177,16 +177,18 @@ export function MemoryForm({
       </div>
 
       <div className="space-y-2.5">
-        <div className="relative">
-          <Link2 className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-          <input
-            value={linkInput}
-            onChange={(e) => setLinkInput(e.target.value)}
-            onPaste={onPaste}
-            placeholder="Dán link YouTube / TikTok / Spotify / Instagram…"
-            className="border-border bg-card h-11 w-full rounded-xl border pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-accent focus:ring-1 focus:ring-accent/20"
-            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addLink())}
-          />
+        <div className="space-y-1.5">
+          <div className="relative">
+            <Link2 className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+            <input
+              value={linkInput}
+              onChange={(e) => setLinkInput(e.target.value)}
+              onPaste={onPaste}
+              placeholder="Dán link YouTube / TikTok / Spotify / Instagram…"
+              className="border-border bg-card h-11 w-full rounded-xl border pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-accent focus:ring-1 focus:ring-accent/20"
+              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addLink())}
+            />
+          </div>
           <p className="text-muted-foreground text-xs px-1">
             Nhạc/video sẽ hiển thị &amp; phát ngay trong kỷ niệm.
           </p>

@@ -54,7 +54,7 @@ export function Modal({
             transition={{ type: "spring", duration: 0.4, bounce: 0 }}
             onClick={(e) => e.stopPropagation()}
             className={cn(
-              "bg-card border-border relative flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border shadow-2xl cursor-default",
+              "bg-card border-border relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-2xl cursor-default",
               "max-h-[90dvh]",
               className,
             )}
