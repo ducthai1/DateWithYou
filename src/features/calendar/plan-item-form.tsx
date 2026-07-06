@@ -21,6 +21,8 @@ export type EditableItem = {
   tags: string[];
   assigneeId: string | null;
   locationId: string | null;
+  tripId: string | null;
+  cost: number;
 };
 
 export function PlanItemForm({
@@ -33,6 +35,7 @@ export function PlanItemForm({
   date: string;
   item?: EditableItem;
   defaultBucket?: BucketKey;
+  tripId?: string; // Optional trip scope
   onDone: () => void;
   onCancel: () => void;
 }) {
@@ -43,6 +46,7 @@ export function PlanItemForm({
   const [tags, setTags] = useState<string[]>(item?.tags ?? []);
   const [assigneeId, setAssigneeId] = useState(item?.assigneeId ?? "");
   const [locationId, setLocationId] = useState(item?.locationId ?? "");
+  const [cost, setCost] = useState(item?.cost?.toString() ?? "");
 
   const toast = useToast();
   const members = trpc.space.members.useQuery();
@@ -51,6 +55,8 @@ export function PlanItemForm({
   const invalidate = () => {
     utils.calendar.dayDetail.invalidate({ date });
     utils.calendar.monthSummary.invalidate();
+    if (tripId) utils.trip.get.invalidate({ id: tripId });
+    if (tripId) utils.planItem.listByTrip.invalidate({ tripId });
   };
   const create = trpc.planItem.create.useMutation({
     onSuccess: () => { invalidate(); onDone(); toast("Đã lưu kế hoạch", "success"); },
@@ -72,6 +78,8 @@ export function PlanItemForm({
       tags,
       assigneeId: assigneeId || undefined,
       locationId: locationId || undefined,
+      tripId: tripId || undefined,
+      cost: Number(cost) || 0,
     };
     if (item) update.mutate({ id: item.id, ...payload });
     else create.mutate(payload);
@@ -139,6 +147,11 @@ export function PlanItemForm({
               ]}
             />
           </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Chi phí dự kiến (VNĐ)</label>
+          <Input type="number" min={0} placeholder="0" value={cost} onChange={(e) => setCost(e.target.value)} />
         </div>
       </ModalContent>
 

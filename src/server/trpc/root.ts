@@ -11,6 +11,7 @@ import { specialDateRouter } from "@/server/trpc/routers/special-date";
 import { calendarRouter } from "@/server/trpc/routers/calendar";
 import { mediaRouter } from "@/server/trpc/routers/media";
 import { capsuleRouter } from "@/server/trpc/routers/capsule";
+import { tripRouter } from "@/server/trpc/routers/trip";
 
 /** Root tRPC router. Each feature registers its own sub-router here. */
 export const appRouter = router({
@@ -26,6 +27,7 @@ export const appRouter = router({
   calendar: calendarRouter,
   media: mediaRouter,
   capsule: capsuleRouter,
+  trip: tripRouter,
 });
 
 export type AppRouter = typeof appRouter;

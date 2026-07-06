@@ -71,6 +71,10 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
       tags: full.tags,
       assigneeId: full.assigneeId,
       locationId: full.locationId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tripId: (full as any).tripId || null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      cost: (full as any).cost || 0,
     });
     setFormOpen(true);
   }

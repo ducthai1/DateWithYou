@@ -28,6 +28,8 @@ const planItemSchema = new Schema(
     assigneeId: { type: String }, // a member userId; unset = both partners
     locationId: { type: String },
     mediaId: { type: String },
+    tripId: { type: String, index: true },
+    cost: { type: Number, default: 0 },
     createdBy: { type: String, required: true },
   },
   { timestamps: true },

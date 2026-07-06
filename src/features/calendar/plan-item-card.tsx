@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { motion } from "framer-motion";
-import { Check, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, MapPin, Users } from "lucide-react";
+import { Check, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, MapPin, Users, Plane } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useCelebrate } from "@/components/ui/celebrate";
@@ -19,6 +19,7 @@ export type DayItem = {
   status: string;
   assigneeId: string | null;
   locationId: string | null;
+  tripId?: string | null;
 };
 
 export type Member = { id: string; name: string; image: string | null; avatarEmoji: string | null; avatarColor: string | null };
@@ -156,6 +157,11 @@ export function PlanItemCard({
             {locationName && (
               <span className="text-muted-foreground inline-flex items-center gap-0.5 text-[10px]">
                 <MapPin className="h-3 w-3" /> {locationName}
+              </span>
+            )}
+            {item.tripId && (
+              <span className="text-accent inline-flex items-center gap-0.5 text-[10px] font-medium" title="Nằm trong một chuyến đi dài ngày">
+                <Plane className="h-3 w-3" />
               </span>
             )}
           </div>

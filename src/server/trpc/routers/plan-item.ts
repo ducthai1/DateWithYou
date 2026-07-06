@@ -38,6 +38,8 @@ const itemInput = z.object({
   assigneeId: z.string().optional(),
   locationId: z.string().optional(),
   mediaId: z.string().optional(),
+  tripId: z.string().optional(),
+  cost: z.number().min(0).default(0),
 });
 
 function serialize(d: Record<string, unknown>) {
@@ -54,10 +56,29 @@ function serialize(d: Record<string, unknown>) {
     assigneeId: (d.assigneeId as string) ?? null,
     locationId: (d.locationId as string) ?? null,
     mediaId: (d.mediaId as string) ?? null,
+    tripId: (d.tripId as string) ?? null,
+    cost: (d.cost as number) ?? 0,
   };
 }
 
 export const planItemRouter = router({
+  listByTrip: protectedProcedure
+    .input(z.object({ tripId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const docs = await PlanItemModel.find({
+        spaceId: ctx.spaceId,
+        tripId: input.tripId,
+      }).lean();
+      return docs
+        .map(serialize)
+        .sort(
+          (a, b) =>
+            a.date.localeCompare(b.date) ||
+            BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket] ||
+            a.order - b.order,
+        );
+    }),
   // Items across a day range (inclusive of fromKey, exclusive of toKey), sorted
   // by day → bucket → order. Powers the day detail and the agenda view.
   listByRange: protectedProcedure
