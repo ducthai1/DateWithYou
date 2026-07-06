@@ -1091,8 +1091,8 @@ export function LocationsPage() {
       <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px]">
       {/* Action bar stays pinned; only the cards below scroll under it. */}
       {/* Mobile: title row + actions row stacked. Desktop: single flex row. */}
-      <div className="sticky top-0 z-30 -mx-4 mb-4 flex flex-col gap-y-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur-sm md:-mx-[30px] md:px-[30px] sm:flex-row sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
-        <h1 className="text-3xl sm:text-h1 font-serif leading-tight">Bản đồ ăn chơi</h1>
+      <div className="sticky top-0 z-30 -mx-4 mb-4 flex flex-col gap-y-2 border-b border-border bg-gradient-to-r from-accent-soft/90 to-accent-soft/30 px-4 py-3 backdrop-blur-md md:-mx-[30px] md:px-[30px] sm:flex-row sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
+        <h1 className="text-3xl sm:text-h1 font-serif leading-tight text-accent">Bản đồ ăn chơi</h1>
         <div className="flex flex-wrap items-center gap-2">
           {hasTwoMembers && (
             <Button

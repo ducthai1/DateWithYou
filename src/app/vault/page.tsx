@@ -37,8 +37,10 @@ export default function VaultPage() {
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-6 px-4 pt-6 pb-6 md:px-[30px]">
       <div className="space-y-4">
-        <h1 className="text-h1 font-serif">Góc bí mật</h1>
-        <p className="text-muted-foreground text-sm">Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn.</p>
+        <div className="rounded-2xl bg-gradient-to-r from-accent-soft/80 to-accent-soft/30 p-4 -mx-1">
+          <h1 className="text-h1 font-serif text-accent">Góc bí mật</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn.</p>
+        </div>
 
         {/* Summary Stats — 2 cols on mobile, 4 on md+ */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

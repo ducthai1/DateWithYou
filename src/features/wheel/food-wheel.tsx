@@ -123,8 +123,10 @@ export function FoodWheel() {
       : "var(--muted)";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-8 pb-8 md:px-[30px]">
-      <h1 className="text-2xl font-semibold">Hôm nay ăn gì?</h1>
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-6 pb-8 md:px-[30px]">
+      <div className="w-full rounded-2xl bg-gradient-to-r from-accent-soft/80 to-accent-soft/30 p-4 -mx-1 text-center">
+        <h1 className="text-2xl font-serif font-semibold text-accent">Hôm nay ăn gì?</h1>
+      </div>
 
       {/* Source tabs + helper */}
       <div className="flex w-full max-w-xs sm:max-w-md flex-col items-center gap-2 text-center">
