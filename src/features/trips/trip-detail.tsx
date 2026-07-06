@@ -65,14 +65,18 @@ export function TripDetail({ id }: { id: string }) {
 
       {/* Tabs */}
       <div className="sticky top-[65px] z-10 bg-background px-4 pt-3 pb-2 shadow-sm">
-        <Tabs tabs={TABS} value={activeTab} onChange={setActiveTab} className="w-full" />
+        <div className="mx-auto w-full max-w-4xl">
+          <Tabs tabs={TABS} value={activeTab} onChange={setActiveTab} className="w-full" />
+        </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 bg-muted/20 px-4 py-6">
-        {activeTab === "itinerary" && <TripItinerary trip={trip} />}
-        {activeTab === "checklist" && <TripChecklist trip={trip} />}
-        {activeTab === "budget" && <TripBudget trip={trip} />}
+      <div className="flex-1 bg-muted/20 px-4 py-6 md:px-[30px] md:py-8">
+        <div className="mx-auto w-full max-w-4xl">
+          {activeTab === "itinerary" && <TripItinerary trip={trip} />}
+          {activeTab === "checklist" && <TripChecklist trip={trip} />}
+          {activeTab === "budget" && <TripBudget trip={trip} />}
+        </div>
       </div>
 
       {/* Settings Modal */}

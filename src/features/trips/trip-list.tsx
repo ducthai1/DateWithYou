@@ -13,7 +13,7 @@ export function TripList() {
   const [formOpen, setFormOpen] = useState(false);
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6 md:px-6 md:py-8">
+    <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px] md:py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="flex items-center gap-2 font-serif text-3xl font-semibold text-foreground">
           <Plane className="h-7 w-7 text-accent" />
@@ -27,7 +27,7 @@ export function TripList() {
         </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {isLoading ? (
           <>
             <Skeleton className="h-32 rounded-2xl" />
