@@ -117,10 +117,10 @@
   --color-destructive-soft:  var(--destructive-soft);
   --color-success:           var(--success);
 
-  /* Fonts — one sans family everywhere. `font-serif` mapped to Playfair Display
-     for editorial-style elegant headings. */
+  /* Fonts — one sans family everywhere. `font-serif` is intentionally aliased
+     to the same sans face so any leftover `font-serif` class stays consistent. */
   --font-sans:  var(--font-sans-inter);
-  --font-serif: var(--font-display);
+  --font-serif: var(--font-sans-inter);
 
   /* Elevation shadows → shadow-elev-1, shadow-elev-2, shadow-elev-3 */
   --shadow-elev-1: var(--elev-1);
