@@ -1,31 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { trpc } from "@/lib/trpc";
-import { todayKey } from "@/lib/date-keys";
-import { useIsMobile } from "@/hooks/use-media-query";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
+import { CalendarGrid } from "./calendar-grid";
+import { CalendarHeader } from "./calendar-header";
+import { CalendarWeekView } from "./calendar-week-view";
+import { AgendaView } from "./agenda-view";
+import { DayDetail } from "./day-detail";
+import { CountdownBanner } from "./countdown-banner";
+import { SpecialDatesPanel } from "./special-dates-panel";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { Star } from "lucide-react";
-import Link from "next/link";
-import { CalendarHeader } from "./calendar-header";
-import { CalendarGrid } from "./calendar-grid";
-import { CalendarWeekView } from "./calendar-week-view";
-import { CountdownBanner } from "./countdown-banner";
-import { AgendaView } from "./agenda-view";
-import { SpecialDatesPanel } from "./special-dates-panel";
-import { DayDetail } from "./day-detail";
+import { trpc } from "@/lib/trpc";
+import { useIsMobile } from "@/hooks/use-media-query";
 
 const VIEW_TABS = [
   { key: "month", label: "Tháng" },
-  { key: "agenda", label: "Sắp tới" },
+  { key: "agenda", label: "Nhật ký" },
 ] as const;
 
-function initialYM(): { year: number; month: number } {
-  const k = todayKey();
-  return { year: Number(k.slice(0, 4)), month: Number(k.slice(5, 7)) };
-}
+const initialYM = () => {
+  const d = new Date();
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+};
 
 export function CalendarView() {
   const [{ year, month }, setYM] = useState(initialYM);
@@ -47,28 +45,23 @@ export function CalendarView() {
   const goToday = () => setYM(initialYM());
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <div className="bg-card px-4 pt-5 pb-4 shadow-sm border-b border-border/50 md:px-[30px]">
-        <div className="mx-auto w-full max-w-[1400px] space-y-4">
-          <CountdownBanner />
+    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-5 pb-5 md:px-[30px]">
+      <CountdownBanner />
 
-          <div className="flex items-center gap-2">
-            <Tabs tabs={VIEW_TABS} value={view} onChange={setView} className="flex-1" />
-            <button
-              type="button"
-              onClick={() => setSpecialsOpen(true)}
-              aria-label="Ngày đặc biệt"
-              title="Ngày đặc biệt"
-              className="text-muted-foreground hover:bg-muted bg-background border-border flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
-            >
-              <Star className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
+      <div className="flex items-center gap-2">
+        <Tabs tabs={VIEW_TABS} value={view} onChange={setView} className="flex-1" />
+        <button
+          type="button"
+          onClick={() => setSpecialsOpen(true)}
+          aria-label="Ngày đặc biệt"
+          title="Ngày đặc biệt"
+          className="text-muted-foreground hover:bg-muted bg-card border-border flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
+        >
+          <Star className="h-5 w-5" />
+        </button>
       </div>
 
-      <div className="flex-1 mx-auto w-full max-w-[1400px] space-y-4 px-4 py-6 md:px-[30px]">
-        {view === "month" ? (
+      {view === "month" ? (
         // Before mount we can't know the viewport without risking a hydration
         // mismatch, so render a neutral skeleton, then swap to the mobile
         // week view or the desktop grid once the media query is known.
@@ -98,7 +91,6 @@ export function CalendarView() {
           <SpecialDatesPanel />
         </Modal>
       )}
-      </div>
     </div>
   );
 }

@@ -68,34 +68,28 @@ export function MemoryTimeline() {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <div className="sticky top-0 z-20 bg-card px-4 pt-5 pb-4 shadow-sm border-b border-border/50 md:px-[30px]">
-        <div className="mx-auto w-full max-w-[1400px] space-y-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-h1 font-serif">Dòng kỷ niệm</h1>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                Lưu lại khoảnh khắc đã qua: ảnh, cảm xúc, nhạc/video kỷ niệm.
-              </p>
-            </div>
-            <Button className="w-full sm:w-auto sm:shrink-0" onClick={() => setAdding(true)}>+ Thêm</Button>
-          </div>
-
-          {allTags.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-muted-foreground text-xs font-medium ml-0.5">Lọc theo nhãn:</p>
-              <div className="flex flex-wrap gap-1.5">
-                <FilterChip label="Tất cả" active={!filter} onClick={() => setFilter(null)} />
-                {allTags.map((t) => (
-                  <FilterChip key={t} label={t} active={filter === t} onClick={() => setFilter(t)} />
-                ))}
-              </div>
-            </div>
-          )}
+    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-6 md:px-[30px]">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-h1 font-serif">Dòng kỷ niệm</h1>
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            Lưu lại khoảnh khắc đã qua: ảnh, cảm xúc, nhạc/video kỷ niệm.
+          </p>
         </div>
+        <Button className="w-full sm:w-auto sm:shrink-0" onClick={() => setAdding(true)}>+ Thêm</Button>
       </div>
 
-      <div className="flex-1 mx-auto w-full max-w-[1400px] space-y-4 px-4 py-6 md:px-[30px]">
+      {allTags.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-muted-foreground text-xs font-medium ml-0.5">Lọc theo nhãn:</p>
+          <div className="flex flex-wrap gap-1.5">
+            <FilterChip label="Tất cả" active={!filter} onClick={() => setFilter(null)} />
+            {allTags.map((t) => (
+              <FilterChip key={t} label={t} active={filter === t} onClick={() => setFilter(t)} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <Modal open={adding} onClose={() => setAdding(false)}>
         <ModalHeader title="Thêm kỷ niệm" onClose={() => setAdding(false)} />
@@ -309,7 +303,6 @@ export function MemoryTimeline() {
           );
         })()}
       </Modal>
-      </div>
     </div>
   );
 }

@@ -45,9 +45,9 @@ export function TripDetail({ id }: { id: string }) {
   return (
     <div className="flex min-h-dvh flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-card/90 px-4 py-3 backdrop-blur-md">
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <Link href="/trips" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50 text-muted-foreground transition-colors hover:bg-muted">
+          <Link href="/trips" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80">
             <ChevronLeft className="h-6 w-6" />
           </Link>
           <div className="flex flex-col">
@@ -57,14 +57,14 @@ export function TripDetail({ id }: { id: string }) {
         </div>
         <button
           onClick={() => setSettingsOpen(true)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/50 text-muted-foreground transition-colors hover:bg-muted"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80"
         >
           <Settings2 className="h-5 w-5" />
         </button>
       </header>
 
       {/* Tabs */}
-      <div className="sticky top-[65px] z-10 bg-card px-4 pt-3 pb-3 shadow-sm border-b border-border/50">
+      <div className="sticky top-[65px] z-10 bg-background px-4 pt-3 pb-2 shadow-sm">
         <div className="mx-auto w-full max-w-4xl">
           <Tabs tabs={TABS} value={activeTab} onChange={setActiveTab} className="w-full" />
         </div>
