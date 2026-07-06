@@ -50,31 +50,36 @@ export function LibraryPage() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-6 md:px-[30px]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-h1 font-serif">Bộ sưu tập</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau.
-          </p>
-        </div>
-        <div className="flex gap-2 sm:shrink-0">
-          <a
-            href="/wheel"
-            aria-label="Vòng quay chọn món"
-            title="Vòng quay chọn món"
-            className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm"
-          >
-            <Disc3 className="h-5 w-5 text-accent" />
-          </a>
-          <Button className="flex-1 sm:flex-none" onClick={() => setAdding(true)}>+ Thêm</Button>
+    <div className="flex min-h-dvh flex-col">
+      <div className="sticky top-0 z-20 bg-card px-4 pt-5 pb-4 shadow-sm border-b border-border/50 md:px-[30px]">
+        <div className="mx-auto w-full max-w-[1400px] space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-h1 font-serif">Bộ sưu tập</h1>
+              <p className="text-muted-foreground mt-0.5 text-sm">
+                Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau.
+              </p>
+            </div>
+            <div className="flex gap-2 sm:shrink-0">
+              <a
+                href="/wheel"
+                aria-label="Vòng quay chọn món"
+                title="Vòng quay chọn món"
+                className="border-border bg-background hover:bg-muted inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm"
+              >
+                <Disc3 className="h-5 w-5 text-accent" />
+              </a>
+              <Button className="flex-1 sm:flex-none" onClick={() => setAdding(true)}>+ Thêm</Button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <Tabs tabs={TABS} value={kind} onChange={handleKindChange} className="min-w-max sm:min-w-0" />
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-        <Tabs tabs={TABS} value={kind} onChange={handleKindChange} className="min-w-max sm:min-w-0" />
-      </div>
-      
+      <div className="flex-1 mx-auto w-full max-w-[1400px] space-y-4 px-4 py-6 md:px-[30px]">
       {!isGame && !list.isLoading && allItems.length > 0 && (allTags.length > 0 || allProviders.length > 0) && (
         <div className="bg-card border-border flex flex-row flex-wrap items-center gap-2 rounded-xl border p-2 shadow-sm sm:gap-3 sm:justify-between animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2 px-1 text-sm font-medium text-muted-foreground sm:px-2">
@@ -162,6 +167,7 @@ export function LibraryPage() {
       )}
 
       {recipe && <RecipeDetail item={recipe} onClose={() => setRecipe(null)} />}
+      </div>
     </div>
   );
 }

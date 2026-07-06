@@ -47,23 +47,28 @@ export function CalendarView() {
   const goToday = () => setYM(initialYM());
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-5 pb-5 md:px-[30px]">
-      <CountdownBanner />
+    <div className="flex min-h-dvh flex-col">
+      <div className="bg-card px-4 pt-5 pb-4 shadow-sm border-b border-border/50 md:px-[30px]">
+        <div className="mx-auto w-full max-w-[1400px] space-y-4">
+          <CountdownBanner />
 
-      <div className="flex items-center gap-2">
-        <Tabs tabs={VIEW_TABS} value={view} onChange={setView} className="flex-1" />
-        <button
-          type="button"
-          onClick={() => setSpecialsOpen(true)}
-          aria-label="Ngày đặc biệt"
-          title="Ngày đặc biệt"
-          className="text-muted-foreground hover:bg-muted bg-card border-border flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
-        >
-          <Star className="h-5 w-5" />
-        </button>
+          <div className="flex items-center gap-2">
+            <Tabs tabs={VIEW_TABS} value={view} onChange={setView} className="flex-1" />
+            <button
+              type="button"
+              onClick={() => setSpecialsOpen(true)}
+              aria-label="Ngày đặc biệt"
+              title="Ngày đặc biệt"
+              className="text-muted-foreground hover:bg-muted bg-background border-border flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
+            >
+              <Star className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {view === "month" ? (
+      <div className="flex-1 mx-auto w-full max-w-[1400px] space-y-4 px-4 py-6 md:px-[30px]">
+        {view === "month" ? (
         // Before mount we can't know the viewport without risking a hydration
         // mismatch, so render a neutral skeleton, then swap to the mobile
         // week view or the desktop grid once the media query is known.
@@ -93,6 +98,7 @@ export function CalendarView() {
           <SpecialDatesPanel />
         </Modal>
       )}
+      </div>
     </div>
   );
 }
