@@ -129,7 +129,7 @@ export function MemoryTimeline() {
                   <Card
                     key={m.id}
                     interactive
-                    className="cursor-pointer p-3"
+                    className="cursor-pointer p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
                     onClick={() => setSelected(m.id)}
                   >
                     <div className="flex flex-col gap-1">

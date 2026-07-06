@@ -17,9 +17,9 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
       ready && "transition-[padding] duration-300 ease-in-out",
       // Reserve the bottom-nav height PLUS the home-indicator inset so the last
       // row of content never hides behind the nav on notched phones. Desktop
-      // drops the bottom pad and offsets for the sidebar (width depends on collapse).
+      // drops the bottom pad and offsets for the floating sidebar (width + left margin + gap).
       !hidden && "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0",
-      !hidden && (isCollapsed ? "md:pl-20" : "md:pl-64")
+      !hidden && (isCollapsed ? "md:pl-28" : "md:pl-72")
     )}>
       {children}
     </div>

@@ -12,7 +12,7 @@ export function BottomNav() {
   if (NAV_HIDDEN_ON.includes(pathname)) return null;
 
   return (
-    <nav className="border-border bg-background/90 fixed inset-x-0 bottom-0 z-20 flex items-end justify-around border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex items-end justify-around border-t border-white/40 bg-white/70 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl shadow-[0_-10px_40px_rgba(0,0,0,0.04)] md:hidden">
       {NAV_ITEMS.map((it) => {
         const active = pathname.startsWith(it.href);
         const Icon = it.Icon;

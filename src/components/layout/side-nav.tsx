@@ -19,7 +19,7 @@ export function SideNav() {
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-20 hidden flex-col justify-between border-r border-border bg-card shadow-[4px_0_24px_rgba(0,0,0,0.02)] md:flex",
+        "fixed inset-y-4 left-4 z-20 hidden flex-col justify-between rounded-2xl border border-white/40 bg-white/70 backdrop-blur-xl shadow-elev-2 md:flex",
         // Only animate width once the saved state is loaded — avoids the
         // expanded→collapsed slide on first paint.
         ready && "transition-[width] duration-300 ease-in-out",

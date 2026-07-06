@@ -42,7 +42,7 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
 
   return (
     <>
-      <Card className="space-y-2 p-3 relative group">
+      <Card className="space-y-2 p-3 relative group transition-all duration-300 hover:-translate-y-1 hover:shadow-elev-2">
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium leading-snug min-w-0 flex-1 pr-14">{item.title}</p>
           <div className="shrink-0 absolute top-3 right-3 flex items-center gap-1 bg-card/80 backdrop-blur-sm rounded-lg">

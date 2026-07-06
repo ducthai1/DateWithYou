@@ -14,11 +14,11 @@
 /* ─── 1. Primitive tokens ─────────────────────────────────────────────────── */
 :root {
   /* --- Colour: surfaces & ink -------------------------------------------- */
-  --background: #f1ece3;       /* warm parchment — shared across ALL presets  */
+  --background: #F8F9FA;       /* crisp modern off-white  */
   --foreground: #1c1917;
-  --muted: #e7e1d6;
-  --muted-foreground: #6f675d;
-  --border: #d8cfc1;
+  --muted: #F1F3F5;
+  --muted-foreground: #6c757d;
+  --border: #E5E7EB;
   --card: #ffffff;
   --accent-foreground: #ffffff;
   --destructive: #dc2626;
@@ -64,14 +64,14 @@
   --line-height-sm-scale: 18px;
   --line-height-xs-scale: 14px;
 
-  /* --- Elevation (warm-tinted shadows — terracotta undertone not neutral) - */
+  /* --- Elevation (soft modern drop shadows) ------------------------------ */
   /*
-   * Warm brown tint keeps shadows from looking flat grey on the parchment bg.
+   * Sleek, high-end shadows with large blur radius and very low opacity.
    * elev-1 = resting card; elev-2 = hover lift; elev-3 = modal / floating hub.
    */
-  --elev-1: 0 1px 3px 0 rgb(120 72 40 / 0.10), 0 1px 2px -1px rgb(120 72 40 / 0.08);
-  --elev-2: 0 4px 12px -2px rgb(120 72 40 / 0.14), 0 2px 4px -2px rgb(120 72 40 / 0.10);
-  --elev-3: 0 8px 24px -4px rgb(120 72 40 / 0.18), 0 4px 8px -4px rgb(120 72 40 / 0.12);
+  --elev-1: 0 4px 20px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02);
+  --elev-2: 0 10px 40px -5px rgba(0, 0, 0, 0.05), 0 4px 10px rgba(0, 0, 0, 0.03);
+  --elev-3: 0 20px 60px -10px rgba(0, 0, 0, 0.08), 0 10px 20px -5px rgba(0, 0, 0, 0.04);
 
   /* --- Motion tokens ----------------------------------------------------- */
   /*
@@ -117,10 +117,10 @@
   --color-destructive-soft:  var(--destructive-soft);
   --color-success:           var(--success);
 
-  /* Fonts — one sans family everywhere. `font-serif` is intentionally aliased
-     to the same sans face so any leftover `font-serif` class stays consistent. */
+  /* Fonts — one sans family everywhere. `font-serif` mapped to Playfair Display
+     for editorial-style elegant headings. */
   --font-sans:  var(--font-sans-inter);
-  --font-serif: var(--font-sans-inter);
+  --font-serif: var(--font-display);
 
   /* Elevation shadows → shadow-elev-1, shadow-elev-2, shadow-elev-3 */
   --shadow-elev-1: var(--elev-1);
