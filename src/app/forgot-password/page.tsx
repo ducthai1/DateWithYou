@@ -21,7 +21,6 @@ export default function ForgotPasswordPage() {
     // The redirect URL where Better Auth will send the user back after clicking the email link
     const redirectTo = `${window.location.origin}/reset-password`;
 
-    // @ts-expect-error - requestPasswordReset might not be typed properly without the full plugin inference, but it maps to /api/auth/request-password-reset
     const { error } = await (authClient as { requestPasswordReset: (args: { email: string; redirectTo: string }) => Promise<{ error: { message: string } | null }> }).requestPasswordReset({
       email,
       redirectTo,
