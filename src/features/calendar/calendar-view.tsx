@@ -7,7 +7,7 @@ import { useIsMobile } from "@/hooks/use-media-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { Modal, ModalHeader } from "@/components/ui/modal";
-import { Star, Plane } from "lucide-react";
+import { Star } from "lucide-react";
 import Link from "next/link";
 import { CalendarHeader } from "./calendar-header";
 import { CalendarGrid } from "./calendar-grid";
@@ -61,14 +61,6 @@ export function CalendarView() {
         >
           <Star className="h-5 w-5" />
         </button>
-        <Link
-          href="/trips"
-          aria-label="Chuyến đi"
-          title="Chuyến đi"
-          className="text-muted-foreground hover:bg-muted bg-card border-border flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
-        >
-          <Plane className="h-5 w-5" />
-        </Link>
       </div>
 
       {view === "month" ? (

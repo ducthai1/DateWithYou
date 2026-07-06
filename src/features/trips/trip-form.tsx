@@ -4,6 +4,8 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { todayKey } from "@/lib/date-keys";
 
+import { ModalContent, ModalFooter } from "@/components/ui/modal";
+
 export function TripForm({
   trip,
   onSuccess,
@@ -71,98 +73,100 @@ export function TripForm({
   const isPending = createMut.isPending || updateMut.isPending;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium text-muted-foreground">Tên chuyến đi</label>
-        <input
-          required
-          autoFocus
-          maxLength={100}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="VD: Đà Lạt 4 ngày 3 đêm"
-          className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col">
+      <ModalContent className="flex flex-col gap-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-muted-foreground">Từ ngày</label>
+          <label className="mb-1 block text-sm font-medium text-muted-foreground">Tên chuyến đi</label>
           <input
             required
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            autoFocus
+            maxLength={100}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="VD: Đà Lạt 4 ngày 3 đêm"
             className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-muted-foreground">Từ ngày</label>
+            <input
+              required
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-muted-foreground">Đến ngày</label>
+            <input
+              required
+              type="date"
+              value={endDate}
+              min={startDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          </div>
+        </div>
+
         <div>
-          <label className="mb-1 block text-sm font-medium text-muted-foreground">Đến ngày</label>
+          <label className="mb-1 block text-sm font-medium text-muted-foreground">Ngân sách dự kiến (VNĐ)</label>
           <input
-            required
-            type="date"
-            value={endDate}
-            min={startDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            type="number"
+            min={0}
+            value={budget}
+            onChange={(e) => setBudget(e.target.value)}
+            placeholder="0"
             className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
-      </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-muted-foreground">Ngân sách dự kiến (VNĐ)</label>
-        <input
-          type="number"
-          min={0}
-          value={budget}
-          onChange={(e) => setBudget(e.target.value)}
-          placeholder="0"
-          className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-      </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-muted-foreground">Trạng thái</label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as "planning" | "upcoming" | "completed")}
+            className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          >
+            <option value="planning">Đang lên kế hoạch</option>
+            <option value="upcoming">Sắp khởi hành</option>
+            <option value="completed">Đã hoàn thành</option>
+          </select>
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-muted-foreground">Trạng thái</label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as "planning" | "upcoming" | "completed")}
-          className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-        >
-          <option value="planning">Đang lên kế hoạch</option>
-          <option value="upcoming">Sắp khởi hành</option>
-          <option value="completed">Đã hoàn thành</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-muted-foreground">Ghi chú thêm</label>
-        <textarea
-          rows={3}
-          maxLength={1000}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Một vài dòng giới thiệu về chuyến đi..."
-          className="w-full resize-none rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-      </div>
-
-      <div className="mt-4 flex gap-3">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-muted-foreground">Ghi chú thêm</label>
+          <textarea
+            rows={3}
+            maxLength={1000}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Một vài dòng giới thiệu về chuyến đi..."
+            className="w-full resize-none rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+        </div>
+      </ModalContent>
+      
+      <ModalFooter>
         <button
           type="button"
           onClick={onSuccess}
           disabled={isPending}
-          className="flex-1 rounded-xl bg-muted py-3 font-medium text-muted-foreground transition-colors hover:bg-muted/80"
+          className="flex-1 rounded-xl bg-muted py-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted/80"
         >
           Hủy
         </button>
         <button
           type="submit"
           disabled={isPending}
-          className="flex-1 rounded-xl bg-accent py-3 font-medium text-accent-foreground shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50"
+          className="flex-1 rounded-xl bg-accent py-2.5 font-medium text-accent-foreground shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50"
         >
           {trip ? "Lưu thay đổi" : "Tạo chuyến đi"}
         </button>
-      </div>
+      </ModalFooter>
     </form>
   );
 }

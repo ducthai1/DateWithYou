@@ -77,7 +77,7 @@ export function TripDetail({ id }: { id: string }) {
 
       {/* Settings Modal */}
       {settingsOpen && (
-        <Modal open onClose={() => setSettingsOpen(false)} className="max-w-lg">
+        <Modal open onClose={() => setSettingsOpen(false)} className="max-w-xl">
           <ModalHeader title="Cài đặt chuyến đi" onClose={() => setSettingsOpen(false)} />
           <TripForm trip={trip} onSuccess={() => setSettingsOpen(false)} />
         </Modal>

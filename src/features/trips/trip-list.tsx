@@ -84,7 +84,7 @@ export function TripList() {
       </div>
 
       {formOpen && (
-        <Modal open onClose={() => setFormOpen(false)} className="max-w-lg">
+        <Modal open onClose={() => setFormOpen(false)} className="max-w-xl">
           <ModalHeader title="Tạo chuyến đi mới" onClose={() => setFormOpen(false)} />
           <TripForm onSuccess={() => setFormOpen(false)} />
         </Modal>
