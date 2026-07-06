@@ -45,9 +45,13 @@ export function SideNav() {
               swapped Vault and Settings, but desktop wants Vault in the top section
               and Settings in the bottom section. */}
           {[
-            ...NAV_ITEMS.filter(it => it.href !== "/settings"),
+            // Re-order for desktop so /map is at the top, without affecting
+            // the mobile bottom nav where it needs to remain physically in the center.
+            ...NAV_ITEMS.filter((it) => it.href !== "/settings").sort((a, b) =>
+              a.href === "/map" ? -1 : b.href === "/map" ? 1 : 0
+            ),
             { href: "/wheel", label: "Vòng quay", Icon: Dices },
-            { href: "/vault", label: "Bí mật", Icon: Lock }
+            { href: "/vault", label: "Bí mật", Icon: Lock },
           ].map((it) => {
             const active = pathname.startsWith(it.href);
             const Icon = it.Icon;
