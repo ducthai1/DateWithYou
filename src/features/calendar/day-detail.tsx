@@ -136,7 +136,7 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
       </Shell>
 
       {formOpen && (
-        <Modal open onClose={() => setFormOpen(false)} className="max-w-md">
+        <Modal open onClose={() => setFormOpen(false)} className="max-w-lg">
           <ModalHeader title={editing ? "Sửa việc" : "Thêm việc"} onClose={() => setFormOpen(false)} />
           <PlanItemForm
             date={date}
@@ -149,7 +149,7 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
       )}
 
       {memoryFor && (
-        <Modal open onClose={() => setMemoryFor(null)} className="max-w-md">
+        <Modal open onClose={() => setMemoryFor(null)} className="max-w-lg">
           <ModalHeader title="Lưu thành kỷ niệm" onClose={() => setMemoryFor(null)} />
           <div ref={modalRef} className="absolute inset-0 pointer-events-none" />
           <MemoryForm

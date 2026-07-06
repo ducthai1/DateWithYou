@@ -87,7 +87,7 @@ export function CalendarView() {
       {selected && <DayDetail date={selected} onClose={() => setSelected(null)} />}
 
       {specialsOpen && (
-        <Modal open onClose={() => setSpecialsOpen(false)} className="max-w-md">
+        <Modal open onClose={() => setSpecialsOpen(false)} className="max-w-lg">
           <ModalHeader title="Ngày đặc biệt 💞" onClose={() => setSpecialsOpen(false)} />
           <SpecialDatesPanel />
         </Modal>

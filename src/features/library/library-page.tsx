@@ -155,7 +155,7 @@ export function LibraryPage() {
       )}
 
       {adding && (
-        <Modal open onClose={() => setAdding(false)} className="max-w-md">
+        <Modal open onClose={() => setAdding(false)} className="max-w-lg">
           <ModalHeader title={`Thêm vào ${TABS.find((t) => t.key === kind)?.label}`} onClose={() => setAdding(false)} />
           <MediaForm kind={kind} onDone={() => setAdding(false)} onCancel={() => setAdding(false)} />
         </Modal>
