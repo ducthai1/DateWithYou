@@ -46,9 +46,7 @@ export function CalendarView() {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-5 pb-5 md:px-[30px]">
-      <div className="rounded-2xl bg-gradient-to-r from-accent-soft/80 to-accent-soft/30 p-4 -mx-1">
-        <CountdownBanner />
-      </div>
+      <CountdownBanner />
 
       <div className="flex items-center gap-2">
         <Tabs tabs={VIEW_TABS} value={view} onChange={setView} className="flex-1" />
