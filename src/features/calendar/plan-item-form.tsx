@@ -29,6 +29,7 @@ export function PlanItemForm({
   date,
   item,
   defaultBucket,
+  tripId,
   onDone,
   onCancel,
 }: {

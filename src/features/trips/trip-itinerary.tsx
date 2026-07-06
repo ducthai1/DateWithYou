@@ -144,7 +144,8 @@ export function TripItinerary({ trip }: { trip: any }) {
             date={editItem ? editItem.date : prefillDate}
             tripId={trip.id}
             item={editItem}
-            onSuccess={() => setFormOpen(false)}
+            onDone={() => setFormOpen(false)}
+            onCancel={() => setFormOpen(false)}
           />
         </Modal>
       )}
