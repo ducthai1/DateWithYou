@@ -14,8 +14,8 @@ export function TripList() {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px] md:py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 font-serif text-3xl font-semibold text-foreground">
+      <div className="mb-6 flex items-center justify-between rounded-2xl bg-gradient-to-r from-accent-soft/80 to-accent-soft/30 p-4 -mx-1">
+        <h1 className="flex items-center gap-2 font-serif text-3xl font-semibold text-accent">
           <Plane className="h-7 w-7 text-accent" />
           Chuyến đi
         </h1>

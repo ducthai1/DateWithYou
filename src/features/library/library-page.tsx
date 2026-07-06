@@ -51,9 +51,9 @@ export function LibraryPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-6 md:px-[30px]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl bg-gradient-to-r from-accent-soft/80 to-accent-soft/30 p-4 -mx-1">
         <div>
-          <h1 className="text-h1 font-serif">Bộ sưu tập</h1>
+          <h1 className="text-h1 font-serif text-accent">Bộ sưu tập</h1>
           <p className="text-muted-foreground mt-0.5 text-sm">
             Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau.
           </p>

@@ -18,10 +18,10 @@ export function Tabs<T extends string>({
   const activeIndex = tabs.findIndex((t) => t.key === value);
 
   return (
-    <div className={cn("bg-muted flex rounded-xl p-1 text-sm relative", className)}>
+    <div className={cn("bg-muted/60 flex rounded-xl p-1 text-sm relative border border-border/40", className)}>
       <div className="absolute inset-y-1 left-1 right-1 pointer-events-none" aria-hidden="true">
         <motion.div
-          className="h-full rounded-lg bg-background shadow-sm"
+          className="h-full rounded-lg bg-accent shadow-md"
           initial={false}
           animate={{
             width: `${100 / tabs.length}%`,
@@ -35,9 +35,9 @@ export function Tabs<T extends string>({
           key={t.key}
           onClick={() => onChange(t.key)}
           className={cn(
-            "relative flex-1 rounded-lg py-2 transition-colors outline-none z-10",
+            "relative flex-1 rounded-lg py-2 transition-colors outline-none z-10 font-medium",
             value === t.key
-              ? "font-medium text-foreground"
+              ? "text-accent-foreground"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
