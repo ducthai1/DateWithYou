@@ -39,7 +39,7 @@ export default function VaultPage() {
       <div className="space-y-4">
         <div className="sticky top-2 z-20 mb-6 flex flex-col gap-y-3 rounded-2xl bg-gradient-to-r from-accent-soft/90 to-accent-soft/30 px-4 py-4 shadow-sm backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-y-0">
           <div>
-            <h1 className="text-3xl font-semibold text-accent">Góc bí mật</h1>
+            <h1 className="text-2xl font-semibold text-accent">Góc bí mật</h1>
             <p className="text-muted-foreground text-sm mt-0.5">Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn.</p>
           </div>
         </div>

@@ -34,7 +34,7 @@ export function TripBudget({ trip }: { trip: any }) {
           <Wallet className="h-7 w-7" />
         </div>
         <p className="text-sm font-medium text-muted-foreground">Tổng chi phí dự tính</p>
-        <h2 className="mt-1 font-serif text-3xl font-semibold text-foreground">
+        <h2 className="mt-1 font-serif text-2xl font-semibold text-foreground">
           {formatter.format(totalSpent)}
         </h2>
         
