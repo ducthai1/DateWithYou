@@ -68,9 +68,10 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
       setError(result.error.message ?? "Có lỗi xảy ra, thử lại nhé.");
       return;
     }
-    // Land on a SpaceGuard-protected route so it routes to the app or
-    // /onboarding based on whether this user already has a couple space.
-    router.push(POST_LOGIN_REDIRECT);
+    // Hard-navigate (not client-side push) so the entire React tree + Query
+    // cache resets. This prevents stale space data from a previous login from
+    // causing a flash of app chrome before SpaceGuard can redirect to /onboarding.
+    window.location.href = POST_LOGIN_REDIRECT;
   }
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { authClient } from "@/lib/auth-client";
@@ -44,6 +45,7 @@ const PRESET_AVATARS = [
 
 export function SpaceSettings() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const mine = trpc.space.getMine.useQuery();
   const utils = trpc.useUtils();
   const toast = useToast();
@@ -570,7 +572,14 @@ export function SpaceSettings() {
         confirmText="Đăng xuất"
         idle="Đăng xuất"
         icon={<LogOut className="h-4 w-4" />}
-        onConfirm={() => authClient.signOut().then(() => router.replace("/sign-in"))}
+        onConfirm={async () => {
+          // Clear all cached tRPC/React-Query data so the next login doesn't
+          // see stale space data from this user (race: SpaceGuard reads the
+          // still-fresh cache before refetch → briefly shows app chrome).
+          queryClient.clear();
+          await authClient.signOut();
+          router.replace("/sign-in");
+        }}
         className="mt-6 flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-destructive bg-card text-sm font-medium text-destructive shadow-sm transition-all hover:bg-destructive hover:!text-white active:scale-[0.98] !no-underline"
       />
     </div>
