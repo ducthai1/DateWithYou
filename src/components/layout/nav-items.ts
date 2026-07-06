@@ -12,7 +12,7 @@ export const NAV_ITEMS: { href: string; label: string; Icon: LucideIcon; center?
 ];
 
 // Routes with no app chrome (landing, auth, onboarding).
-export const NAV_HIDDEN_ON = ["/", "/sign-in", "/sign-up", "/onboarding"];
+export const NAV_HIDDEN_ON = ["/", "/sign-in", "/sign-up", "/onboarding", "/forgot-password", "/reset-password"];
 
 // Where every successful login lands. Must be a SpaceGuard-protected feature
 // route so the guard runs the "has a couple space? → stay in : → /onboarding"
