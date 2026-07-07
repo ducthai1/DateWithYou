@@ -92,12 +92,7 @@ export function ModalFooter({ children, className }: { children: React.ReactNode
   return (
     <div
       className={cn(
-        // Mobile: stack full-width (flex-col → children stretch) so the primary
-        // action sits last/lowest, thumb-reachable, and Cancel is never pushed
-        // off-screen. Extra bottom pad clears the home indicator inside a sheet.
-        // Desktop (sm+) restores the original right-aligned button row.
-        "bg-card border-border flex shrink-0 flex-col-reverse gap-2 border-t px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
-        "sm:flex-row sm:items-center sm:justify-end sm:p-5",
+        "bg-card border-border flex shrink-0 flex-row items-center w-full gap-2.5 border-t p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
         className,
       )}
     >
