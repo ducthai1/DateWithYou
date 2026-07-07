@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { todayKey } from "@/lib/date-keys";
+import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 
@@ -22,6 +24,7 @@ export function TripForm({
   onSuccess: () => void;
 }) {
   const ctx = trpc.useUtils();
+  const router = useRouter();
   const [title, setTitle] = useState(trip?.title ?? "");
   const [description, setDescription] = useState(trip?.description ?? "");
   const [startDate, setStartDate] = useState(trip?.startDate ?? todayKey());
@@ -43,6 +46,21 @@ export function TripForm({
       onSuccess();
     },
   });
+
+  const removeMut = trpc.trip.remove.useMutation({
+    onSuccess: () => {
+      ctx.trip.list.invalidate();
+      onSuccess();
+      router.push("/trips");
+    },
+  });
+
+  const handleDelete = () => {
+    if (!trip) return;
+    if (window.confirm("Bạn có chắc muốn xóa chuyến đi này không? Mọi dữ liệu lịch trình sẽ bị mất.")) {
+      removeMut.mutate({ id: trip.id });
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +88,7 @@ export function TripForm({
     }
   };
 
-  const isPending = createMut.isPending || updateMut.isPending;
+  const isPending = createMut.isPending || updateMut.isPending || removeMut.isPending;
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col">
@@ -151,6 +169,17 @@ export function TripForm({
       </ModalContent>
       
       <ModalFooter>
+        {trip && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isPending}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive-soft text-destructive transition-colors hover:bg-destructive/20 mr-2"
+            title="Xóa chuyến đi"
+          >
+            <Trash2 className="h-5 w-5" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onSuccess}
