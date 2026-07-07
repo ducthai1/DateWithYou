@@ -185,11 +185,13 @@ export function SpaceSettings() {
                     className="h-14 w-14 shrink-0 rounded-full border-2 border-border object-cover bg-muted"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate">{member.name}</p>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="font-medium truncate">{member.name}</p>
+                      {member.id === session?.user.id && (
+                        <span className="shrink-0 bg-accent-soft text-accent text-[10px] px-2 py-0.5 rounded-full font-medium">Bạn</span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-                    {member.id === session?.user.id && (
-                      <span className="inline-block mt-1 bg-accent-soft text-accent text-[10px] px-2 py-0.5 rounded-full font-medium">Bạn</span>
-                    )}
                   </div>
                 </div>
               ))}
