@@ -95,7 +95,7 @@ export const CalendarCell = memo(function CalendarCell({
         "relative flex aspect-square flex-col items-start justify-start overflow-hidden p-1 md:p-3 text-sm transition-all touch-manipulation",
         "rounded-2xl md:rounded-xl md:border-[3px] md:transition-colors",
         cell.inMonth && !hasSpecial &&
-          "bg-card shadow-sm active:scale-[0.96] md:shadow-none md:border-muted md:hover:border-accent md:active:scale-100",
+          "bg-card shadow-sm active:scale-[0.96] md:shadow-none md:border-border md:hover:border-accent md:active:scale-100",
         cell.inMonth && hasSpecial &&
           "bg-pink-50 shadow-sm active:scale-[0.96] md:bg-card md:shadow-none md:border-pink-300 md:active:scale-100 dark:md:border-pink-700",
         !cell.inMonth &&
