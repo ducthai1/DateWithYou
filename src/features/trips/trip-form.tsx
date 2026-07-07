@@ -92,7 +92,7 @@ export function TripForm({
   const isPending = createMut.isPending || updateMut.isPending || removeMut.isPending;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col">
+    <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0 w-full">
       <ModalContent className="flex flex-col gap-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-muted-foreground">Tên chuyến đi</label>
