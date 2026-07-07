@@ -157,8 +157,8 @@ export function PlanItemForm({
       </ModalContent>
 
       <ModalFooter>
-        <Button variant="ghost" onClick={onCancel}>Huỷ</Button>
-        <Button disabled={!title.trim() || pending} onClick={submit}>
+        <Button variant="secondary" className="flex-1" onClick={onCancel}>Huỷ</Button>
+        <Button className="flex-1" disabled={!title.trim() || pending} onClick={submit}>
           {pending ? "Đang lưu…" : item ? "Lưu" : "Thêm việc"}
         </Button>
       </ModalFooter>

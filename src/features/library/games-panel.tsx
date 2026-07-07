@@ -199,17 +199,17 @@ export function GamesPanel() {
             )}
           </ModalContent>
           <ModalFooter>
+            <Button variant="secondary" className="flex-1" onClick={() => setSelected(null)}>
+              Đóng
+            </Button>
             <ConfirmButton
               idle="Xoá"
-              className="text-destructive"
+              className="text-destructive flex-1"
               onConfirm={() => {
                 remove.mutate({ id: selected.id });
                 setSelected(null);
               }}
             />
-            <Button variant="ghost" onClick={() => setSelected(null)}>
-              Đóng
-            </Button>
           </ModalFooter>
         </Modal>
       )}

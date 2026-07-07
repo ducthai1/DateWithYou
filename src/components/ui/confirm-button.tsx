@@ -67,8 +67,8 @@ export function ConfirmButton({
           <p className="text-muted-foreground">{description}</p>
         </ModalContent>
         <ModalFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Huỷ</Button>
-          <Button variant="destructive" onClick={() => { onConfirm(); setOpen(false); }}>
+          <Button variant="secondary" className="flex-1" onClick={() => setOpen(false)}>Huỷ</Button>
+          <Button variant="destructive" className="flex-1" onClick={() => { onConfirm(); setOpen(false); }}>
             {confirmText}
           </Button>
         </ModalFooter>

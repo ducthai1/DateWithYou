@@ -300,7 +300,11 @@ export function MemoryForm({
       </ModalContent>
 
       <ModalFooter>
+        <Button variant="secondary" className="flex-1" onClick={onCancel}>
+          Huỷ
+        </Button>
           <Button
+            className="flex-1"
             onClick={() => {
               if (initialMemory) {
                 update.mutate({
@@ -328,9 +332,6 @@ export function MemoryForm({
           >
             {(create.isPending || update.isPending) ? "Đang lưu..." : "Lưu"}
           </Button>
-        <Button variant="ghost" onClick={onCancel}>
-          Huỷ
-        </Button>
       </ModalFooter>
     </>
   );

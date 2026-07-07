@@ -125,8 +125,8 @@ export function MediaForm({
         </p>
       )}
       <ModalFooter>
-        <Button variant="ghost" onClick={onCancel}>Huỷ</Button>
-        <Button disabled={!title.trim() || isPending} onClick={submit}>
+        <Button variant="secondary" className="flex-1" onClick={onCancel}>Huỷ</Button>
+        <Button className="flex-1" disabled={!title.trim() || isPending} onClick={submit}>
           {isPending ? "Đang lưu…" : "Lưu"}
         </Button>
       </ModalFooter>

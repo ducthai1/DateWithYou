@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "outline" | "ghost" | "destructive";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "destructive";
   size?: "default" | "icon";
 };
 
@@ -21,9 +21,11 @@ export function Button({
         "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
         variant === "primary" &&
           "bg-accent text-accent-foreground hover:bg-accent-hover shadow-sm",
+        variant === "secondary" &&
+          "bg-muted text-muted-foreground hover:bg-muted/80",
         variant === "outline" &&
           "border-border bg-card hover:bg-muted border shadow-sm",
-        variant === "ghost" && "hover:bg-muted",
+        variant === "ghost" && "hover:bg-muted text-muted-foreground",
         variant === "destructive" &&
           "bg-destructive text-white hover:bg-destructive/90 shadow-sm",
         className,

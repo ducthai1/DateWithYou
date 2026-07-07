@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
 
 export function TripForm({
   trip,
@@ -170,31 +171,24 @@ export function TripForm({
       
       <ModalFooter>
         {trip && (
-          <button
+          <Button
             type="button"
+            variant="destructive"
+            size="icon"
             onClick={handleDelete}
             disabled={isPending}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive-soft text-destructive transition-colors hover:bg-destructive/20 mr-2"
+            className="mr-2 shrink-0"
             title="Xóa chuyến đi"
           >
             <Trash2 className="h-5 w-5" />
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          onClick={onSuccess}
-          disabled={isPending}
-          className="flex-1 rounded-xl bg-muted py-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted/80"
-        >
+        <Button type="button" variant="secondary" className="flex-1" onClick={onSuccess} disabled={isPending}>
           Hủy
-        </button>
-        <button
-          type="submit"
-          disabled={isPending}
-          className="flex-1 rounded-xl bg-accent py-2.5 font-medium text-accent-foreground shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50"
-        >
+        </Button>
+        <Button type="submit" className="flex-1" disabled={isPending}>
           {trip ? "Lưu thay đổi" : "Tạo chuyến đi"}
-        </button>
+        </Button>
       </ModalFooter>
     </form>
   );

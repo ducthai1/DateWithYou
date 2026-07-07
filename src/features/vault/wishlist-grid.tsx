@@ -383,8 +383,8 @@ export function WishlistGrid() {
           </div>
         </ModalContent>
         <ModalFooter>
-          <Button variant="ghost" onClick={closeForm}>Huỷ</Button>
-          <Button variant="primary" disabled={!itemName.trim() || create.isPending || update.isPending} onClick={saveForm}>
+          <Button variant="secondary" className="flex-1" onClick={closeForm}>Huỷ</Button>
+          <Button variant="primary" className="flex-1" disabled={!itemName.trim() || create.isPending || update.isPending} onClick={saveForm}>
             {editingId ? "Cập nhật" : "Lưu vào Wishlist"}
           </Button>
         </ModalFooter>

@@ -145,8 +145,8 @@ export function LocationSettingsModal({
           </div>
       </ModalContent>
       <ModalFooter>
-        <Button variant="ghost" onClick={onClose}>Huỷ</Button>
-        <Button onClick={handleSave} disabled={updateConfig.isPending} className="gap-2">
+        <Button variant="secondary" className="flex-1" onClick={onClose}>Huỷ</Button>
+        <Button onClick={handleSave} disabled={updateConfig.isPending} className="flex-1 gap-2">
           <Save className="h-4 w-4" /> {updateConfig.isPending ? "Đang lưu..." : "Lưu thay đổi"}
         </Button>
       </ModalFooter>

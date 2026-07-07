@@ -47,7 +47,7 @@ export function AlertModal({
         <p className="text-muted-foreground text-sm leading-relaxed">{message}</p>
       </ModalContent>
       <ModalFooter className="justify-center">
-        <Button variant="primary" onClick={onClose} className="min-w-28">
+        <Button variant="primary" onClick={onClose} className="flex-1 min-w-28">
           {actionLabel}
         </Button>
       </ModalFooter>

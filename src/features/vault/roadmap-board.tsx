@@ -263,8 +263,8 @@ export function RoadmapBoard() {
           </div>
         </ModalContent>
         <ModalFooter>
-          <Button variant="ghost" onClick={closeForm}>Huỷ</Button>
-          <Button variant="primary" disabled={!title.trim() || create.isPending || update.isPending} onClick={saveForm}>
+          <Button variant="secondary" className="flex-1" onClick={closeForm}>Huỷ</Button>
+          <Button variant="primary" className="flex-1" disabled={!title.trim() || create.isPending || update.isPending} onClick={saveForm}>
             {editingId ? "Cập nhật" : "Thêm vào kế hoạch"}
           </Button>
         </ModalFooter>
