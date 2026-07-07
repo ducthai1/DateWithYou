@@ -92,10 +92,10 @@ export const CalendarCell = memo(function CalendarCell({
       className={cn(
         // Mobile: soft borderless tile with tap feedback. Desktop (md+): the
         // original bordered square with hover + sticky-note layout is restored.
-        "relative flex aspect-square flex-col items-start justify-start overflow-hidden p-1 md:p-2 text-sm transition-all touch-manipulation",
-        "rounded-2xl md:rounded-xl md:border-2 md:transition-colors",
+        "relative flex aspect-square flex-col items-start justify-start overflow-hidden p-1 md:p-3 text-sm transition-all touch-manipulation",
+        "rounded-2xl md:rounded-xl md:border-[3px] md:transition-colors",
         cell.inMonth && !hasSpecial &&
-          "bg-card shadow-sm active:scale-[0.96] md:shadow-none md:border-border md:hover:border-accent md:active:scale-100",
+          "bg-card shadow-sm active:scale-[0.96] md:shadow-none md:border-muted md:hover:border-accent md:active:scale-100",
         cell.inMonth && hasSpecial &&
           "bg-pink-50 shadow-sm active:scale-[0.96] md:bg-card md:shadow-none md:border-pink-300 md:active:scale-100 dark:md:border-pink-700",
         !cell.inMonth &&
@@ -133,14 +133,13 @@ export const CalendarCell = memo(function CalendarCell({
       {/* ── Top row: day number + count badge ── */}
       <div className="relative flex w-full items-start justify-between z-20">
         <div className="flex items-center gap-1">
-          {/* Mobile today = filled accent disc around the number; desktop keeps
-              the plain accent-coloured number (today ring is on the cell). */}
+          {/* Today gets a solid filled circle around the number on all devices */}
           <span
             className={cn(
               "leading-none",
               isToday
-                ? "flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[13px] font-bold text-accent-foreground shadow-sm md:h-auto md:w-auto md:rounded-none md:bg-transparent md:font-medium md:text-accent md:shadow-none"
-                : "font-medium",
+                ? "flex h-7 w-7 items-center justify-center rounded-full bg-accent text-[14px] font-bold text-accent-foreground shadow-sm"
+                : "font-semibold pt-1 pl-1",
             )}
           >
             {cell.day}
