@@ -93,15 +93,14 @@ export const CalendarCell = memo(function CalendarCell({
         // Mobile: soft borderless tile with tap feedback. Desktop (md+): the
         // original bordered square with hover + sticky-note layout is restored.
         "relative flex aspect-square flex-col items-start justify-start overflow-hidden p-1 md:p-3 text-sm transition-all touch-manipulation",
-        "rounded-2xl md:rounded-xl md:border-[3px] md:transition-colors",
-        cell.inMonth && !hasSpecial &&
-          "bg-card shadow-sm active:scale-[0.96] md:shadow-none md:border-border md:hover:border-accent md:active:scale-100",
-        cell.inMonth && hasSpecial &&
-          "bg-pink-50 shadow-sm active:scale-[0.96] md:bg-card md:shadow-none md:border-pink-300 md:active:scale-100 dark:md:border-pink-700",
+        "rounded-2xl md:rounded-xl md:transition-colors",
+        cell.inMonth && !isToday && "md:border-[3px]",
+        cell.inMonth && !isToday && !hasSpecial && "bg-card shadow-sm active:scale-[0.96] md:shadow-none md:border-border md:hover:border-accent md:active:scale-100",
+        cell.inMonth && !isToday && hasSpecial && "bg-pink-50 shadow-sm active:scale-[0.96] md:bg-card md:shadow-none md:border-pink-300 md:active:scale-100 dark:md:border-pink-700",
+        cell.inMonth && isToday &&
+          "bg-accent/15 border-[3px] border-accent shadow-sm active:scale-[0.96] md:shadow-none md:active:scale-100",
         !cell.inMonth &&
-          "bg-transparent text-muted-foreground/40 md:border-transparent",
-        // Today: accent border on desktop; mobile uses the circled number.
-        isToday && "md:border-accent",
+          "bg-transparent text-muted-foreground/40 md:border-transparent md:border-[3px]",
       )}
     >
       {/* Soft radial glow background for special dates */}
