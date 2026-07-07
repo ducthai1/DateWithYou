@@ -116,6 +116,8 @@
   --color-destructive:       var(--destructive);
   --color-destructive-soft:  var(--destructive-soft);
   --color-success:           var(--success);
+  --color-gradient-from:     var(--gradient-from);
+  --color-gradient-to:       var(--gradient-to);
 
   /* Fonts — one sans family everywhere. `font-serif` is intentionally aliased
      to the same sans face so any leftover `font-serif` class stays consistent. */

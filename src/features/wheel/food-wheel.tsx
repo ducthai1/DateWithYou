@@ -124,7 +124,7 @@ export function FoodWheel() {
 
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-6 pb-8 md:px-[30px]">
-      <div className="sticky top-2 z-20 mb-6 w-full rounded-2xl bg-gradient-to-r from-accent-soft/90 to-accent-soft/30 px-4 py-4 shadow-sm backdrop-blur-md text-center">
+      <div className="sticky top-2 z-20 mb-6 w-full rounded-2xl bg-gradient-to-r from-gradient-from/15 to-gradient-to/15 px-4 py-4 shadow-sm backdrop-blur-md text-center">
         <h1 className="text-2xl font-semibold text-accent">Hôm nay ăn gì?</h1>
       </div>
 

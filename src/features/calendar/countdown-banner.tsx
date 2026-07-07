@@ -21,7 +21,7 @@ export function CountdownBanner() {
   const Icon = resolveIcon(next.icon ?? undefined);
 
   return (
-    <div className="from-accent-soft to-card flex items-center gap-3 rounded-2xl bg-gradient-to-r p-3.5 shadow-sm">
+    <div className="from-gradient-from/15 to-gradient-to/15 flex items-center gap-3 rounded-2xl bg-gradient-to-r p-3.5 shadow-sm">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft">
         <Icon className="h-5 w-5 text-accent" strokeWidth={1.8} />
       </span>

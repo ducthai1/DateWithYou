@@ -37,7 +37,7 @@ export default function VaultPage() {
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-6 px-4 pt-6 pb-6 md:px-[30px]">
       <div className="space-y-4">
-        <div className="sticky top-2 z-20 mb-6 flex flex-col gap-y-3 rounded-2xl bg-gradient-to-r from-accent-soft/90 to-accent-soft/30 px-4 py-4 shadow-sm backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-y-0">
+        <div className="sticky top-2 z-20 mb-6 flex flex-col gap-y-3 rounded-2xl bg-gradient-to-r from-gradient-from/15 to-gradient-to/15 px-4 py-4 shadow-sm backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-y-0">
           <div>
             <h1 className="text-2xl font-semibold text-accent">Góc bí mật</h1>
             <p className="text-muted-foreground text-sm mt-0.5">Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn.</p>
