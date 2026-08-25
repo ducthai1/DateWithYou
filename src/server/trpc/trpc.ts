@@ -62,8 +62,33 @@ export const protectedProcedure = authedProcedure.use(async ({ ctx, next }) => {
   if (!spaces.length) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
 
   const activeSpaceIdStr = ctx.activeSpaceId ?? "";
-  const space =
-    spaces.find((s) => String(s._id) === activeSpaceIdStr) ?? spaces[0]!;
-  
+
+  if (activeSpaceIdStr) {
+    const active = spaces.find((s) => String(s._id) === activeSpaceIdStr);
+    /*
+     * The caller SENT an active-space cookie and it matches none of their
+     * spaces (stale value, truncated cookie, or a space they have since left).
+     *
+     * Falling back to spaces[0] here is silently wrong, not merely imprecise:
+     * find() has no sort, so "first" is whatever order the server returns.
+     * The UI still believes the cookie's space is active, so a create/update
+     * mutation would be written into a DIFFERENT couple's space than the one
+     * on screen — cross-tenant data written with no error anywhere. Refusing
+     * loudly lets the client clear the cookie and re-pick a space (the space
+     * switcher runs on getAllMine, an authedProcedure, so recovery still works
+     * while every protectedProcedure is failing).
+     */
+    if (!active)
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "STALE_SPACE" });
+
+    return next({
+      ctx: { userId: ctx.userId, spaceId: String(active._id), activeSpaceId: ctx.activeSpaceId },
+    });
+  }
+
+  // No cookie at all (fresh session / first load): defaulting to a space the
+  // user genuinely belongs to is the intended behaviour, not a guess at which
+  // of several the user *meant*.
+  const space = spaces[0]!;
   return next({ ctx: { userId: ctx.userId, spaceId: String(space._id), activeSpaceId: ctx.activeSpaceId } });
 });

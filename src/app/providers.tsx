@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { trpc } from "@/lib/trpc";
@@ -29,10 +34,49 @@ const SpaceGuard = dynamic(
   { ssr: false },
 );
 
+
+/*
+ * Recovery for the STALE_SPACE refusal.
+ *
+ * protectedProcedure now refuses outright when the active_space_id cookie names
+ * a space the user does not belong to, instead of silently writing into an
+ * arbitrary one. That is the correct server behaviour, but on its own it would
+ * brick the app: every query and mutation fails at once and nothing clears the
+ * bad cookie.
+ *
+ * Dropping the cookie puts the request back on the "no cookie at all" path,
+ * where the server legitimately defaults to a space the user does belong to.
+ * One reload then repairs the session. The sessionStorage latch means a
+ * PRECONDITION_FAILED coming from anywhere else can never turn into a reload
+ * loop — we retry the repair exactly once per tab.
+ */
+const STALE_SPACE_LATCH = "vivu:stale-space-recovered";
+
+function recoverFromStaleSpace(error: unknown) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message: unknown }).message)
+      : "";
+  if (!message.includes("STALE_SPACE")) return;
+
+  try {
+    if (sessionStorage.getItem(STALE_SPACE_LATCH)) return;
+    sessionStorage.setItem(STALE_SPACE_LATCH, "1");
+  } catch {
+    // Private mode / storage disabled: fall through and still repair once.
+    // Worst case is a single extra reload, which is better than a dead app.
+  }
+
+  document.cookie = "active_space_id=; path=/; max-age=0";
+  window.location.reload();
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        queryCache: new QueryCache({ onError: recoverFromStaleSpace }),
+        mutationCache: new MutationCache({ onError: recoverFromStaleSpace }),
         defaultOptions: {
           queries: {
             // Couple data changes rarely and only from two people, so treat

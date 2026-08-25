@@ -109,36 +109,50 @@ export const spaceRouter = router({
 
   getMine: authedProcedure.query(async ({ ctx }) => {
     await connectToDatabase();
-    let space = null;
-    
-    if (ctx.activeSpaceId) {
-      space = await SpaceModel.findOne({ _id: ctx.activeSpaceId, members: ctx.userId }).lean<{
-        _id: unknown;
-        name: string;
-        themeColor: string;
-        themePreset?: string;
-        coverImage?: string;
-        members: string[];
-        createdBy?: string;
-        isPersonal?: boolean;
-        pin?: string;
-        pinHash?: string;
-      }>();
-    }
-    
-    if (!space) {
-      space = await SpaceModel.findOne({ members: ctx.userId }).lean<{
-        _id: unknown;
-        name: string;
-        themeColor: string;
-        themePreset?: string;
-        coverImage?: string;
-        members: string[];
-        createdBy?: string;
-        isPersonal?: boolean;
-        pin?: string;
-        pinHash?: string;
-      }>();
+
+    type SpaceLean = {
+      _id: unknown;
+      name: string;
+      themeColor: string;
+      themePreset?: string;
+      coverImage?: string;
+      members: string[];
+      createdBy?: string;
+      isPersonal?: boolean;
+      pin?: string;
+      pinHash?: string;
+    };
+
+    const activeSpaceId = ctx.activeSpaceId ?? "";
+    let space: SpaceLean | null = null;
+
+    if (activeSpaceId) {
+      try {
+        space = await SpaceModel.findOne({
+          _id: activeSpaceId,
+          members: ctx.userId,
+        }).lean<SpaceLean>();
+      } catch {
+        // A truncated/garbage cookie fails _id casting. From the caller's point
+        // of view that is identical to "no such space" — handled below.
+        space = null;
+      }
+
+      if (!space) {
+        // Mirrors protectedProcedure: an active-space cookie that resolves to
+        // nothing must NOT silently fall back to some other space. getMine is
+        // what labels the screen, so falling back would show Space A's name
+        // while every protectedProcedure call targets a different space.
+        // Exception: a user with no space at all still gets `null` so the
+        // SpaceGuard can bounce them to /onboarding instead of an error page.
+        const hasAnySpace = await SpaceModel.exists({ members: ctx.userId });
+        if (!hasAnySpace) return null;
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "STALE_SPACE" });
+      }
+    } else {
+      // No cookie at all (fresh session): any space the user belongs to is a
+      // legitimate default — there is no user intent to contradict.
+      space = await SpaceModel.findOne({ members: ctx.userId }).lean<SpaceLean>();
     }
 
     if (!space) return null;
@@ -231,18 +245,19 @@ export const spaceRouter = router({
       }
     }),
 
-  // Issues a single-use, hashed, TTL'd code. Returns plaintext once.
-  createInvite: authedProcedure.mutation(async ({ ctx }) => {
+  // Issues a single-use, hashed, TTL'd code for the ACTIVE space. Returns
+  // plaintext once.
+  //
+  // Was authedProcedure re-resolving the space itself: cookie first, then an
+  // unsorted, tie-break-free `findOne({ members: ctx.userId })`. A user who
+  // belongs to more than one space (getAllMine exists, and personal spaces are
+  // auto-created) could sit in Space B, tap "invite partner", and be handed a
+  // code that joins Space A — the partner then lands in the wrong space, and
+  // the code is spent. protectedProcedure resolves spaceId in exactly one
+  // place, so there is nothing left here to disagree with the UI.
+  createInvite: protectedProcedure.mutation(async ({ ctx }) => {
     await connectToDatabase();
-    let space = null;
-    
-    if (ctx.activeSpaceId) {
-      space = await SpaceModel.findOne({ _id: ctx.activeSpaceId, members: ctx.userId });
-    }
-    
-    if (!space) {
-      space = await SpaceModel.findOne({ members: ctx.userId });
-    }
+    const space = await SpaceModel.findOne({ _id: ctx.spaceId, members: ctx.userId });
 
     if (!space) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
     if (space.members.length >= 2)
