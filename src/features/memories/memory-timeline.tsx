@@ -14,6 +14,14 @@ import { StaggerList } from "@/components/ui/stagger-list";
 import { type EmbedProvider } from "@/lib/embed";
 import { cn } from "@/lib/utils";
 import { MemoryForm } from "./memory-form";
+import {
+  ReactionBar,
+  type InteractionInput,
+  type InteractionState,
+  type NoteRow,
+  type ReactionRow,
+} from "@/features/interactions/reaction-bar";
+import { NoteThread } from "@/features/interactions/note-thread";
 import { Edit, AlertTriangle } from "lucide-react";
 
 type EmbedField = {
@@ -25,6 +33,9 @@ type EmbedField = {
 };
 
 import { useToast } from "@/components/ui/toast";
+
+/** Ids per batched interaction request — matches the router's input cap. */
+const INTERACTION_BATCH = 50;
 
 function monthKey(d: Date): string {
   return new Date(d).toLocaleDateString("vi-VN", { month: "long", year: "numeric" });
@@ -43,6 +54,14 @@ export function MemoryTimeline() {
     onSuccess: () => { utils.memory.list.invalidate(); toast("Đã xoá kỷ niệm", "success"); },
     onError: (err) => toast(err.message, "error")
   });
+
+  // Member profiles power the reaction rings and note bylines. One query for
+  // the whole page (react-query dedupes it app-wide). A failure only costs the
+  // couple-chosen colours — those fall back to the accent token — so it never
+  // blocks the feed.
+  const membersQuery = trpc.space.members.useQuery();
+  const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
+  const selfId = members.find((m) => m.isSelf)?.id ?? null;
 
   const all = list.data ?? [];
   type Memo = (typeof all)[number];
@@ -66,6 +85,53 @@ export function MemoryTimeline() {
       }, {}),
     [memories],
   );
+
+  // Reactions + notes for the whole feed, batched: one request per 50 ids,
+  // never one per card. Batches are cut from the *unfiltered* list so flipping
+  // the tag filter doesn't change the query key and force a refetch.
+  const idBatches = useMemo(() => {
+    const ids = (list.data ?? []).map((m) => m.id);
+    const out: string[][] = [];
+    for (let i = 0; i < ids.length; i += INTERACTION_BATCH)
+      out.push(ids.slice(i, i + INTERACTION_BATCH));
+    return out;
+  }, [list.data]);
+
+  const interactionQueries = trpc.useQueries((t) =>
+    idBatches.map((ids) =>
+      t.interaction.forTargets({ targetType: "memory", targetIds: ids }),
+    ),
+  );
+
+  // Per-batch state, not one global flag: a failed batch must not paint "chưa
+  // tải được" onto cards whose own batch loaded fine.
+  const interactions = useMemo(() => {
+    const byTarget: Record<string, { reactions: ReactionRow[]; notes: NoteRow[] }> = {};
+    const inputByTarget: Record<string, InteractionInput> = {};
+    const stateByTarget: Record<string, InteractionState> = {};
+    const batchByTarget: Record<string, number> = {};
+    idBatches.forEach((ids, i) => {
+      const input: InteractionInput = { targetType: "memory", targetIds: ids };
+      const q = interactionQueries[i];
+      const state: InteractionState = q?.isError
+        ? "error"
+        : q?.isPending
+          ? "loading"
+          : "ready";
+      for (const id of ids) {
+        inputByTarget[id] = input;
+        stateByTarget[id] = state;
+        batchByTarget[id] = i;
+      }
+      if (q?.data) Object.assign(byTarget, q.data);
+    });
+    return { byTarget, inputByTarget, stateByTarget, batchByTarget };
+  }, [idBatches, interactionQueries]);
+
+  const retryInteractions = (targetId: string) => {
+    const i = interactions.batchByTarget[targetId];
+    if (i !== undefined) void interactionQueries[i]?.refetch();
+  };
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-6 md:px-[30px]">
@@ -125,6 +191,12 @@ export function MemoryTimeline() {
               {items.map((m) => {
                 const photoCount = m.photos.length;
                 const embedCount = (m.embeds ?? []).length;
+                const entry = interactions.byTarget[m.id];
+                const interactionInput: InteractionInput =
+                  interactions.inputByTarget[m.id] ?? {
+                    targetType: "memory",
+                    targetIds: [m.id],
+                  };
                 return (
                   <Card
                     key={m.id}
@@ -194,6 +266,34 @@ export function MemoryTimeline() {
                         +{photoCount - 3} ảnh
                       </p>
                     )}
+                    {/* Reciprocity strip — the other partner's way to answer an
+                        upload. Clicks are contained so reacting or writing a
+                        note never also opens the detail modal. */}
+                    <div
+                      className="border-border mt-3 space-y-1 border-t pt-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ReactionBar
+                        targetType="memory"
+                        targetId={m.id}
+                        queryInput={interactionInput}
+                        reactions={entry?.reactions ?? []}
+                        members={members}
+                        selfId={selfId}
+                        state={interactions.stateByTarget[m.id] ?? "ready"}
+                        onRetry={() => retryInteractions(m.id)}
+                      />
+                      <NoteThread
+                        targetType="memory"
+                        targetId={m.id}
+                        queryInput={interactionInput}
+                        notes={entry?.notes ?? []}
+                        members={members}
+                        selfId={selfId}
+                        state={interactions.stateByTarget[m.id] ?? "ready"}
+                        onRetry={() => retryInteractions(m.id)}
+                      />
+                    </div>
                   </Card>
                 );
               })}

@@ -4,6 +4,8 @@ import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { MemoryModel } from "@/server/db/models/memory";
 import { LocationModel } from "@/server/db/models/location";
+import { ReactionModel } from "@/server/db/models/reaction";
+import { NoteModel } from "@/server/db/models/note";
 import { destroyAssets } from "@/server/cloudinary";
 import { resolveEmbed } from "@/server/lib/resolve-embed";
 
@@ -140,6 +142,21 @@ export const memoryRouter = router({
         (p: { publicId: string }) => p.publicId,
       );
       await doc.deleteOne();
+      // Reactions and notes point at the memory by id, so deleting the memory
+      // alone would leave them addressing nothing — invisible rows that still
+      // count against the space and would reattach if an id were ever reused.
+      await Promise.all([
+        ReactionModel.deleteMany({
+          spaceId: ctx.spaceId,
+          targetType: "memory",
+          targetId: input.id,
+        }),
+        NoteModel.deleteMany({
+          spaceId: ctx.spaceId,
+          targetType: "memory",
+          targetId: input.id,
+        }),
+      ]);
       await destroyAssets(publicIds); // best-effort, after the DB delete
       return { ok: true };
     }),

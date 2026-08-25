@@ -20,6 +20,9 @@ import {
   RewardVoucherModel,
   RewardAccountModel,
 } from "./models/reward-models";
+import { ReactionModel } from "./models/reaction";
+import { NoteModel } from "./models/note";
+import { MemberStateModel } from "./models/member-state";
 import { SpaceModel } from "./models/space";
 
 // Structural type — every Mongoose model exposes deleteMany(filter).
@@ -41,6 +44,9 @@ const SPACE_SCOPED_MODELS: Deletable[] = [
   RewardLogModel,
   RewardVoucherModel,
   RewardAccountModel,
+  ReactionModel,
+  NoteModel,
+  MemberStateModel,
 ];
 
 /**
