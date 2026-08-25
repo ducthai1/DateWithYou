@@ -56,6 +56,9 @@ export const PRIVATE_ROUTES = [
   "/wheel",
   "/settings",
   "/onboarding",
+  "/home",
+  "/activity",
+  "/search",
 ] as const;
 
 /**

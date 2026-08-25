@@ -6,14 +6,16 @@ import { NAV_ITEMS, NAV_HIDDEN_ON } from "./nav-items";
 import { cn } from "@/lib/utils";
 
 /** Mobile-only bottom nav (hidden on md+, where the sidebar takes over). The
- *  center item (Lịch) is raised into a floating accent disc as the app's hub. */
+ *  center item ("Hôm nay") is raised into a floating accent disc as the app's
+ *  hub. Items flagged `mobileHidden` are dropped here — six targets is the most
+ *  this bar fits at 390px — and stay reachable from the sidebar and top bar. */
 export function BottomNav() {
   const pathname = usePathname();
   if (NAV_HIDDEN_ON.includes(pathname)) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex items-end justify-around border-t border-white/40 bg-white/70 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl shadow-[0_-10px_40px_rgba(0,0,0,0.04)] md:hidden">
-      {NAV_ITEMS.map((it) => {
+      {NAV_ITEMS.filter((it) => !it.mobileHidden).map((it) => {
         const active = pathname.startsWith(it.href);
         const Icon = it.Icon;
 

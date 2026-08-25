@@ -24,5 +24,8 @@ export const config = {
     "/wheel/:path*",
     "/timeline/:path*",
     "/vault/:path*",
+    "/home/:path*",
+    "/activity/:path*",
+    "/search/:path*",
   ],
 };

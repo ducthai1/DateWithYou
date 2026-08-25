@@ -17,11 +17,16 @@ const TAB_BLURB: Record<string, string> = {
   "/calendar": "Lên kế hoạch hẹn hò & đếm ngược ngày đặc biệt.",
   "/timeline": "Lưu ảnh, cảm xúc, nhạc/video những khoảnh khắc đã qua.",
   "/vault": "Dự định, wishlist, phiếu thưởng & hộp thời gian riêng của hai bạn.",
+  "/home": "Mở app là thấy ngay: hôm nay có gì, sắp tới ngày nào, kỷ niệm năm ngoái.",
+  "/trips": "Lịch trình từng ngày, ngân sách và checklist đồ cần mang.",
+  "/search": "Lục lại kỷ niệm, quán, công thức — gõ không dấu vẫn ra.",
+  "/activity": "Người ấy vừa thêm gì vào không gian chung.",
+  "/settings": "Ngày kỷ niệm, biệt danh, màu chủ đề và mã mời người ấy.",
 };
 
 /**
  * First-run orientation. Shows once (localStorage flag) on the first visit to an
- * app screen, explaining what the app is and what each of the 5 tabs holds —
+ * app screen, explaining what the app is and what each nav destination holds —
  * so a new couple isn't dropped into an empty calendar with no context. Hidden
  * on auth/onboarding/landing, and never shown again after dismissal.
  */
