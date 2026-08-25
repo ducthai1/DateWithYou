@@ -17,6 +17,11 @@ const wishlistItemSchema = new Schema(
   { timestamps: true },
 );
 
+// Serves activity.feed: find({ spaceId, createdAt: { $lt: before } })
+// .sort({ createdAt: -1 }).limit(n) — and activity.unreadCount, which adds
+// an equality-free createdAt range on the same prefix.
+wishlistItemSchema.index({ spaceId: 1, createdAt: -1 });
+
 export type WishlistItem = InferSchemaType<typeof wishlistItemSchema>;
 
 export const WishlistItemModel =

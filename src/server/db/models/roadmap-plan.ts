@@ -18,6 +18,11 @@ const roadmapPlanSchema = new Schema(
   { timestamps: true },
 );
 
+// Serves activity.feed: find({ spaceId, createdAt: { $lt: before } })
+// .sort({ createdAt: -1 }).limit(n) — and activity.unreadCount, which adds
+// an equality-free createdAt range on the same prefix.
+roadmapPlanSchema.index({ spaceId: 1, createdAt: -1 });
+
 export type RoadmapPlan = InferSchemaType<typeof roadmapPlanSchema>;
 
 export const RoadmapPlanModel =

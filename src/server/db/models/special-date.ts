@@ -23,6 +23,10 @@ const specialDateSchema = new Schema(
 );
 
 specialDateSchema.index({ spaceId: 1, date: 1 });
+// Serves activity.feed: find({ spaceId, createdAt: { $lt: before } })
+// .sort({ createdAt: -1 }).limit(n) — and activity.unreadCount, which adds
+// an equality-free createdAt range on the same prefix.
+specialDateSchema.index({ spaceId: 1, createdAt: -1 });
 
 export type SpecialDate = InferSchemaType<typeof specialDateSchema>;
 

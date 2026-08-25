@@ -26,6 +26,11 @@ const tripSchema = new Schema(
   { timestamps: true }
 );
 
+// Serves activity.feed: find({ spaceId, createdAt: { $lt: before } })
+// .sort({ createdAt: -1 }).limit(n) — and activity.unreadCount, which adds
+// an equality-free createdAt range on the same prefix.
+tripSchema.index({ spaceId: 1, createdAt: -1 });
+
 export type Trip = InferSchemaType<typeof tripSchema>;
 export type TripChecklist = InferSchemaType<typeof tripChecklistSchema>;
 

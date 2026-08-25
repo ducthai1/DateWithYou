@@ -37,6 +37,10 @@ const locationSchema = new Schema(
 locationSchema.index({ spaceId: 1, status: 1 });
 // Covers list queries that filter by district and/or category (most common filter combo).
 locationSchema.index({ spaceId: 1, district: 1, category: 1 });
+// Serves activity.feed: find({ spaceId, createdAt: { $lt: before } })
+// .sort({ createdAt: -1 }).limit(n) — and activity.unreadCount, which adds
+// an equality-free createdAt range on the same prefix.
+locationSchema.index({ spaceId: 1, createdAt: -1 });
 
 export type Location = InferSchemaType<typeof locationSchema>;
 

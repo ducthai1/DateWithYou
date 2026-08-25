@@ -36,11 +36,17 @@ const rewardVoucherSchema = new Schema(
 );
 
 /** Authoritative per-user point balance, mutated via atomic $inc. */
-const rewardAccountSchema = new Schema({
-  spaceId: { type: String, required: true },
-  userId: { type: String, required: true },
-  balance: { type: Number, required: true, default: 0 },
-});
+const rewardAccountSchema = new Schema(
+  {
+    spaceId: { type: String, required: true },
+    userId: { type: String, required: true },
+    balance: { type: Number, required: true, default: 0 },
+  },
+  // Was the only schema in the app without timestamps, so an account row had no
+  // record of when the balance was first opened or last moved — every sibling
+  // reward schema keeps them.
+  { timestamps: true },
+);
 rewardAccountSchema.index({ spaceId: 1, userId: 1 }, { unique: true });
 
 export const RewardTaskModel =

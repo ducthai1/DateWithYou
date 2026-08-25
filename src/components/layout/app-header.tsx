@@ -2,15 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Lock } from "lucide-react";
+import { Lock, Settings } from "lucide-react";
 import { NAV_HIDDEN_ON } from "./nav-items";
 import { BrandMark } from "./brand-mark";
 import { SyncButton } from "./sync-button";
+import { ActivityBell } from "@/features/activity/activity-bell";
+
+// 40px tap target + focus ring, shared by every header action link.
+const ACTION_CLASS = (active: boolean) =>
+  "flex h-10 w-10 items-center justify-center rounded-lg transition-colors touch-manipulation " +
+  "outline-none focus-visible:ring-2 focus-visible:ring-ring/50 " +
+  (active
+    ? "text-accent bg-accent-soft active:bg-accent/20"
+    : "text-muted-foreground hover:bg-muted active:bg-muted");
 
 /**
- * Mobile-only top bar. The desktop sidebar already exposes the app title and
- * Settings, so this is hidden on md+. It is the mobile entry point to Settings
- * now that the gear no longer lives in the bottom nav.
+ * Mobile-only top bar (hidden on md+, where the sidebar carries the same
+ * targets). Holds the four things that have no home in the six-slot bottom
+ * bar: sync, the activity bell, the vault lock, and Settings.
  */
 export function AppHeader() {
   const pathname = usePathname();
@@ -18,22 +27,33 @@ export function AppHeader() {
 
   return (
     <header className="border-border bg-background/85 sticky top-0 z-20 flex items-center justify-between border-b px-4 py-2 backdrop-blur md:hidden">
-      <Link href="/map" className="flex items-center gap-2 text-lg font-semibold">
+      <Link
+        href="/map"
+        className="flex min-w-0 items-center gap-2 overflow-hidden text-lg font-semibold"
+      >
         <BrandMark className="h-10 w-40 shrink-0" />
       </Link>
-      <div className="flex items-center gap-1">
+      {/* shrink-0: four 40px targets must stay tappable — the wordmark clips
+          before any of them is allowed to shrink. */}
+      <div className="flex shrink-0 items-center gap-1">
         <SyncButton mode="mobile" />
+        <ActivityBell />
         <Link
           href="/vault"
           aria-label="Bí mật"
-          className={
-            "flex h-10 w-10 items-center justify-center rounded-lg transition-colors touch-manipulation " +
-            (pathname.startsWith("/vault")
-              ? "text-accent bg-accent-soft active:bg-accent/20"
-              : "text-muted-foreground hover:bg-muted active:bg-muted")
-          }
+          className={ACTION_CLASS(pathname.startsWith("/vault"))}
         >
           <Lock className="h-5 w-5" />
+        </Link>
+        {/* Settings left the mobile bottom bar (six targets is already the
+            limit at 390px), so this is now its only mobile entry point —
+            without it the gear would be desktop-sidebar-only. */}
+        <Link
+          href="/settings"
+          aria-label="Cài đặt"
+          className={ACTION_CLASS(pathname.startsWith("/settings"))}
+        >
+          <Settings className="h-5 w-5" />
         </Link>
       </div>
     </header>
