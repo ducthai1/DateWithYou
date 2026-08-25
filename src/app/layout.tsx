@@ -96,6 +96,15 @@ export const metadata: Metadata = {
     icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
+  /*
+   * Search Console ownership proof. Set NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION in
+   * the Vercel project to the token from the "HTML tag" verification method —
+   * the value inside content="...", not the whole tag. Left unset, Next simply
+   * omits the meta tag, so this costs nothing until it is needed.
+   */
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Vivu" },
   formatDetection: { telephone: false },
