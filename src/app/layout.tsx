@@ -12,6 +12,7 @@ import { GlobalInviteListener } from "@/components/layout/global-invite-listener
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
 import { THEME_COOKIE_NAME, resolveThemeKey } from "@/lib/theme-presets";
+import { SITE_DESCRIPTION, SITE_LOCALE, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
 const inter = Inter({
   variable: "--font-sans-inter",
@@ -34,8 +35,68 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "Vivu No Plan",
-  description: "Nơi lưu kỷ niệm và lên kế hoạch hẹn hò của tụi mình.",
+  /*
+   * metadataBase is what turns every relative URL below (canonical, og:image,
+   * the generated opengraph-image) into an absolute one. Without it Next emits
+   * them as paths, and crawlers plus link unfurlers discard them.
+   */
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    // Feature screens set only their own name; the brand is appended here so
+    // it never has to be repeated (and never drifts) per page.
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    "ứng dụng cho cặp đôi",
+    "app cho couple",
+    "lịch hẹn hò",
+    "lưu kỷ niệm tình yêu",
+    "hộp thời gian",
+    "vòng quay ăn gì",
+    "kế hoạch hẹn hò",
+    "Vivu No Plan",
+  ],
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  category: "lifestyle",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: SITE_LOCALE,
+    url: "/",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  /*
+   * Explicit crawl directives. `max-image-preview: large` is what allows a
+   * full-width image in the mobile result; the default is a thumbnail.
+   */
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  icons: {
+    icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Vivu" },
   formatDetection: { telephone: false },
 };

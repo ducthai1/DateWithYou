@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { TripList } from "@/features/trips/trip-list";
 
-export const metadata = {
-  title: "Chuyến đi - Vivu No Plan",
+export const metadata: Metadata = {
+  // Brand suffix comes from the title template in the root layout.
+  title: "Chuyến đi",
+  robots: { index: false, follow: false },
 };
 
 export default function TripsPage() {
