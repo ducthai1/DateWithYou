@@ -12,6 +12,11 @@ import { calendarRouter } from "@/server/trpc/routers/calendar";
 import { mediaRouter } from "@/server/trpc/routers/media";
 import { capsuleRouter } from "@/server/trpc/routers/capsule";
 import { tripRouter } from "@/server/trpc/routers/trip";
+import { interactionRouter } from "@/server/trpc/routers/interaction";
+import { activityRouter } from "@/server/trpc/routers/activity";
+import { dashboardRouter } from "@/server/trpc/routers/dashboard";
+import { searchRouter } from "@/server/trpc/routers/search";
+import { statsRouter } from "@/server/trpc/routers/stats";
 
 /** Root tRPC router. Each feature registers its own sub-router here. */
 export const appRouter = router({
@@ -28,6 +33,11 @@ export const appRouter = router({
   media: mediaRouter,
   capsule: capsuleRouter,
   trip: tripRouter,
+  interaction: interactionRouter,
+  activity: activityRouter,
+  dashboard: dashboardRouter,
+  search: searchRouter,
+  stats: statsRouter,
 });
 
 export type AppRouter = typeof appRouter;
