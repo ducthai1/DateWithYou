@@ -18,6 +18,17 @@ const GoogleOneTap = dynamic(
   { ssr: false },
 );
 
+// SpaceGuard has the same constraint and is mounted here rather than in the
+// (server) root layout, which cannot use `ssr: false`. It calls useSession too,
+// so server-rendering it threw "Cannot read properties of null (reading
+// 'useRef')" — and because it sits in the layout, that error escaped the whole
+// tree and every single route answered HTTP 500. It renders null, so skipping
+// the server pass costs nothing visually.
+const SpaceGuard = dynamic(
+  () => import("@/components/layout/space-guard").then((m) => m.SpaceGuard),
+  { ssr: false },
+);
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -61,6 +72,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <SidebarProvider>
             <ToastProvider>
               <GoogleOneTap />
+              <SpaceGuard />
               {children}
             </ToastProvider>
           </SidebarProvider>

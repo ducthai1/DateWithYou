@@ -7,7 +7,6 @@ import { Providers } from "./providers";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { SideNav } from "@/components/layout/side-nav";
 import { AppHeader } from "@/components/layout/app-header";
-import { SpaceGuard } from "@/components/layout/space-guard";
 import { MainWrapper } from "@/components/layout/main-wrapper";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
@@ -74,8 +73,9 @@ export default async function RootLayout({
   return (
     <html lang="vi" data-theme={themeKey}>
       <body className={`${inter.variable} ${playfair.variable} ${lora.variable} antialiased`}>
+        {/* SpaceGuard is mounted inside <Providers> — it is client-only
+            (ssr: false), which a Server Component cannot declare. */}
         <Providers>
-          <SpaceGuard />
           <SideNav />
           {/* Offset for the bottom nav on mobile, for the sidebar on desktop. */}
           <MainWrapper>
