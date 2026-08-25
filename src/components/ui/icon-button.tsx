@@ -2,7 +2,10 @@ import { cn } from "@/lib/utils";
 
 type Tone = "neutral" | "accent" | "destructive";
 
-/** Square 32px tappable icon button — meets min touch target, has focus ring. */
+/**
+ * Square 40px tappable icon button — meets the minimum touch target, has a
+ * focus ring. Icon-only by definition, so every caller must pass an aria-label.
+ */
 export function IconButton({
   className,
   tone = "neutral",
@@ -11,7 +14,7 @@ export function IconButton({
   return (
     <button
       className={cn(
-        "inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors",
+        "inline-flex h-10 w-10 items-center justify-center rounded-lg text-sm transition-colors",
         "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
         "disabled:cursor-not-allowed disabled:opacity-50",
         tone === "neutral" && "text-muted-foreground hover:bg-muted",

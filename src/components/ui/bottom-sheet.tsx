@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
+import { DialogTitleContext, dialogAttrs, useDialogA11y } from "./modal";
 
 /**
  * Mobile bottom sheet in a body portal. Slides up from the bottom, dims and
@@ -12,7 +13,9 @@ import { AnimatePresence, motion, useDragControls } from "framer-motion";
  * only (via drag controls) so scrolling the sheet content never triggers a
  * dismiss. Desktop uses <Modal> instead; this shell targets small viewports.
  *
- * Prop signature mirrors <Modal> so callers can swap shells by viewport.
+ * Prop signature mirrors <Modal> so callers can swap shells by viewport, and
+ * it shares <Modal>'s dialog semantics: announced as a modal dialog, focus
+ * moved in on open, Tab trapped inside, focus returned to the trigger on close.
  */
 export function BottomSheet({
   open,
@@ -26,6 +29,7 @@ export function BottomSheet({
   className?: string;
 }) {
   const dragControls = useDragControls();
+  const { containerRef, titleId, hasTitle, titleCtx } = useDialogA11y(open);
 
   useEffect(() => {
     if (!open) return;
@@ -53,6 +57,8 @@ export function BottomSheet({
           className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/40 backdrop-blur-sm"
         >
           <motion.div
+            ref={containerRef}
+            {...dialogAttrs(titleId, hasTitle)}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -68,6 +74,7 @@ export function BottomSheet({
             onClick={(e) => e.stopPropagation()}
             className={cn(
               "bg-card border-border relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border-t shadow-2xl",
+              "outline-none",
               className,
             )}
           >
@@ -79,7 +86,9 @@ export function BottomSheet({
             >
               <span className="bg-border h-1.5 w-10 rounded-full" />
             </div>
-            {children}
+            <DialogTitleContext.Provider value={titleCtx}>
+              {children}
+            </DialogTitleContext.Provider>
           </motion.div>
         </motion.div>
       )}

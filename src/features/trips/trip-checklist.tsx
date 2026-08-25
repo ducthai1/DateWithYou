@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useToast } from "@/components/ui/toast";
 import { Check, Plus, Trash2 } from "lucide-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function TripChecklist({ trip }: { trip: any }) {
   const ctx = trpc.useUtils();
+  const toast = useToast();
   const [newItem, setNewItem] = useState("");
 
   const addMut = trpc.trip.addChecklist.useMutation({
@@ -14,14 +16,17 @@ export function TripChecklist({ trip }: { trip: any }) {
       ctx.trip.get.invalidate({ id: trip.id });
       setNewItem("");
     },
+    onError: () => toast("Chưa thêm được, thử lại nhé", "error"),
   });
 
   const toggleMut = trpc.trip.toggleChecklist.useMutation({
     onSuccess: () => ctx.trip.get.invalidate({ id: trip.id }),
+    onError: () => toast("Chưa lưu được, thử lại nhé", "error"),
   });
 
   const removeMut = trpc.trip.removeChecklist.useMutation({
     onSuccess: () => ctx.trip.get.invalidate({ id: trip.id }),
+    onError: () => toast("Chưa xoá được, thử lại nhé", "error"),
   });
 
   const handleAdd = (e: React.FormEvent) => {
@@ -81,8 +86,8 @@ export function TripChecklist({ trip }: { trip: any }) {
 
             <button
               onClick={() => removeMut.mutate({ tripId: trip.id, checklistId: item.id })}
-              className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-              aria-label="Xóa"
+              className="text-muted-foreground hover:text-destructive focus-visible:ring-ring/50 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 md:opacity-60 md:group-hover:opacity-100"
+              aria-label={`Xoá "${item.content}"`}
             >
               <Trash2 className="h-4 w-4" />
             </button>

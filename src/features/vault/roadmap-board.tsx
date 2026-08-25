@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
@@ -139,6 +140,35 @@ export function RoadmapBoard() {
       handleStatusChange(draggedPlanId, status, e.currentTarget as HTMLElement);
     }
     setDraggedPlanId(null);
+  }
+
+
+  /*
+   * Guard the render on fetch state BEFORE falling through to the list.
+   * `list.data ?? []` made an in-flight fetch indistinguishable from a genuinely
+   * empty space, so every visit flashed an empty state over the couple's real
+   * content - and a failed fetch showed the same thing permanently, reading as
+   * "our data is gone" rather than "we are offline".
+   */
+  if (list.isPending) {
+    return (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-64" />
+        ))}
+      </div>
+    );
+  }
+
+  if (list.isError) {
+    return (
+      <div className="text-muted-foreground flex flex-col items-center gap-3 py-16 text-center text-sm">
+        <p>Chưa tải được dữ liệu. Kiểm tra kết nối rồi thử lại nhé.</p>
+        <Button variant="secondary" onClick={() => void list.refetch()} disabled={list.isRefetching}>
+          {list.isRefetching ? "Đang tải…" : "Thử lại"}
+        </Button>
+      </div>
+    );
   }
 
   return (
