@@ -20,11 +20,19 @@ export const metadata: Metadata = {
     // those read as duplicate pages competing with each other.
     canonical: "/",
   },
+  /*
+   * `images` has to be repeated here. A page-level `openGraph` REPLACES the
+   * layout's whole openGraph object rather than merging into it, so omitting
+   * the image drops og:image from the one page that actually gets shared.
+   * (twitter is not overridden here, which is why it kept its image and this
+   * was easy to miss.)
+   */
   openGraph: {
     type: "website",
     url: "/",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
+    images: [{ url: "/og-card.jpg", width: 1200, height: 630, alt: SITE_TITLE }],
   },
 };
 
@@ -47,7 +55,7 @@ function StructuredData() {
       inLanguage: "vi-VN",
       // Without an image here the graph gives Google nothing to attach to the
       // result; og:image is read by link unfurlers, not by Search.
-      image: `${SITE_URL}/brand-card.png`,
+      image: `${SITE_URL}/og-card.jpg`,
       publisher: { "@id": `${SITE_URL}/#org` },
       offers: {
         "@type": "Offer",
@@ -96,6 +104,27 @@ function StructuredData() {
 export default function Home() {
   return (
     <>
+      {/*
+        Preload the hero artwork, matched to the same breakpoint the <picture>
+        uses so only one file is ever fetched. Without this the browser did not
+        discover the LCP image until ~1s after the document arrived, because it
+        sits inside a client component well past the render-blocking font CSS.
+        React hoists these into <head>.
+      */}
+      <link
+        rel="preload"
+        as="image"
+        href="/hero-logo-tight.webp"
+        media="(max-width: 767px)"
+        fetchPriority="high"
+      />
+      <link
+        rel="preload"
+        as="image"
+        href="/hero-logo.webp"
+        media="(min-width: 768px)"
+        fetchPriority="high"
+      />
       <StructuredData />
       <LandingHero />
       <LandingSections />

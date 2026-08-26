@@ -263,3 +263,36 @@ button:disabled,
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Landing entrance animations.
+
+   Hand-rolled in CSS rather than framer-motion: the marketing hero was the only
+   thing in the whole layout chain importing that library, and keeping it there
+   forced the hero to be a Client Component and parked ~45kB of JavaScript in
+   front of the page's largest paint. As plain CSS the hero renders on the
+   server and animates without any JavaScript at all.
+   --------------------------------------------------------------------------- */
+@keyframes vivu-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes vivu-nudge {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(5px); }
+}
+
+.vivu-rise {
+  opacity: 0;
+  animation: vivu-rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.vivu-nudge {
+  animation: vivu-nudge 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vivu-rise { opacity: 1; animation: none; }
+  .vivu-nudge { animation: none; }
+}

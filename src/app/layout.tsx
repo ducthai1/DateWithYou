@@ -71,11 +71,13 @@ export const metadata: Metadata = {
     url: "/",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
+    images: [{ url: "/og-card.jpg", width: 1200, height: 630, alt: SITE_TITLE }],
   },
   twitter: {
     card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
+    images: [{ url: "/og-card.jpg", alt: SITE_TITLE }],
   },
   /*
    * Explicit crawl directives. `max-image-preview: large` is what allows a
@@ -96,6 +98,10 @@ export const metadata: Metadata = {
    * /favicon.ico is listed first and shipped as a real multi-size ICO. Browsers
    * and Google's favicon fetcher both still probe that exact path, and it was
    * answering 404 — the rel=icon PNG alone is not a reliable substitute.
+   *
+   * The file lives in public/ rather than app/. Both serve the same URL, but an
+   * app/favicon.ico is a metadata route that Next parses at build time, while a
+   * public/ file is copied verbatim — one less thing that can fail in a build.
    */
   icons: {
     icon: [
