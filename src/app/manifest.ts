@@ -13,10 +13,10 @@ export default function manifest(): MetadataRoute.Manifest {
     description: SITE_DESCRIPTION,
     start_url: "/",
     display: "standalone",
-    // Matches the `themeColor` in the root layout viewport so the launch
-    // splash does not flash a different colour than the app itself.
-    background_color: "#f1ece3",
-    theme_color: "#f1ece3",
+    // Matches the mark's tile colour, so the launch splash flows into the
+    // brand rather than flashing a different ground first.
+    background_color: "#0E3E4A",
+    theme_color: "#0E3E4A",
     lang: "vi",
     categories: ["lifestyle", "productivity"],
     icons: [
@@ -32,11 +32,26 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
         purpose: "any",
       },
+      // Separate maskable files, not the same art flagged twice: Android crops a
+      // maskable icon to a circle, so its artwork is drawn smaller inside a wide
+      // safe margin. Reusing the standard icon here would clip the letter.
+      {
+        src: "/icon-maskable-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: "/icon-maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
       {
         src: "/icon-512.png",
         sizes: "512x512",
         type: "image/png",
-        purpose: "maskable",
+        purpose: "any",
       },
     ],
   };
