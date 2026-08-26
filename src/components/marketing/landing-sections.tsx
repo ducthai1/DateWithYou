@@ -11,7 +11,7 @@ import { SITE_NAME } from "@/lib/site";
  *
  * Palette is hard-coded to the hero's warm parchment set (#fdfaf6 / #3b322a /
  * #6b5c51 / #c2693f) rather than the app's theme tokens — the landing is not
- * inside a couple space, so the per-couple accent preset does not apply here
+ * inside a shared space, so the per-space accent preset does not apply here
  * and the page must look identical to every visitor.
  */
 
@@ -72,7 +72,7 @@ export function LandingSections() {
           <SectionHeading
             eyebrow="Tính năng"
           title="Bảy thứ bạn sẽ dùng nhiều nhất"
-            lead="Mỗi mục dưới đây là một màn hình có sẵn trong ứng dụng, không phải kế hoạch cho tương lai."
+            lead="Mỗi mục dưới đây là một màn hình có sẵn trong ứng dụng, không phải kế hoạch cho tương lai. Bốn thứ được dùng nhiều nhất có trang riêng nói kỹ hơn."
           />
         </Reveal>
         <ul className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -94,6 +94,14 @@ export function LandingSections() {
               <p className="mt-3 text-[15px] font-light leading-relaxed text-[#6b5c51]">
                 {feature.body}
               </p>
+              {feature.href ? (
+                <Link
+                  href={feature.href}
+                  className="mt-4 inline-flex items-center gap-1 text-[13px] font-medium text-[#a8542f] transition-opacity hover:opacity-70"
+                >
+                  Xem chi tiết <span aria-hidden="true">→</span>
+                </Link>
+              ) : null}
             </Reveal>
           ))}
         </ul>

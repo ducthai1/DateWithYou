@@ -28,7 +28,9 @@ export function Reveal({
 }: {
   children: React.ReactNode;
   delay?: number;
-  as?: "div" | "li" | "section";
+  // "nav" is here for the sibling-page link list on the feature pages: a
+  // list of links to other pages is a navigation landmark, not a section.
+  as?: "div" | "li" | "section" | "nav";
   className?: string;
 }) {
   const ref = useRef<HTMLElement>(null);

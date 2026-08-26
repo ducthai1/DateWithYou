@@ -3,7 +3,7 @@ import { PRIVATE_ROUTES, SITE_URL } from "@/lib/site";
 
 /**
  * Serves /robots.txt. Before this existed the path 404'd, so crawlers had no
- * pointer to the sitemap and no signal about which routes are couple-private.
+ * pointer to the sitemap and no signal about which routes are members-only.
  */
 export default function robots(): MetadataRoute.Robots {
   return {

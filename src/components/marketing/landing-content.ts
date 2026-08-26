@@ -47,6 +47,12 @@ export interface Feature {
   emoji: string;
   title: string;
   body: string;
+  /**
+   * Optional link to the page that covers this feature properly. Four of the
+   * seven have one; the rest are described here and nowhere else, which is why
+   * the card bodies still have to stand on their own.
+   */
+  href?: string;
 }
 
 export const FEATURES: Feature[] = [
@@ -58,12 +64,14 @@ export const FEATURES: Feature[] = [
   {
     emoji: "🗺️",
     title: "Bản đồ nơi đã đi",
+    href: "/luu-dia-diem-da-di",
     body: "Ghim quán ăn, café đã ghé và chỗ muốn tới. Muốn rủ nhau đi thì gửi lời mời dẫn đường, người kia thấy ngay trên bản đồ.",
   },
   {
     emoji: "🎡",
     title: "Vòng quay “hôm nay ăn gì”",
-    body: "Hết ý tưởng thì để vòng quay chọn giúp: quán ăn đang mở cửa quanh đây, hoặc một món tự nấu trong bộ sưu tập.",
+    href: "/hom-nay-an-gi",
+    body: "Hết ý tưởng thì để vòng quay chọn giúp: một quán ăn trong danh sách bạn muốn tới, hoặc một món tự nấu trong bộ sưu tập.",
   },
   {
     emoji: "📚",
@@ -73,6 +81,7 @@ export const FEATURES: Feature[] = [
   {
     emoji: "✈️",
     title: "Chuyến đi có lịch trình",
+    href: "/nhat-ky-du-lich",
     body: "Dựng lịch trình du lịch từng ngày, theo dõi ngân sách và tick dần checklist đồ cần mang trước khi lên đường.",
   },
   {
@@ -83,6 +92,7 @@ export const FEATURES: Feature[] = [
   {
     emoji: "🔐",
     title: "Két bí mật",
+    href: "/thu-gui-tuong-lai",
     body: "Hộp thời gian niêm phong tới đúng ngày mới mở được, wishlist riêng, nhiệm vụ tính điểm và voucher đổi quà.",
   },
 ];
@@ -140,17 +150,12 @@ export const FAQ: FaqItem[] = [
   {
     question: "Có phải tải app không?",
     answer:
-      "Không. Vivu No Plan chạy thẳng trên trình duyệt, mở link là dùng được ngay — không cần vào App Store hay Google Play, không chiếm dung lượng máy, không phải chờ cập nhật. Muốn nó nằm sẵn như một app thật thì thêm vào màn hình chính là xong.",
+      "Không. Vivu No Plan chạy thẳng trên trình duyệt, mở link là dùng được ngay — không cần vào App Store hay Google Play, không chiếm dung lượng máy, không phải chờ cập nhật. Giao diện được dựng theo hướng mobile-first nên dùng trên điện thoại là thoải mái nhất; muốn nó nằm sẵn như một app thật thì thêm vào màn hình chính là xong.",
   },
   {
     question: "Vivu No Plan khác gì app đếm ngày yêu hay app ghi chú?",
     answer:
       "App đếm ngày làm rất tốt đúng một việc là đếm ngày. App ghi chú thì ghi được mọi thứ nhưng không biết dòng nào là quán bạn đã ghé. Ở đây bản đồ, lịch, album, công thức và vòng quay chọn món nằm cùng một chỗ và nối được với nhau — quán bạn ghim hôm trước chính là thứ vòng quay bốc ra tối nay. Và nó không chỉ dành cho người yêu.",
-  },
-  {
-    question: "Ghi lại chuyến du lịch được không?",
-    answer:
-      "Được. Mỗi chuyến có lịch trình từng ngày, theo dõi ngân sách và checklist đồ mang đi. Đi xong, ảnh và vài dòng kể lại nằm luôn trong dòng kỷ niệm — thành một quyển nhật ký du lịch mà bạn không phải cố ngồi viết.",
   },
   {
     question: "Vivu No Plan có mất phí không?",
@@ -161,15 +166,5 @@ export const FAQ: FaqItem[] = [
     question: "Người khác có xem được nội dung của mình không?",
     answer:
       "Không. Mỗi không gian chỉ người bên trong mới truy cập được, và mọi yêu cầu dữ liệu đều được kiểm tra quyền ở phía máy chủ chứ không chỉ ẩn đi trên giao diện. Không có bảng tin, không có người lạ, không có thuật toán gợi ý.",
-  },
-  {
-    question: "Dùng trên điện thoại có được không?",
-    answer:
-      "Được. Giao diện được dựng theo hướng mobile-first. Bạn có thể thêm Vivu No Plan vào màn hình chính để mở lên như một ứng dụng thật, không còn thanh địa chỉ trình duyệt.",
-  },
-  {
-    question: "Hộp thời gian hoạt động như thế nào?",
-    answer:
-      "Bạn viết một lá thư rồi chọn ngày mở. Trước ngày đó lá thư vẫn niêm phong — kể cả với chính người viết. Đúng ngày, thư mới mở ra được.",
   },
 ];

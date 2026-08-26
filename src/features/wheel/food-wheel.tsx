@@ -202,7 +202,7 @@ export function FoodWheel() {
           <p className="text-muted-foreground text-sm">
             {source === "place"
               ? places.data && places.data.length > 0
-                ? "Hiện tại không có quán nào trong danh mục này đang mở cửa. Thử đổi danh mục hoặc qua tab Tự nấu nhé!"
+                ? "Chưa có quán nào trong danh mục này. Thử đổi danh mục, ghim thêm chỗ muốn tới, hoặc qua tab Tự nấu nhé!"
                 : 'Chưa có địa điểm "Muốn đi". Thêm vài chỗ ở Bản đồ trước nhé.'
               : "Chưa có công thức nào. Lưu vài món ở Bộ sưu tập trước nhé."}
           </p>

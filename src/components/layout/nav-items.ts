@@ -10,6 +10,7 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react";
+import { FEATURE_PAGES } from "@/components/marketing/feature-pages";
 
 // Shared navigation source for both the mobile bottom nav and the desktop
 // sidebar so the two never drift apart. `center` marks the hero tab (Lịch),
@@ -39,14 +40,33 @@ export const NAV_ITEMS: {
   { href: "/settings", label: "Cài đặt", Icon: Settings, mobileHidden: true },
 ];
 
-// Routes with no app chrome (landing, auth, onboarding).
-export const NAV_HIDDEN_ON = ["/", "/sign-in", "/sign-up", "/onboarding", "/forgot-password", "/reset-password"];
+/*
+ * Routes with no app chrome (marketing, auth, onboarding).
+ *
+ * Six components gate on this list — the header, both navs, the main wrapper,
+ * the welcome modal, and SpaceGuard. Missing a public route here is not a
+ * cosmetic bug: SpaceGuard reads `!NAV_HIDDEN_ON.includes(pathname)` as "this
+ * page needs a space", so a visitor arriving from a search result gets bounced
+ * to onboarding instead of reading the page they clicked.
+ *
+ * The feature pages are spread in from their registry rather than typed out, so
+ * adding a page cannot leave it out of this list.
+ */
+export const NAV_HIDDEN_ON = [
+  "/",
+  ...FEATURE_PAGES.map((page) => `/${page.slug}`),
+  "/sign-in",
+  "/sign-up",
+  "/onboarding",
+  "/forgot-password",
+  "/reset-password",
+];
 
 // Where every successful login lands. Must be a SpaceGuard-protected feature
-// route so the guard runs the "has a couple space? → stay in : → /onboarding"
+// route so the guard runs the "has a space? → stay in : → /onboarding"
 // branch in one place — no auth flow re-implements that check.
 //
 // Previously "/map". A map is a browsing surface: it answers "where could we
-// go", never "what happened while I was away". Returning partners landed with
+// go", never "what happened while I was away". Returning members landed with
 // nothing addressed to them, so /home is the front door instead.
 export const POST_LOGIN_REDIRECT = "/home";
