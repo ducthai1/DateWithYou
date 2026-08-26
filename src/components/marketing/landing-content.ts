@@ -58,12 +58,12 @@ export const FEATURES: Feature[] = [
   {
     emoji: "🗺️",
     title: "Bản đồ nơi đã đi",
-    body: "Ghim quán đã ghé và chỗ muốn tới. Muốn rủ nhau đi thì gửi lời mời dẫn đường, người kia thấy ngay trên bản đồ.",
+    body: "Ghim quán ăn, café đã ghé và chỗ muốn tới. Muốn rủ nhau đi thì gửi lời mời dẫn đường, người kia thấy ngay trên bản đồ.",
   },
   {
     emoji: "🎡",
-    title: "Vòng quay “ăn gì bây giờ”",
-    body: "Hết ý tưởng thì để vòng quay chọn: quán đang mở cửa quanh đây, hoặc một món tự nấu trong bộ sưu tập.",
+    title: "Vòng quay “hôm nay ăn gì”",
+    body: "Hết ý tưởng thì để vòng quay chọn giúp: quán ăn đang mở cửa quanh đây, hoặc một món tự nấu trong bộ sưu tập.",
   },
   {
     emoji: "📚",
@@ -78,7 +78,7 @@ export const FEATURES: Feature[] = [
   {
     emoji: "🖼️",
     title: "Dòng kỷ niệm",
-    body: "Album theo mốc thời gian, mỗi kỷ niệm tối đa 10 ảnh kèm vài dòng kể lại hôm đó.",
+    body: "Album theo mốc thời gian như một quyển nhật ký, mỗi kỷ niệm tối đa 10 ảnh kèm vài dòng kể lại hôm đó.",
   },
   {
     emoji: "🔐",
@@ -136,6 +136,21 @@ export const FAQ: FaqItem[] = [
     question: "Rủ được bao nhiêu người vào một không gian?",
     answer:
       "Hiện tại một không gian giữ tối đa hai người, kể cả bạn. Nhóm bạn hay gia đình đông hơn thì chưa dùng chung một không gian được — nói trước để bạn khỏi mất công tạo rồi mới biết. Bạn vẫn có thể mở nhiều không gian khác nhau cho từng người.",
+  },
+  {
+    question: "Có phải tải app không?",
+    answer:
+      "Không. Vivu No Plan chạy thẳng trên trình duyệt, mở link là dùng được ngay — không cần vào App Store hay Google Play, không chiếm dung lượng máy, không phải chờ cập nhật. Muốn nó nằm sẵn như một app thật thì thêm vào màn hình chính là xong.",
+  },
+  {
+    question: "Vivu No Plan khác gì app đếm ngày yêu hay app ghi chú?",
+    answer:
+      "App đếm ngày làm rất tốt đúng một việc là đếm ngày. App ghi chú thì ghi được mọi thứ nhưng không biết dòng nào là quán bạn đã ghé. Ở đây bản đồ, lịch, album, công thức và vòng quay chọn món nằm cùng một chỗ và nối được với nhau — quán bạn ghim hôm trước chính là thứ vòng quay bốc ra tối nay. Và nó không chỉ dành cho người yêu.",
+  },
+  {
+    question: "Ghi lại chuyến du lịch được không?",
+    answer:
+      "Được. Mỗi chuyến có lịch trình từng ngày, theo dõi ngân sách và checklist đồ mang đi. Đi xong, ảnh và vài dòng kể lại nằm luôn trong dòng kỷ niệm — thành một quyển nhật ký du lịch mà bạn không phải cố ngồi viết.",
   },
   {
     question: "Vivu No Plan có mất phí không?",
