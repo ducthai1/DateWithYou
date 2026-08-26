@@ -158,6 +158,12 @@ export default async function RootLayout({
 
   return (
     <html lang="vi" data-theme={themeKey}>
+      {/* Scroll reveals hide their content until an observer flips them on.
+          With JavaScript off nothing would ever flip, so the whole landing page
+          below the hero would render as a blank column. */}
+      <noscript>
+        <style>{`[data-reveal]{opacity:1 !important;animation:none !important}`}</style>
+      </noscript>
       <body className={`${inter.variable} ${playfair.variable} ${lora.variable} antialiased`}>
         {/* SpaceGuard is mounted inside <Providers> — it is client-only
             (ssr: false), which a Server Component cannot declare. */}

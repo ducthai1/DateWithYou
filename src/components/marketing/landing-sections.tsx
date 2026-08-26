@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Reveal } from "./reveal";
 import { FAQ, FEATURES, STEPS } from "./landing-content";
 import { SITE_NAME } from "@/lib/site";
 
@@ -46,31 +47,41 @@ export function LandingSections() {
           Crawlers weight early body copy heavily, and the hero above is only
           a headline plus one line. */}
       <section id="gioi-thieu" className="mx-auto max-w-3xl px-6 py-20 sm:py-28">
-        <SectionHeading
-          eyebrow="Giới thiệu"
+        <Reveal>
+          <SectionHeading
+            eyebrow="Giới thiệu"
           title={`${SITE_NAME} là gì?`}
-          lead="Là một không gian riêng dành cho hai người yêu nhau. Kế hoạch hẹn hò, những nơi đã cùng đi qua, tấm ảnh của hôm nào đó và cả những điều chưa muốn nói ra vội — tất cả nằm gọn ở một chỗ, thay vì trôi mất giữa hàng nghìn tin nhắn."
-        />
+            lead="Là một không gian riêng dành cho hai người yêu nhau. Kế hoạch hẹn hò, những nơi đã cùng đi qua, tấm ảnh của hôm nào đó và cả những điều chưa muốn nói ra vội — tất cả nằm gọn ở một chỗ, thay vì trôi mất giữa hàng nghìn tin nhắn."
+          />
+        </Reveal>
+        <Reveal delay={120}>
         <p className="mx-auto mt-8 max-w-2xl text-center text-base font-light leading-relaxed text-[#6b5c51]">
           Không bảng tin, không người lạ, không thuật toán gợi ý. Mỗi không gian
           chỉ đúng hai người mở được, và mọi thứ một người thêm vào sẽ hiện lên
           phía người kia gần như ngay lập tức.
         </p>
+        </Reveal>
       </section>
 
       <div className="mx-auto h-px max-w-4xl bg-[#d8cfc1]/60" />
 
       {/* Features — the substance of the page. */}
       <section id="tinh-nang" className="mx-auto max-w-5xl px-6 py-20 sm:py-28">
-        <SectionHeading
-          eyebrow="Tính năng"
+        <Reveal>
+          <SectionHeading
+            eyebrow="Tính năng"
           title="Bảy thứ hai đứa sẽ dùng nhiều nhất"
-          lead="Mỗi mục dưới đây là một màn hình có sẵn trong ứng dụng, không phải kế hoạch cho tương lai."
-        />
+            lead="Mỗi mục dưới đây là một màn hình có sẵn trong ứng dụng, không phải kế hoạch cho tương lai."
+          />
+        </Reveal>
         <ul className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <li
+          {FEATURES.map((feature, i) => (
+            <Reveal
+              as="li"
               key={feature.title}
+              /* Cap the stagger: past a handful of cards a growing delay stops
+                 reading as rhythm and starts reading as lag. */
+              delay={Math.min(i, 5) * 70}
               className="rounded-3xl border border-[#d8cfc1]/70 bg-white/50 p-7 backdrop-blur-sm transition-colors hover:border-[#c2693f]/40 hover:bg-white/80"
             >
               <span className="text-3xl" aria-hidden="true">
@@ -82,7 +93,7 @@ export function LandingSections() {
               <p className="mt-3 text-[15px] font-light leading-relaxed text-[#6b5c51]">
                 {feature.body}
               </p>
-            </li>
+            </Reveal>
           ))}
         </ul>
       </section>
@@ -91,10 +102,12 @@ export function LandingSections() {
 
       {/* Steps */}
       <section id="bat-dau" className="mx-auto max-w-5xl px-6 py-20 sm:py-28">
-        <SectionHeading eyebrow="Bắt đầu" title="Ba bước là xong" />
+        <Reveal>
+          <SectionHeading eyebrow="Bắt đầu" title="Ba bước là xong" />
+        </Reveal>
         <ol className="mt-14 grid gap-10 sm:grid-cols-3">
-          {STEPS.map((step) => (
-            <li key={step.number}>
+          {STEPS.map((step, i) => (
+            <Reveal as="li" key={step.number} delay={i * 90}>
               <span className="text-sm font-medium tracking-[0.2em] text-[#a8542f]">
                 {step.number}
               </span>
@@ -104,7 +117,7 @@ export function LandingSections() {
               <p className="mt-3 text-[15px] font-light leading-relaxed text-[#6b5c51]">
                 {step.body}
               </p>
-            </li>
+            </Reveal>
           ))}
         </ol>
       </section>
@@ -115,7 +128,10 @@ export function LandingSections() {
           <details> so the answers exist in the HTML even while collapsed;
           hiding them behind JavaScript would hide them from crawlers too. */}
       <section id="hoi-dap" className="mx-auto max-w-3xl px-6 py-20 sm:py-28">
-        <SectionHeading eyebrow="Hỏi đáp" title="Câu hỏi thường gặp" />
+        <Reveal>
+          <SectionHeading eyebrow="Hỏi đáp" title="Câu hỏi thường gặp" />
+        </Reveal>
+        <Reveal delay={100}>
         <div className="mt-14 divide-y divide-[#d8cfc1]/60 border-y border-[#d8cfc1]/60">
           {FAQ.map((item) => (
             <details key={item.question} className="group py-5">
@@ -134,10 +150,12 @@ export function LandingSections() {
             </details>
           ))}
         </div>
+        </Reveal>
       </section>
 
       {/* Closing call to action */}
       <section className="mx-auto max-w-3xl px-6 pb-24 text-center sm:pb-32">
+        <Reveal>
         <h2 className="text-3xl font-medium tracking-tight text-[#3b322a] sm:text-4xl">
           Mở không gian của hai đứa
         </h2>
@@ -158,6 +176,7 @@ export function LandingSections() {
             Đã có tài khoản
           </Link>
         </div>
+        </Reveal>
       </section>
 
       <footer className="border-t border-[#d8cfc1]/60 px-6 py-10 text-center text-sm font-light text-[#7a6d60]">

@@ -27,7 +27,7 @@ const GROUND = "#021617";
 export function LandingHero() {
   return (
     <div
-      className="relative flex min-h-dvh flex-col items-center justify-center px-5 py-16"
+      className="hero-band relative flex min-h-dvh flex-col items-center justify-center px-5 py-16"
       style={{ backgroundColor: GROUND }}
     >
       {/* Stacked, not layered. An earlier pass floated the copy over the

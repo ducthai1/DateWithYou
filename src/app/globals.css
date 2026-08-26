@@ -206,6 +206,18 @@ html {
   text-size-adjust: 100%;
 }
 
+/*
+ * Smooth anchor scrolling. Without this, the landing page's "Tìm hiểu thêm"
+ * link teleported to the section instead of travelling to it, which read as the
+ * page jerking rather than moving. `scroll-padding-top` keeps a target from
+ * landing flush against the top edge. The reduced-motion block further down
+ * puts this back to `auto`.
+ */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 1.5rem;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -295,4 +307,61 @@ button:disabled,
 @media (prefers-reduced-motion: reduce) {
   .vivu-rise { opacity: 1; animation: none; }
   .vivu-nudge { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   Scroll reveals for the landing page.
+
+   Paired with <Reveal>, which flips `data-shown` when the element enters the
+   viewport. Kept in CSS so the animation itself runs on the compositor; the
+   component only toggles one attribute.
+
+   The <noscript> rule in the layout un-hides everything, so a browser with
+   JavaScript off still gets the full page rather than a blank column.
+   --------------------------------------------------------------------------- */
+@keyframes vivu-reveal {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: none; }
+}
+
+[data-reveal] {
+  opacity: 0;
+  will-change: opacity, transform;
+}
+
+[data-reveal][data-shown="true"] {
+  animation: vivu-reveal 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+/* Once it has played, drop the compositor hint so long pages don't hold dozens
+   of promoted layers alive. */
+[data-reveal][data-done="true"] {
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1; }
+  [data-reveal][data-shown="true"] { animation: none; }
+}
+
+/*
+ * Cap the hero on unusually tall viewports.
+ *
+ * The hero is min-h-dvh, so it grows with the viewport — which means a taller
+ * window pushes the page's content further down, never into view. Crawlers
+ * render mobile pages in a very tall viewport specifically so that observer- and
+ * lazy-driven content fires; with an uncapped hero that strategy could never
+ * work here, and measured, every scroll-reveal on the page stayed hidden at
+ * 411x12140. Above 1100px of height the band stops growing, so everything below
+ * it lands inside the viewport and reveals on its own.
+ *
+ * Real devices are unaffected: no phone or laptop viewport is this tall. On a
+ * very tall desktop monitor it reads as intentional — the next section peeks in
+ * under the fold.
+ */
+@media (min-height: 1100px) {
+  .hero-band {
+    min-height: 1000px;
+  }
 }
