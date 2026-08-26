@@ -68,10 +68,10 @@ export function LocationSettingsModal({
 
   return (
     <Modal open={true} onClose={onClose} className="max-w-4xl">
-      <ModalHeader title="Cài đặt Danh mục & Quận" onClose={onClose} />
+      <ModalHeader title="Cài đặt Danh mục & Khu vực" onClose={onClose} />
       <ModalContent className="space-y-8 p-6">
           <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-            <strong>Lưu ý:</strong> Nếu bạn xoá một Danh mục hoặc Quận đang được sử dụng bởi các địa điểm đã lưu, các địa điểm đó có thể không được hiển thị đúng khi lọc. Hãy cân nhắc trước khi xoá.
+            <strong>Lưu ý:</strong> Nếu bạn xoá một Danh mục hoặc Khu vực đang được sử dụng bởi các địa điểm đã lưu, các địa điểm đó có thể không được hiển thị đúng khi lọc. Hãy cân nhắc trước khi xoá.
           </div>
 
           <div className="grid gap-8 md:grid-cols-2">
@@ -111,7 +111,7 @@ export function LocationSettingsModal({
 
             {/* Districts */}
             <div className="space-y-3 w-full">
-              <h3 className="font-medium text-foreground">Quận / Huyện</h3>
+              <h3 className="font-medium text-foreground">Khu vực</h3>
               <div className="flex gap-2 w-full">
                 <input
                   type="text"

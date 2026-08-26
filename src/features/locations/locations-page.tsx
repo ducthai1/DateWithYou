@@ -105,6 +105,7 @@ import { useNavigationInvitesContext } from "./navigation-invites-context";
 import { acceptedTripStore, type AcceptedTrip } from "./accepted-trip-store";
 import { LocationForm, type LocationFormValues } from "./location-form";
 import { useToast } from "@/components/ui/toast";
+import { MeetingFlare } from "./meeting-flare";
 
 export function LocationsPage() {
   const toast = useToast();
@@ -872,6 +873,16 @@ export function LocationsPage() {
 
   return (
     <>
+      {/* Mounted once on purpose: LocationMapView renders twice on this page
+          (fullscreen navigation plus the layout behind it), so a celebration
+          triggered from inside it fired twice. */}
+      <MeetingFlare
+        userGeo={nav.userGeo}
+        partnerLocation={nav.partnerLocation}
+        userAvatar={userAvatar}
+        partnerAvatar={partnerAvatar}
+      />
+
       {/* ── Fullscreen navigation overlay ── */}
       {nav.isNavigating && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black">
@@ -1157,7 +1168,7 @@ export function LocationsPage() {
               value={district}
               onChange={setDistrict}
               options={[
-                { value: "", label: "Quận" },
+                { value: "", label: "Khu vực" },
                 ...districts.map((d) => ({ value: d, label: d })),
               ]}
             />

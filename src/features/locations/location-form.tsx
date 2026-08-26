@@ -116,7 +116,7 @@ export function LocationForm({
       {/* Stack on mobile (<sm) so each select gets its full width. Side-by-side on sm+. */}
       <div className="flex flex-col gap-2 sm:flex-row">
         <Select
-          aria-label="Quận"
+          aria-label="Khu vực"
           value={v.district}
           onChange={(val) => set("district", val)}
           options={districts.map((d) => ({ value: d, label: d }))}
