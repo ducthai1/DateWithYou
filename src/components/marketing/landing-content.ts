@@ -71,7 +71,7 @@ export const FEATURES: Feature[] = [
     emoji: "🎡",
     title: "Vòng quay “hôm nay ăn gì”",
     href: "/hom-nay-an-gi",
-    body: "Hết ý tưởng thì để vòng quay chọn giúp: một quán ăn trong danh sách bạn muốn tới, hoặc một món tự nấu trong bộ sưu tập.",
+    body: "Hết ý tưởng thì để vòng quay chọn giúp: một quán trong danh sách bạn muốn tới mà giờ này còn mở cửa, hoặc một món tự nấu trong bộ sưu tập.",
   },
   {
     emoji: "📚",

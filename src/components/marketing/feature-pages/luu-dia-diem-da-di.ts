@@ -11,8 +11,10 @@ import type { FeaturePage } from "./types";
  *
  * Facts checked in location.ts before writing: status is a two-value enum
  * (want_to_go | visited), so the two-list claim is real; district and category
- * filters exist; sendNavInvite and the midpoint lookup exist. No claim here
- * about opening hours — that data does not exist anywhere in the app.
+ * filters exist; sendNavInvite and the midpoint lookup exist. Opening hours do
+ * exist, as openTime/closeTime per place, and the wheel filters on them — see
+ * hom-nay-an-gi.ts, which covers that. They are not sold here because saving a
+ * place is not where that pays off.
  */
 export const LUU_DIA_DIEM_DA_DI: FeaturePage = {
   slug: "luu-dia-diem-da-di",

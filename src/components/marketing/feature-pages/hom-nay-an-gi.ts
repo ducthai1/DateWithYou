@@ -9,12 +9,18 @@ import type { FeaturePage } from "./types";
  * list you retype on each visit, which is a real and permanent difference —
  * so that is the argument here, not "our wheel is prettier".
  *
- * Every claim below was checked against the code before it was written. An
- * earlier draft of the landing copy promised "quán đang mở cửa quanh đây"; the
- * wheel has no opening-hours data and no radius at all — it reads places saved
- * with status `want_to_go`, filtered by category (food-wheel.tsx:31). Building
- * this page on that sentence would have advertised a feature that does not
- * exist.
+ * On checking claims against the code, and getting it wrong once. An earlier
+ * draft of the landing copy promised "quán đang mở cửa quanh đây". A grep for
+ * openingHours/openNow found nothing, so the whole phrase was struck as
+ * invented — but the fields are named openTime/closeTime, and food-wheel.tsx
+ * does filter on them against the current clock, overnight ranges included.
+ * Only "quanh đây" was fiction: there is no radius or geolocation anywhere.
+ *
+ * The grep that mattered did hit. Searching "đang mở" surfaced the wheel's
+ * empty state saying no places were open, and that was read as a second lying
+ * string rather than as evidence the feature existed. A message someone
+ * deliberately wrote is a claim about the code; check why it is there before
+ * concluding it is wrong.
  */
 export const HOM_NAY_AN_GI: FeaturePage = {
   slug: "hom-nay-an-gi",
@@ -52,6 +58,10 @@ export const HOM_NAY_AN_GI: FeaturePage = {
           body: "Đổi sang tab Tự nấu thì nó quay trong bộ công thức bạn đã lưu, kèm nguyên liệu và video hướng dẫn. Cho những hôm không muốn ra đường.",
         },
         {
+          label: "Bỏ sẵn quán đã đóng cửa",
+          body: "Khai giờ mở cửa cho quán một lần, từ đó vòng quay tự loại những chỗ giờ này đã đóng — kể cả quán bán xuyên đêm. Bốc ra là đi được luôn, không phải quay lại lần hai vì chỗ đầu đóng rồi.",
+        },
+        {
           label: "Lọc theo danh mục",
           body: "Chỉ muốn cà phê, hoặc chỉ muốn quán ăn, thì chọn danh mục trước khi quay. Vòng quay sẽ chỉ chứa nhóm đó.",
         },
@@ -79,7 +89,7 @@ export const HOM_NAY_AN_GI: FeaturePage = {
     {
       question: "Có lọc được không hay quay hết?",
       answer:
-        "Lọc được theo danh mục. Chọn danh mục trước rồi quay thì vòng quay chỉ chứa nhóm đó. Còn giờ mở cửa thì hiện chưa lọc được — bạn tự canh giúp.",
+        "Hai lớp. Chọn danh mục trước thì vòng quay chỉ chứa nhóm đó. Và nó tự bỏ ra những quán giờ này đã đóng cửa, tính cả quán mở xuyên đêm kiểu 18h–2h sáng. Quán nào bạn chưa khai giờ thì luôn được giữ lại, vì không có cơ sở để loại.",
     },
   ],
   cta: {
