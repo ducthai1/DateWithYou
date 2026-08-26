@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Reveal } from "./reveal";
+import { FaqItem } from "./faq-item";
 import { FAQ, FEATURES, STEPS } from "./landing-content";
 import { SITE_NAME } from "@/lib/site";
 
@@ -54,7 +55,7 @@ export function LandingSections() {
             lead="Là một không gian riêng dành cho hai người yêu nhau. Kế hoạch hẹn hò, những nơi đã cùng đi qua, tấm ảnh của hôm nào đó và cả những điều chưa muốn nói ra vội — tất cả nằm gọn ở một chỗ, thay vì trôi mất giữa hàng nghìn tin nhắn."
           />
         </Reveal>
-        <Reveal delay={120}>
+        <Reveal delay={180}>
         <p className="mx-auto mt-8 max-w-2xl text-center text-base font-light leading-relaxed text-[#6b5c51]">
           Không bảng tin, không người lạ, không thuật toán gợi ý. Mỗi không gian
           chỉ đúng hai người mở được, và mọi thứ một người thêm vào sẽ hiện lên
@@ -81,7 +82,7 @@ export function LandingSections() {
               key={feature.title}
               /* Cap the stagger: past a handful of cards a growing delay stops
                  reading as rhythm and starts reading as lag. */
-              delay={Math.min(i, 5) * 70}
+              delay={Math.min(i, 5) * 110}
               className="rounded-3xl border border-[#d8cfc1]/70 bg-white/50 p-7 backdrop-blur-sm transition-colors hover:border-[#c2693f]/40 hover:bg-white/80"
             >
               <span className="text-3xl" aria-hidden="true">
@@ -107,7 +108,7 @@ export function LandingSections() {
         </Reveal>
         <ol className="mt-14 grid gap-10 sm:grid-cols-3">
           {STEPS.map((step, i) => (
-            <Reveal as="li" key={step.number} delay={i * 90}>
+            <Reveal as="li" key={step.number} delay={i * 140}>
               <span className="text-sm font-medium tracking-[0.2em] text-[#a8542f]">
                 {step.number}
               </span>
@@ -131,30 +132,17 @@ export function LandingSections() {
         <Reveal>
           <SectionHeading eyebrow="Hỏi đáp" title="Câu hỏi thường gặp" />
         </Reveal>
-        <Reveal delay={100}>
+        <Reveal delay={160}>
         <div className="mt-14 divide-y divide-[#d8cfc1]/60 border-y border-[#d8cfc1]/60">
           {FAQ.map((item) => (
-            <details key={item.question} className="group py-5">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-left text-[17px] font-medium text-[#3b322a] marker:content-none">
-                <h3 className="text-[17px] font-medium">{item.question}</h3>
-                <span
-                  aria-hidden="true"
-                  className="shrink-0 text-xl leading-none text-[#a8542f] transition-transform duration-300 group-open:rotate-45"
-                >
-                  +
-                </span>
-              </summary>
-              <p className="mt-4 pr-10 text-[15px] font-light leading-relaxed text-[#6b5c51]">
-                {item.answer}
-              </p>
-            </details>
+            <FaqItem key={item.question} question={item.question} answer={item.answer} />
           ))}
         </div>
         </Reveal>
       </section>
 
       {/* Closing call to action */}
-      <section className="mx-auto max-w-3xl px-6 pb-24 text-center sm:pb-32">
+      <section id="dang-ky" className="mx-auto max-w-3xl px-6 pb-24 text-center sm:pb-32">
         <Reveal>
         <h2 className="text-3xl font-medium tracking-tight text-[#3b322a] sm:text-4xl">
           Mở không gian của hai đứa

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LandingHero } from "@/components/marketing/landing-hero";
 import { LandingSections } from "@/components/marketing/landing-sections";
+import { SectionRail } from "@/components/marketing/section-rail";
 import { FAQ } from "@/components/marketing/landing-content";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
@@ -126,8 +127,12 @@ export default function Home() {
         fetchPriority="high"
       />
       <StructuredData />
+      {/* Anchor for the back-to-top link. An id beats scrollTo(0) here: it
+          inherits the page's smooth scroll-behavior and works without JS. */}
+      <span id="top" />
       <LandingHero />
       <LandingSections />
+      <SectionRail />
     </>
   );
 }
