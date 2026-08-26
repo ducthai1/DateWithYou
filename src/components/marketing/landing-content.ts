@@ -22,11 +22,18 @@
  * just one of the people being described rather than the only one.
  *
  * A third pass fixed the Vietnamese itself rather than its scope. Phrases a
- * native speaker flagged as stilted or coarse are gone: "ngày đã sống" (nobody
- * says this), "đứa ở chung phòng" (rude where "bạn cùng nhà" is not), plus the
- * borrowed "wishlist"/"checklist"/"mobile-first" that no Vietnamese reader
- * needs to decode. Being inclusive is not the same as sounding human, and the
- * earlier passes only bought the first one.
+ * native speaker flagged are gone: 'ngày đã sống' (nobody says this) and the
+ * coarse 'đứa ở chung phòng', where the rudeness was 'đứa' — it now reads
+ * 'bạn cùng phòng', since the room was never the problem.
+ *
+ * That pass also translated 'mobile-first' and 'wishlist' into Vietnamese and
+ * the owner reversed it: a Vietnamese reader knows both, so spelling them out
+ * added length, not clarity. Replace a loanword only when a reader would
+ * genuinely have to stop and decode it.
+ *
+ * NOTE: this comment quotes strings that also appear in the copy below. A
+ * blanket find-and-replace over this file has twice landed on these
+ * quotations instead of the copy it was aiming at. Edit by line, not phrase.
  *
  * It stays honest about the limit: a space holds two people, not a family of
  * five, and the FAQ says so plainly rather than letting someone find out by
@@ -66,7 +73,7 @@ export const FEATURES: Feature[] = [
   {
     emoji: "✈️",
     title: "Chuyến đi có lịch trình",
-    body: "Dựng lịch trình du lịch từng ngày, theo dõi ngân sách và tick dần danh sách đồ cần mang trước khi lên đường.",
+    body: "Dựng lịch trình du lịch từng ngày, theo dõi ngân sách và tick dần checklist đồ cần mang trước khi lên đường.",
   },
   {
     emoji: "🖼️",
@@ -76,7 +83,7 @@ export const FEATURES: Feature[] = [
   {
     emoji: "🔐",
     title: "Két bí mật",
-    body: "Hộp thời gian niêm phong tới đúng ngày mới mở được, danh sách điều muốn có, nhiệm vụ tính điểm và voucher đổi quà.",
+    body: "Hộp thời gian niêm phong tới đúng ngày mới mở được, wishlist riêng, nhiệm vụ tính điểm và voucher đổi quà.",
   },
 ];
 
@@ -123,7 +130,7 @@ export const FAQ: FaqItem[] = [
   {
     question: "Vivu No Plan hợp với ai?",
     answer:
-      "Ai cũng có một người hay rủ mình đi đâu đó. Đứa bạn thân tuần nào cũng nhắn “ăn gì chưa”, anh chị em trong nhà, bạn cùng nhà, người yêu, hay người đã đi cùng bạn chuyến năm ngoái. Vivu không hỏi hai người là gì của nhau — nó chỉ giữ giùm những chỗ đã ghé và những hôm đáng nhớ.",
+      "Ai cũng có một người hay rủ mình đi đâu đó. Đứa bạn thân tuần nào cũng nhắn “ăn gì chưa”, anh chị em trong nhà, bạn cùng phòng, người yêu, hay người đã đi cùng bạn chuyến năm ngoái. Vivu không hỏi hai người là gì của nhau — nó chỉ giữ giùm những chỗ đã ghé và những hôm đáng nhớ.",
   },
   {
     question: "Rủ được bao nhiêu người vào một không gian?",
@@ -143,7 +150,7 @@ export const FAQ: FaqItem[] = [
   {
     question: "Dùng trên điện thoại có được không?",
     answer:
-      "Được. Giao diện làm cho điện thoại trước, máy tính sau. Bạn có thể thêm Vivu No Plan vào màn hình chính để mở lên như một ứng dụng thật, không còn thanh địa chỉ trình duyệt.",
+      "Được. Giao diện được dựng theo hướng mobile-first. Bạn có thể thêm Vivu No Plan vào màn hình chính để mở lên như một ứng dụng thật, không còn thanh địa chỉ trình duyệt.",
   },
   {
     question: "Hộp thời gian hoạt động như thế nào?",
