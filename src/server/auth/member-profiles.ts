@@ -32,7 +32,7 @@ export async function resolveMemberProfiles(
     const d = byId.get(id);
     return {
       id,
-      name: (d?.name as string) || (d?.email as string)?.split("@")[0] || "Người ấy",
+      name: (d?.name as string) || (d?.email as string)?.split("@")[0] || "Người kia",
       image: (d?.image as string) ?? null,
     };
   });

@@ -417,7 +417,7 @@ export function LocationsPage() {
     setAcceptedMessage(
       role === "receiver"
         ? "Cùng xuất phát nào 🛵"
-        : "Yayy! Người ấy đồng ý rồi, mình xuất phát thôi 💞",
+        : "Yayy! Người kia đồng ý rồi, mình xuất phát thôi 💞",
     );
     setTimeout(() => setAcceptedMessage(null), 4000);
     setTimeout(() => {
@@ -448,7 +448,7 @@ export function LocationsPage() {
       });
     } else if (status === "rejected" || status === "expired") {
       setPendingSentInviteId(null);
-      setRejectedMessage("Hí, người ấy bận xíu hoặc lỡ tay rồi — rủ lại sau nha 🥺");
+      setRejectedMessage("Hí, người kia bận xíu hoặc lỡ tay rồi — rủ lại sau nha 🥺");
       setTimeout(() => setRejectedMessage(null), 4000);
     }
   }, [sentInviteStatus.data, pendingSentInviteId]);
@@ -459,7 +459,7 @@ export function LocationsPage() {
       const customEvent = e as CustomEvent;
       if (customEvent.detail?.id === pendingSentInviteId) {
         setPendingSentInviteId(null);
-        setRejectedMessage("Hí, người ấy bận xíu hoặc lỡ tay rồi — rủ lại sau nha 🥺");
+        setRejectedMessage("Hí, người kia bận xíu hoặc lỡ tay rồi — rủ lại sau nha 🥺");
         setTimeout(() => setRejectedMessage(null), 4000);
       }
     };
@@ -484,7 +484,7 @@ export function LocationsPage() {
         return [{
           lat: nav.partnerLocation.lat,
           lng: nav.partnerLocation.lng,
-          name: "Vị trí của người ấy",
+          name: "Vị trí của người kia",
           type: "partner_location",
           status: "pending",
         }];
@@ -813,7 +813,7 @@ export function LocationsPage() {
           }
 
           if (!partnerGeo) {
-            setMidpointError("Người ấy chưa mở trang Bản đồ gần đây nên mình chưa biết vị trí của họ. Nhờ người ấy vào trang Bản đồ trước nhé! 💕");
+            setMidpointError("Người kia chưa mở trang Bản đồ gần đây nên mình chưa biết vị trí của họ. Nhờ người kia vào trang Bản đồ trước nhé! 💕");
             setIsFindingMidpoint(false);
             return;
           }
@@ -842,7 +842,7 @@ export function LocationsPage() {
           setShowMidpointModal(true);
           setIsFindingMidpoint(false);
         } catch {
-          setMidpointError("Lỗi kết nối mạng khi tìm vị trí người ấy. Hãy thử lại.");
+          setMidpointError("Lỗi kết nối mạng khi tìm vị trí người kia. Hãy thử lại.");
           setIsFindingMidpoint(false);
         }
       },
@@ -928,7 +928,7 @@ export function LocationsPage() {
                       <div className="flex items-start justify-between gap-1 mb-1">
                         <div className="min-w-0 flex-1">
                           <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block leading-tight">
-                            Người ấy
+                            Người kia
                           </span>
                           {/* Speed hint below label so it doesn't crowd the badge row */}
                           {nav.partnerConnection !== "stale" && nav.partnerLocation?.speedKmH != null && (
@@ -989,7 +989,7 @@ export function LocationsPage() {
                 {/* Traffic Warning Banner */}
                 {showTrafficWarning && (
                   <div className="bg-rose-500 text-white shadow-xl rounded-full px-5 py-2.5 flex items-center gap-2 text-sm font-bold border-2 border-white/20 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-500">
-                    <span className="animate-bounce">🛑</span> Người ấy đang dừng xe hoặc kẹt cứng rồi!
+                    <span className="animate-bounce">🛑</span> Người kia đang dừng xe hoặc kẹt cứng rồi!
                   </div>
                 )}
               </div>
@@ -1007,7 +1007,7 @@ export function LocationsPage() {
 
             {/* Quick Pings */}
             <div className="absolute right-4 top-[60%] flex flex-col items-center gap-2">
-               <p className="text-[9px] font-semibold text-white/80 bg-black/30 rounded-full px-2 py-0.5 text-center leading-tight backdrop-blur-sm">Gửi cảm xúc<br/>cho người ấy:</p>
+               <p className="text-[9px] font-semibold text-white/80 bg-black/30 rounded-full px-2 py-0.5 text-center leading-tight backdrop-blur-sm">Gửi cảm xúc<br/>cho người kia:</p>
                <button onClick={() => nav.sendPingAction?.("HOT")} title="Nóng quá!" aria-label="Nóng quá!" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🥵</button>
                <button onClick={() => nav.sendPingAction?.("JAM")} title="Kẹt xe!" aria-label="Kẹt xe!" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🐌</button>
                <button onClick={() => nav.sendPingAction?.("WAIT")} title="Đợi xíu nha" aria-label="Đợi xíu nha" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🥺</button>
@@ -1102,7 +1102,7 @@ export function LocationsPage() {
                 isFindingMidpoint && "opacity-50 pointer-events-none"
               )}
               onClick={handleFindMidpoint}
-              title={nav.partnerLocation ? "Tìm điểm hẹn ở giữa" : "Cần vị trí của người ấy trước"}
+              title={nav.partnerLocation ? "Tìm điểm hẹn ở giữa" : "Cần vị trí của người kia trước"}
             >
               {isFindingMidpoint ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1198,7 +1198,7 @@ export function LocationsPage() {
           {/* Partner offline helper — shown when coupled but no partner live location */}
           {hasTwoMembers && !nav.partnerLocation && (
             <p className="text-xs text-muted-foreground bg-muted/50 border border-border rounded-lg px-3 py-2 text-center leading-snug">
-              Người ấy chưa mở trang Bản đồ gần đây nên chưa thấy vị trí. Nhờ người ấy mở trang này nhé 💕
+              Người kia chưa mở trang Bản đồ gần đây nên chưa thấy vị trí. Nhờ người kia mở trang này nhé 💕
             </p>
           )}
 
@@ -1320,7 +1320,7 @@ export function LocationsPage() {
             <EmptyState
               icon="map-pin"
               title="Chưa có địa điểm nào"
-              subtitle="Nhấn + Thêm (hoặc chạm lên bản đồ) để lưu quán, café, chỗ hẹn hò…"
+              subtitle="Nhấn + Thêm (hoặc chạm lên bản đồ) để lưu quán, café, chỗ hay hẹn nhau…"
               action={{ label: "+ Thêm địa điểm", onClick: () => { setFormInitial({}); setFormOpen(true); } }}
             />
           ) : (
@@ -1541,10 +1541,10 @@ export function LocationsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-semibold text-foreground">
-                Người ấy đã kết thúc chuyến đi 💔
+                Người kia đã kết thúc chuyến đi 💔
               </h3>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                Người ấy vừa kết thúc chuyến đi đến{" "}
+                Người kia vừa kết thúc chuyến đi đến{" "}
                 <span className="font-medium text-foreground">
                   {navInvites.endedTrip.locationName}
                 </span>
@@ -1682,7 +1682,7 @@ export function LocationsPage() {
                       }}
                     >
                       {sendInvite.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Users className="h-5 w-5" />}
-                      Rủ người ấy tới đây!
+                      Rủ người kia tới đây!
                     </Button>
                   </motion.div>
                 </AnimatePresence>
@@ -1734,7 +1734,7 @@ export function LocationsPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground bg-muted/40 border border-border/60 rounded-lg px-3 py-2 leading-snug">
-                  Lên lộ trình chung: Bạn → (đón người ấy / điểm dừng) → Đích. Người ấy sẽ nhận lời mời và cùng được chỉ đường.
+                  Lên lộ trình chung: Bạn → (đón người kia / điểm dừng) → Đích. Người kia sẽ nhận lời mời và cùng được chỉ đường.
                 </p>
                 
                 <div className="space-y-3 bg-muted/30 p-4 rounded-xl border border-border/50">
@@ -1753,7 +1753,7 @@ export function LocationsPage() {
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="h-6 w-6 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">{i + 2}</div>
                             <div className="min-w-0">
-                              <span className="text-sm font-medium block truncate">{isPartner ? "Ghé đón người ấy" : s.name}</span>
+                              <span className="text-sm font-medium block truncate">{isPartner ? "Ghé đón người kia" : s.name}</span>
                               <span className="text-[11px] text-rose-500/80 block">{isPartner ? "Vị trí trực tiếp" : "Điểm dừng"}</span>
                             </div>
                           </div>
@@ -1777,7 +1777,7 @@ export function LocationsPage() {
                       return (
                         <div className="pl-3 border-l-2 border-dashed border-muted-foreground/30 ml-3 py-1">
                           <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground border border-dashed bg-background/50" onClick={() => setStopPickerOpen(true)}>
-                            <Plus className="h-4 w-4 mr-2" /> {plannedStops.length === 0 ? "Ghé đón người ấy / thêm điểm dừng" : "Thêm điểm dừng"}
+                            <Plus className="h-4 w-4 mr-2" /> {plannedStops.length === 0 ? "Ghé đón người kia / thêm điểm dừng" : "Thêm điểm dừng"}
                           </Button>
                         </div>
                       );
@@ -1791,7 +1791,7 @@ export function LocationsPage() {
                               className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-rose-50 transition-colors"
                             >
                               <Heart className="h-4 w-4 text-rose-500 shrink-0" />
-                              <span className="font-medium">Vị trí trực tiếp của người ấy</span>
+                              <span className="font-medium">Vị trí trực tiếp của người kia</span>
                             </button>
                           )}
                           {savedOptions.map((l) => (
@@ -1826,7 +1826,7 @@ export function LocationsPage() {
                 </div>
                 
                 <p className="text-xs text-muted-foreground text-center">
-                  Người ấy sẽ nhận được thông báo lộ trình. Khi đồng ý, cả 2 sẽ cùng thấy nhau trên bản đồ.
+                  Người kia sẽ nhận được thông báo lộ trình. Khi đồng ý, cả 2 sẽ cùng thấy nhau trên bản đồ.
                 </p>
               </div>
               <div className="flex gap-2 shrink-0 border-t border-border p-4">
@@ -1862,7 +1862,7 @@ export function LocationsPage() {
           >
             <div className="flex items-center gap-3 rounded-2xl bg-card px-5 py-3 shadow-xl border border-border">
               <Loader2 className="h-5 w-5 animate-spin text-accent shrink-0" />
-              <span className="text-sm font-medium flex-1">Đang chờ người ấy đồng ý...</span>
+              <span className="text-sm font-medium flex-1">Đang chờ người kia đồng ý...</span>
               <button
                 className="text-muted-foreground hover:text-foreground transition-colors shrink-0 p-1"
                 onClick={() => {

@@ -67,7 +67,7 @@ export function RewardsPanel() {
     return <div className="py-10 text-center"><p className="text-muted-foreground text-sm">Đang tải…</p></div>;
 
   const { tasks, vouchers, balances, recentLogs } = data.data;
-  const label = (b: { isMe: boolean }) => (b.isMe ? "Bạn" : "Người ấy");
+  const label = (b: { isMe: boolean }) => (b.isMe ? "Bạn" : "Người kia");
   
   function handleComplete(taskId: string, forUserId: string, anchorEl?: HTMLElement | null) {
     complete.mutate({ taskId, forUserId });
@@ -156,7 +156,7 @@ export function RewardsPanel() {
                     <Plus className="h-3.5 w-3.5" />
                   </span>
                   <div className="min-w-0 flex-1 leading-snug">
-                    <span className="font-medium">{isMe ? "Bạn" : "Người ấy"}</span> đã nhận{" "}
+                    <span className="font-medium">{isMe ? "Bạn" : "Người kia"}</span> đã nhận{" "}
                     <span className="text-accent font-semibold">{log.points}đ</span> từ{" "}
                     <span className="text-muted-foreground">&quot;{log.taskTitle}&quot;</span>
                   </div>

@@ -54,7 +54,7 @@ export function HomeGreeting({ daysTogether, pending }: HomeGreetingProps) {
         <p className="text-foreground/80 flex items-center gap-1.5 pt-1 text-sm">
           <Heart className="text-accent h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
           <span>
-            Tụi mình đã bên nhau{" "}
+            Tụi mình đã đi cùng nhau{" "}
             <strong className="font-semibold">{viNumber(daysTogether)} ngày</strong>
           </span>
         </p>
@@ -68,7 +68,7 @@ export function HomeGreeting({ daysTogether, pending }: HomeGreetingProps) {
           >
             Đặt ngày kỷ niệm
           </Link>{" "}
-          để tụi mình bắt đầu đếm ngày bên nhau.
+          để tụi mình bắt đầu đếm từ ngày đầu tiên.
         </p>
       )}
     </header>

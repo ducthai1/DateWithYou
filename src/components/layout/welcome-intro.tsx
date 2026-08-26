@@ -13,15 +13,15 @@ const SEEN_KEY = "dwy:welcomeSeen";
 // stays in sync with NAV_ITEMS (icons + labels reused from there).
 const TAB_BLURB: Record<string, string> = {
   "/map": "Lưu địa điểm yêu thích & rủ nhau cùng đi, chỉ đường trực tiếp.",
-  "/library": "Công thức nấu ăn, video món ngon, trò chơi cho hai đứa.",
-  "/calendar": "Lên kế hoạch hẹn hò & đếm ngược ngày đặc biệt.",
+  "/library": "Công thức nấu ăn, video món ngon, trò chơi cho cả hai.",
+  "/calendar": "Lên kế hoạch đi chơi & đếm ngược ngày đặc biệt.",
   "/timeline": "Lưu ảnh, cảm xúc, nhạc/video những khoảnh khắc đã qua.",
   "/vault": "Dự định, wishlist, phiếu thưởng & hộp thời gian riêng của hai bạn.",
   "/home": "Mở app là thấy ngay: hôm nay có gì, sắp tới ngày nào, kỷ niệm năm ngoái.",
   "/trips": "Lịch trình từng ngày, ngân sách và checklist đồ cần mang.",
   "/search": "Lục lại kỷ niệm, quán, công thức — gõ không dấu vẫn ra.",
-  "/activity": "Người ấy vừa thêm gì vào không gian chung.",
-  "/settings": "Ngày kỷ niệm, biệt danh, màu chủ đề và mã mời người ấy.",
+  "/activity": "Người kia vừa thêm gì vào không gian chung.",
+  "/settings": "Ngày kỷ niệm, biệt danh, màu chủ đề và mã mời.",
 };
 
 /**
@@ -67,7 +67,7 @@ export function WelcomeIntro() {
             Chào mừng tới Vivu No Plan
           </h2>
           <p className="text-muted-foreground text-sm">
-            Không gian chung của hai đứa — cùng lên kế hoạch, lưu kỷ niệm và tạo bất ngờ cho nhau.
+            Góc riêng của bạn — lên kế hoạch, lưu kỷ niệm, và tạo bất ngờ cho người bạn rủ vào.
           </p>
         </div>
 

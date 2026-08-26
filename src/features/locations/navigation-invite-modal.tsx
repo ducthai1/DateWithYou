@@ -45,11 +45,11 @@ export function NavigationInviteModal({
           </div>
           <div className="text-center space-y-1">
             <h3 className="font-semibold text-lg">Rủ rê nè! 💌</h3>
-            <p className="text-muted-foreground text-sm">Người ấy muốn cùng bạn phóng tới…</p>
+            <p className="text-muted-foreground text-sm">Người kia muốn cùng bạn phóng tới…</p>
             <p className="font-bold text-accent text-lg">{locationName}</p>
           </div>
           <p className="text-xs text-muted-foreground text-center">
-            Mở bản đồ lên, hai đứa thấy nhau trên đường luôn nha 🥰
+            Mở bản đồ lên, cả hai thấy nhau trên đường luôn nha 🥰
           </p>
           <div className="flex gap-2">
             <Button

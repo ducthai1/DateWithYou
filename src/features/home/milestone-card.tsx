@@ -33,10 +33,10 @@ export function MilestoneCard({
 
   const label = milestoneLabel(milestone.target, milestone.years);
   const headline = landsToday
-    ? `Hôm nay tròn ${label} bên nhau 🎉`
+    ? `Hôm nay tròn ${label} cùng nhau 🎉`
     : milestone.daysAway === 1
-      ? `Ngày mai là tròn ${label} bên nhau`
-      : `Còn ${milestone.daysAway} ngày nữa là tròn ${label} bên nhau`;
+      ? `Ngày mai là tròn ${label} cùng nhau`
+      : `Còn ${milestone.daysAway} ngày nữa là tròn ${label} cùng nhau`;
 
   return (
     <div ref={cardRef} className="relative">

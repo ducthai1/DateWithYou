@@ -46,7 +46,7 @@ export const SITE_TITLE =
  * without being sorted into a category first.
  */
 export const SITE_DESCRIPTION =
-  "Ghim lại quán đã ghé, lên lịch cho cuối tuần, quay vòng chọn chỗ ăn lúc hết ý tưởng, và cất vài điều để dành. Đi một mình hay rủ thêm một người đều được. Miễn phí.";
+  "Ghim lại quán đã ghé, lên lịch cho cuối tuần, để vòng quay chọn chỗ ăn lúc bí ý tưởng, và cất vài điều chưa muốn nói ra. Đi một mình hay rủ thêm một người đều được. Miễn phí.";
 
 export const SITE_LOCALE = "vi_VN";
 

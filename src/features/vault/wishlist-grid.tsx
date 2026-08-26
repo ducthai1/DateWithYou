@@ -260,7 +260,7 @@ export function WishlistGrid() {
                     )}
                     <Badge tone="neutral" className="gap-1 px-1.5 py-0">
                       {w.forWhom === "me" ? <User className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-                      {w.forWhom === "me" ? "Bạn" : "Người ấy"}
+                      {w.forWhom === "me" ? "Bạn" : "Người kia"}
                     </Badge>
                   </div>
                 </div>
@@ -388,7 +388,7 @@ export function WishlistGrid() {
                   className={cn("flex-1 rounded-lg py-1.5 transition-colors outline-none", forWhom === "partner" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
                   onClick={() => setForWhom("partner")}
                 >
-                  Người ấy
+                  Người kia
                 </button>
               </div>
             </div>

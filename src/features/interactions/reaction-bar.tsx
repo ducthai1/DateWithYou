@@ -152,7 +152,7 @@ export function ReactionBar({
     <div className="flex flex-wrap items-center gap-1.5">
       {reactions.map((r) => {
         const member = members.find((m) => m.id === r.userId);
-        const name = member?.name ?? "Người ấy";
+        const name = member?.name ?? "Người kia";
         return (
           <span
             key={r.userId}

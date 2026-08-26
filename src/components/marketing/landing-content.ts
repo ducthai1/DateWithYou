@@ -7,10 +7,12 @@
  * one source for both.
  *
  * WHO THIS IS WRITTEN FOR. Earlier drafts said "cặp đôi" and "hai đứa yêu
- * nhau" throughout, which quietly threw away most of the people the product
- * actually serves: the space holds two people of any sort — and works perfectly
- * well with one. Someone arriving alone, or with a friend, read the first line
- * and left.
+ * nhau" throughout (quoted here as literal history — do not run a blanket
+ * find-and-replace over this comment; one such sweep already rewrote these
+ * very words and destroyed the record of what was fixed). That phrasing
+ * quietly threw away most of the people the product actually serves: the space
+ * holds two people of any sort — and works perfectly well with one. Someone
+ * arriving alone, or with a friend, read the first line and left.
  *
  * The first attempt at fixing that over-corrected into "hai người bất kỳ",
  * which is accurate, wider, and reads like a clause in a contract. Nobody
@@ -18,6 +20,13 @@
  * relationships — the friend who texts "ăn gì chưa", the trip from last year —
  * and lets the reader place themselves. Couples are still in there; they are
  * just one of the people being described rather than the only one.
+ *
+ * A third pass fixed the Vietnamese itself rather than its scope. Phrases a
+ * native speaker flagged as stilted or coarse are gone: "ngày đã sống" (nobody
+ * says this), "đứa ở chung phòng" (rude where "bạn cùng nhà" is not), plus the
+ * borrowed "wishlist"/"checklist"/"mobile-first" that no Vietnamese reader
+ * needs to decode. Being inclusive is not the same as sounding human, and the
+ * earlier passes only bought the first one.
  *
  * It stays honest about the limit: a space holds two people, not a family of
  * five, and the FAQ says so plainly rather than letting someone find out by
@@ -57,17 +66,17 @@ export const FEATURES: Feature[] = [
   {
     emoji: "✈️",
     title: "Chuyến đi có lịch trình",
-    body: "Dựng lịch trình từng ngày, theo dõi ngân sách và tick dần checklist đồ cần chuẩn bị trước khi lên đường.",
+    body: "Dựng lịch trình du lịch từng ngày, theo dõi ngân sách và tick dần danh sách đồ cần mang trước khi lên đường.",
   },
   {
     emoji: "🖼️",
     title: "Dòng kỷ niệm",
-    body: "Album theo mốc thời gian, mỗi kỷ niệm tối đa 10 ảnh kèm vài dòng kể lại hôm đó đã vui thế nào.",
+    body: "Album theo mốc thời gian, mỗi kỷ niệm tối đa 10 ảnh kèm vài dòng kể lại hôm đó.",
   },
   {
     emoji: "🔐",
     title: "Két bí mật",
-    body: "Hộp thời gian niêm phong tới đúng ngày mới mở được, wishlist riêng, nhiệm vụ tính điểm và voucher đổi quà.",
+    body: "Hộp thời gian niêm phong tới đúng ngày mới mở được, danh sách điều muốn có, nhiệm vụ tính điểm và voucher đổi quà.",
   },
 ];
 
@@ -91,7 +100,7 @@ export const STEPS: Step[] = [
   {
     number: "03",
     title: "Rủ thêm một người, nếu muốn",
-    body: "Gửi mã mời cho người bạn muốn nhớ cùng. Ai thêm gì vào, phía bên kia thấy gần như ngay — khỏi chụp màn hình gửi qua gửi lại.",
+    body: "Gửi mã mời cho người bạn muốn rủ vào cùng. Ai thêm gì vào, phía bên kia thấy gần như ngay — khỏi chụp màn hình gửi qua gửi lại.",
   },
 ];
 
@@ -104,17 +113,17 @@ export const FAQ: FaqItem[] = [
   {
     question: "Vivu No Plan là ứng dụng gì?",
     answer:
-      "Là một không gian riêng để giữ lại những nơi bạn đã đi, món đã ăn, ngày đã sống — và lên kế hoạch cho lần tới. Lịch chung, bản đồ địa điểm, album kỷ niệm, lịch trình chuyến đi, công thức nấu ăn và một chiếc két giữ những điều bí mật. Thay vì để mọi thứ trôi mất trong tin nhắn, tất cả nằm gọn ở một chỗ. Nhiều người còn gõ tên nó thành Vivu Plan, VivuNoPlan hay “vi vu không cần plan” — cùng một ứng dụng cả.",
+      "Là một không gian riêng để giữ lại những chỗ bạn đã đi, món đã ăn, những hôm đáng nhớ — và lên kế hoạch cho lần tới. Đi chơi gần nhà hay du lịch xa ngày cũng ghi lại được, kể cả khi chuyến đi chẳng có plan nào. Lịch chung, bản đồ địa điểm, album kỷ niệm, lịch trình chuyến đi, công thức nấu ăn và một chiếc két giữ những điều bí mật. Thay vì để mọi thứ trôi mất trong tin nhắn, tất cả nằm gọn ở một chỗ. Nhiều người còn gõ tên nó thành Vivu Plan, VivuNoPlan hay “vi vu không cần plan” — cùng một ứng dụng cả.",
   },
   {
     question: "Đi một mình có dùng được không?",
     answer:
-      "Được, và không thiếu thứ gì. Góc này là của bạn ngay khi tạo xong, chẳng phải đợi ai gật đầu. Ghim quán vừa tìm ra, viết lại chuyến đi tuần rồi, quay vòng khi không nghĩ ra tối nay ăn gì, viết một lá thư cho chính mình mở vào năm sau — chạy hết. Lúc nào muốn có người cùng thì gửi mã mời, không thì thôi.",
+      "Được, và không thiếu thứ gì. Góc này là của bạn ngay khi tạo xong, chẳng phải đợi ai gật đầu. Ghim quán vừa tìm ra, viết lại chuyến đi chơi tuần rồi, quay thử vòng chọn món khi không nghĩ ra tối nay ăn gì, viết một lá thư cho chính mình mở vào năm sau — chạy hết. Lúc nào muốn có người cùng thì gửi mã mời, không thì thôi.",
   },
   {
-    question: "Ai thì hợp dùng cái này?",
+    question: "Vivu No Plan hợp với ai?",
     answer:
-      "Ai có một người hay rủ đi đâu đó. Đứa bạn thân tuần nào cũng nhắn “ăn gì chưa”, anh chị em trong nhà, đứa ở chung phòng, người yêu, hay bạn đồng hành của chuyến đi năm ngoái. Vivu không hỏi hai người là gì của nhau — nó chỉ giữ giùm những chỗ đã ghé và những hôm đáng nhớ.",
+      "Ai cũng có một người hay rủ mình đi đâu đó. Đứa bạn thân tuần nào cũng nhắn “ăn gì chưa”, anh chị em trong nhà, bạn cùng nhà, người yêu, hay người đã đi cùng bạn chuyến năm ngoái. Vivu không hỏi hai người là gì của nhau — nó chỉ giữ giùm những chỗ đã ghé và những hôm đáng nhớ.",
   },
   {
     question: "Rủ được bao nhiêu người vào một không gian?",
@@ -134,11 +143,11 @@ export const FAQ: FaqItem[] = [
   {
     question: "Dùng trên điện thoại có được không?",
     answer:
-      "Được. Giao diện được dựng theo hướng mobile-first. Bạn có thể thêm Vivu No Plan vào màn hình chính để mở lên như một ứng dụng thật, không còn thanh địa chỉ trình duyệt.",
+      "Được. Giao diện làm cho điện thoại trước, máy tính sau. Bạn có thể thêm Vivu No Plan vào màn hình chính để mở lên như một ứng dụng thật, không còn thanh địa chỉ trình duyệt.",
   },
   {
     question: "Hộp thời gian hoạt động như thế nào?",
     answer:
-      "Bạn viết một lá thư rồi chọn ngày mở. Trước ngày đó lá thư vẫn niêm phong — kể cả với người vừa viết ra nó. Đến hẹn, chiếc phong bì mới mở ra.",
+      "Bạn viết một lá thư rồi chọn ngày mở. Trước ngày đó lá thư vẫn niêm phong — kể cả với chính người viết. Đúng ngày, thư mới mở ra được.",
   },
 ];

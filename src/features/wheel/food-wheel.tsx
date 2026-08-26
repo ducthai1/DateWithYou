@@ -252,7 +252,7 @@ export function FoodWheel() {
                     onClick={() => handleSendCompanionInvite(winner.id, winner.name)}
                   >
                     {sendInvite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4" />}
-                    Rủ người ấy tới đây!
+                    Rủ người kia tới đây!
                   </Button>
                 ) : (
                   <a

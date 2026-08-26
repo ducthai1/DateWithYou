@@ -52,7 +52,7 @@ export function LandingSections() {
           <SectionHeading
             eyebrow="Giới thiệu"
           title={`${SITE_NAME} là gì?`}
-            lead="Là một góc riêng để giữ lại những nơi đã đi qua, tấm ảnh của hôm nào đó, kế hoạch cho cuối tuần này và cả những điều chưa muốn nói ra vội — tất cả nằm gọn ở một chỗ, thay vì trôi mất giữa hàng nghìn tin nhắn."
+            lead="Là một góc riêng để giữ lại những nơi đã đi qua, tấm ảnh của hôm nào đó, kế hoạch đi chơi cuối tuần này và cả những điều chưa muốn nói ra vội — tất cả nằm gọn ở một chỗ, thay vì trôi mất giữa hàng nghìn tin nhắn."
           />
         </Reveal>
         <Reveal delay={180}>
@@ -71,7 +71,7 @@ export function LandingSections() {
         <Reveal>
           <SectionHeading
             eyebrow="Tính năng"
-          title="Bảy thứ bạn sẽ mở nhiều nhất"
+          title="Bảy thứ bạn sẽ dùng nhiều nhất"
             lead="Mỗi mục dưới đây là một màn hình có sẵn trong ứng dụng, không phải kế hoạch cho tương lai."
           />
         </Reveal>

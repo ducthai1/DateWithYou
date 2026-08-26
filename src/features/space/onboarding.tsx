@@ -104,10 +104,10 @@ export function Onboarding() {
               backgroundClip: "text",
             }}
           >
-            Không gian của tụi mình
+            Không gian của riêng mình
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Bắt đầu hành trình cùng người ấy — chỉ hai người thôi.
+            Một góc riêng của bạn — muốn thì rủ thêm một người.
           </p>
         </div>
       </div>
@@ -116,7 +116,7 @@ export function Onboarding() {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{tab === "create" ? `Bước ${createStep}/2` : "Bước 1/1"}</span>
-          <span>{tab === "create" ? (createStep === 1 ? "Tạo không gian" : "Mã bảo vệ") : "Ghép đôi với người ấy"}</span>
+          <span>{tab === "create" ? (createStep === 1 ? "Tạo không gian" : "Mã bảo vệ") : "Vào bằng mã mời"}</span>
         </div>
         <div className="h-1 w-full overflow-hidden rounded-full bg-accent/15">
           <motion.div
@@ -231,7 +231,7 @@ export function Onboarding() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: "var(--accent)" }}>
                     <Link2 className="h-3.5 w-3.5" />
-                    Ghép đôi với người ấy
+                    Vào không gian có sẵn
                   </div>
                 </div>
                 <Input

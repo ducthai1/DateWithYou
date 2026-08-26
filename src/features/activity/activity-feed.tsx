@@ -60,7 +60,7 @@ type Burst = {
 
 /**
  * Collapses CONSECUTIVE items by the same person, of the same kind, inside a
- * 60-minute window into one entry ("Người ấy đã thêm 3 kỷ niệm").
+ * 60-minute window into one entry ("Người kia đã thêm 3 kỷ niệm").
  *
  * One sitting of "add five places we want to try" is one thing that happened,
  * not five. There is no "và N người khác" variant anywhere in this file on
@@ -160,7 +160,7 @@ export function ActivityFeed() {
       placeholderData: (prev) => prev,
     },
   );
-  // A missing member profile only downgrades a name to "Người ấy", so a failure
+  // A missing member profile only downgrades a name to "Người kia", so a failure
   // here must not take the feed down with it.
   const members = trpc.space.members.useQuery(undefined, {
     retry: false,
@@ -195,7 +195,7 @@ export function ActivityFeed() {
     const m = memberById.get(actorId);
     if (m?.isSelf) return "Bạn";
     // Unknown actor = a partner whose profile didn't load (or who left).
-    return m?.name || "Người ấy";
+    return m?.name || "Người kia";
   }
 
   const canLoadMore = Boolean(list.data?.nextCursor) && limit < MAX_ITEMS;
@@ -234,7 +234,7 @@ export function ActivityFeed() {
         <EmptyState
           icon="sparkles"
           title="Chưa có hoạt động nào"
-          subtitle="Khi một trong hai đứa thêm kỷ niệm, địa điểm hay kế hoạch, nó sẽ hiện ở đây."
+          subtitle="Khi một trong hai người thêm kỷ niệm, địa điểm hay kế hoạch, nó sẽ hiện ở đây."
           action={{ label: "Thêm kỷ niệm đầu tiên", href: "/timeline" }}
         />
       )}

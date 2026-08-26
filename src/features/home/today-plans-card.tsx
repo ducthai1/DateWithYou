@@ -73,7 +73,7 @@ export function TodayPlansCard({
         <SectionPrompt
           text={
             hasAnyPlan
-              ? "Hôm nay lịch đang trống. Thảnh thơi cũng là một kiểu hẹn hò mà."
+              ? "Hôm nay lịch đang trống. Thảnh thơi một hôm cũng đáng mà."
               : "Chưa có kế hoạch nào cả. Một ly cà phê chiều nay cũng đáng để ghi vào đó."
           }
           action={{ href: "/calendar", label: "Thêm vào hôm nay" }}

@@ -32,8 +32,8 @@ export function CapsuleReadyCard({ capsules }: { capsules: CapsuleReady[] }) {
             <p className="truncate text-sm font-medium">{c.title}</p>
             <p className="text-muted-foreground mt-0.5 truncate text-xs">
               {c.fromSelf
-                ? "Bạn gửi cho tụi mình của hôm nay"
-                : "Người ấy để lại cho bạn"}
+                ? "Bạn viết, để dành cho hôm nay"
+                : "Người kia để lại cho bạn"}
             </p>
           </li>
         ))}

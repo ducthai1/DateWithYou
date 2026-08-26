@@ -13,7 +13,7 @@ const STARTERS: { href: string; Icon: LucideIcon; title: string; sub: string }[]
     href: "/settings",
     Icon: CalendarHeart,
     title: "Đặt ngày kỷ niệm",
-    sub: "Để tụi mình bắt đầu đếm ngày bên nhau.",
+    sub: "Để tụi mình bắt đầu đếm từ ngày đầu tiên.",
   },
   {
     href: "/timeline",

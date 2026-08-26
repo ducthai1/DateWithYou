@@ -35,7 +35,7 @@ export function UpcomingCard({
         <SectionPrompt
           text={
             hasAnyPlan
-              ? "Tuần này chưa có gì trong lịch. Rủ người ấy đi đâu đó chăng?"
+              ? "Tuần này chưa có gì trong lịch. Rủ người kia đi đâu đó chăng?"
               : "Chưa có kế hoạch nào sắp tới. Ghi một buổi hẹn vào lịch xem sao."
           }
           action={{ href: "/calendar", label: "Lên kế hoạch" }}

@@ -146,7 +146,7 @@ export function SpecialDatesPanel() {
           <EmptyState
             icon="calendar-heart"
             title="Chưa có ngày đặc biệt"
-            subtitle="Thêm ngày đặc biệt (kỷ niệm yêu nhau, sinh nhật…) để app đếm ngược và nhắc bạn."
+            subtitle="Thêm ngày đặc biệt (ngày gặp nhau, sinh nhật…) để app đếm ngược và nhắc bạn."
             className="py-8"
           />
         ) : (

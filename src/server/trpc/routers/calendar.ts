@@ -115,7 +115,7 @@ export const calendarRouter = router({
           const key = `${year}-${annKey.slice(5)}`;
           // "heart" is a registry key — resolveIcon renders it as a Lucide Heart.
           // The fallback was previously a raw emoji ("💞") which bypassed the registry.
-          get(key).special ??= { title: "Kỷ niệm yêu nhau", icon: "heart" };
+          get(key).special ??= { title: "Ngày kỷ niệm", icon: "heart" };
         }
       }
       return days;

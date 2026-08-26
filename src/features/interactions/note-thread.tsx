@@ -21,7 +21,7 @@ import type {
 const MAX_LENGTH = 500;
 
 function Avatar({ member }: { member: InteractionMember | undefined }) {
-  const name = member?.name ?? "Người ấy";
+  const name = member?.name ?? "Người kia";
   if (member?.image) {
     return (
       <img
@@ -141,7 +141,7 @@ export function NoteThread({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-foreground truncate text-xs font-medium">
-                          {member?.name ?? "Người ấy"}
+                          {member?.name ?? "Người kia"}
                         </span>
                         <span className="text-muted-foreground shrink-0 text-[10px]">
                           {formatDistanceToNow(new Date(n.createdAt), {
@@ -172,7 +172,7 @@ export function NoteThread({
             </ul>
           ) : (
             <p className="text-muted-foreground text-xs">
-              Chưa có ghi chú nào — viết vài dòng cho người ấy đọc nhé.
+              Chưa có ghi chú nào — viết vài dòng cho người kia đọc nhé.
             </p>
           )}
 

@@ -20,9 +20,9 @@ export function ActivityLinkCard() {
         <Footprints className="text-accent h-4 w-4" strokeWidth={1.8} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">Xem người ấy vừa làm gì</span>
+        <span className="block text-sm font-medium">Xem người kia vừa làm gì</span>
         <span className="text-muted-foreground block text-xs">
-          Những gì hai đứa vừa thêm vào, gần đây nhất
+          Những gì vừa được thêm vào, gần đây nhất
         </span>
       </span>
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden="true" />

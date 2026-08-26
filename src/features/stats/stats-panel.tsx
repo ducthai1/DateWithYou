@@ -89,7 +89,7 @@ export function StatsPanel({ className }: { className?: string }) {
     tiles.push({
       key: "days",
       Icon: Heart,
-      label: "Ngày bên nhau",
+      label: "Ngày cùng nhau",
       value: vi(data.daysTogether),
       hint: data.anniversaryDate
         ? `từ ${format(new Date(data.anniversaryDate), "dd/MM/yyyy")}`
@@ -114,7 +114,7 @@ export function StatsPanel({ className }: { className?: string }) {
       hint:
         data.placesVisited > 0
           ? `${vi(data.placesVisited)} chỗ đã ghé thật rồi`
-          : "chờ hai đứa ghé thử",
+          : "chờ ghé thử",
     });
   }
   if (data.districtsCovered > 0) {
