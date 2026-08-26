@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -62,6 +63,11 @@ export function LandingHero() {
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }} // smooth apple-like spring
         >
           {/* Subtle Floating Icon */}
+          {/* The brand mark, not an emoji. Two reasons: it is the actual
+              identity, and it was the page's ONLY candidate for a Search
+              thumbnail — before this the whole landing page contained zero
+              <img> elements, so Google had no image to attach to the result.
+              `priority` because it sits above the fold. */}
           <motion.div
             animate={{
               y: [0, -8, 0],
@@ -72,9 +78,16 @@ export function LandingHero() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="mb-8 text-5xl opacity-90 drop-shadow-sm"
+            className="mb-8 drop-shadow-sm"
           >
-            💌
+            <Image
+              src="/logo_tab.png"
+              alt="Vivu No Plan — chim én bay theo con đường và la bàn"
+              width={530}
+              height={471}
+              priority
+              className="h-24 w-auto sm:h-28"
+            />
           </motion.div>
 
           <h1 className="font-serif text-4xl font-medium tracking-tight text-[#3b322a] drop-shadow-sm sm:text-5xl md:text-6xl whitespace-nowrap">

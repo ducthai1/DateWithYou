@@ -45,10 +45,29 @@ function StructuredData() {
       applicationCategory: "LifestyleApplication",
       operatingSystem: "Web",
       inLanguage: "vi-VN",
+      // Without an image here the graph gives Google nothing to attach to the
+      // result; og:image is read by link unfurlers, not by Search.
+      image: `${SITE_URL}/brand-card.png`,
+      publisher: { "@id": `${SITE_URL}/#org` },
       offers: {
         "@type": "Offer",
         price: "0",
         priceCurrency: "VND",
+      },
+    },
+    {
+      // Carries the site logo. Google reads `logo` off an Organization node,
+      // not off the application node, so the two are declared separately and
+      // linked by @id.
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#org`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/icon-512.png`,
+        width: 512,
+        height: 512,
       },
     },
     {

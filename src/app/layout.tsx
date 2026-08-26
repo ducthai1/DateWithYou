@@ -92,8 +92,18 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
+  /*
+   * /favicon.ico is listed first and shipped as a real multi-size ICO. Browsers
+   * and Google's favicon fetcher both still probe that exact path, and it was
+   * answering 404 — the rel=icon PNG alone is not a reliable substitute.
+   */
   icons: {
-    icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: [{ url: "/favicon.ico" }],
     apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
   /*
