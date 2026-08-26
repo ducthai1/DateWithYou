@@ -207,13 +207,15 @@ html {
 }
 
 /*
- * Smooth anchor scrolling. Without this, the landing page's "Tìm hiểu thêm"
- * link teleported to the section instead of travelling to it, which read as the
- * page jerking rather than moving. `scroll-padding-top` keeps a target from
- * landing flush against the top edge. The reduced-motion block further down
- * puts this back to `auto`.
+ * Smooth anchor scrolling — scoped to the landing page, not the whole app.
+ *
+ * Globally it applied to every programmatic scroll anywhere in the product
+ * (modals, sheets, the calendar, the map), and on iOS it also interferes with
+ * momentum scrolling, which shows up as an occasional hitch mid-swipe. `:has()`
+ * keeps it to the one route that wants it without needing a client hook to vary
+ * the <html> class per page. The reduced-motion block below still overrides it.
  */
-html {
+html:has(.landing-root) {
   scroll-behavior: smooth;
   scroll-padding-top: 1.5rem;
 }
@@ -326,18 +328,20 @@ button:disabled,
 
 [data-reveal] {
   opacity: 0;
-  will-change: opacity, transform;
 }
 
+/*
+ * No `will-change` here on purpose. It used to sit on the base rule, which
+ * promoted all nineteen reveals to their own compositor layers the moment the
+ * page loaded — before a single one had animated. That is memory and compositing
+ * work paid up front on exactly the devices least able to afford it, and it is
+ * unnecessary: the browser promotes an element on its own for the duration of a
+ * transform/opacity animation. The hint is only worth giving right before a
+ * change, never as a permanent state.
+ */
 [data-reveal][data-shown="true"] {
   animation: vivu-reveal 1.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   animation-delay: var(--reveal-delay, 0ms);
-}
-
-/* Once it has played, drop the compositor hint so long pages don't hold dozens
-   of promoted layers alive. */
-[data-reveal][data-done="true"] {
-  will-change: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -364,4 +368,16 @@ button:disabled,
   .hero-band {
     min-height: 1000px;
   }
+}
+
+/*
+ * The FAQ body's height is animated, and height is a layout property — every
+ * frame of that animation reflows what follows it. `contain: layout` walls the
+ * row's internal layout off from the rest of the page, so each frame only has
+ * to reflow the accordion and the sections below it rather than recomputing the
+ * row's contents from scratch as well.
+ */
+.faq-body {
+  overflow: hidden;
+  contain: layout;
 }

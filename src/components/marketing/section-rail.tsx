@@ -48,15 +48,23 @@ export function SectionRail() {
     );
     targets.forEach((el) => io.observe(el));
 
-    // Show the rail only once the reader has left the hero, so it never sits on
-    // top of the artwork.
-    const onScroll = () => setPastHero(window.scrollY > window.innerHeight * 0.6);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    /*
+     * "Have we left the hero yet" used to be a scroll listener that ran a React
+     * setState on every single scroll event. Even bailing out on an unchanged
+     * value, that is work on the scroll path — the one place where work is most
+     * expensive. A second observer on the hero answers the same question by
+     * firing twice in the page's whole lifetime instead of hundreds of times.
+     */
+    const hero = document.querySelector(".landing-root > :first-child");
+    const heroIo = new IntersectionObserver(
+      ([entry]) => setPastHero(!entry.isIntersecting),
+      { rootMargin: "-40% 0px 0px 0px", threshold: 0 },
+    );
+    if (hero) heroIo.observe(hero);
 
     return () => {
       io.disconnect();
-      window.removeEventListener("scroll", onScroll);
+      heroIo.disconnect();
     };
   }, []);
 
@@ -107,7 +115,18 @@ export function SectionRail() {
       <a
         href="#top"
         aria-label="Về đầu trang"
-        className={`focus-visible:ring-ring/50 fixed right-4 bottom-5 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-[#d8cfc1] bg-white/85 text-[#6b5c51] shadow-[0_6px_20px_rgba(59,50,42,0.12)] outline-none backdrop-blur transition-all duration-500 hover:-translate-y-0.5 hover:text-[#a8542f] focus-visible:ring-2 active:scale-95 lg:right-6 lg:bottom-7 ${
+        /*
+          No backdrop-blur here. It is a position: fixed element, so a
+          backdrop-filter makes the compositor re-sample and re-blur what is
+          behind it on every scrolled frame — a well-known cause of exactly the
+          mid-swipe stutter this is meant to help with. An opaque background
+          costs nothing and looks the same over this page.
+
+          `transition-all` is also gone: it animates every property that ever
+          changes, including the transform used on hover, which is not what the
+          show/hide is about.
+        */
+        className={`focus-visible:ring-ring/50 fixed right-4 bottom-5 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-[#d8cfc1] bg-[#faf7f2] text-[#6b5c51] shadow-[0_6px_20px_rgba(59,50,42,0.12)] outline-none transition-[opacity,transform,color] duration-500 hover:-translate-y-0.5 hover:text-[#a8542f] focus-visible:ring-2 active:scale-95 lg:right-6 lg:bottom-7 ${
           pastHero
             ? "translate-y-0 opacity-100"
             : "pointer-events-none translate-y-3 opacity-0"

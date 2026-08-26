@@ -63,30 +63,56 @@ export function FaqItem({
      * in flight, where the live height is the honest starting point.
      */
     const live = body.getBoundingClientRect().height;
-    const target = body.scrollHeight;
 
     if (shouldOpen) {
       closingRef.current = false;
       details.open = true;
+
+      /*
+       * Measure the real height, do not trust what is already reported.
+       *
+       * A collapsed <details> hides its content with content-visibility:
+       * hidden, and that keeps the element's LAST rendered size cached — so
+       * both getBoundingClientRect() and scrollHeight can answer with a stale
+       * number. Reading it as the animation's target is why opening was smooth
+       * sometimes and snapped other times: the very first open, or the first
+       * after a width change or a late-loading font, animated toward a wrong
+       * height and then jumped to the right one the moment the animation
+       * finished and the inline height was cleared.
+       *
+       * Forcing `auto` and reading the box back is a real layout, so the target
+       * is the height the row will actually settle at.
+       */
+      body.style.height = "auto";
+      const target = body.getBoundingClientRect().height;
       const from = live > 0 && live < target ? live : 0;
+      body.style.height = `${from}px`;
+
       animRef.current = body.animate(
         { height: [`${from}px`, `${target}px`], opacity: [from === 0 ? 0 : 1, 1] },
-        { duration: 460, easing: "cubic-bezier(0.16, 1, 0.3, 1)" },
+        { duration: 460, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" },
       );
       animRef.current.onfinish = () => {
+        // Hand back to `auto` only once the animation is holding the exact
+        // height it ends on, so the handover is invisible.
         body.style.height = "";
+        animRef.current?.cancel();
+        animRef.current = null;
       };
     } else {
       closingRef.current = true;
+      body.style.height = `${live}px`;
       animRef.current = body.animate(
         { height: [`${live}px`, "0px"], opacity: [1, 0] },
-        { duration: 340, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+        { duration: 340, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" },
       );
       animRef.current.onfinish = () => {
         // Only now is it safe to unmount the content.
         details.open = false;
         closingRef.current = false;
         body.style.height = "";
+        animRef.current?.cancel();
+        animRef.current = null;
       };
     }
   }
@@ -105,9 +131,11 @@ export function FaqItem({
           +
         </span>
       </summary>
-      {/* overflow-hidden is what makes the height animation read as a reveal
-          rather than the text sliding out of its own box. */}
-      <div ref={bodyRef} className="overflow-hidden">
+      {/* .faq-body carries overflow-hidden — so the height animation reads as a
+          reveal rather than the text sliding out of its own box — plus
+          `contain: layout`, which keeps each frame of that animation from
+          reflowing the row's own contents on top of the page below it. */}
+      <div ref={bodyRef} className="faq-body">
         <p className="mt-4 pr-10 text-[15px] font-light leading-relaxed text-[#6b5c51]">
           {answer}
         </p>

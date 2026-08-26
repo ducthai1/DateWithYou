@@ -130,8 +130,16 @@ export default function Home() {
       {/* Anchor for the back-to-top link. An id beats scrollTo(0) here: it
           inherits the page's smooth scroll-behavior and works without JS. */}
       <span id="top" />
-      <LandingHero />
-      <LandingSections />
+      {/*
+        `.landing-root` is what scopes smooth scrolling to this route (globals
+        keys off html:has(.landing-root)) and what the section rail uses to find
+        the hero for its sentinel. Both would otherwise need a client hook just
+        to know which page they are on.
+      */}
+      <div className="landing-root">
+        <LandingHero />
+        <LandingSections />
+      </div>
       <SectionRail />
     </>
   );

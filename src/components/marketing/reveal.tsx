@@ -14,6 +14,10 @@ import { useEffect, useRef } from "react";
  * one attribute — so React never re-renders the subtree and the animation stays
  * on the compositor. A <noscript> rule in the layout un-hides everything for
  * browsers with JavaScript off.
+ *
+ * Nothing here sets `will-change`: the browser promotes an element for the
+ * duration of a transform/opacity animation by itself, and hinting it up front
+ * for every reveal on the page just holds layers alive that are not animating.
  */
 export function Reveal({
   children,
@@ -39,16 +43,22 @@ export function Reveal({
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          el.dataset.shown = "true";
           io.unobserve(el);
-          // Release the compositor hint once the animation has finished.
-          el.addEventListener(
-            "animationend",
-            () => {
-              el.dataset.done = "true";
-            },
-            { once: true },
-          );
+          /*
+           * Start on a frame boundary rather than inside the observer callback.
+           * That callback runs as part of the browser's scroll work, so writing
+           * there kicks off an animation and its first style recalculation in
+           * the middle of a frame that is already busy.
+           *
+           * Honest note: this measured neutral in a scripted-wheel harness —
+           * synthetic scrolling leaves idle gaps between steps that a real
+           * finger does not, so the harness cannot see the difference. Kept
+           * because it is structurally the right place for the write, and it
+           * costs a frame nobody can perceive.
+           */
+          requestAnimationFrame(() => {
+            el.dataset.shown = "true";
+          });
         }
       },
       // Fire a little before the element is fully in view, so the motion has
