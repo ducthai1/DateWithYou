@@ -13,9 +13,9 @@ import type { FeaturePage } from "./types";
  */
 export const NHAT_KY_DU_LICH: FeaturePage = {
   slug: "nhat-ky-du-lich",
-  metaTitle: "Nhật ký du lịch online — lịch trình, ngân sách, ảnh chuyến đi",
+  metaTitle: "Nhật ký du lịch online — lịch trình, ngân sách, ảnh",
   metaDescription:
-    "Dựng lịch trình du lịch từng ngày, theo dõi ngân sách và checklist đồ mang đi. Đi xong, ảnh và vài dòng kể lại thành một quyển nhật ký du lịch bạn không phải ngồi viết. Miễn phí.",
+    "Dựng lịch trình du lịch từng ngày, theo dõi ngân sách và checklist đồ mang đi. Đi xong, ảnh và vài dòng kể lại thành quyển nhật ký bạn không phải ngồi viết.",
   h1: "Chuyến đi nào rồi cũng chỉ còn lại bốn trăm tấm ảnh",
   eyebrow: "Chuyến đi & nhật ký",
   tagline:

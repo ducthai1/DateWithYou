@@ -229,7 +229,7 @@ export function MemoryTimeline() {
                     {photoCount > 0 && (
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {m.photos.slice(0, 3).map((p: { url: string; publicId: string }) => (
-                          // eslint-disable-next-line @next/next/no-img-element
+                           
                           <img
                             key={p.publicId}
                             src={p.url}

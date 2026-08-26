@@ -20,7 +20,7 @@ export const HOM_NAY_AN_GI: FeaturePage = {
   slug: "hom-nay-an-gi",
   metaTitle: "Hôm nay ăn gì — vòng quay chọn từ quán bạn đã lưu",
   metaDescription:
-    "Hết ý tưởng tối nay ăn gì? Vòng quay của Vivu No Plan bốc từ chính những quán bạn đã ghim và bộ công thức của bạn — khỏi phải gõ lại danh sách mỗi lần. Miễn phí, chạy trên trình duyệt.",
+    "Hết ý tưởng tối nay ăn gì? Vòng quay bốc từ chính những quán bạn đã ghim và bộ công thức của bạn, khỏi gõ lại danh sách mỗi lần. Miễn phí, không cần tải app.",
   h1: "Hôm nay ăn gì?",
   eyebrow: "Vòng quay chọn món",
   tagline:

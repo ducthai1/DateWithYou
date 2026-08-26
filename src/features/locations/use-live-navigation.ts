@@ -445,7 +445,7 @@ export function useLiveNavigation(options?: {
     return () => clearInterval(interval);
     // ONLY depend on isNavigating & isOffline.
     // Do NOT depend on userGeo or pingLiveLocation to prevent infinite reset loops!
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [isNavigating, isOffline]);
 
   // Ping the moment the first GPS fix lands, so the partner discovers us (and we
@@ -460,7 +460,7 @@ export function useLiveNavigation(options?: {
     if (didInitialPingRef.current || !userGeo) return;
     didInitialPingRef.current = true;
     sendLivePingRef.current();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [isNavigating, userGeo]);
 
   // Re-evaluate partner staleness on a steady tick while navigating (the ping

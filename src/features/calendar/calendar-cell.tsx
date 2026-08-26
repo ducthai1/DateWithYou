@@ -118,7 +118,7 @@ export const CalendarCell = memo(function CalendarCell({
           desktop keeps the faint 25% wash behind the sticky notes. */}
       {summary?.thumbnailUrl && cell.inMonth && (
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img
             src={summary.thumbnailUrl}
             alt=""

@@ -29,7 +29,7 @@ export const SITE_NAME = "Vivu No Plan";
 
 /** Used as the default <title> and as the og:title fallback. */
 export const SITE_TITLE =
-  "Vivu No Plan — giữ lại mọi chuyến đi, dù có kế hoạch hay không";
+  "Vivu No Plan — giữ lại mọi chuyến đi, dù có plan hay không";
 
 /**
  * ~155 characters: long enough to be descriptive, short enough that Google
@@ -46,7 +46,7 @@ export const SITE_TITLE =
  * without being sorted into a category first.
  */
 export const SITE_DESCRIPTION =
-  "Ghim lại quán đã ghé, lên lịch cho cuối tuần, để vòng quay chọn chỗ ăn lúc bí ý tưởng, và cất vài điều chưa muốn nói ra. Đi một mình hay rủ thêm một người đều được. Miễn phí.";
+  "Ghim quán đã ghé, lên lịch cuối tuần, để vòng quay chọn chỗ ăn lúc bí ý tưởng, và cất vài điều chưa muốn nói ra. Đi một mình hay rủ thêm một người đều được.";
 
 export const SITE_LOCALE = "vi_VN";
 

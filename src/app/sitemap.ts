@@ -13,19 +13,22 @@ import { FEATURE_PAGES } from "@/components/marketing/feature-pages";
  * The feature pages come from the same array that renders them, so a page
  * cannot exist without being listed here, or be listed here without existing.
  */
+/*
+ * No lastModified field. It used to be `new Date()`, which is build time, not
+ * content time — every deploy told Google all five pages had just changed,
+ * including the four that had not. A crawler that checks a few of those and
+ * finds nothing new learns to ignore the signal from this site entirely, so a
+ * wrong date is worse than none. An absent lastmod is simply neutral.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date();
-
   return [
     {
       url: `${SITE_URL}/`,
-      lastModified,
       changeFrequency: "monthly",
       priority: 1,
     },
     ...FEATURE_PAGES.map((page) => ({
       url: `${SITE_URL}/${page.slug}`,
-      lastModified,
       changeFrequency: "monthly" as const,
       // Below the homepage, level with each other. Priority is a weak hint at
       // best; what matters is that they are listed at all.

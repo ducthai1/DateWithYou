@@ -163,7 +163,7 @@ export const spaceRouter = router({
       catch { return [id]; }
     });
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const membersData = await mongoose.connection.db!
       .collection("user")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -17,7 +17,14 @@ export function buildFeaturePageMetadata(page: FeaturePage): Metadata {
   const image = FEATURE_PAGE_OG_IMAGE[page.slug] ?? "/og-card.jpg";
 
   return {
-    title: { absolute: `${page.metaTitle} | ${SITE_NAME}` },
+    /*
+     * No brand suffix. Google prints the site name on its own line above the
+     * title (that is what the WebSite node and og:site_name are for), so
+     * "| Vivu No Plan" restated what was already on screen and cost 15 of the
+     * ~60 characters a title gets before it is cut — enough that every one of
+     * these was being truncated, one of them at 78 characters.
+     */
+    title: { absolute: page.metaTitle },
     description: page.metaDescription,
     // Self-referencing canonical: the app answers on more than one host, and
     // without this those read as duplicates competing with each other.

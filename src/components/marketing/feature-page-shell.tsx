@@ -24,9 +24,13 @@ import { SITE_NAME } from "@/lib/site";
 function Prose({ paragraphs }: { paragraphs: string[] }) {
   return (
     <div className="mt-6 space-y-5">
-      {paragraphs.map((text) => (
+      {paragraphs.map((text, i) => (
         <p
-          key={text.slice(0, 40)}
+          // Index key: this list is static content that never reorders. Keying
+          // on the text meant two paragraphs opening with the same 40
+          // characters would collide, which is a silent mis-render rather than
+          // an error.
+          key={i}
           className="text-[17px] font-light leading-[1.75] text-[#6b5c51]"
         >
           {text}

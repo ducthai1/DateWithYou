@@ -21,9 +21,9 @@ import type { FeaturePage } from "./types";
  */
 export const THU_GUI_TUONG_LAI: FeaturePage = {
   slug: "thu-gui-tuong-lai",
-  metaTitle: "Viết thư gửi tương lai — hộp thời gian niêm phong tới đúng ngày",
+  metaTitle: "Viết thư gửi tương lai — hộp thời gian niêm phong",
   metaDescription:
-    "Viết một lá thư, chọn ngày mở, rồi để nó ngủ. Trước ngày đó không ai đọc được, kể cả người vừa viết — nội dung bị giữ lại ở phía máy chủ. Miễn phí, chạy trên trình duyệt.",
+    "Viết một lá thư, chọn ngày mở, rồi để nó ngủ. Trước ngày đó không ai đọc được, kể cả người vừa viết — nội dung bị giữ lại ở phía máy chủ.",
   h1: "Có những điều hôm nay chưa nói được",
   eyebrow: "Hộp thời gian",
   tagline:

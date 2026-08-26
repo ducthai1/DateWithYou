@@ -1,23 +1,30 @@
 import type { FeaturePage } from "./types";
+import { FEATURE_PAGE_SLUGS, type FeaturePageSlug } from "./slugs";
 import { HOM_NAY_AN_GI } from "./hom-nay-an-gi";
 import { LUU_DIA_DIEM_DA_DI } from "./luu-dia-diem-da-di";
 import { NHAT_KY_DU_LICH } from "./nhat-ky-du-lich";
 import { THU_GUI_TUONG_LAI } from "./thu-gui-tuong-lai";
 
 export type { FeaturePage, FeaturePageSection, RelatedLink } from "./types";
+export { FEATURE_PAGE_SLUGS, type FeaturePageSlug } from "./slugs";
+
+/** Content for each page, keyed by slug. */
+const BY_SLUG: Record<FeaturePageSlug, FeaturePage> = {
+  "hom-nay-an-gi": HOM_NAY_AN_GI,
+  "luu-dia-diem-da-di": LUU_DIA_DIEM_DA_DI,
+  "nhat-ky-du-lich": NHAT_KY_DU_LICH,
+  "thu-gui-tuong-lai": THU_GUI_TUONG_LAI,
+};
 
 /**
- * Registry of the public feature pages, in the order the landing page links to
- * them. Kept as one list so the sitemap cannot drift out of sync with what
- * actually exists — a page that is not in this array is not in the sitemap and
- * is not linked from anywhere, which is the same as not existing.
+ * The public feature pages, ordered by the slug list so the sitemap, the nav
+ * exclusions and the landing links can never disagree about which pages exist.
+ * A slug with no content above is a type error rather than a page that quietly
+ * drops out of the sitemap.
  */
-export const FEATURE_PAGES: FeaturePage[] = [
-  HOM_NAY_AN_GI,
-  LUU_DIA_DIEM_DA_DI,
-  NHAT_KY_DU_LICH,
-  THU_GUI_TUONG_LAI,
-];
+export const FEATURE_PAGES: FeaturePage[] = FEATURE_PAGE_SLUGS.map(
+  (slug) => BY_SLUG[slug],
+);
 
 /**
  * Where the page's secondary button goes — the actual screen in the app.

@@ -10,7 +10,7 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react";
-import { FEATURE_PAGES } from "@/components/marketing/feature-pages";
+import { FEATURE_PAGE_SLUGS } from "@/components/marketing/feature-pages/slugs";
 
 // Shared navigation source for both the mobile bottom nav and the desktop
 // sidebar so the two never drift apart. `center` marks the hero tab (Lịch),
@@ -49,12 +49,14 @@ export const NAV_ITEMS: {
  * page needs a space", so a visitor arriving from a search result gets bounced
  * to onboarding instead of reading the page they clicked.
  *
- * The feature pages are spread in from their registry rather than typed out, so
- * adding a page cannot leave it out of this list.
+ * The slugs are spread in from their own module rather than typed out, so adding
+ * a page cannot leave it out of this list. It has to be the slug module and not
+ * the content registry: this file reaches eight client components, and pulling
+ * the registry in shipped all four pages of marketing prose to every user.
  */
 export const NAV_HIDDEN_ON = [
   "/",
-  ...FEATURE_PAGES.map((page) => `/${page.slug}`),
+  ...FEATURE_PAGE_SLUGS.map((slug) => `/${slug}`),
   "/sign-in",
   "/sign-up",
   "/onboarding",

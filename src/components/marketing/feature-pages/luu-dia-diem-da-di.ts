@@ -18,7 +18,7 @@ export const LUU_DIA_DIEM_DA_DI: FeaturePage = {
   slug: "luu-dia-diem-da-di",
   metaTitle: "App lưu địa điểm đã đi — ghim quán ăn, café đã ghé",
   metaDescription:
-    "Ghim lại quán ăn, café đã ghé và chỗ đang muốn tới trên một bản đồ riêng của bạn. Kèm ghi chú món nên gọi, lọc theo quận và danh mục. Miễn phí, chạy trên trình duyệt.",
+    "Ghim quán ăn, café đã ghé và chỗ muốn tới trên bản đồ riêng của bạn. Kèm ghi chú món nên gọi, lọc theo quận và danh mục. Miễn phí, không cần tải app.",
   h1: "Cái quán đó tên gì rồi nhỉ?",
   eyebrow: "Bản đồ nơi đã đi",
   tagline:

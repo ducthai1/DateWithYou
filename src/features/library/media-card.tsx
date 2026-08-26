@@ -61,7 +61,7 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
           <button type="button" onClick={onOpen} className="block w-full text-left">
           {item.recipe?.coverImage && (
             <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              { }
               <img src={item.recipe.coverImage} alt={item.title} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
             </div>
           )}

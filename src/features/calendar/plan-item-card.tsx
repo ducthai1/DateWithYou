@@ -26,7 +26,7 @@ export type Member = { id: string; name: string; image: string | null; avatarEmo
 
 function Avatar({ member }: { member: Member }) {
   if (member.image) {
-    // eslint-disable-next-line @next/next/no-img-element
+     
     return <img src={member.image} alt={member.name} className="h-6 w-6 rounded-full object-cover" title={member.name} />;
   }
   return (

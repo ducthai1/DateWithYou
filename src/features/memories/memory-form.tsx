@@ -201,7 +201,7 @@ export function MemoryForm({
                 className="border-border bg-card flex items-center gap-2.5 rounded-xl border p-2 transition-all"
               >
                 {e.thumbnailUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                   
                   <img
                     src={e.thumbnailUrl}
                     alt={PROVIDER_LABEL[e.provider]}

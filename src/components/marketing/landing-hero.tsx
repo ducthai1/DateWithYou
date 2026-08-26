@@ -66,7 +66,7 @@ export function LandingHero() {
           <source type="image/webp" srcSet="/hero-logo-tight.webp" width={1200} height={749} />
           {/* JPEG stays as the last-resort source for anything without WebP.
               eslint-disable-next-line @next/next/no-img-element */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img
             src="/hero-logo-tight.jpg"
             alt=""
