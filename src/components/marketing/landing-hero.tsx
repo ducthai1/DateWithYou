@@ -91,8 +91,8 @@ export function LandingHero() {
         className="vivu-rise mt-7 max-w-sm text-center text-[15px] font-light leading-relaxed text-[#BFD9DE] sm:text-base"
         style={{ animationDelay: "320ms" }}
       >
-        Nơi lưu kỷ niệm, lên kế hoạch hẹn hò và giữ những điều bí mật ngọt ngào
-        của tụi mình.
+        Nơi giữ lại những nơi đã đi, món đã ăn và ngày đã sống — đi một mình
+        cũng được, có người đi cùng càng vui.
       </p>
 
       <div

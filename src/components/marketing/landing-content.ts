@@ -6,9 +6,20 @@
  * that disagrees with the visible page is a spam signal, so there is exactly
  * one source for both.
  *
- * Every line here describes something the app actually does — the feature list
- * mirrors NAV_ITEMS plus the vault. Marketing claims a crawler can check and
- * find false are worse than no copy at all.
+ * WHO THIS IS WRITTEN FOR. Earlier drafts said "cặp đôi" and "hai đứa yêu
+ * nhau" throughout, which quietly threw away most of the people the product
+ * actually serves: the space holds any two people — friends, siblings,
+ * flatmates, a parent and a child, travel companions — and works perfectly well
+ * with one. Someone arriving alone, or with a friend, read the first line and
+ * left. The copy now says "một mình hoặc hai người", which is both wider and
+ * true today; couples are still described, just no longer assumed.
+ *
+ * It stays honest about the limit: a space holds two people, not a family of
+ * five, and the FAQ says so plainly rather than letting someone find out by
+ * hitting an error.
+ *
+ * Every line describes something the app actually does — the feature list
+ * mirrors NAV_ITEMS plus the vault.
  */
 
 export interface Feature {
@@ -20,8 +31,8 @@ export interface Feature {
 export const FEATURES: Feature[] = [
   {
     emoji: "📅",
-    title: "Lịch chung của hai đứa",
-    body: "Lên kế hoạch hẹn hò theo ngày, đánh dấu ngày đặc biệt, đếm ngược tới dịp kỷ niệm và ghi rõ ai phụ trách việc gì.",
+    title: "Lịch chung",
+    body: "Lên kế hoạch cho từng ngày, đánh dấu ngày quan trọng, đếm ngược tới dịp sắp tới và ghi rõ ai lo việc gì.",
   },
   {
     emoji: "🗺️",
@@ -36,7 +47,7 @@ export const FEATURES: Feature[] = [
   {
     emoji: "📚",
     title: "Bộ sưu tập công thức & trò chơi",
-    body: "Lưu công thức kèm nguyên liệu, các bước và video hướng dẫn. Thêm cả những trò chơi hai người hay bày ra.",
+    body: "Lưu công thức kèm nguyên liệu, các bước và video hướng dẫn. Thêm cả những trò chơi hay bày ra lúc rảnh.",
   },
   {
     emoji: "✈️",
@@ -51,7 +62,7 @@ export const FEATURES: Feature[] = [
   {
     emoji: "🔐",
     title: "Két bí mật",
-    body: "Hộp thời gian niêm phong tới đúng ngày mới mở được, wishlist của mỗi người, nhiệm vụ tính điểm và voucher đổi quà cho nhau.",
+    body: "Hộp thời gian niêm phong tới đúng ngày mới mở được, wishlist riêng, nhiệm vụ tính điểm và voucher đổi quà.",
   },
 ];
 
@@ -70,12 +81,12 @@ export const STEPS: Step[] = [
   {
     number: "02",
     title: "Mở không gian riêng",
-    body: "Tạo không gian của hai đứa rồi mời người ấy vào. Một không gian chỉ chứa đúng hai người.",
+    body: "Dùng một mình cũng được — không gian là của bạn ngay từ đầu, không cần đợi ai.",
   },
   {
     number: "03",
-    title: "Bắt đầu vivu",
-    body: "Mọi kế hoạch, tấm ảnh hay ghi chú một người thêm vào đều hiện lên phía người kia gần như tức thì.",
+    title: "Rủ thêm một người, nếu muốn",
+    body: "Gửi mã mời cho người bạn muốn chia sẻ cùng. Mọi thứ một người thêm vào sẽ hiện lên phía người kia gần như tức thì.",
   },
 ];
 
@@ -88,17 +99,32 @@ export const FAQ: FaqItem[] = [
   {
     question: "Vivu No Plan là ứng dụng gì?",
     answer:
-      "Là một không gian riêng cho hai người yêu nhau: lịch hẹn hò chung, bản đồ những nơi đã đi, album kỷ niệm, kế hoạch chuyến đi và một chiếc két giữ những điều bí mật. Thay vì để mọi thứ trôi mất trong cuộc trò chuyện, tất cả nằm gọn ở một chỗ.",
+      "Là một không gian riêng để giữ lại những nơi bạn đã đi, món đã ăn, ngày đã sống — và lên kế hoạch cho lần tới. Lịch chung, bản đồ địa điểm, album kỷ niệm, lịch trình chuyến đi, công thức nấu ăn và một chiếc két giữ những điều bí mật. Thay vì để mọi thứ trôi mất trong tin nhắn, tất cả nằm gọn ở một chỗ. Nhiều người còn gõ tên nó thành Vivu Plan, VivuNoPlan hay “vi vu không cần plan” — cùng một ứng dụng cả.",
+  },
+  {
+    question: "Đi một mình có dùng được không?",
+    answer:
+      "Được, và không thiếu tính năng nào. Không gian là của bạn ngay khi tạo xong, không cần đợi ai đồng ý. Lưu địa điểm, viết nhật ký chuyến đi, quay vòng chọn quán, cất hộp thời gian cho chính mình — tất cả đều chạy khi chỉ có một người. Khi nào muốn chia sẻ thì gửi mã mời, không muốn thì thôi.",
+  },
+  {
+    question: "Ai thì hợp dùng cái này?",
+    answer:
+      "Bất kỳ hai người muốn giữ chung một góc riêng: bạn thân, anh chị em, bạn cùng phòng, bạn đồng hành trong chuyến đi, bố mẹ với con, người yêu. Ứng dụng không hỏi bạn là gì của nhau và cũng không cần biết — nó chỉ giữ những gì hai người thêm vào.",
+  },
+  {
+    question: "Rủ được bao nhiêu người vào một không gian?",
+    answer:
+      "Hiện tại một không gian giữ tối đa hai người, kể cả bạn. Nhóm bạn hay gia đình đông hơn thì chưa dùng chung một không gian được — nói trước để bạn khỏi mất công tạo rồi mới biết. Bạn vẫn có thể mở nhiều không gian khác nhau cho từng người.",
   },
   {
     question: "Vivu No Plan có mất phí không?",
     answer:
-      "Không. Toàn bộ tính năng hiện có đều dùng miễn phí, không giới hạn thời gian và không cần thẻ thanh toán.",
+      "Không. Toàn bộ tính năng hiện có đều dùng miễn phí, không giới hạn thời gian, không quảng cáo và không cần thẻ thanh toán.",
   },
   {
-    question: "Người khác có xem được nội dung của tụi mình không?",
+    question: "Người khác có xem được nội dung của mình không?",
     answer:
-      "Không. Mỗi không gian chỉ hai người bên trong mới truy cập được, và mọi yêu cầu dữ liệu đều được kiểm tra quyền ở phía máy chủ chứ không chỉ ẩn đi trên giao diện.",
+      "Không. Mỗi không gian chỉ người bên trong mới truy cập được, và mọi yêu cầu dữ liệu đều được kiểm tra quyền ở phía máy chủ chứ không chỉ ẩn đi trên giao diện. Không có bảng tin, không có người lạ, không có thuật toán gợi ý.",
   },
   {
     question: "Dùng trên điện thoại có được không?",
@@ -108,11 +134,6 @@ export const FAQ: FaqItem[] = [
   {
     question: "Hộp thời gian hoạt động như thế nào?",
     answer:
-      "Bạn viết một lá thư rồi chọn ngày mở. Trước ngày đó lá thư vẫn niêm phong với cả hai người — kể cả người vừa viết ra nó. Đến hẹn, chiếc phong bì mới mở ra.",
-  },
-  {
-    question: "Cần bao nhiêu người để bắt đầu?",
-    answer:
-      "Bạn có thể tạo tài khoản và mở không gian một mình trước, rồi gửi lời mời cho người ấy vào bất cứ lúc nào. Không gian sẽ đợi sẵn.",
+      "Bạn viết một lá thư rồi chọn ngày mở. Trước ngày đó lá thư vẫn niêm phong — kể cả với người vừa viết ra nó. Đến hẹn, chiếc phong bì mới mở ra.",
   },
 ];

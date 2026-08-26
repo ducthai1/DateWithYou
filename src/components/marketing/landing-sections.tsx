@@ -52,14 +52,14 @@ export function LandingSections() {
           <SectionHeading
             eyebrow="Giới thiệu"
           title={`${SITE_NAME} là gì?`}
-            lead="Là một không gian riêng dành cho hai người yêu nhau. Kế hoạch hẹn hò, những nơi đã cùng đi qua, tấm ảnh của hôm nào đó và cả những điều chưa muốn nói ra vội — tất cả nằm gọn ở một chỗ, thay vì trôi mất giữa hàng nghìn tin nhắn."
+            lead="Là một góc riêng để giữ lại những nơi đã đi qua, tấm ảnh của hôm nào đó, kế hoạch cho cuối tuần này và cả những điều chưa muốn nói ra vội — tất cả nằm gọn ở một chỗ, thay vì trôi mất giữa hàng nghìn tin nhắn."
           />
         </Reveal>
         <Reveal delay={180}>
         <p className="mx-auto mt-8 max-w-2xl text-center text-base font-light leading-relaxed text-[#6b5c51]">
-          Không bảng tin, không người lạ, không thuật toán gợi ý. Mỗi không gian
-          chỉ đúng hai người mở được, và mọi thứ một người thêm vào sẽ hiện lên
-          phía người kia gần như ngay lập tức.
+          Không bảng tin, không người lạ, không thuật toán gợi ý. Dùng một mình
+          thì đây là góc của riêng bạn; rủ thêm một người thì mọi thứ một bên
+          thêm vào sẽ hiện lên phía bên kia gần như ngay lập tức.
         </p>
         </Reveal>
       </section>
@@ -71,7 +71,7 @@ export function LandingSections() {
         <Reveal>
           <SectionHeading
             eyebrow="Tính năng"
-          title="Bảy thứ hai đứa sẽ dùng nhiều nhất"
+          title="Bảy thứ bạn sẽ mở nhiều nhất"
             lead="Mỗi mục dưới đây là một màn hình có sẵn trong ứng dụng, không phải kế hoạch cho tương lai."
           />
         </Reveal>
@@ -145,10 +145,11 @@ export function LandingSections() {
       <section id="dang-ky" className="mx-auto max-w-3xl px-6 pb-24 text-center sm:pb-32">
         <Reveal>
         <h2 className="text-3xl font-medium tracking-tight text-[#3b322a] sm:text-4xl">
-          Mở không gian của hai đứa
+          Mở góc riêng của bạn
         </h2>
         <p className="mx-auto mt-5 max-w-xl text-base font-light leading-relaxed text-[#6b5c51]">
-          Miễn phí, không cần thẻ thanh toán. Mất chừng một phút để tạo xong.
+          Miễn phí, không quảng cáo, không cần thẻ thanh toán. Mất chừng một
+          phút để tạo xong — và bạn không cần rủ ai để bắt đầu.
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
@@ -169,8 +170,7 @@ export function LandingSections() {
 
       <footer className="border-t border-[#d8cfc1]/60 px-6 py-10 text-center text-sm font-light text-[#7a6d60]">
         <p>
-          {SITE_NAME} — không gian riêng cho hai người. Làm bằng 💌 tại Việt
-          Nam.
+          {SITE_NAME} — giữ lại những chuyến đi của bạn. Làm tại Việt Nam.
         </p>
       </footer>
     </div>

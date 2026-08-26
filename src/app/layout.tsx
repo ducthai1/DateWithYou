@@ -49,15 +49,27 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
+  /*
+   * Kept broad and honest, but do not expect much of it: Google stopped using
+   * the keywords meta tag in 2009 and the other major engines followed. What
+   * actually earns a query is the visible text — which is why the widening of
+   * this product's audience went into the headings, the feature copy and the
+   * FAQ rather than into this list. Brand spellings are declared where a search
+   * engine really does read them: `alternateName` on the Organization node.
+   */
   keywords: [
-    "ứng dụng cho cặp đôi",
-    "app cho couple",
-    "lịch hẹn hò",
-    "lưu kỷ niệm tình yêu",
-    "hộp thời gian",
-    "vòng quay ăn gì",
-    "kế hoạch hẹn hò",
     "Vivu No Plan",
+    "VivuNoPlan",
+    "vi vu không cần plan",
+    "đi chơi không cần plan",
+    "app lưu kỷ niệm",
+    "app lên kế hoạch đi chơi",
+    "nhật ký chuyến đi",
+    "lưu địa điểm đã đi",
+    "vòng quay chọn quán ăn",
+    "hộp thời gian",
+    "lịch chung",
+    "app cho hai người",
   ],
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,

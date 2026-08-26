@@ -3,7 +3,13 @@ import { LandingHero } from "@/components/marketing/landing-hero";
 import { LandingSections } from "@/components/marketing/landing-sections";
 import { SectionRail } from "@/components/marketing/section-rail";
 import { FAQ } from "@/components/marketing/landing-content";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+import {
+  SITE_ALTERNATE_NAMES,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE,
+  SITE_URL,
+} from "@/lib/site";
 
 /*
  * The only publicly indexable route. It is a Server Component so it can export
@@ -54,6 +60,13 @@ function StructuredData() {
       applicationCategory: "LifestyleApplication",
       operatingSystem: "Web",
       inLanguage: "vi-VN",
+      alternateName: SITE_ALTERNATE_NAMES,
+      // Stated explicitly because the copy used to imply couples only.
+      audience: {
+        "@type": "Audience",
+        audienceType:
+          "Người đi chơi một mình, bạn thân, anh chị em, bạn cùng phòng, bạn đồng hành, cặp đôi",
+      },
       // Without an image here the graph gives Google nothing to attach to the
       // result; og:image is read by link unfurlers, not by Search.
       image: `${SITE_URL}/og-card.jpg`,
@@ -71,6 +84,12 @@ function StructuredData() {
       "@type": "Organization",
       "@id": `${SITE_URL}/#org`,
       name: SITE_NAME,
+      /*
+       * The spellings people actually type. `alternateName` is the supported
+       * way to tell a search engine that several strings mean one brand — a
+       * keywords meta tag is not; Google stopped reading that in 2009.
+       */
+      alternateName: SITE_ALTERNATE_NAMES,
       url: SITE_URL,
       logo: {
         "@type": "ImageObject",

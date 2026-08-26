@@ -28,16 +28,38 @@ export const SITE_URL = RAW_SITE_URL.replace(/\/+$/, "");
 export const SITE_NAME = "Vivu No Plan";
 
 /** Used as the default <title> and as the og:title fallback. */
-export const SITE_TITLE = "Vivu No Plan — không gian riêng cho hai người";
+export const SITE_TITLE =
+  "Vivu No Plan — giữ lại mọi chuyến đi, dù có kế hoạch hay không";
 
 /**
  * ~155 characters: long enough to be descriptive, short enough that Google
  * shows it whole instead of truncating mid-sentence.
+ *
+ * Deliberately says "một mình hoặc rủ thêm một người" rather than naming a
+ * couple. The product works for any two people — friends, siblings, flatmates,
+ * a parent and a child — and works alone as well; describing it as a couples
+ * app turned away everyone else at the first line they read.
  */
 export const SITE_DESCRIPTION =
-  "Ứng dụng cho các cặp đôi: lịch hẹn hò chung, bản đồ nơi hai đứa đã đi, vòng quay chọn quán, album kỷ niệm và hộp thời gian khoá tới ngày hẹn. Miễn phí.";
+  "Lưu kỷ niệm, ghim quán đã ghé, lên lịch đi chơi, quay vòng chọn chỗ ăn và cất những điều bí mật. Dùng một mình hoặc rủ thêm một người. Miễn phí, không quảng cáo.";
 
 export const SITE_LOCALE = "vi_VN";
+
+/**
+ * Brand spellings people actually type. Fed to the Organization node's
+ * `alternateName`, which is the supported way to tell a search engine that
+ * several strings mean the same brand — unlike a keywords meta tag, which
+ * Google has ignored since 2009.
+ */
+export const SITE_ALTERNATE_NAMES = [
+  "VivuNoPlan",
+  "Vivu NoPlan",
+  "Vi vu No Plan",
+  "Vivu Plan",
+  "Vivu",
+  "Vi vu không cần plan",
+  "Đi chơi không cần plan",
+];
 
 /**
  * Routes that hold couple-private data. Listed once and consumed by both
