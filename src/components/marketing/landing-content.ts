@@ -8,11 +8,16 @@
  *
  * WHO THIS IS WRITTEN FOR. Earlier drafts said "cặp đôi" and "hai đứa yêu
  * nhau" throughout, which quietly threw away most of the people the product
- * actually serves: the space holds any two people — friends, siblings,
- * flatmates, a parent and a child, travel companions — and works perfectly well
- * with one. Someone arriving alone, or with a friend, read the first line and
- * left. The copy now says "một mình hoặc hai người", which is both wider and
- * true today; couples are still described, just no longer assumed.
+ * actually serves: the space holds two people of any sort — and works perfectly
+ * well with one. Someone arriving alone, or with a friend, read the first line
+ * and left.
+ *
+ * The first attempt at fixing that over-corrected into "hai người bất kỳ",
+ * which is accurate, wider, and reads like a clause in a contract. Nobody
+ * recognises themselves in "bất kỳ". So the copy names moments rather than
+ * relationships — the friend who texts "ăn gì chưa", the trip from last year —
+ * and lets the reader place themselves. Couples are still in there; they are
+ * just one of the people being described rather than the only one.
  *
  * It stays honest about the limit: a space holds two people, not a family of
  * five, and the FAQ says so plainly rather than letting someone find out by
@@ -86,7 +91,7 @@ export const STEPS: Step[] = [
   {
     number: "03",
     title: "Rủ thêm một người, nếu muốn",
-    body: "Gửi mã mời cho người bạn muốn chia sẻ cùng. Mọi thứ một người thêm vào sẽ hiện lên phía người kia gần như tức thì.",
+    body: "Gửi mã mời cho người bạn muốn nhớ cùng. Ai thêm gì vào, phía bên kia thấy gần như ngay — khỏi chụp màn hình gửi qua gửi lại.",
   },
 ];
 
@@ -104,12 +109,12 @@ export const FAQ: FaqItem[] = [
   {
     question: "Đi một mình có dùng được không?",
     answer:
-      "Được, và không thiếu tính năng nào. Không gian là của bạn ngay khi tạo xong, không cần đợi ai đồng ý. Lưu địa điểm, viết nhật ký chuyến đi, quay vòng chọn quán, cất hộp thời gian cho chính mình — tất cả đều chạy khi chỉ có một người. Khi nào muốn chia sẻ thì gửi mã mời, không muốn thì thôi.",
+      "Được, và không thiếu thứ gì. Góc này là của bạn ngay khi tạo xong, chẳng phải đợi ai gật đầu. Ghim quán vừa tìm ra, viết lại chuyến đi tuần rồi, quay vòng khi không nghĩ ra tối nay ăn gì, viết một lá thư cho chính mình mở vào năm sau — chạy hết. Lúc nào muốn có người cùng thì gửi mã mời, không thì thôi.",
   },
   {
     question: "Ai thì hợp dùng cái này?",
     answer:
-      "Bất kỳ hai người muốn giữ chung một góc riêng: bạn thân, anh chị em, bạn cùng phòng, bạn đồng hành trong chuyến đi, bố mẹ với con, người yêu. Ứng dụng không hỏi bạn là gì của nhau và cũng không cần biết — nó chỉ giữ những gì hai người thêm vào.",
+      "Ai có một người hay rủ đi đâu đó. Đứa bạn thân tuần nào cũng nhắn “ăn gì chưa”, anh chị em trong nhà, đứa ở chung phòng, người yêu, hay bạn đồng hành của chuyến đi năm ngoái. Vivu không hỏi hai người là gì của nhau — nó chỉ giữ giùm những chỗ đã ghé và những hôm đáng nhớ.",
   },
   {
     question: "Rủ được bao nhiêu người vào một không gian?",

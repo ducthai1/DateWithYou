@@ -35,13 +35,18 @@ export const SITE_TITLE =
  * ~155 characters: long enough to be descriptive, short enough that Google
  * shows it whole instead of truncating mid-sentence.
  *
- * Deliberately says "một mình hoặc rủ thêm một người" rather than naming a
- * couple. The product works for any two people — friends, siblings, flatmates,
- * a parent and a child — and works alone as well; describing it as a couples
- * app turned away everyone else at the first line they read.
+ * Deliberately never names a relationship. The product works for whoever the
+ * other person happens to be — and works alone as well — so calling it a
+ * couples app turned everyone else away at the first line they read.
+ *
+ * It also avoids the opposite failure. An early rewrite said "hai người bất
+ * kỳ", which is accurate, wider, and reads like a terms-of-service clause. The
+ * fix for narrow copy is not neutral copy; it is copy that describes the
+ * moments instead of the relationship, so a reader recognises themselves
+ * without being sorted into a category first.
  */
 export const SITE_DESCRIPTION =
-  "Lưu kỷ niệm, ghim quán đã ghé, lên lịch đi chơi, quay vòng chọn chỗ ăn và cất những điều bí mật. Dùng một mình hoặc rủ thêm một người. Miễn phí, không quảng cáo.";
+  "Ghim lại quán đã ghé, lên lịch cho cuối tuần, quay vòng chọn chỗ ăn lúc hết ý tưởng, và cất vài điều để dành. Đi một mình hay rủ thêm một người đều được. Miễn phí.";
 
 export const SITE_LOCALE = "vi_VN";
 

@@ -57,9 +57,9 @@ export function LandingSections() {
         </Reveal>
         <Reveal delay={180}>
         <p className="mx-auto mt-8 max-w-2xl text-center text-base font-light leading-relaxed text-[#6b5c51]">
-          Không bảng tin, không người lạ, không thuật toán gợi ý. Dùng một mình
-          thì đây là góc của riêng bạn; rủ thêm một người thì mọi thứ một bên
-          thêm vào sẽ hiện lên phía bên kia gần như ngay lập tức.
+          Không bảng tin, không người lạ, không thuật toán gợi ý. Đi một mình
+          thì đây là góc của riêng bạn. Có người đi cùng thì ai thêm gì vào,
+          người kia thấy gần như ngay — khỏi chụp màn hình gửi qua gửi lại.
         </p>
         </Reveal>
       </section>
