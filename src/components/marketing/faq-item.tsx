@@ -5,18 +5,37 @@ import { useRef } from "react";
 /**
  * One FAQ row that opens and closes with motion.
  *
- * Still a real <details>/<summary>: keyboard behaviour, screen-reader
- * semantics and — the reason it matters here — the answer text staying in the
- * DOM while collapsed all come free, and the same answers are mirrored into the
- * FAQPage structured data. A hand-rolled div-and-state accordion would have to
- * re-earn all of that.
+ * Still a real <details>/<summary>: keyboard behaviour, screen-reader semantics
+ * and — the reason it matters here — the answer text staying in the DOM while
+ * collapsed all come free, and the same answers are mirrored into the FAQPage
+ * structured data.
  *
- * <details> gives no transition of its own: the browser flips between rendered
- * and not rendered, which is the "giật cái đùng" this replaces. So the toggle is
- * intercepted and the body's height is animated with the Web Animations API —
- * opening sets `open` first and grows from 0, closing shrinks to 0 and only then
- * clears `open`, so the content is never unmounted mid-animation.
+ * CSS OWNS THE MOTION. Both paths in globals.css are transitions, and that is
+ * the whole design. An earlier version animated the height from JavaScript:
+ * measure the target, cancel on re-click, reverse by hand. Every fix for fast
+ * clicking uncovered another interleaving — measuring after a cancel read a
+ * stale value, a finished animation's cleanup cancelled its successor, a close
+ * starting from zero animated nothing and then snapped. A CSS transition cannot
+ * have those bugs, because the browser reverses it from wherever it currently
+ * is; there is nothing to measure and nothing to cancel.
+ *
+ * What is left for JavaScript is only WHEN the content is mounted:
+ *   - Chrome/Edge 129+ have ::details-content, so even that is unnecessary and
+ *     the click is left completely alone.
+ *   - Elsewhere, `open` mounts the content and a class drives the transition;
+ *     `open` is cleared again once the collapse has finished.
  */
+
+/** Feature-detected lazily, then cached — this must match the @supports test. */
+function supportsNativeDisclosure() {
+  return (
+    typeof CSS !== "undefined" &&
+    typeof CSS.supports === "function" &&
+    CSS.supports("interpolate-size", "allow-keywords") &&
+    CSS.supports("selector(::details-content)")
+  );
+}
+
 export function FaqItem({
   question,
   answer,
@@ -25,120 +44,93 @@ export function FaqItem({
   answer: string;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const animRef = useRef<Animation | null>(null);
-  /*
-   * `details.open` alone cannot tell us the user's intent while a collapse is
-   * still running: we only clear `open` when that animation finishes, so a click
-   * mid-collapse would read as "close it again". This tracks that window.
-   */
-  const closingRef = useRef(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const nativeRef = useRef<boolean | null>(null);
 
   function toggle(event: React.MouseEvent) {
-    const details = detailsRef.current;
-    const body = bodyRef.current;
-    if (!details || !body) return;
+    if (nativeRef.current === null) nativeRef.current = supportsNativeDisclosure();
+    // Native path: don't touch the event, CSS does everything.
+    if (nativeRef.current) return;
 
-    // Take over from the native toggle so we control when `open` flips.
+    const details = detailsRef.current;
+    const grid = gridRef.current;
+    if (!details || !grid) return;
+
     event.preventDefault();
 
-    // Reversing mid-flight must not stack animations on top of each other.
-    animRef.current?.cancel();
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      details.open = !details.open;
-      closingRef.current = false;
+    if (details.dataset.open === "true") {
+      // Collapse. `open` stays set for now so the content is still mounted for
+      // the browser to animate away; unmountAfterCollapse clears it.
+      details.dataset.open = "false";
+      unmountAfterCollapse(details, grid);
       return;
     }
 
-    const shouldOpen = !details.open || closingRef.current;
-
+    details.open = true;
     /*
-     * A closed <details> hides its content with content-visibility: hidden,
-     * and that keeps the element's LAST rendered size cached — so
-     * getBoundingClientRect() reports the full height even while collapsed.
-     * Measuring it as the animation's start value produced a run from 89px to
-     * 89px: an animation that played correctly and changed nothing. Opening
-     * therefore starts from 0 unless we are reversing a collapse that is still
-     * in flight, where the live height is the honest starting point.
+     * Force the collapsed value to be computed before flipping the class.
+     * Without this the element mounts and changes to 1fr within one style
+     * resolution, so the browser has no start value to transition from and it
+     * appears instantly. A synchronous reflow rather than requestAnimationFrame
+     * on purpose: a deferred callback can land after the user has already
+     * clicked again, which is exactly the ordering hazard this file exists to
+     * stop having.
      */
-    const live = body.getBoundingClientRect().height;
+    void grid.offsetHeight;
+    details.dataset.open = "true";
+  }
 
-    if (shouldOpen) {
-      closingRef.current = false;
-      details.open = true;
+  /**
+   * Clear `open` once the collapse has actually finished.
+   *
+   * Deliberately driven by the element's running animations rather than a
+   * transitionend listener. After a burst of clicks the last one often sets
+   * data-open="false" while the row is ALREADY at 0fr — nothing changes, so no
+   * transition starts, so transitionend never fires and `open` stayed set
+   * forever: the row read as collapsed but still reserved its full height.
+   * Asking what is actually animating covers both cases.
+   */
+  function unmountAfterCollapse(details: HTMLDetailsElement, grid: HTMLElement) {
+    const anims =
+      typeof grid.getAnimations === "function" ? grid.getAnimations() : [];
 
-      /*
-       * Measure the real height, do not trust what is already reported.
-       *
-       * A collapsed <details> hides its content with content-visibility:
-       * hidden, and that keeps the element's LAST rendered size cached — so
-       * both getBoundingClientRect() and scrollHeight can answer with a stale
-       * number. Reading it as the animation's target is why opening was smooth
-       * sometimes and snapped other times: the very first open, or the first
-       * after a width change or a late-loading font, animated toward a wrong
-       * height and then jumped to the right one the moment the animation
-       * finished and the inline height was cleared.
-       *
-       * Forcing `auto` and reading the box back is a real layout, so the target
-       * is the height the row will actually settle at.
-       */
-      body.style.height = "auto";
-      const target = body.getBoundingClientRect().height;
-      const from = live > 0 && live < target ? live : 0;
-      body.style.height = `${from}px`;
-
-      animRef.current = body.animate(
-        { height: [`${from}px`, `${target}px`], opacity: [from === 0 ? 0 : 1, 1] },
-        { duration: 460, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" },
-      );
-      animRef.current.onfinish = () => {
-        // Hand back to `auto` only once the animation is holding the exact
-        // height it ends on, so the handover is invisible.
-        body.style.height = "";
-        animRef.current?.cancel();
-        animRef.current = null;
-      };
-    } else {
-      closingRef.current = true;
-      body.style.height = `${live}px`;
-      animRef.current = body.animate(
-        { height: [`${live}px`, "0px"], opacity: [1, 0] },
-        { duration: 340, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" },
-      );
-      animRef.current.onfinish = () => {
-        // Only now is it safe to unmount the content.
-        details.open = false;
-        closingRef.current = false;
-        body.style.height = "";
-        animRef.current?.cancel();
-        animRef.current = null;
-      };
+    if (anims.length === 0) {
+      // Nothing to wait for — it was already collapsed, or transitions are off.
+      details.open = false;
+      return;
     }
+
+    Promise.all(
+      // A reversal cancels these, which rejects; that is a normal outcome here.
+      anims.map((a) => a.finished.catch(() => undefined)),
+    ).then(() => {
+      // Re-opened in the meantime? Then this collapse was superseded.
+      if (details.dataset.open !== "true") details.open = false;
+    });
   }
 
   return (
-    <details ref={detailsRef} className="group py-5">
+    <details ref={detailsRef} data-open="false" className="faq-row group py-5">
       <summary
         onClick={toggle}
         className="focus-visible:ring-ring/50 flex cursor-pointer list-none items-center justify-between gap-6 rounded-lg text-left text-[17px] font-medium text-[#3b322a] outline-none marker:content-none focus-visible:ring-2"
       >
         <h3 className="text-[17px] font-medium">{question}</h3>
+        {/* Rotates off `open` on the native path and off `data-open` on the
+            scripted one, so the sign always tracks what the panel is doing. */}
         <span
           aria-hidden="true"
-          className="shrink-0 text-xl leading-none text-[#a8542f] transition-transform duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-open:rotate-45"
+          className="shrink-0 text-xl leading-none text-[#a8542f] transition-transform duration-[460ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-open:rotate-45 group-data-[open=true]:rotate-45"
         >
           +
         </span>
       </summary>
-      {/* .faq-body carries overflow-hidden — so the height animation reads as a
-          reveal rather than the text sliding out of its own box — plus
-          `contain: layout`, which keeps each frame of that animation from
-          reflowing the row's own contents on top of the page below it. */}
-      <div ref={bodyRef} className="faq-body">
-        <p className="mt-4 pr-10 text-[15px] font-light leading-relaxed text-[#6b5c51]">
-          {answer}
-        </p>
+      <div ref={gridRef} className="faq-grid">
+        <div>
+          <p className="mt-4 pr-10 text-[15px] font-light leading-relaxed text-[#6b5c51]">
+            {answer}
+          </p>
+        </div>
       </div>
     </details>
   );

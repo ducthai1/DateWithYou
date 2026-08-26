@@ -370,14 +370,82 @@ button:disabled,
   }
 }
 
+/* ---------------------------------------------------------------------------
+   FAQ disclosure.
+
+   Both paths below are CSS transitions, on purpose. An earlier version animated
+   the height from JavaScript — measuring the target, cancelling on re-click,
+   reversing by hand — and every fix for fast clicking uncovered another
+   interleaving: measuring after a cancel read a stale value, a finished
+   animation's cleanup cancelled its successor, a close that started from zero
+   animated nothing and then snapped. Handing the motion to CSS removes that
+   whole class of bug, because the browser reverses its own transition from
+   wherever it currently is. There is nothing to measure and nothing to cancel.
+   --------------------------------------------------------------------------- */
+
 /*
- * The FAQ body's height is animated, and height is a layout property — every
- * frame of that animation reflows what follows it. `contain: layout` walls the
- * row's internal layout off from the rest of the page, so each frame only has
- * to reflow the accordion and the sections below it rather than recomputing the
- * row's contents from scratch as well.
+ * Path 1 — Chrome/Edge 129+. ::details-content wraps everything inside
+ * <details> except the summary, and interpolate-size: allow-keywords is what
+ * makes `height: auto` transitionable. Zero JavaScript on the click at all.
+ * Scoped to the landing route because interpolate-size inherits.
  */
-.faq-body {
-  overflow: hidden;
-  contain: layout;
+@supports (interpolate-size: allow-keywords) and (selector(::details-content)) {
+  html:has(.landing-root) {
+    interpolate-size: allow-keywords;
+  }
+
+  .faq-row::details-content {
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition:
+      height 460ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 320ms ease,
+      /* Without allow-discrete the content unmounts the instant `open` clears
+         and the collapse has nothing left to animate. */
+      content-visibility 460ms allow-discrete;
+  }
+
+  .faq-row[open]::details-content {
+    height: auto;
+    opacity: 1;
+  }
 }
+
+/*
+ * Path 2 — Safari and Firefox, which do not have the above yet.
+ *
+ * `grid-template-rows: 0fr -> 1fr` is transitionable in every browser that
+ * matters and needs no measurement: the row simply resolves to its content's
+ * height at 1fr. JavaScript only decides WHEN the content is mounted — CSS owns
+ * the motion, so a burst of clicks just reverses one transition.
+ */
+@supports not ((interpolate-size: allow-keywords) and (selector(::details-content))) {
+  .faq-grid {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows 460ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 320ms ease;
+  }
+
+  .faq-row[data-open="true"] .faq-grid {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  /* The clip has to be on the child: the grid row is what animates, and its
+     content must be cropped to whatever height that row currently resolves to. */
+  .faq-grid > * {
+    overflow: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-row::details-content,
+  .faq-grid {
+    transition: none;
+  }
+}
+
