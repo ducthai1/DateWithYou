@@ -61,6 +61,7 @@ import {
   prefersAppleMaps,
   calculateDistance,
   calculateMidpoint,
+  isPartnerFixFresh,
   type LatLng,
 } from "@/lib/maps";
 import { authClient } from "@/lib/auth-client";
@@ -798,13 +799,24 @@ export function LocationsPage() {
         setUserGeo(origin);
 
         try {
-          // Priority 1: Use the last known partner location from SSE/polling
+          /*
+           * The cached fix is only a shortcut when it is still fresh. It used
+           * to be preferred unconditionally, which inverted the trust order:
+           * the cache is never cleared once set (see use-live-navigation —
+           * setPartnerLocation is never called with null, so the HUD does not
+           * flicker on a lapsed poll), while the server query already filters
+           * to recent pings. So the source with no freshness guarantee was
+           * consulted first and the one with a guarantee second. Leaving the
+           * map open while the other person closed theirs and moved across town
+           * produced a "meeting point in the middle" computed from where they
+           * had been an hour earlier, shown with no hint that it was old.
+           */
           let partnerGeo: LatLng | null = null;
           const cached = partnerLocationRef.current;
-          if (cached && cached.lat && cached.lng) {
+          if (cached && cached.lat && cached.lng && isPartnerFixFresh(cached.updatedAt)) {
             partnerGeo = { lat: cached.lat, lng: cached.lng };
           } else {
-            // Priority 2: Ping API to try to get partner
+            // Ask the server, which only returns fixes inside the same window.
             const partners = await pingLiveLocation.mutateAsync(origin);
             const partner = partners[0];
             if (partner && partner.lat && partner.lng) {

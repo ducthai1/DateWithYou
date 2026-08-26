@@ -4,6 +4,24 @@
 
 export type LatLng = { lat: number; lng: number };
 
+/**
+ * How long a partner's last ping stays usable as "where they are now".
+ *
+ * Shared deliberately: the server query filters on it, and any client cache of
+ * a partner position must check against the same number. They used to disagree
+ * by omission — the server returned only pings from the last five minutes, but
+ * the map page kept its own copy of the last partner position that was never
+ * cleared and never checked, then preferred that copy over asking the server.
+ * A cached fix hours old was used to compute a "meeting point in the middle".
+ */
+export const PARTNER_FIX_FRESH_MS = 5 * 60 * 1000;
+
+/** True when a partner fix is recent enough to treat as their current position. */
+export function isPartnerFixFresh(updatedAt: Date | string | number): boolean {
+  const ts = new Date(updatedAt).getTime();
+  return Number.isFinite(ts) && Date.now() - ts < PARTNER_FIX_FRESH_MS;
+}
+
 export function googleMapsDirectionsUrl(dest: LatLng): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}`;
 }

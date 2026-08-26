@@ -14,6 +14,7 @@ import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 import { requireEnv } from "@/lib/env";
 import { resolveGeoFromMapsUrl, extractFirstUrl } from "@/server/lib/resolve-maps-geo";
 import { geocodeAddress } from "@/server/lib/geocode-address";
+import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
 
 const districtSchema = z.string().trim().min(1);
 const categorySchema = z.string().trim().min(1);
@@ -318,12 +319,14 @@ export const locationRouter = router({
         { upsert: true, new: true }
       );
 
-      // Find other members in the same space active within the last 5 minutes
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      // Other members in this space whose last ping is still fresh. The window
+      // is shared with the client so a cached fix and a queried one mean the
+      // same thing — see PARTNER_FIX_FRESH_MS.
+      const freshSince = new Date(Date.now() - PARTNER_FIX_FRESH_MS);
       const partners = await LiveLocationModel.find({
         spaceId: ctx.spaceId,
         userId: { $ne: ctx.userId },
-        updatedAt: { $gt: fiveMinutesAgo }
+        updatedAt: { $gt: freshSince }
       }).lean<{ userId: string; lat: number; lng: number; heading: number | null; speedKmH: number | null; accuracy: number | null; batteryLevel: number | null; pingAction: string | null; updatedAt: Date }[]>();
 
       return partners;
