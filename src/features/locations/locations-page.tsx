@@ -35,7 +35,6 @@ import {
   ChevronRight,
   ChevronLeft,
   Plus,
-  Heart,
   MapPin,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -826,7 +825,7 @@ export function LocationsPage() {
           }
 
           if (!partnerGeo) {
-            setMidpointError("Người kia chưa mở trang Bản đồ gần đây nên mình chưa biết vị trí của họ. Nhờ người kia vào trang Bản đồ trước nhé! 💕");
+            setMidpointError("Người kia chưa mở trang Bản đồ gần đây nên mình chưa biết vị trí của họ. Nhờ người kia mở trang Bản đồ trước nhé.");
             setIsFindingMidpoint(false);
             return;
           }
@@ -1121,7 +1120,7 @@ export function LocationsPage() {
             <Button
               variant="outline"
               className={cn(
-                "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all gap-1.5 h-9 px-3",
+                "border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all gap-1.5 h-9 px-3",
                 isFindingMidpoint && "opacity-50 pointer-events-none"
               )}
               onClick={handleFindMidpoint}
@@ -1221,7 +1220,7 @@ export function LocationsPage() {
           {/* Partner offline helper — shown when coupled but no partner live location */}
           {hasTwoMembers && !nav.partnerLocation && (
             <p className="text-xs text-muted-foreground bg-muted/50 border border-border rounded-lg px-3 py-2 text-center leading-snug">
-              Người kia chưa mở trang Bản đồ gần đây nên chưa thấy vị trí. Nhờ người kia mở trang này nhé 💕
+              Người kia chưa mở trang Bản đồ gần đây nên chưa thấy vị trí. Nhờ người kia mở trang này nhé.
             </p>
           )}
 
@@ -1635,7 +1634,7 @@ export function LocationsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-rose-400 to-pink-500 p-6 text-white text-center relative">
+              <div className="bg-[var(--accent)] p-6 text-white text-center relative">
                 <button 
                   onClick={() => setShowMidpointModal(false)}
                   className="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors"
@@ -1646,7 +1645,7 @@ export function LocationsPage() {
                   <MapPinned className="h-8 w-8" />
                 </div>
                 <h3 className="font-serif text-2xl font-bold">Gặp Nhau Ở Giữa 📍</h3>
-                <p className="mt-1 text-sm text-rose-50 opacity-90">
+                <p className="mt-1 text-sm text-white/85">
                   Đây là các địa điểm đã lưu nằm ngay giữa quãng đường của hai bạn!
                 </p>
               </div>
@@ -1696,7 +1695,7 @@ export function LocationsPage() {
                     </div>
 
                     <Button
-                      className="w-full mt-4 gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 shadow-md text-white border-none"
+                      className="w-full mt-4 gap-2 bg-[var(--accent)] hover:opacity-90 shadow-md text-white border-none"
                       disabled={sendInvite.isPending}
                       onClick={() => {
                         const loc = midpointRecommendations[midpointIndex];
@@ -1772,12 +1771,12 @@ export function LocationsPage() {
                     return (
                       <div key={isPartner ? "partner" : s.id} className="pl-3 border-l-2 border-rose-200 ml-3 py-1">
                         <div className="flex items-center justify-between p-3 bg-rose-50 text-rose-700 rounded-lg shadow-sm border border-rose-100 relative overflow-hidden">
-                          <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
+                          <div className="absolute top-0 left-0 w-1 h-full bg-[var(--accent)]" />
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="h-6 w-6 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">{i + 2}</div>
                             <div className="min-w-0">
                               <span className="text-sm font-medium block truncate">{isPartner ? "Ghé đón người kia" : s.name}</span>
-                              <span className="text-[11px] text-rose-500/80 block">{isPartner ? "Vị trí trực tiếp" : "Điểm dừng"}</span>
+                              <span className="text-[11px] text-[var(--accent)]/80 block">{isPartner ? "Vị trí trực tiếp" : "Điểm dừng"}</span>
                             </div>
                           </div>
                           <button onClick={() => setPlannedStops((arr) => arr.filter((_, j) => j !== i))} className="p-1 hover:bg-rose-200 rounded-full transition-colors shrink-0"><X className="h-4 w-4" /></button>
@@ -1811,9 +1810,9 @@ export function LocationsPage() {
                           {canAddPartner && (
                             <button
                               onClick={() => { setPlannedStops((a) => [...a, { kind: "partner" }]); setStopPickerOpen(false); }}
-                              className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-rose-50 transition-colors"
+                              className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-[var(--accent)]/10 transition-colors"
                             >
-                              <Heart className="h-4 w-4 text-rose-500 shrink-0" />
+                              <UserRound className="h-4 w-4 text-[var(--accent)] shrink-0" />
                               <span className="font-medium">Vị trí trực tiếp của người kia</span>
                             </button>
                           )}

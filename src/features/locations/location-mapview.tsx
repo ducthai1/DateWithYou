@@ -423,7 +423,7 @@ function LocationMapViewImpl({
               id="partner-route-line"
               type="line"
               layout={{ "line-cap": "round", "line-join": "round" }}
-              paint={{ "line-color": "#f43f5e", "line-width": 8, "line-opacity": 0.6 }} // rose-500
+              paint={{ "line-color": "#c2693f", "line-width": 8, "line-opacity": 0.6 }} // rose-500
             />
           </Source>
         )}
