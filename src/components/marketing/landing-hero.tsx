@@ -89,7 +89,7 @@ export function LandingHero() {
 
       <p
         className="vivu-rise mt-7 max-w-sm text-center text-[15px] font-light leading-relaxed text-[#BFD9DE] sm:text-base"
-        style={{ animationDelay: "250ms" }}
+        style={{ animationDelay: "320ms" }}
       >
         Nơi lưu kỷ niệm, lên kế hoạch hẹn hò và giữ những điều bí mật ngọt ngào
         của tụi mình.
@@ -97,7 +97,7 @@ export function LandingHero() {
 
       <div
         className="vivu-rise mt-9 flex w-full max-w-sm flex-col gap-3.5"
-        style={{ animationDelay: "400ms" }}
+        style={{ animationDelay: "560ms" }}
       >
         <Link
           href="/map"
@@ -126,7 +126,7 @@ export function LandingHero() {
       <a
         href="#gioi-thieu"
         className="vivu-rise mt-10 flex w-fit flex-col items-center gap-1.5 rounded-full px-4 py-2 text-[#8FB3BB] transition-colors hover:text-[#DCEFF2] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5FAAC3]"
-        style={{ animationDelay: "1200ms" }}
+        style={{ animationDelay: "1400ms" }}
       >
         <span className="text-xs font-light tracking-wide">Tìm hiểu thêm</span>
         <span aria-hidden="true" className="vivu-nudge text-lg leading-none">

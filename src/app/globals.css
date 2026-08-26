@@ -286,7 +286,7 @@ button:disabled,
    server and animates without any JavaScript at all.
    --------------------------------------------------------------------------- */
 @keyframes vivu-rise {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(22px); }
   to   { opacity: 1; transform: none; }
 }
 
@@ -297,11 +297,11 @@ button:disabled,
 
 .vivu-rise {
   opacity: 0;
-  animation: vivu-rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: vivu-rise 1.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .vivu-nudge {
-  animation: vivu-nudge 2s ease-in-out infinite;
+  animation: vivu-nudge 2.6s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -320,7 +320,7 @@ button:disabled,
    JavaScript off still gets the full page rather than a blank column.
    --------------------------------------------------------------------------- */
 @keyframes vivu-reveal {
-  from { opacity: 0; transform: translateY(26px); }
+  from { opacity: 0; transform: translateY(36px); }
   to   { opacity: 1; transform: none; }
 }
 
@@ -330,7 +330,7 @@ button:disabled,
 }
 
 [data-reveal][data-shown="true"] {
-  animation: vivu-reveal 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: vivu-reveal 1.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   animation-delay: var(--reveal-delay, 0ms);
 }
 
