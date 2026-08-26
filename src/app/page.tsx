@@ -36,6 +36,15 @@ export const metadata: Metadata = {
    */
   openGraph: {
     type: "website",
+    /*
+     * siteName has to be repeated for the same reason images does — and was
+     * missed for the same reason. A page-level openGraph REPLACES the layout's
+     * object rather than merging, so og:site_name never reached the homepage:
+     * the one page a search engine reads a site name from. With no site name
+     * declared, Google fell back to naming the site after the domain owner and
+     * displayed "Vercel".
+     */
+    siteName: SITE_NAME,
     url: "/",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
@@ -44,13 +53,31 @@ export const metadata: Metadata = {
 };
 
 /**
- * Structured data. Two graphs:
+ * Structured data. Four nodes, each answering a different question:
+ *  - WebSite, which is where a search engine reads the site's NAME from.
  *  - WebApplication, so the brand query "Vivu No Plan" can resolve to a rich
  *    result instead of a plain blue link.
+ *  - Organization, which carries the logo.
  *  - FAQPage, built from the exact same array the visible accordion renders.
  */
 function StructuredData() {
   const graph = [
+    {
+      /*
+       * The node Google actually takes a site name from. WebApplication cannot
+       * stand in for it — that is a SoftwareApplication, not a subtype of
+       * WebSite — and Organization serves the knowledge panel and the logo
+       * instead. With neither declared, the fallback is the domain owner's
+       * name, which on a *.vercel.app subdomain reads as "Vercel".
+       */
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: SITE_NAME,
+      alternateName: SITE_ALTERNATE_NAMES,
+      url: `${SITE_URL}/`,
+      inLanguage: "vi-VN",
+      publisher: { "@id": `${SITE_URL}/#org` },
+    },
     {
       "@type": "WebApplication",
       "@id": `${SITE_URL}/#app`,
