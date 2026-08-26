@@ -34,7 +34,7 @@ const GoogleIcon = ({ className }: { className?: string }) => (
 
 export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   return (
-    <Suspense fallback={<div className="flex h-dvh items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
       <AuthFormContent mode={mode} />
     </Suspense>
   );
@@ -75,7 +75,7 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-6">
+    <div className="flex flex-col gap-6">
       {/* Romantic hero header */}
       <div className="relative flex flex-col items-center gap-3 py-6">
         {/* Soft glow backdrop */}
@@ -102,8 +102,11 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
         </div>
         {/* Wordmark */}
         <div className="relative z-10 text-center">
+          {/* Visually hidden once the brand panel is on screen — the artwork
+              beside it already says the name, and printing it twice reads as a
+              mistake. Kept in the document for screen readers either way. */}
           <h1
-            className="text-4xl font-bold tracking-tight"
+            className="text-4xl font-bold tracking-tight lg:sr-only"
             style={{
               fontFamily: "var(--font-display)",
               background:

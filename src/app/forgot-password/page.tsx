@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, MailCheck, AlertCircle } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AuthShell } from "@/features/auth/auth-shell";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -36,7 +37,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-6">
+    <AuthShell>
+      <div className="flex flex-col gap-6">
       <div className="relative flex flex-col items-center gap-3 py-6">
         <div
           className="pointer-events-none absolute inset-0 rounded-3xl opacity-40"
@@ -131,6 +133,7 @@ export default function ForgotPasswordPage() {
           </div>
         </form>
       )}
-    </div>
+      </div>
+    </AuthShell>
   );
 }

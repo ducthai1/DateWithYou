@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthForm } from "@/features/auth/auth-form";
+import { AuthShell } from "@/features/auth/auth-shell";
 
 export const metadata: Metadata = {
   title: "Đăng nhập",
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function SignInPage() {
-  return <AuthForm mode="sign-in" />;
+  return (
+    <AuthShell>
+      <AuthForm mode="sign-in" />
+    </AuthShell>
+  );
 }

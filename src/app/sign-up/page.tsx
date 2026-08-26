@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthForm } from "@/features/auth/auth-form";
+import { AuthShell } from "@/features/auth/auth-shell";
 
 export const metadata: Metadata = {
   title: "Tạo tài khoản",
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function SignUpPage() {
-  return <AuthForm mode="sign-up" />;
+  return (
+    <AuthShell>
+      <AuthForm mode="sign-up" />
+    </AuthShell>
+  );
 }

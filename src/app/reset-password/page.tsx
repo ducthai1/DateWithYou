@@ -7,6 +7,7 @@ import { KeyRound, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AuthShell } from "@/features/auth/auth-shell";
 
 export default function ResetPasswordPage() {
   return (
@@ -60,7 +61,8 @@ function ResetPasswordContent() {
 
   if (!token && !success) {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 px-6 text-center">
+      <AuthShell>
+      <div className="flex flex-col gap-4 text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
           <AlertCircle className="h-6 w-6 text-destructive" />
         </div>
@@ -74,12 +76,14 @@ function ResetPasswordContent() {
         >
           Yêu cầu liên kết mới
         </Link>
-      </div>
+        </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-6">
+    <AuthShell>
+      <div className="flex flex-col gap-6">
       <div className="relative flex flex-col items-center gap-3 py-6">
         <div
           className="pointer-events-none absolute inset-0 rounded-3xl opacity-40"
@@ -172,6 +176,7 @@ function ResetPasswordContent() {
           </Button>
         </form>
       )}
-    </div>
+      </div>
+    </AuthShell>
   );
 }
