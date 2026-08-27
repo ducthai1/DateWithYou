@@ -31,6 +31,8 @@ import type { LatLng } from "@/lib/maps";
 const MIN_CHARS = 2;
 /** Long enough that a normal typing burst is one request, short enough to feel live. */
 const DEBOUNCE_MS = 300;
+/** Bias point is rounded to this, in degrees (~5km) — see biasKey below. */
+const BIAS_GRID = 0.05;
 
 export function PlaceSearchBox({
   value,
@@ -67,8 +69,24 @@ export function PlaceSearchBox({
     return () => clearTimeout(t);
   }, [value]);
 
+  /*
+   * Snap the bias point to a coarse grid before it reaches the query.
+   *
+   * `near` is part of the cache key, and it comes from the map centre, which
+   * changes after every pan. Without this, nudging the map two streets over
+   * while there is text in the box is a fresh key and therefore a fresh
+   * request — for results that cannot differ, because the bias radius is 25km
+   * and the map moved a few hundred metres. Rounding to ~0.05° (~5km) collapses
+   * ordinary panning onto one key and keeps the shift far inside the radius.
+   */
+  const biasKey = useMemo(() => {
+    if (!near) return null;
+    const snap = (n: number) => Math.round(n / BIAS_GRID) * BIAS_GRID;
+    return { lat: snap(near.lat), lng: snap(near.lng) };
+  }, [near]);
+
   const suggestions = trpc.location.suggestPlaces.useQuery(
-    { query: debounced, near: near ?? null },
+    { query: debounced, near: biasKey },
     {
       enabled: debounced.length >= MIN_CHARS,
       // Repeats and backspaces come from cache instead of another round trip.
