@@ -60,7 +60,9 @@ async function trace(url: string, ua: string) {
         },
       });
     } catch (e) {
-      error = String(e);
+      // Name only. These fetches build URLs containing an API key, and some
+      // failure types carry the request URL in their message.
+      error = e instanceof Error ? e.name : "unknown error";
       break;
     }
     const loc = res.headers.get("location");
@@ -110,11 +112,34 @@ async function stadiaGeocode(query: string) {
     const [lng, lat] = f.geometry.coordinates;
     return { coords: { lat, lng }, label: f.properties?.label ?? null, confidence: f.properties?.confidence ?? null };
   } catch (e) {
-    return { error: String(e) };
+    // Name only — the URL above carries STADIA_API_KEY.
+    return { error: e instanceof Error ? e.name : "unknown error" };
   }
 }
 
+/*
+ * Debug endpoint, and it was reachable by anyone.
+ *
+ * It makes the server fetch a URL, run the geocoding chain and spend the
+ * provider quota, and it reports the running commit — all useful while
+ * diagnosing why a pasted Maps link resolves differently from a datacenter IP,
+ * and none of it anyone else's business. It exists precisely to debug
+ * production, so disabling it there would remove the point; it takes a token
+ * instead.
+ *
+ * Fails closed: with no DEBUG_MAPS_TOKEN configured the route is off entirely,
+ * so forgetting to set it cannot leave the endpoint open.
+ */
+function isAuthorised(req: Request): boolean {
+  const expected = process.env.DEBUG_MAPS_TOKEN;
+  if (!expected) return false;
+  return new URL(req.url).searchParams.get("token") === expected;
+}
+
 export async function GET(req: Request) {
+  if (!isAuthorised(req)) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
   const url = new URL(req.url).searchParams.get("url") ?? "";
   if (!url) return NextResponse.json({ error: "pass ?url=<maps link>" }, { status: 400 });
   if (!isFetchableMapsUrl(url))
@@ -131,6 +156,18 @@ export async function GET(req: Request) {
   return NextResponse.json({
     commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
     region: process.env.VERCEL_REGION ?? null,
+    /*
+     * Presence only, never values. Adding an environment variable in Vercel
+     * does not affect deployments that were already built, so "the key is set"
+     * and "the running build can see the key" are different facts — and only
+     * the second one matters. This reports the second.
+     */
+    keysVisibleToThisBuild: {
+      trackasia: Boolean(process.env.TRACKASIA_API_KEY),
+      google: Boolean(process.env.GOOGLE_MAPS_API_KEY),
+      mapbox: Boolean(process.env.MAPBOX_TOKEN),
+      stadia: Boolean(process.env.STADIA_API_KEY),
+    },
     input: url,
     resolvedByCurrentCode: resolved, // what the live resolver returns (the bug)
     placeQuery, // the "Name, address" we'd geocode
