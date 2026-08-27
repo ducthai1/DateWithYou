@@ -51,6 +51,7 @@ function LocationMapViewImpl({
   traveled,
   onSelect,
   onMapClick,
+  onCenterChange,
   className,
 }: {
   pins: MapPin[];
@@ -78,6 +79,15 @@ function LocationMapViewImpl({
   traveled?: Array<[number, number]>;
   onSelect?: (id: string) => void;
   onMapClick?: (geo: LatLng) => void;
+  /**
+   * Where the map is looking, reported after every move and once on load.
+   *
+   * Place search needs it. Published guidance is to bias autocomplete by the
+   * map's viewport whenever there is a map, and this component was the only
+   * thing that knew where that was — so the search box had nothing and fell
+   * back to no bias at all, which returns matches from the whole country.
+   */
+  onCenterChange?: (center: LatLng) => void;
   className?: string;
 }) {
   const mapRef = useRef<MapRef>(null);
@@ -140,6 +150,26 @@ function LocationMapViewImpl({
       setIsUserInteracting(false);
     }, 2000);
   };
+
+  /*
+   * Centre on the first position fix, once.
+   *
+   * Before this the map opened on a hard-coded default no matter where the
+   * person was, which is a poor first impression and also fed the wrong area to
+   * place search — everyone got results biased to Saigon. Guarded by a ref so
+   * it happens exactly once: after that the view belongs to whoever is panning
+   * it, and a later fix must not yank it back.
+   */
+  const centredOnFirstFix = useRef(false);
+  useEffect(() => {
+    if (centredOnFirstFix.current || !userGeo || followGeo || focusGeo) return;
+    centredOnFirstFix.current = true;
+    mapRef.current?.easeTo({
+      center: [userGeo.lng, userGeo.lat],
+      zoom: 14,
+      duration: 700,
+    });
+  }, [userGeo, followGeo, focusGeo]);
 
   // Follow mode: keep the live position centred as the user moves.
   // When heading is available, rotate the map so "up" = direction of travel.
@@ -226,6 +256,14 @@ function LocationMapViewImpl({
       <Map
         ref={mapRef}
         initialViewState={DEFAULT_CENTER}
+        onLoad={(e) => {
+          const c = e.target.getCenter();
+          onCenterChange?.({ lat: c.lat, lng: c.lng });
+        }}
+        onMoveEnd={(e) => {
+          const c = e.target.getCenter();
+          onCenterChange?.({ lat: c.lat, lng: c.lng });
+        }}
         mapStyle={MAP_STYLE}
         attributionControl={false}
         onClick={(e) =>

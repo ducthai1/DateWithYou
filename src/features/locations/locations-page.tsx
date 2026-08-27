@@ -288,6 +288,33 @@ export function LocationsPage() {
   const [draftGeo, setDraftGeo] = useState<LatLng | null>(null);
   const [draftHint, setDraftHint] = useState<null | "exact" | "approx">(null);
 
+  /**
+   * Where the map is looking. Place search is biased by this.
+   *
+   * Published guidance is to bias autocomplete by the map's viewport whenever a
+   * map is present, and that is the only source that always has an answer:
+   * GPS may be denied, and a saved-place list may be empty. Whatever the map is
+   * showing is, by definition, the area the person is looking at.
+   */
+  const [mapCenter, setMapCenter] = useState<LatLng | null>(null);
+
+  /*
+   * One cheap position fix on arrival, so the map opens where the person is.
+   * Low accuracy and a generous cache age: this is for choosing a city, not for
+   * navigating, and a coarse fix from the last few minutes answers that. Denial
+   * is silent — the map keeps its default and search biases to that instead.
+   */
+  const askedForFix = useRef(false);
+  useEffect(() => {
+    if (askedForFix.current || !navigator.geolocation) return;
+    askedForFix.current = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60 * 1000 },
+    );
+  }, []);
+
   const listInput = useMemo(
     () => ({
       district: district || undefined,
@@ -1001,6 +1028,7 @@ export function LocationsPage() {
               selectedId={selectedId}
               focusGeo={focusGeo}
               draftGeo={draftGeo}
+              onCenterChange={setMapCenter}
               userAccuracyM={nav.accuracyM}
               userGeo={liveUser}
               partnerLocation={nav.partnerLocation}
@@ -1292,7 +1320,7 @@ export function LocationsPage() {
             <PlaceSearchBox
               value={queryText}
               onValueChange={setQueryText}
-              near={liveUser ?? focusGeo}
+              near={mapCenter ?? liveUser}
               filterCount={activeFilterCount}
               filtersOpen={filtersOpen}
               onToggleFilters={() => setFiltersOpen((v) => !v)}
@@ -1396,6 +1424,7 @@ export function LocationsPage() {
               selectedId={selectedId}
               focusGeo={focusGeo}
               draftGeo={draftGeo}
+              onCenterChange={setMapCenter}
               userAccuracyM={nav.accuracyM}
               userGeo={liveUser}
               partnerLocation={nav.partnerLocation}

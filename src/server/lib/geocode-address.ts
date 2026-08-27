@@ -408,6 +408,17 @@ export type PlaceSuggestion = {
   secondary: string;
 };
 
+/**
+ * Where to search from when the caller has nothing better yet.
+ *
+ * An unbiased query is not a neutral query — it is a bad one. "trà sữa" with no
+ * bias returns Ninh Bình, Vĩnh Long and An Giang, because with tens of
+ * thousands of equally-good matches nationwide the order is effectively
+ * arbitrary. Somewhere plausible beats nowhere, and the client corrects it
+ * within a second of the map reporting its centre.
+ */
+const FALLBACK_BIAS: LatLng = { lat: 10.7769, lng: 106.7009 };
+
 export async function suggestPlaces(
   query: string,
   near?: LatLng | null,
@@ -416,7 +427,11 @@ export async function suggestPlaces(
   const key = process.env.TRACKASIA_API_KEY;
   if (!key || query.trim().length < 2) return [];
   try {
-    const bias = near ? `&location=${near.lat},${near.lng}&radius=25000` : "";
+    // Always biased. The no-bias branch used to exist and was the whole bug:
+    // the client passed null before it had a position, and nobody noticed
+    // because every test supplied a location by hand.
+    const at = near ?? FALLBACK_BIAS;
+    const bias = `&location=${at.lat},${at.lng}&radius=25000`;
     const url =
       `https://maps.track-asia.com/api/v2/place/autocomplete/json` +
       `?input=${encodeURIComponent(query)}&new_admin=true${bias}&key=${key}`;
