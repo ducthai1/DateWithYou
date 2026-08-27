@@ -107,6 +107,7 @@ import { acceptedTripStore, type AcceptedTrip } from "./accepted-trip-store";
 import { LocationForm, type LocationFormValues } from "./location-form";
 import { useToast } from "@/components/ui/toast";
 import { MeetingFlare } from "./meeting-flare";
+import { MapSheet } from "./map-sheet";
 
 /**
  * Human names for the geocoding sources, ordered by how much a hit from each
@@ -1331,7 +1332,21 @@ export function LocationsPage() {
         <div className="contents lg:block lg:sticky lg:top-[84px] lg:self-start lg:space-y-3">
           {/* Name search. Sits above the selects because it is the fastest way
               to reach a specific pin once there are more than a screenful. */}
-          <div className="order-1 lg:order-none">
+          {/*
+            Controls ride on the map rather than stacking above it. The map is
+            fixed, and a fixed element paints above static content, so anything
+            left in plain flow would be covered by it — `relative z-30` is what
+            lifts these back out.
+
+            Deliberately in normal flow rather than fixed at an offset. An
+            earlier version pinned this to top-[68px], measured past the app
+            header, and forgot the page header that sits between them — the
+            search field landed underneath it. Flow already knows where "just
+            below the header" is; hard-coding a pixel offset only means being
+            wrong when anything above changes height.
+          */}
+          <div className="relative z-30 space-y-2 lg:z-auto lg:space-y-3">
+          <div className="rounded-xl bg-card/95 p-1.5 shadow-lg backdrop-blur lg:bg-transparent lg:p-0 lg:shadow-none">
             <div className="relative">
               <SearchIcon className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
               <input
@@ -1387,7 +1402,7 @@ export function LocationsPage() {
               </p>
             ) : null}
           </div>
-          <div className="order-2 grid grid-cols-2 md:grid-cols-3 gap-2 lg:order-none">
+          <div className="grid grid-cols-3 gap-2 lg:order-none">
             <Select
               aria-label="Lọc theo quận"
               value={district}
@@ -1420,9 +1435,24 @@ export function LocationsPage() {
               ]}
             />
           </div>
+          </div>
 
-          <div className="order-3 space-y-3 lg:order-none pb-4 md:pb-0">
-            <div id="map-view" className="h-72 lg:h-[calc(100dvh-13rem)]">
+          {/*
+            The map is the page, so on a phone it gets the phone. It used to be
+            a 288px strip below the list — too small to read and big enough to
+            push everything else down, losing on both counts.
+
+            Not rendered while the fullscreen navigation overlay is up. That
+            overlay contains its own map, and this one used to keep running
+            behind it: two live WebGL contexts on a phone, which is what let a
+            single arrival fire two celebrations.
+          */}
+          {!nav.isNavigating && (
+          <div className="lg:order-none lg:space-y-3 lg:pb-0">
+            <div
+              id="map-view"
+              className="fixed inset-0 z-0 lg:!static lg:h-[calc(100dvh-13rem)]"
+            >
             <LocationMapView
               pins={pins}
               routeGeometry={routeGeometry}
@@ -1538,9 +1568,14 @@ export function LocationsPage() {
             <p className="text-destructive text-xs">{routeError ?? nav.error}</p>
           )}
           </div>
+          )}
         </div>
 
-        <div className="order-2 space-y-4 lg:order-none">
+        {/* On a phone this rides over the map instead of sitting under it, so
+            the map keeps the screen and the list is a thumb away. Same element
+            on desktop, where it is simply the right-hand column. */}
+        <MapSheet count={(list.data ?? []).length} className="order-2 lg:order-none">
+        <div className="space-y-4">
           <AnimatePresence initial={false}>
             {formOpen && (
               <motion.div
@@ -1753,6 +1788,7 @@ export function LocationsPage() {
             </StaggerList>
           )}
         </div>
+        </MapSheet>
         </div>
       </div>
 
