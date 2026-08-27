@@ -1275,7 +1275,7 @@ export function LocationsPage() {
       )}
 
       {/* ── Normal page layout ── */}
-      <div className="mx-auto w-full max-w-[1400px] px-4 pt-2 pb-6 md:px-[30px] lg:pt-6">
+      <div className="mx-auto w-full max-w-[1400px] px-4 pt-2 pb-6 md:px-[30px] lg:pt-6 2xl:max-w-none">
       {/* Action bar stays pinned; only the cards below scroll under it. */}
       {/* Mobile: title row + actions row stacked. Desktop: single flex row. */}
       <div className="sticky top-2 z-30 mb-2 flex flex-col gap-y-2 rounded-2xl border border-border bg-card px-3 py-2 shadow-lg sm:mb-4 sm:px-4 sm:py-3 sm:flex-row lg:border-0 lg:bg-gradient-to-r lg:from-gradient-from/15 lg:to-gradient-to/15 lg:shadow-sm sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
@@ -1329,7 +1329,7 @@ export function LocationsPage() {
 
       {/* Desktop: map + filters pinned left, list scrolls on the right. */}
       {/* Mobile: filters top, list middle, map bottom */}
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_27rem]">
         <div className="contents lg:block lg:sticky lg:top-[84px] lg:self-start lg:space-y-3">
           {/* Name search. Sits above the selects because it is the fastest way
               to reach a specific pin once there are more than a screenful. */}
@@ -1353,6 +1353,13 @@ export function LocationsPage() {
               <input
                 value={queryText}
                 onChange={(e) => setQueryText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  // The list filters live, so Enter cannot mean "search my
+                  // pins" — that already happened. It means the other thing.
+                  if (queryText.trim().length > 1) handleGeocodeSearch();
+                }}
                 placeholder="Tìm quán theo tên, món nên gọi, ghi chú…"
                 aria-label="Tìm địa điểm"
                 className="border-border bg-card focus:border-accent focus:ring-ring/30 h-10 w-full rounded-xl border pl-9 pr-20 text-sm outline-none focus:ring-2 lg:pr-9"
@@ -1483,7 +1490,7 @@ export function LocationsPage() {
           <div className="lg:order-none lg:space-y-3 lg:pb-0">
             <div
               id="map-view"
-              className="fixed inset-0 z-0 lg:!static lg:h-[calc(100dvh-13rem)]"
+              className="fixed inset-0 z-0 lg:!static lg:h-[calc(100dvh-11rem)]"
             >
             <LocationMapView
               pins={pins}
