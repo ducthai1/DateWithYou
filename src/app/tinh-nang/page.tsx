@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Reveal } from "@/components/marketing/reveal";
 import { FEATURE_PAGES } from "@/components/marketing/feature-pages";
-import { FEATURE_PAGE_APP_HREF } from "@/components/marketing/feature-pages";
+import { FeatureHubGrid } from "@/components/marketing/feature-hub-grid";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 /*
@@ -90,7 +90,11 @@ export default function Page() {
     <>
       <StructuredData />
       <div className="relative min-h-dvh bg-[#fdfaf6] text-[#3b322a]">
-        <div className="mx-auto max-w-4xl px-6 pt-14 pb-20 sm:pt-20 sm:pb-28">
+        {/* Wider than the reading pages on purpose. Long-form prose wants a
+            narrow measure; a grid of parallel tiles wants the screen. At
+            max-w-4xl this page left ~350px of dead margin each side on a
+            1600px display and read as an unfinished document. */}
+        <div className="mx-auto max-w-6xl px-6 pt-12 pb-20 sm:px-8 sm:pt-16 sm:pb-28">
           <Reveal>
             <Link
               href="/"
@@ -100,75 +104,70 @@ export default function Page() {
             </Link>
           </Reveal>
 
-          <Reveal delay={90}>
-            <p className="mt-10 text-xs font-medium uppercase tracking-[0.2em] text-[#a8542f]">
-              Tính năng
-            </p>
-            <h1 className="mt-4 max-w-2xl text-[2rem] font-medium leading-[1.15] tracking-tight sm:text-[2.75rem]">
-              Vivu No Plan làm được những gì
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg font-light leading-relaxed text-[#6b5c51]">
-              {SITE_DESCRIPTION}
-            </p>
-          </Reveal>
-
-          <ul className="mt-14 grid gap-5 sm:grid-cols-2">
-            {FEATURE_PAGES.map((page, i) => (
-              <Reveal as="li" key={page.slug} delay={Math.min(i, 3) * 110}>
-                <Link
-                  href={`/${page.slug}`}
-                  className="group flex h-full flex-col rounded-3xl border border-[#d8cfc1]/70 bg-white/50 p-7 transition-colors hover:border-[#c2693f]/40 hover:bg-white/80"
-                >
-                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-[#a8542f]">
-                    {page.eyebrow}
-                  </span>
-                  <h2 className="mt-4 text-xl font-medium leading-snug group-hover:text-[#a8542f]">
-                    {page.h1}
-                  </h2>
-                  <p className="mt-3 flex-1 text-[15px] font-light leading-relaxed text-[#6b5c51]">
-                    {page.tagline}
-                  </p>
-                  <span className="mt-5 inline-flex items-center gap-1 text-[13px] font-medium text-[#a8542f]">
-                    Đọc tiếp <span aria-hidden="true">→</span>
-                  </span>
-                </Link>
-              </Reveal>
-            ))}
-          </ul>
-
-          {/* Direct links into the app for anyone already signed in — the four
-              pages above are for reading, these are for doing. */}
-          <Reveal as="nav">
-            <div className="mt-14 border-t border-[#d8cfc1]/60 pt-10">
-              <h2 className="text-sm font-medium uppercase tracking-[0.18em] text-[#a8542f]">
-                Mở thẳng trong ứng dụng
-              </h2>
-              <ul className="mt-5 flex flex-wrap gap-2.5">
-                {FEATURE_PAGES.map((page) => {
-                  const href = FEATURE_PAGE_APP_HREF[page.slug];
-                  return href ? (
-                    <li key={page.slug}>
-                      <Link
-                        href={href}
-                        className="inline-flex rounded-full border border-[#d8cfc1]/80 bg-white/50 px-4 py-2 text-[14px] font-light text-[#6b5c51] transition-colors hover:border-[#c2693f]/40 hover:text-[#a8542f]"
-                      >
-                        {page.cta.label}
-                      </Link>
-                    </li>
-                  ) : null;
-                })}
-              </ul>
+          {/* Hero spans the full width in two columns rather than stacking in a
+              narrow centred stack, which is what left the sides empty. */}
+          <Reveal delay={80}>
+            <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-end lg:gap-14">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#a8542f]">
+                  Tính năng
+                </p>
+                <h1 className="mt-4 text-[2.15rem] font-medium leading-[1.1] tracking-tight sm:text-[3rem]">
+                  Vivu No Plan làm được những gì
+                </h1>
+              </div>
+              <p className="text-[17px] font-light leading-relaxed text-[#6b5c51] lg:pb-2">
+                {SITE_DESCRIPTION}
+              </p>
             </div>
           </Reveal>
 
+          {/* Three facts, not decoration — each is a real property of the
+              product and each answers an objection someone has before they
+              click anything. */}
+          <Reveal delay={140}>
+            <dl className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-[#d8cfc1]/70 bg-[#d8cfc1]/70 sm:grid-cols-3">
+              {[
+                ["Miễn phí", "Không giới hạn thời gian, không quảng cáo, không cần thẻ."],
+                ["Không cần tải app", "Chạy thẳng trên trình duyệt, thêm vào màn hình chính nếu muốn."],
+                ["Riêng tư", "Không bảng tin, không người lạ, không thuật toán gợi ý."],
+              ].map(([term, detail]) => (
+                <div key={term} className="bg-[#fdfaf6] px-6 py-5">
+                  <dt className="text-[15px] font-medium text-[#3b322a]">{term}</dt>
+                  <dd className="mt-1.5 text-[13.5px] font-light leading-relaxed text-[#7a6d60]">
+                    {detail}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Reveal>
+
+          <div className="mt-12">
+            <FeatureHubGrid />
+          </div>
+
           <Reveal as="section">
-            <div className="mt-14 border-t border-[#d8cfc1]/60 pt-10 text-center">
-              <Link
-                href="/sign-up"
-                className="inline-flex h-14 w-full max-w-xs items-center justify-center rounded-full bg-[#c2693f] text-[17px] font-medium tracking-wide text-white shadow-[0_8px_20px_rgba(194,105,63,0.25)] transition-all hover:-translate-y-0.5 hover:bg-[#a8542f] active:translate-y-0 active:scale-[0.98]"
-              >
-                Tạo tài khoản
-              </Link>
+            <div className="mt-14 overflow-hidden rounded-[28px] bg-[#021617] px-8 py-12 text-center sm:px-12 sm:py-14">
+              <h2 className="text-2xl font-medium tracking-tight text-white sm:text-[1.85rem]">
+                Mở góc riêng của bạn
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-[15px] font-light leading-relaxed text-[#BFD9DE]">
+                Mất chừng một phút để tạo xong, và bạn không cần rủ ai để bắt đầu.
+              </p>
+              <div className="mt-9 flex flex-col items-center justify-center gap-3.5 sm:flex-row">
+                <Link
+                  href="/sign-up"
+                  className="flex h-14 w-full max-w-xs items-center justify-center rounded-full bg-[#c2693f] text-[17px] font-medium tracking-wide text-white shadow-[0_8px_20px_rgba(0,0,0,0.35)] transition-all hover:-translate-y-0.5 hover:bg-[#a8542f] active:translate-y-0 active:scale-[0.98]"
+                >
+                  Tạo tài khoản
+                </Link>
+                <Link
+                  href="/sign-in"
+                  className="flex h-14 w-full max-w-xs items-center justify-center rounded-full border border-white/20 text-[17px] font-medium tracking-wide text-white/90 transition-colors hover:border-white/40 hover:text-white"
+                >
+                  Đã có tài khoản
+                </Link>
+              </div>
             </div>
           </Reveal>
         </div>

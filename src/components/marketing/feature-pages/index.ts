@@ -55,3 +55,21 @@ export const FEATURE_PAGE_OG_IMAGE: Record<string, string> = {
   "nhat-ky-du-lich": "/og-card.jpg",
   "thu-gui-tuong-lai": "/og-card.jpg",
 };
+
+/**
+ * Visual identity per page, for the hub's grid.
+ *
+ * The emoji are the same ones the landing page's feature cards already use, so
+ * a reader who scrolled past those recognises the tile here rather than meeting
+ * a new symbol for the same thing. The tint is what gives a text-only page
+ * spatial weight — without it the hub was a column of bordered rectangles.
+ */
+export const FEATURE_PAGE_STYLE: Record<
+  string,
+  { emoji: string; tint: string; ink: string }
+> = {
+  "hom-nay-an-gi": { emoji: "🎡", tint: "#f6e9df", ink: "#a8542f" },
+  "luu-dia-diem-da-di": { emoji: "🗺️", tint: "#e4eef0", ink: "#2f6f87" },
+  "nhat-ky-du-lich": { emoji: "✈️", tint: "#ece8f0", ink: "#6b5c81" },
+  "thu-gui-tuong-lai": { emoji: "🔐", tint: "#eaeee6", ink: "#5c7350" },
+};
