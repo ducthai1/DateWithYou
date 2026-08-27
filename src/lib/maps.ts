@@ -105,3 +105,35 @@ export function isOpenAt(
   // (18:00–02:00), so the open window wraps around the end of the day.
   return open <= close ? now >= open && now <= close : now >= open || now <= close;
 }
+
+/**
+ * A circle of a given radius in metres, as a GeoJSON polygon ring.
+ *
+ * MapLibre's circle-radius is measured in pixels, so a circle drawn that way
+ * stays the same size on screen while you zoom and therefore represents a
+ * different distance at every zoom level. A GPS accuracy circle has to mean
+ * metres or it means nothing — so this returns real geography and lets the map
+ * project it, which is the only way the drawn radius keeps matching the number
+ * the device reported.
+ *
+ * The latitude term matters: a degree of longitude is ~111km at the equator and
+ * shrinks with the cosine of latitude, so without it the circle comes out as an
+ * ellipse that is wrong by about 3% in Vietnam and much worse further north.
+ */
+export function geodesicCircle(
+  center: LatLng,
+  radiusMeters: number,
+  segments = 64,
+): [number, number][] {
+  const latDegPerM = 1 / 111_320;
+  const lngDegPerM = 1 / (111_320 * Math.cos((center.lat * Math.PI) / 180));
+  const ring: [number, number][] = [];
+  for (let i = 0; i <= segments; i += 1) {
+    const angle = (i / segments) * 2 * Math.PI;
+    ring.push([
+      center.lng + radiusMeters * lngDegPerM * Math.cos(angle),
+      center.lat + radiusMeters * latDegPerM * Math.sin(angle),
+    ]);
+  }
+  return ring;
+}

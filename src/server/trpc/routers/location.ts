@@ -13,7 +13,7 @@ import { SpaceModel } from "@/server/db/models/space";
 import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 import { requireEnv } from "@/lib/env";
 import { resolveGeoFromMapsUrl, extractFirstUrl } from "@/server/lib/resolve-maps-geo";
-import { geocodeAddress } from "@/server/lib/geocode-address";
+import { geocodeAddress, geocodeAddressDetailed } from "@/server/lib/geocode-address";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
 import { searchAreas } from "@/lib/vn-admin";
 import { buildPattern } from "@/lib/vietnamese-text";
@@ -302,8 +302,10 @@ export const locationRouter = router({
   geocode: protectedProcedure
     .input(z.object({ query: z.string().trim().min(2).max(160) }))
     .query(async ({ input }) => {
-      const hit = await geocodeAddress(input.query);
-      return hit ? { lat: hit.lat, lng: hit.lng } : null;
+      const hit = await geocodeAddressDetailed(input.query);
+      return hit
+        ? { lat: hit.lat, lng: hit.lng, source: hit.source, broadened: hit.broadened }
+        : null;
     }),
 
   searchAreas: protectedProcedure

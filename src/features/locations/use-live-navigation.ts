@@ -44,6 +44,14 @@ export type LegInfo = {
 };
 
 export type LiveNavigation = {
+  /**
+   * Horizontal GPS accuracy in metres, or null before the first fix.
+   *
+   * Was already measured and pinged to the server but never exposed here, so
+   * the map had no way to draw it — which is why what it drew instead was a
+   * fixed-size pulse that looked like an accuracy circle without being one.
+   */
+  accuracyM: number | null;
   isNavigating: boolean;
   /** Latest live position (null until the first fix). */
   userGeo: LatLng | null;
@@ -508,6 +516,7 @@ export function useLiveNavigation(options?: {
     isOffline,
     gpsLost,
     partnerLocation,
+    accuracyM,
     partnerConnection,
     userPingAction,
     traveled,

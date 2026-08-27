@@ -108,6 +108,18 @@ import { LocationForm, type LocationFormValues } from "./location-form";
 import { useToast } from "@/components/ui/toast";
 import { MeetingFlare } from "./meeting-flare";
 
+/**
+ * Human names for the geocoding sources, ordered by how much a hit from each
+ * can be trusted. Shown when a looked-up pin is offered for confirmation —
+ * "OpenStreetMap" tells someone to look twice in a way "nominatim" does not.
+ */
+const GEOCODE_SOURCE_LABEL: Record<string, string> = {
+  google: "Google Maps",
+  mapbox: "Mapbox",
+  stadia: "OpenStreetMap",
+  nominatim: "OpenStreetMap",
+};
+
 export function LocationsPage() {
   const toast = useToast();
   const [district, setDistrict] = useState("");
@@ -288,15 +300,31 @@ export function LocationsPage() {
         setGeocodeMiss(true);
         return;
       }
-      setFocusGeo(hit);
-      setFormInitial({ name: q, geo: hit });
+      setFocusGeo({ lat: hit.lat, lng: hit.lng });
+      setFormInitial({ name: q, geo: { lat: hit.lat, lng: hit.lng } });
       setFormOpen(true);
+      /*
+       * Say where the coordinate came from. The person is about to confirm a
+       * pin, and that decision is much easier knowing whether it came from
+       * Google's POI database or from a street-name guess on OpenStreetMap.
+       *
+       * `broadened` means the hit came from a widened query rather than what
+       * they typed — a street-only or country-appended form — so it is looser
+       * by construction and worth a closer look. Flagged as a warning rather
+       * than a success for exactly that reason.
+       */
+      const label = GEOCODE_SOURCE_LABEL[hit.source] ?? hit.source;
+      if (hit.broadened) {
+        toast(`Chỉ tra được gần đúng (${label}) — kiểm lại pin trên bản đồ nhé.`, "error");
+      } else {
+        toast(`Tìm thấy qua ${label} — xem pin có đúng chỗ không.`, "success");
+      }
     } catch {
       setGeocodeMiss(true);
     } finally {
       setIsGeocoding(false);
     }
-  }, [queryText, isGeocoding, utils]);
+  }, [queryText, isGeocoding, utils, toast]);
 
   const listInput = useMemo(
     () => ({
@@ -1004,6 +1032,7 @@ export function LocationsPage() {
               partnerRouteGeometry={partnerRouteGeometry}
               selectedId={selectedId}
               focusGeo={focusGeo}
+              userAccuracyM={nav.accuracyM}
               userGeo={liveUser}
               partnerLocation={nav.partnerLocation}
               followGeo={nav.userGeo}
@@ -1338,6 +1367,7 @@ export function LocationsPage() {
               partnerRouteGeometry={partnerRouteGeometry}
               selectedId={selectedId}
               focusGeo={focusGeo}
+              userAccuracyM={nav.accuracyM}
               userGeo={liveUser}
               partnerLocation={nav.partnerLocation}
               partnerPingAction={navInvites.partnerPingAction}

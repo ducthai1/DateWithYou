@@ -3,7 +3,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { type LatLng } from "@/lib/maps";
+import { geodesicCircle, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,6 +40,7 @@ function LocationMapViewImpl({
   selectedId,
   focusGeo,
   userGeo,
+  userAccuracyM,
   partnerLocation,
   partnerPingAction,
   userPingAction,
@@ -62,6 +63,8 @@ function LocationMapViewImpl({
   selectedId?: string | null;
   focusGeo?: LatLng | null;
   userGeo?: LatLng | null;
+  /** Horizontal GPS accuracy in metres, drawn to scale when known. */
+  userAccuracyM?: number | null;
   partnerLocation?: { lat: number; lng: number; pingAction?: string | null } | null;
   partnerPingAction?: string | null;
   userPingAction?: string | null;
@@ -228,6 +231,38 @@ function LocationMapViewImpl({
         }
       >
         <AttributionControl compact={true} position="top-right" />
+
+        {/* GPS accuracy, to scale.
+            A pixel-radius circle would mean a different distance at every zoom
+            level, so this is a real polygon and the map projects it — the drawn
+            radius keeps matching the number the device reported. Only drawn
+            when the reading is loose enough to matter: a 5m circle at city zoom
+            is a dot, and rendering it suggests a precision claim nobody made. */}
+        {userGeo && userAccuracyM != null && userAccuracyM >= 15 ? (
+          <Source
+            id="gps-accuracy"
+            type="geojson"
+            data={{
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "Polygon",
+                coordinates: [geodesicCircle(userGeo, userAccuracyM)],
+              },
+            }}
+          >
+            <Layer
+              id="gps-accuracy-fill"
+              type="fill"
+              paint={{ "fill-color": "#3b82f6", "fill-opacity": 0.12 }}
+            />
+            <Layer
+              id="gps-accuracy-line"
+              type="line"
+              paint={{ "line-color": "#3b82f6", "line-opacity": 0.35, "line-width": 1 }}
+            />
+          </Source>
+        ) : null}
 
         {/* ── GLOBAL PING OVERLAY (Always visible even if map is scrolled away) ── */}
         <AnimatePresence>

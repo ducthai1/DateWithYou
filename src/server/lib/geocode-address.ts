@@ -186,30 +186,88 @@ function queryVariants(q: string): string[] {
  * smaller of MAX_CALL_MS and the time left, and we stop once the budget runs
  * out. Best-effort: returns null rather than throwing when time/options run out.
  */
-export async function geocodeAddress(
+/**
+ * Which service answered, and how much the query had to be widened to get an
+ * answer.
+ *
+ * Worth returning because the caller shows the result for confirmation before
+ * saving it, and "confirm this pin" is a much easier decision when you know
+ * whether it came from Google's POI database or from a street-name guess on
+ * OpenStreetMap. Without it the person is agreeing to a coordinate with no idea
+ * how it was arrived at.
+ */
+export type GeocodeSource = "google" | "mapbox" | "stadia" | "nominatim";
+
+export type GeocodeHit = LatLng & {
+  source: GeocodeSource;
+  /**
+   * True when the hit came from a widened query rather than what was typed —
+   * the street-only or country-appended variants. Those are looser by
+   * construction, so a hit from one deserves a closer look on the map.
+   */
+  broadened: boolean;
+};
+
+const NAMED_PROVIDERS: Array<{
+  source: GeocodeSource;
+  run: (q: string, timeoutMs: number) => Promise<LatLng | null>;
+}> = [
+  // Most precise first. Each is a no-op unless its key is configured, so the
+  // chain degrades to the key-free OSM providers on its own.
+  { source: "google", run: viaGoogle },
+  { source: "mapbox", run: viaMapbox },
+];
+
+const FALLBACK_PROVIDERS: typeof NAMED_PROVIDERS = [
+  { source: "stadia", run: viaStadia },
+  { source: "nominatim", run: viaNominatim },
+];
+
+/**
+ * Best-effort address → coordinates, with attribution.
+ *
+ * `deadline` (absolute ms timestamp) caps the WHOLE phase so it cannot push an
+ * interactive request past the function timeout — each call is bounded by the
+ * smaller of MAX_CALL_MS and the time left, and the walk stops once the budget
+ * runs out. Returns null rather than throwing when time or options run out.
+ */
+export async function geocodeAddressDetailed(
   query: string,
   deadline?: number,
-): Promise<LatLng | null> {
+): Promise<GeocodeHit | null> {
   const q = query.trim();
   if (!q) return null;
   const budget = () => (deadline ? deadline - Date.now() : MAX_CALL_MS);
 
-  // Best providers first, on the full "name, address" query: Google (exact) then
-  // Mapbox (rich POI). Both are no-ops unless their key/token is configured.
-  for (const provider of [viaGoogle, viaMapbox]) {
+  // The exact query first, through the providers that know POIs.
+  for (const { source, run } of NAMED_PROVIDERS) {
     if (budget() < 300) return null;
-    const hit = await provider(q, Math.min(MAX_CALL_MS, budget()));
-    if (hit) return hit;
+    const hit = await run(q, Math.min(MAX_CALL_MS, budget()));
+    if (hit) return { ...hit, source, broadened: false };
   }
 
-  // Approximate, key-free fallbacks (OSM-based) with a street-only variant.
-  for (const variant of queryVariants(q)) {
-    for (const provider of [viaStadia, viaNominatim]) {
+  // Then the key-free OSM providers, walking the widened variants. The first
+  // variant is the original query, so a hit there is not "broadened".
+  const variants = queryVariants(q);
+  for (const [index, variant] of variants.entries()) {
+    for (const { source, run } of FALLBACK_PROVIDERS) {
       const left = budget();
-      if (left < 300) return null; // out of time — don't start another call
-      const hit = await provider(variant, Math.min(MAX_CALL_MS, left));
-      if (hit) return hit;
+      if (left < 300) return null;
+      const hit = await run(variant, Math.min(MAX_CALL_MS, left));
+      if (hit) return { ...hit, source, broadened: index > 0 };
     }
   }
   return null;
+}
+
+/**
+ * Coordinate-only form, kept because the save path only needs the point — it
+ * resolves a pasted Maps link and has nowhere to show attribution.
+ */
+export async function geocodeAddress(
+  query: string,
+  deadline?: number,
+): Promise<LatLng | null> {
+  const hit = await geocodeAddressDetailed(query, deadline);
+  return hit ? { lat: hit.lat, lng: hit.lng } : null;
 }
