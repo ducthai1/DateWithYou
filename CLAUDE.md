@@ -49,6 +49,41 @@ Nên với mọi tham số tuỳ chọn: **chạy thử đúng cái mặc địn
 mới tin. Và trước khi tin là "API trả sai", gọi thẳng API một phát để tách bạch
 lỗi ở đâu — ở đây API đúng ngay từ đầu, sai nằm hoàn toàn phía client.
 
+### Zoom trình duyệt = viewport nhỏ lại CẢ HAI CHIỀU — phải test theo CẶP
+
+Lượt quét đầu chạy 9 bề rộng nhưng **giữ nguyên chiều cao 900px**, nên không
+thấy gì. Trong khi MacBook 1440×900 zoom 150% là trang **960×600** — và 600px
+chiều cao mới là chỗ vỡ. Bảng quy đổi:
+
+| Máy | 125% | 150% | 175% | 200% |
+|---|---|---|---|---|
+| MBA 13" 1440×900 | 1152×720 | **960×600** | 823×514 | 720×450 |
+| MBP 14" 1512×982 | 1210×786 | 1008×655 | 864×561 | 756×491 |
+
+Nên: **test theo cặp rộng×cao**, và nhớ hai điều nữa —
+
+- **Trang ở trạng thái nghỉ không phải chỗ zoom cắn.** Phải **mở dialog ra rồi
+  mới đo**: dialog là `fixed`, cao theo nội dung, căn giữa — ở 600px chiều cao
+  thì nút bấm của nó nằm dưới mép màn và trang phía sau không cuộn nó lên được.
+- Repo này có sẵn variant theo chiều cao: **`short:`** (≤760px) và
+  **`shorter:`** (≤620px) trong `globals.css`. Dùng chúng cho padding, banner,
+  gap, mật độ lưới. Breakpoint theo bề rộng **không nhìn thấy** vấn đề này —
+  960px vẫn được đọc là "desktop".
+
+Vài cái đã cắn thật:
+
+- `aspect-square` cho ô lịch: đúng trên điện thoại, **sai trên màn rộng-mà-thấp**
+  (7 cột ⇒ ô cao 94px ⇒ chỉ thấy 4 tuần). Màn thấp thì chặn chiều cao.
+- Kích thước cố định theo breakpoint bề rộng (`md:h-[400px]`) **không biết** màn
+  còn bao nhiêu chiều cao. Dùng `min(400px, 70vw, 48vh)` — tự chọn ràng buộc nào
+  đang siết.
+- **Đừng hard-code lề âm để tràn mép.** `ScrollStrip` dùng `-mx-4` trong khi
+  `PageShell` thu gutter còn 12px ở `shorter:` ⇒ tràn 4px, trang có thanh cuộn
+  ngang. Nay gutter công bố qua `--page-gutter`, lề âm huỷ đúng cái đó.
+- Một cột căn giữa `max-w-md` trên màn 1440px là **bỏ trống hai phần ba** — và
+  chính cái xếp chồng đó đẩy nội dung rớt khỏi màn khi zoom. Xếp ngang vừa dùng
+  hết bề rộng vừa giảm nửa chiều cao cần.
+
 ### Quét responsive: dựng tài khoản thật rồi ĐO, đừng ngắm ảnh
 
 Cách đã dùng và nên dùng lại (19 route × 9 bề rộng 320→1920, 1384 lỗi → 26):
