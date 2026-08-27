@@ -53,6 +53,45 @@ const locationInput = z.object({
   note: z.string().trim().max(500).optional(),
 });
 
+/**
+ * Travel time between two points on a motorbike, summary only.
+ *
+ * Used by the meeting-point ranking, which needs durations and nothing else.
+ * Valhalla's matrix endpoint (sources_to_targets) is the natural fit and would
+ * be one request instead of several, but on Stadia it is a paid tier — so this
+ * makes individual route calls on the free tier instead, and the caller is
+ * responsible for keeping the count small.
+ *
+ * Returns null rather than throwing: one unreachable candidate should drop out
+ * of the ranking, not fail the whole request.
+ */
+async function travelSeconds(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+): Promise<number | null> {
+  try {
+    const key = requireEnv("STADIA_API_KEY");
+    const res = await fetch(`https://api.stadiamaps.com/route/v1?api_key=${key}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        locations: [
+          { lat: from.lat, lon: from.lng },
+          { lat: to.lat, lon: to.lng },
+        ],
+        costing: "motor_scooter",
+        directions_options: { units: "kilometers" },
+      }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { trip?: { summary?: { time?: number } } };
+    const time = data.trip?.summary?.time;
+    return typeof time === "number" ? Math.round(time) : null;
+  } catch {
+    return null;
+  }
+}
+
 export const locationRouter = router({
   list: protectedProcedure
     .input(
@@ -201,6 +240,72 @@ export const locationRouter = router({
    * browser to power one dropdown would cost more than the whole rest of the
    * page. The client sends what was typed and gets back a short list.
    */
+  /**
+   * Turn a typed name or address into a coordinate.
+   *
+   * The geocoder was already here, but only reachable indirectly — it ran when
+   * a place was saved with a Google Maps link. There was no way to type "Bánh
+   * xèo 46A Đinh Công Tráng" and have the map go there.
+   *
+   * Returns one coordinate, not a candidate list, because that is all the
+   * geocoder gives (it walks providers and takes the first hit). So the client
+   * must not save this silently: it flies the map to the result and opens the
+   * form pre-filled, and the person confirms against what they can see. A
+   * wrong geocode that gets written straight to a saved place is a wrong pin
+   * that stays wrong.
+   */
+  /**
+   * Rank candidate meeting points by how evenly the journey splits.
+   *
+   * The geometric midpoint is the wrong answer whenever the two routes are not
+   * symmetric — a river, a one-way system or a single congested bridge between
+   * two people means the point halfway on the map can be a short hop for one
+   * and a long detour for the other. This ranks by the *gap* between the two
+   * travel times, so "fair" means neither person carries the trip.
+   *
+   * Capped at three candidates, which is six routing calls, and only run when
+   * someone asks for it. Stadia's matrix endpoint would do this in one request
+   * but sits behind a paid plan, so the cost here is real and is not spent
+   * without a deliberate tap.
+   */
+  rankMeetingPoints: protectedProcedure
+    .input(
+      z.object({
+        origins: z.tuple([geo, geo]),
+        candidates: z.array(z.object({ id: z.string().min(1), geo })).min(1).max(3),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const [a, b] = input.origins;
+      const results = await Promise.all(
+        input.candidates.map(async (candidate) => {
+          const [fromA, fromB] = await Promise.all([
+            travelSeconds(a, candidate.geo),
+            travelSeconds(b, candidate.geo),
+          ]);
+          if (fromA == null || fromB == null) return null;
+          return {
+            id: candidate.id,
+            secondsFromYou: fromA,
+            secondsFromPartner: fromB,
+            // How lopsided the trip is. Zero means both arrive after the same
+            // ride, which is the whole point of a meeting point.
+            gapSeconds: Math.abs(fromA - fromB),
+          };
+        }),
+      );
+      return results
+        .filter((r): r is NonNullable<typeof r> => r !== null)
+        .sort((x, y) => x.gapSeconds - y.gapSeconds);
+    }),
+
+  geocode: protectedProcedure
+    .input(z.object({ query: z.string().trim().min(2).max(160) }))
+    .query(async ({ input }) => {
+      const hit = await geocodeAddress(input.query);
+      return hit ? { lat: hit.lat, lng: hit.lng } : null;
+    }),
+
   searchAreas: protectedProcedure
     .input(z.object({ query: z.string().max(80).default("") }))
     .query(({ input }) => searchAreas(input.query)),

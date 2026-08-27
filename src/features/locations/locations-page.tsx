@@ -266,6 +266,38 @@ export function LocationsPage() {
     return () => clearTimeout(t);
   }, [queryText]);
 
+  /*
+   * "Not in my pins — look it up on the map."
+   *
+   * Deliberately not a save. The geocoder returns one coordinate with no
+   * confidence score and no alternatives, so the only honest way to use it is
+   * to show the person where it landed and let them decide. The map flies
+   * there, the add form opens with the name and coordinate filled in, and
+   * nothing is written until they submit.
+   */
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodeMiss, setGeocodeMiss] = useState(false);
+  const handleGeocodeSearch = useCallback(async () => {
+    const q = queryText.trim();
+    if (!q || isGeocoding) return;
+    setIsGeocoding(true);
+    setGeocodeMiss(false);
+    try {
+      const hit = await utils.location.geocode.fetch({ query: q });
+      if (!hit) {
+        setGeocodeMiss(true);
+        return;
+      }
+      setFocusGeo(hit);
+      setFormInitial({ name: q, geo: hit });
+      setFormOpen(true);
+    } catch {
+      setGeocodeMiss(true);
+    } finally {
+      setIsGeocoding(false);
+    }
+  }, [queryText, isGeocoding, utils]);
+
   const listInput = useMemo(
     () => ({
       district: district || undefined,
@@ -798,9 +830,57 @@ export function LocationsPage() {
   const partnerLocationRef = useRef(nav.partnerLocation);
   partnerLocationRef.current = nav.partnerLocation;
 
+  /*
+   * Re-rank the suggestions by how evenly the ride splits.
+   *
+   * Kept behind a tap because it costs six routing calls, and Stadia's matrix
+   * endpoint — one request for the whole grid — is on a paid plan. Charging the
+   * quota on every midpoint search would spend it on people who were happy
+   * with the straight-line answer.
+   */
+  const [travelRanks, setTravelRanks] = useState<Record<string, { you: number; them: number; gap: number }> | null>(null);
+  const [isRanking, setIsRanking] = useState(false);
+  const rankByTravel = trpc.location.rankMeetingPoints.useMutation();
+  const handleRankByTravel = useCallback(async () => {
+    const partner = partnerLocationRef.current;
+    const candidates = (midpointRecommendations ?? [])
+      .filter((r) => r.geo)
+      .slice(0, 3)
+      .map((r) => ({ id: r.id as string, geo: r.geo as LatLng }));
+    if (!userGeo || !partner || candidates.length === 0 || isRanking) return;
+    setIsRanking(true);
+    try {
+      const ranked = await rankByTravel.mutateAsync({
+        origins: [userGeo, { lat: partner.lat, lng: partner.lng }],
+        candidates,
+      });
+      const byId: Record<string, { you: number; them: number; gap: number }> = {};
+      for (const r of ranked) {
+        byId[r.id] = { you: r.secondsFromYou, them: r.secondsFromPartner, gap: r.gapSeconds };
+      }
+      setTravelRanks(byId);
+      // Reorder to match, fairest first, and keep any the router could not
+      // reach at the end rather than dropping pins the person can see.
+      const order = new Map(ranked.map((r, i) => [r.id, i]));
+      setMidpointRecommendations((list) =>
+        list
+          ? [...list].sort(
+              (x, y) =>
+                (order.get(x.id) ?? Number.MAX_SAFE_INTEGER) -
+                (order.get(y.id) ?? Number.MAX_SAFE_INTEGER),
+            )
+          : list,
+      );
+      setMidpointIndex(0);
+    } finally {
+      setIsRanking(false);
+    }
+  }, [midpointRecommendations, userGeo, isRanking, rankByTravel]);
+
   const handleFindMidpoint = useCallback(() => {
     setIsFindingMidpoint(true);
     setMidpointError(null);
+    setTravelRanks(null);
 
     if (!navigator.geolocation) {
       setMidpointError("Trình duyệt không hỗ trợ định vị.");
@@ -1396,9 +1476,22 @@ export function LocationsPage() {
           ) : pins.length === 0 ? (
             <EmptyState
               icon="map-pin"
-              title="Chưa có địa điểm nào"
-              subtitle="Nhấn + Thêm (hoặc chạm lên bản đồ) để lưu quán, café, chỗ hay hẹn nhau…"
-              action={{ label: "+ Thêm địa điểm", onClick: () => { setFormInitial({}); setFormOpen(true); } }}
+              title={debouncedQuery ? `Không có chỗ nào khớp “${debouncedQuery}”` : "Chưa có địa điểm nào"}
+              subtitle={
+                debouncedQuery
+                  ? geocodeMiss
+                    ? "Không tra được địa chỉ này. Thử gõ kèm tên đường, hoặc thêm tay rồi chạm lên bản đồ."
+                    : "Chưa lưu thì tra trên bản đồ xem nó ở đâu — bạn xem vị trí rồi mới quyết có lưu hay không."
+                  : "Nhấn + Thêm (hoặc chạm lên bản đồ) để lưu quán, café, chỗ hay hẹn nhau…"
+              }
+              action={
+                debouncedQuery
+                  ? {
+                      label: isGeocoding ? "Đang tra…" : `Tìm “${debouncedQuery}” trên bản đồ`,
+                      onClick: handleGeocodeSearch,
+                    }
+                  : { label: "+ Thêm địa điểm", onClick: () => { setFormInitial({}); setFormOpen(true); } }
+              }
             />
           ) : (
             <StaggerList className="grid gap-3 sm:grid-cols-2">
@@ -1703,6 +1796,44 @@ export function LocationsPage() {
                 <p className="mt-1 text-sm text-white/85">
                   Đây là các địa điểm đã lưu nằm ngay giữa quãng đường của hai bạn!
                 </p>
+              </div>
+
+              {/* Fairness ranking. Straight-line distance is the wrong measure
+                  whenever the two routes are not symmetric — one bridge or
+                  one-way system between the two of you and the point halfway on
+                  the map is a short hop for one person and a detour for the
+                  other. */}
+              <div className="px-6 pt-4">
+                {travelRanks ? (
+                  (() => {
+                    const r = travelRanks[midpointRecommendations[midpointIndex].id];
+                    return r ? (
+                      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                        <span>Bạn đi <strong className="text-foreground">{Math.round(r.you / 60)} phút</strong></span>
+                        <span>·</span>
+                        <span>Người kia <strong className="text-foreground">{Math.round(r.them / 60)} phút</strong></span>
+                        <span>·</span>
+                        <span>
+                          {r.gap <= 120 ? "gần như bằng nhau" : `lệch ${Math.round(r.gap / 60)} phút`}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-center text-xs text-muted-foreground">
+                        Không tính được đường tới chỗ này.
+                      </p>
+                    );
+                  })()
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleRankByTravel}
+                    disabled={isRanking || !nav.partnerLocation}
+                    className="mx-auto flex items-center gap-1.5 rounded-full border border-[var(--accent)]/30 px-3.5 py-1.5 text-xs font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/10 disabled:opacity-50"
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    {isRanking ? "Đang tính…" : "Xếp theo thời gian đi thật"}
+                  </button>
+                )}
               </div>
 
               {/* Carousel Body */}
