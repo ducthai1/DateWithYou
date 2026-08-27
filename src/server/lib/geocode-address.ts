@@ -139,9 +139,42 @@ function queryVariants(q: string): string[] {
   const variants = [q];
   const parts = q.split(",").map((s) => s.trim()).filter(Boolean);
   if (parts.length >= 2 && !/\d/.test(parts[0])) {
-    variants.push(parts.slice(1).join(", "));
+    const streetOnly = parts.slice(1).join(", ");
+    /*
+     * Only worth trying if something street-like survives. "Cà phê Cộng, Hà
+     * Nội" reduces to "Hà Nội", and geocoding a bare city name returns its
+     * centre — a confident-looking hit that is nowhere near the café. A
+     * variant needs a number or at least two remaining components before it
+     * says anything more specific than "this city".
+     */
+    if (/\d/.test(streetOnly) || parts.length >= 3) {
+      variants.push(streetOnly);
+    }
   }
-  return variants;
+
+  /*
+   * Country-qualified variants.
+   *
+   * A bare Vietnamese address is ambiguous to a global geocoder: street names
+   * like "Nguyễn Huệ" or "Lê Lợi" repeat in dozens of countries' datasets and
+   * in most Vietnamese towns, so a query with no country can land on the wrong
+   * continent and still look like a confident hit. Appending the country — and
+   * the city when the text does not already name one — narrows it without
+   * needing a Vietnam-specific provider.
+   *
+   * Added last: these are broader than what was typed, so they only run after
+   * the more specific forms have missed.
+   */
+  const hasCountry = /việt\s*nam|vietnam/i.test(q);
+  const hasCity = /hồ chí minh|ho chi minh|hcm|sài gòn|sai gon|hà nội|ha noi|đà nẵng|da nang|cần thơ|can tho|huế|hue/i.test(q);
+  const tail = hasCity ? "Việt Nam" : "Thành phố Hồ Chí Minh, Việt Nam";
+  if (!hasCountry) {
+    for (const base of [...variants]) variants.push(`${base}, ${tail}`);
+  }
+
+  // De-duplicate: the two rules above can produce the same string, and each
+  // duplicate is a wasted provider call against the time budget.
+  return [...new Set(variants)];
 }
 
 /**

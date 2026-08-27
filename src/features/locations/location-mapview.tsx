@@ -318,7 +318,11 @@ function LocationMapViewImpl({
             {heading != null ? (
               /* Directional arrow when heading is known */
               <div className="relative flex items-center justify-center">
-                {/* Pulsing accuracy halo */}
+                {/* Pulse marking your own position. Deliberately not called
+                    an accuracy halo: it is a fixed size and does not scale
+                    with the measured accuracy, so it would imply a precision
+                    it is not reporting. Actual accuracy drives the weak-GPS
+                    state in use-live-navigation instead. */}
                 <span className="absolute h-16 w-16 animate-ping rounded-full bg-blue-400/30" />
                 
                 {/* Direction cone */}
