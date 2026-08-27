@@ -110,18 +110,6 @@ import { useToast } from "@/components/ui/toast";
 import { MeetingFlare } from "./meeting-flare";
 import { MapSheet } from "./map-sheet";
 
-/**
- * Human names for the geocoding sources, ordered by how much a hit from each
- * can be trusted. Shown when a looked-up pin is offered for confirmation —
- * "OpenStreetMap" tells someone to look twice in a way "nominatim" does not.
- */
-const GEOCODE_SOURCE_LABEL: Record<string, string> = {
-  trackasia: "TrackAsia (bản đồ Việt Nam)",
-  google: "Google Maps",
-  mapbox: "Mapbox",
-  stadia: "OpenStreetMap",
-  nominatim: "OpenStreetMap",
-};
 
 export function LocationsPage() {
   const toast = useToast();
@@ -303,8 +291,12 @@ export function LocationsPage() {
    * "look at it before saving" idea useless.
    */
   const [draftGeo, setDraftGeo] = useState<LatLng | null>(null);
-  /** Which service found the draft point, shown next to the search box. */
-  const [draftSource, setDraftSource] = useState<string | null>(null);
+  /**
+   * Whether a looked-up point is on screen, and whether it came from a widened
+   * query. Not the provider's name: that was printed for a while and told
+   * nobody what to do about it.
+   */
+  const [draftHint, setDraftHint] = useState<null | "exact" | "approx">(null);
   const handleGeocodeSearch = useCallback(async () => {
     const q = queryText.trim();
     if (!q || isGeocoding) return;
@@ -341,8 +333,7 @@ export function LocationsPage() {
        * by construction and worth a closer look. Flagged as a warning rather
        * than a success for exactly that reason.
        */
-      const label = GEOCODE_SOURCE_LABEL[hit.source] ?? hit.source;
-      setDraftSource(hit.broadened ? `${label} · gần đúng` : label);
+      setDraftHint(hit.broadened ? "approx" : "exact");
       if (hit.broadened) {
         toast(`Gần đúng thôi — xem pin trên bản đồ`, "error");
       } else {
@@ -1287,19 +1278,19 @@ export function LocationsPage() {
       <div className="mx-auto w-full max-w-[1400px] px-4 pt-2 pb-6 md:px-[30px] lg:pt-6">
       {/* Action bar stays pinned; only the cards below scroll under it. */}
       {/* Mobile: title row + actions row stacked. Desktop: single flex row. */}
-      <div className="sticky top-2 z-30 mb-2 flex flex-col gap-y-2 rounded-2xl bg-gradient-to-r from-gradient-from/15 to-gradient-to/15 px-3 py-2 shadow-sm backdrop-blur-md sm:mb-4 sm:px-4 sm:py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
+      <div className="sticky top-2 z-30 mb-2 flex flex-col gap-y-2 rounded-2xl border border-border bg-card px-3 py-2 shadow-lg sm:mb-4 sm:px-4 sm:py-3 sm:flex-row lg:border-0 lg:bg-gradient-to-r lg:from-gradient-from/15 lg:to-gradient-to/15 lg:shadow-sm sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
         {/* Hidden on phones, not deleted: the app header directly above already
             names this screen, so on a 844px viewport this line and its gap were
             44px of duplicate label taken from the map. */}
         <h1 className="sr-only text-2xl font-semibold text-accent sm:not-sr-only">
           Bản đồ ăn chơi
         </h1>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           {hasTwoMembers && (
             <Button
               variant="outline"
               className={cn(
-                "border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all gap-1.5 h-9 px-3",
+                "border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all gap-1.5 h-9 shrink-0 px-0 w-9 sm:w-auto sm:px-3",
                 isFindingMidpoint && "opacity-50 pointer-events-none"
               )}
               onClick={handleFindMidpoint}
@@ -1310,22 +1301,22 @@ export function LocationsPage() {
               ) : (
                 <MapPinned className="h-4 w-4" />
               )}
-              <span className="text-sm font-medium">Gặp ở giữa</span>
+              <span className="hidden text-sm font-medium sm:inline">Gặp ở giữa</span>
             </Button>
           )}
           <a
             href="/wheel"
             aria-label="Hôm nay ăn gì?"
             title="Hôm nay ăn gì?"
-            className="border-border bg-card hover:bg-muted inline-flex h-9 w-9 items-center justify-center rounded-xl border shadow-sm"
+            className="border-border bg-card hover:bg-muted inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
           >
             <Utensils className="h-4 w-4" />
           </a>
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setSettingsOpen(true)}>
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setSettingsOpen(true)}>
             <Settings className="h-4 w-4" />
           </Button>
           <Button
-            className="h-9 px-3"
+            className="ml-auto h-9 shrink-0 px-3"
             onClick={() => {
               setFormInitial({});
               setFormOpen((o) => !o);
@@ -1408,7 +1399,7 @@ export function LocationsPage() {
                 type="button"
                 onClick={handleGeocodeSearch}
                 disabled={isGeocoding}
-                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--accent)]/30 px-3 py-2 text-[13px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/10 disabled:opacity-50"
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-[13px] font-medium text-[var(--accent)] shadow-lg transition-colors hover:bg-muted disabled:opacity-50 lg:shadow-none"
               >
                 <MapPinned className="h-3.5 w-3.5" />
                 {isGeocoding
@@ -1417,16 +1408,18 @@ export function LocationsPage() {
               </button>
             ) : null}
             {geocodeMiss ? (
-              <p className="text-muted-foreground mt-1.5 text-center text-xs">
-                Không tra được địa chỉ này. Thử thêm tên đường hoặc tên quận.
+              <p className="mx-auto mt-1.5 w-fit rounded-lg border border-border bg-card px-2.5 py-1 text-center text-xs text-muted-foreground shadow-sm">
+                Không tra được — thử thêm tên đường
               </p>
             ) : null}
             {/* Which service answered. In a toast this vanished before it could
                 be read, and it is the thing that tells someone how hard to
                 squint at the pin. */}
-            {draftSource ? (
-              <p className="text-muted-foreground mt-1.5 text-center text-xs">
-                Ghim tạm theo <span className="font-medium">{draftSource}</span> — chạm lên bản đồ nếu chưa đúng chỗ
+            {draftHint ? (
+              <p className="mx-auto mt-1.5 w-fit rounded-lg border border-border bg-card px-2.5 py-1 text-center text-xs text-muted-foreground shadow-sm">
+                {draftHint === "approx"
+                  ? "Ghim gần đúng — chạm bản đồ để sửa"
+                  : "Chạm bản đồ nếu ghim chưa đúng"}
               </p>
             ) : null}
           </div>
@@ -1518,8 +1511,8 @@ export function LocationsPage() {
 
           {/* Partner offline helper — shown when coupled but no partner live location */}
           {hasTwoMembers && !nav.partnerLocation && (
-            <p className="relative z-30 text-xs text-muted-foreground bg-muted/50 border border-border rounded-lg px-3 py-2 text-center leading-snug">
-              Người kia chưa mở trang Bản đồ gần đây nên chưa thấy vị trí. Nhờ người kia mở trang này nhé.
+            <p className="relative z-30 text-xs text-muted-foreground bg-card border border-border rounded-lg px-3 py-2 text-center leading-snug shadow-sm">
+              Người kia chưa mở Bản đồ nên chưa thấy vị trí.
             </p>
           )}
 
@@ -1631,12 +1624,12 @@ export function LocationsPage() {
                     onDone={() => {
                       setFormOpen(false);
                       setDraftGeo(null);
-                      setDraftSource(null);
+                      setDraftHint(null);
                     }}
                     onCancel={() => {
                       setFormOpen(false);
                       setDraftGeo(null);
-                      setDraftSource(null);
+                      setDraftHint(null);
                     }}
                   />
                 </div>
