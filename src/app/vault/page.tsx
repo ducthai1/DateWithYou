@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { ScrollStrip } from "@/components/ui/scroll-strip";
 import { motion, AnimatePresence } from "framer-motion";
 import { RoadmapBoard } from "@/features/vault/roadmap-board";
@@ -36,24 +37,22 @@ export default function VaultPage() {
   const totalPoints = rewards.data?.balances.reduce((acc, b) => acc + b.balance, 0) ?? 0;
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-6 px-4 pt-6 pb-6 md:px-[30px]">
+    <PageShell>
       <div className="space-y-4">
-        <div className="sticky top-2 z-20 mb-6 flex flex-col gap-y-3 rounded-2xl bg-gradient-to-r from-gradient-from/15 to-gradient-to/15 px-4 py-4 shadow-sm backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-y-0">
-          <div>
-            <h1 className="text-2xl font-semibold text-accent">Góc bí mật</h1>
-            <p className="text-muted-foreground text-sm mt-0.5">Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn.</p>
-          </div>
-        </div>
+        <PageHeader
+          title="Góc bí mật"
+          subtitle="Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn."
+        />
 
         {/* Summary Stats — 2 cols on mobile, 4 on md+ */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button
             type="button"
             onClick={() => setTab("roadmap")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left transition-colors", tab === "roadmap" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left short:p-3 transition-colors", tab === "roadmap" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
           >
-            <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
-              <Target className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Kế hoạch</span>
+            <div className="text-muted-foreground mb-1.5 flex items-start gap-1.5 text-xs font-medium">
+              <Target className="h-3.5 w-3.5 shrink-0" /> <span className="leading-tight">Kế hoạch</span>
             </div>
             <p className="text-xl font-bold tracking-tight">
               {donePlans} <span className="text-muted-foreground text-sm font-medium">/ {totalPlans}</span>
@@ -63,10 +62,10 @@ export default function VaultPage() {
           <button
             type="button"
             onClick={() => setTab("wishlist")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left transition-colors", tab === "wishlist" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left short:p-3 transition-colors", tab === "wishlist" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
           >
-            <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
-              <Gift className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Wishlist</span>
+            <div className="text-muted-foreground mb-1.5 flex items-start gap-1.5 text-xs font-medium">
+              <Gift className="h-3.5 w-3.5 shrink-0" /> <span className="leading-tight">Wishlist</span>
             </div>
             <p className="text-xl font-bold tracking-tight">
               {boughtWishlist} <span className="text-muted-foreground text-sm font-medium">/ {totalWishlist}</span>
@@ -76,10 +75,10 @@ export default function VaultPage() {
           <button
             type="button"
             onClick={() => setTab("rewards")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left transition-colors", tab === "rewards" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left short:p-3 transition-colors", tab === "rewards" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
           >
-            <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
-              <Coins className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Tổng điểm</span>
+            <div className="text-muted-foreground mb-1.5 flex items-start gap-1.5 text-xs font-medium">
+              <Coins className="h-3.5 w-3.5 shrink-0" /> <span className="leading-tight">Tổng điểm</span>
             </div>
             <p className="text-accent text-xl font-bold tracking-tight">
               {totalPoints}đ
@@ -89,10 +88,10 @@ export default function VaultPage() {
           <button
             type="button"
             onClick={() => setTab("capsules")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left transition-colors", tab === "capsules" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left short:p-3 transition-colors", tab === "capsules" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
           >
-            <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
-              <Hourglass className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Hộp thời gian</span>
+            <div className="text-muted-foreground mb-1.5 flex items-start gap-1.5 text-xs font-medium">
+              <Hourglass className="mt-px h-3.5 w-3.5 shrink-0" /> <span className="leading-tight">Hộp thời gian</span>
             </div>
             <p className="text-xl font-bold tracking-tight">
               Bí mật
@@ -123,6 +122,6 @@ export default function VaultPage() {
           </motion.div>
         </AnimatePresence>
       </div>
-    </div>
+    </PageShell>
   );
 }

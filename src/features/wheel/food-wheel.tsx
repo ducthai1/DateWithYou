@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PageHeader } from "@/components/layout/page-shell";
 import { motion, useAnimationControls } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -100,22 +101,32 @@ export function FoodWheel() {
       : "var(--muted)";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-6 pb-8 md:px-[30px]">
-      <div className="sticky top-2 z-20 mb-6 w-full rounded-2xl bg-gradient-to-r from-gradient-from/15 to-gradient-to/15 px-4 py-4 shadow-sm backdrop-blur-md text-center">
-        <h1 className="text-2xl font-semibold text-accent">Hôm nay ăn gì?</h1>
-      </div>
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-6 pb-8 md:px-[30px] short:gap-3 short:pt-3">
+      <PageHeader title="Hôm nay ăn gì?" className="w-full" />
+
+      {/*
+        Controls beside the wheel once there is room, stacked below that.
+
+        Everything used to be one centred column capped at max-w-md, so on a
+        1440px screen the page was a narrow ribbon with two empty thirds either
+        side — and the same stack is what pushed the wheel off the bottom when
+        the window got short. Side by side spends the width that exists and
+        halves the height the page needs.
+      */}
+      <div className="grid w-full items-center gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10 short:gap-4">
+      <div className="flex w-full flex-col gap-4 justify-self-center lg:justify-self-end">
 
       {/* Source tabs + helper */}
-      <div className="flex w-full max-w-xs sm:max-w-md flex-col items-center gap-2 text-center">
+      <div className="flex w-full max-w-xs sm:max-w-md flex-col items-center gap-2 text-center lg:mx-0 lg:max-w-none lg:items-stretch lg:text-left">
         <Tabs tabs={SOURCE_TABS} value={source} onChange={setSource} className="w-full" />
-        <p className="text-muted-foreground text-xs sm:text-sm">
+        <p className="text-muted-foreground text-xs sm:text-sm short:hidden">
           Chọn nguồn để quay: quán đã lưu hoặc công thức tự nấu.
         </p>
       </div>
 
       {/* Category filter — only for places */}
       {source === "place" && (
-        <div className="flex w-full max-w-xs sm:max-w-md flex-col gap-1">
+        <div className="flex w-full max-w-xs sm:max-w-md flex-col gap-1 lg:max-w-none">
           <label className="text-muted-foreground text-xs sm:text-sm font-medium">
             Lọc theo danh mục (chỉ cho Quán xá)
           </label>
@@ -131,7 +142,17 @@ export function FoodWheel() {
         </div>
       )}
 
-      <div className="relative h-64 w-64 sm:h-80 sm:w-80 md:h-[400px] md:w-[400px]">
+      </div>
+
+      <div className="flex flex-col items-center gap-6 short:gap-4">
+      {/*
+        Sized against both axes rather than width breakpoints. At 960x600 — a
+        MacBook at 150% zoom — the md: rule gave it a flat 400px while only
+        ~420px of height remained, so the wheel and its spin button fell off
+        the bottom of the screen. min() picks whichever limit binds: the 400px
+        cap, the width on a narrow phone, or the height when zoomed in.
+      */}
+      <div className="relative h-[min(400px,70vw,48vh)] w-[min(400px,70vw,48vh)]">
         {/* Pointer (fixed, above the spinning wheel). */}
         <div className="border-t-accent absolute top-0 left-1/2 z-20 h-0 w-0 -translate-x-1/2 border-x-[11px] border-t-[18px] border-x-transparent drop-shadow" />
 
@@ -205,6 +226,8 @@ export function FoodWheel() {
           {spinning ? "Đang quay…" : "Quay!"}
         </Button>
       )}
+      </div>
+      </div>
 
       <Modal open={!!winner} onClose={() => setWinner(null)}>
         <ModalHeader title="Tụi mình đi…" onClose={() => setWinner(null)} />

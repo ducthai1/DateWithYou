@@ -1,6 +1,21 @@
 @import "tailwindcss";
 
 /*
+ * Height-aware variants.
+ *
+ * Browser zoom shrinks the viewport in both directions: a 1440x900 MacBook at
+ * 150% is a 960x600 page. Everything here was tuned against ~900px of height,
+ * so at 600px the page banner, the tab strip and the section gaps ate two
+ * thirds of the screen before any content appeared. Width breakpoints cannot
+ * see that — 960px wide still reads as "desktop".
+ *
+ *   short   — 150% zoom on a 13" MacBook, and most laptops in a docked window
+ *   shorter — 175-200% zoom, and phone landscape
+ */
+@custom-variant short (@media (max-height: 760px));
+@custom-variant shorter (@media (max-height: 620px));
+
+/*
  * Design token foundation for Vivu No Plan.
  *
  * Organisation:

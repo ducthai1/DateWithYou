@@ -92,7 +92,12 @@ export const CalendarCell = memo(function CalendarCell({
       className={cn(
         // Mobile: soft borderless tile with tap feedback. Desktop (md+): the
         // original bordered square with hover + sticky-note layout is restored.
+        // aspect-square ties a cell's height to its width, which is right on a
+        // phone and wrong on a wide-but-short window: at 960x600 — a MacBook at
+        // 150% zoom — seven columns made every cell ~94px tall and only four
+        // weeks of the month fit on screen. Short windows cap the height instead.
         "relative flex aspect-square flex-col items-start justify-start overflow-hidden p-1 md:p-3 text-sm transition-all touch-manipulation",
+        "short:aspect-auto short:min-h-[3.25rem] short:p-1.5 shorter:min-h-[2.5rem]",
         "rounded-2xl md:rounded-xl md:transition-colors",
         cell.inMonth && !isToday && "md:border-[3px]",
         cell.inMonth && !isToday && !hasSpecial && "bg-card shadow-sm active:scale-[0.96] md:shadow-none md:border-border md:hover:border-accent md:active:scale-100",

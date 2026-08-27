@@ -162,7 +162,7 @@ export function SpaceSettings() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 pt-12 pb-12 md:px-[30px]">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 pt-12 pb-12 md:px-[30px] short:gap-4 short:pt-5 short:pb-6">
       <h1 className="text-2xl font-semibold">Cài đặt</h1>
 
       <h2 className="text-lg font-semibold mt-2">Hồ sơ</h2>

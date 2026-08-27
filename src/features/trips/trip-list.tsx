@@ -14,7 +14,7 @@ export function TripList() {
   const [formOpen, setFormOpen] = useState(false);
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px] md:py-8">
+    <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px] md:py-8 short:py-4">
       <div className="mb-6 flex items-center justify-between rounded-2xl bg-gradient-to-r from-gradient-from/15 to-gradient-to/15 p-4 -mx-1">
         <h1 className="flex items-center gap-2 font-serif text-2xl font-semibold text-accent">
           <Plane className="h-7 w-7 text-accent" />

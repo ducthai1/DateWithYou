@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { ScrollStrip } from "@/components/ui/scroll-strip";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -71,36 +72,34 @@ export function LibraryPage() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 pb-6 md:px-[30px]">
-      <div className="sticky top-2 z-20 mb-6 flex flex-col gap-y-3 rounded-2xl bg-gradient-to-r from-gradient-from/15 to-gradient-to/15 px-4 py-4 shadow-sm backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-y-0">
-        <div>
-          <h1 className="text-2xl font-semibold text-accent">Bộ sưu tập</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau.
-          </p>
-        </div>
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Tìm công thức, video, trò chơi…"
-            aria-label="Tìm trong bộ sưu tập"
-            className="border-border bg-card focus:border-accent focus:ring-ring/30 h-10 w-full rounded-xl border pl-9 pr-3 text-sm outline-none focus:ring-2"
-          />
-        </div>
-        <div className="flex gap-2 sm:shrink-0">
-          <a
-            href="/wheel"
-            aria-label="Vòng quay chọn món"
-            title="Vòng quay chọn món"
-            className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm"
-          >
-            <Disc3 className="h-5 w-5 text-accent" />
-          </a>
-          <Button className="flex-1 sm:flex-none" onClick={() => setAdding(true)}>+ Thêm</Button>
-        </div>
-      </div>
+    <PageShell className="space-y-4">
+      <PageHeader
+        title="Bộ sưu tập"
+        subtitle="Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau."
+        actions={
+          <>
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Tìm công thức, video, trò chơi…"
+                aria-label="Tìm trong bộ sưu tập"
+                className="border-border bg-card focus:border-accent focus:ring-ring/30 h-10 w-full rounded-xl border pl-9 pr-3 text-sm outline-none focus:ring-2 short:h-9"
+              />
+            </div>
+            <a
+              href="/wheel"
+              aria-label="Vòng quay chọn món"
+              title="Vòng quay chọn món"
+              className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm short:h-9 short:w-9"
+            >
+              <Disc3 className="h-5 w-5 text-accent" />
+            </a>
+            <Button onClick={() => setAdding(true)}>+ Thêm</Button>
+          </>
+        }
+      />
 
       <ScrollStrip>
         <Tabs tabs={TABS} value={kind} onChange={handleKindChange} className="w-max sm:w-full" />
@@ -192,6 +191,6 @@ export function LibraryPage() {
       )}
 
       {recipe && <RecipeDetail item={recipe} onClose={() => setRecipe(null)} />}
-    </div>
+    </PageShell>
   );
 }

@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
  * ended at the screen edge and looked broken. The fade is drawn over the page
  * background, so when the row does fit it is invisible and costs nothing.
  *
- * `-mx-4 px-4` lets the row bleed to the screen edges while its first and last
- * items keep the page's gutter, which is how horizontal rails are normally
- * built; from md up it stops being a rail at all.
+ * The bleed cancels `--page-gutter`, the padding PageShell actually applied,
+ * rather than a hard-coded 4. Assuming the gutter is what broke it before: at
+ * 200% zoom the shell narrowed to 12px, the strip still pulled 16px, and the
+ * page gained a 4px horizontal scrollbar. From md up it stops being a rail.
  */
 export function ScrollStrip({
   children,
@@ -20,8 +21,10 @@ export function ScrollStrip({
   className?: string;
 }) {
   return (
-    <div className={cn("relative -mx-4 md:mx-0", className)}>
-      <div className="overflow-x-auto px-4 pb-0.5 md:overflow-visible md:px-0">
+    <div
+      className={cn("relative -mx-[var(--page-gutter,1rem)] md:mx-0", className)}
+    >
+      <div className="overflow-x-auto px-[var(--page-gutter,1rem)] pb-0.5 md:overflow-visible md:px-0">
         {children}
       </div>
       <div
