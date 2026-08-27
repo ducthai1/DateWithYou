@@ -77,6 +77,15 @@ export function Select({
       onSearch?.("");
       return;
     }
+    /*
+     * Only autofocus with a real keyboard. On a touch device this would throw
+     * the on-screen keyboard over the options the person just opened the menu
+     * to look at — they can tap the field when they want to type.
+     */
+    const isTouch =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(hover: none) and (pointer: coarse)").matches;
+    if (isTouch) return;
     // Focus after the menu has been positioned, or the page jumps.
     const id = requestAnimationFrame(() => searchRef.current?.focus());
     return () => cancelAnimationFrame(id);
@@ -120,11 +129,26 @@ export function Select({
       }
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    // The menu is position:fixed at coordinates captured on open; if the page
-    // or an inner column scrolls it would detach from the trigger, so close.
+    /*
+     * The menu is position:fixed at coordinates captured on open, so a page or
+     * column scroll would detach it from the trigger — hence closing on scroll.
+     *
+     * Resize is different on a phone, and closing on it made the searchable
+     * menu unusable there: opening the on-screen keyboard resizes the visual
+     * viewport, which fired resize, which shut the menu. Tap the field, the
+     * keyboard rises, the menu vanishes. Every time.
+     *
+     * A keyboard changes the viewport height and leaves the width alone, while
+     * the resizes this guard is actually for — rotation, a desktop window being
+     * dragged — change the width. So only a width change closes it.
+     */
+    const widthAtOpen = window.innerWidth;
     const onScrollResize = (e: Event) => {
       // Ignore scroll events originating from inside the dropdown menu itself
       if (e.type === "scroll" && menuRef.current?.contains(e.target as Node)) {
+        return;
+      }
+      if (e.type === "resize" && window.innerWidth === widthAtOpen) {
         return;
       }
       setOpen(false);

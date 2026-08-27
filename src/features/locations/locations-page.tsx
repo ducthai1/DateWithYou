@@ -1323,6 +1323,32 @@ export function LocationsPage() {
                 </button>
               ) : null}
             </div>
+
+            {/* Address lookup, shown whenever there is something to look up.
+                It used to live only in the empty state, which meant it appeared
+                only when nothing matched — so anyone with saved places could
+                never reach it, and the feature was effectively invisible. The
+                two searches answer different questions and both are worth
+                offering at once: "which of my pins is this" and "where is this
+                place". */}
+            {debouncedQuery.length > 1 ? (
+              <button
+                type="button"
+                onClick={handleGeocodeSearch}
+                disabled={isGeocoding}
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--accent)]/30 px-3 py-2 text-[13px] font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/10 disabled:opacity-50"
+              >
+                <MapPinned className="h-3.5 w-3.5" />
+                {isGeocoding
+                  ? "Đang tra địa chỉ…"
+                  : `Chưa lưu? Tra “${debouncedQuery}” trên bản đồ`}
+              </button>
+            ) : null}
+            {geocodeMiss ? (
+              <p className="text-muted-foreground mt-1.5 text-center text-xs">
+                Không tra được địa chỉ này. Thử thêm tên đường hoặc tên quận.
+              </p>
+            ) : null}
           </div>
           <div className="order-2 grid grid-cols-2 md:grid-cols-3 gap-2 lg:order-none">
             <Select
@@ -1510,19 +1536,10 @@ export function LocationsPage() {
               title={debouncedQuery ? `Không có chỗ nào khớp “${debouncedQuery}”` : "Chưa có địa điểm nào"}
               subtitle={
                 debouncedQuery
-                  ? geocodeMiss
-                    ? "Không tra được địa chỉ này. Thử gõ kèm tên đường, hoặc thêm tay rồi chạm lên bản đồ."
-                    : "Chưa lưu thì tra trên bản đồ xem nó ở đâu — bạn xem vị trí rồi mới quyết có lưu hay không."
+                  ? "Dùng nút tra địa chỉ ở trên để xem chỗ này nằm đâu, rồi quyết có lưu hay không."
                   : "Nhấn + Thêm (hoặc chạm lên bản đồ) để lưu quán, café, chỗ hay hẹn nhau…"
               }
-              action={
-                debouncedQuery
-                  ? {
-                      label: isGeocoding ? "Đang tra…" : `Tìm “${debouncedQuery}” trên bản đồ`,
-                      onClick: handleGeocodeSearch,
-                    }
-                  : { label: "+ Thêm địa điểm", onClick: () => { setFormInitial({}); setFormOpen(true); } }
-              }
+              action={{ label: "+ Thêm địa điểm", onClick: () => { setFormInitial({}); setFormOpen(true); } }}
             />
           ) : (
             <StaggerList className="grid gap-3 sm:grid-cols-2">
