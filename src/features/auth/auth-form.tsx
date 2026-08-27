@@ -189,7 +189,7 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
             <div className="flex justify-end">
               <Link
                 href="/forgot-password"
-                className="text-xs font-medium text-muted-foreground hover:text-accent transition-colors"
+                className="-my-1.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-accent transition-colors"
               >
                 Quên mật khẩu?
               </Link>

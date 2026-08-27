@@ -1612,9 +1612,19 @@ export function LocationsPage() {
                         <Icon className="h-5 w-5" />
                       </span>
                       <div className="min-w-0 flex-1">
-                        {/* Name + toggle: on mobile stack vertically so name has full width;
-                            on sm+ sit side-by-side as before. */}
-                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                        {/*
+                          Name above, toggle below — at every width, not just on
+                          mobile.
+
+                          These cards sit in a two-column grid, so the card is
+                          narrow on a desktop too. Putting a fixed 96px control
+                          beside the title left a real place name too little
+                          room: it could not shrink, so the row pushed the page
+                          16px wider than the screen at 1280. Letting the title
+                          shrink instead was worse — it collapsed to one word
+                          per line. The title simply needs the full width.
+                        */}
+                        <div className="flex flex-col gap-1">
                           <p className="font-medium leading-tight">{l.name}</p>
                           <button
                             onClick={() => toggle.mutate({ id: l.id })}

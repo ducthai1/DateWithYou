@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +38,32 @@ export function Tabs<T extends string>({
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const activeIndex = tabs.findIndex((t) => t.key === value);
 
+  /*
+   * The moving pill is measured off the real button rather than computed as
+   * `100 / tabs.length`.
+   *
+   * That formula only holds while every tab is exactly the same width, and
+   * holding them equal is what broke the strip: the vault pinned itself to
+   * min-w-[400px] so four tabs got 100px each, which is narrower than "Phiếu
+   * bé ngoan" — so the labels wrapped onto two lines and the last tab was cut
+   * off the screen. Measuring instead lets tabs take the width their words
+   * need, and the indicator still lands on them.
+   */
+  const [ind, setInd] = useState<{ left: number; width: number } | null>(null);
+  const useIsoLayout = typeof window === "undefined" ? useEffect : useLayoutEffect;
+  useIsoLayout(() => {
+    const measure = () => {
+      const el = buttonRefs.current[activeIndex];
+      if (el) setInd({ left: el.offsetLeft, width: el.offsetWidth });
+    };
+    measure();
+    // Labels reflow when the strip resizes or a webfont finally lands.
+    const ro = new ResizeObserver(measure);
+    const strip = buttonRefs.current[activeIndex]?.parentElement;
+    if (strip) ro.observe(strip);
+    return () => ro.disconnect();
+  }, [activeIndex, tabs.length]);
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLButtonElement>, index: number) {
     const last = tabs.length - 1;
     let next: number | null = null;
@@ -64,14 +90,11 @@ export function Tabs<T extends string>({
         className,
       )}
     >
-      <div className="absolute inset-y-1 left-1 right-1 pointer-events-none" aria-hidden="true">
+      <div className="absolute inset-y-1 left-0 right-0 pointer-events-none" aria-hidden="true">
         <motion.div
           className="h-full rounded-lg bg-accent shadow-md"
           initial={false}
-          animate={{
-            width: `${100 / tabs.length}%`,
-            x: `${activeIndex * 100}%`,
-          }}
+          animate={ind ? { width: ind.width, x: ind.left } : { width: 0, x: 0 }}
           transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
         />
       </div>
@@ -89,7 +112,9 @@ export function Tabs<T extends string>({
           onClick={() => onChange(t.key)}
           onKeyDown={(e) => handleKeyDown(e, i)}
           className={cn(
-            "relative flex-1 cursor-pointer rounded-lg py-2 transition-colors z-10 font-medium",
+            // whitespace-nowrap: a tab label is a name, not a paragraph. Wrapping
+            // one onto two lines makes the whole strip look broken.
+            "relative flex-1 cursor-pointer whitespace-nowrap rounded-lg px-3 py-2 transition-colors z-10 font-medium",
             // outline-none alone left keyboard users with no focus indicator on
             // the vault, library, trip-detail and wheel screens — the ring is
             // the replacement, drawn with theme tokens so it follows the accent.

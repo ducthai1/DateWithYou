@@ -51,7 +51,7 @@ export function FeaturePageShell({ page }: { page: FeaturePage }) {
         <Reveal>
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-sm font-light text-[#8a7c6f] transition-colors hover:text-[#a8542f]"
+            className="-my-2 inline-flex items-center gap-1.5 py-2 text-sm font-light text-[#8a7c6f] transition-colors hover:text-[#a8542f]"
           >
             <span aria-hidden="true">←</span> {SITE_NAME}
           </Link>
@@ -152,7 +152,7 @@ export function FeaturePageShell({ page }: { page: FeaturePage }) {
               </h2>
               <Link
                 href="/tinh-nang"
-                className="text-[13px] font-medium text-[#a8542f] transition-opacity hover:opacity-70"
+                className="-my-2 py-2 text-[13px] font-medium text-[#a8542f] transition-opacity hover:opacity-70"
               >
                 Tất cả tính năng <span aria-hidden="true">→</span>
               </Link>

@@ -172,7 +172,8 @@ export function PlaceSearchBox({
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Tìm quán đã lưu, hoặc tìm chỗ mới…"
+          // Short enough to survive a 390px screen — the old one was cut mid-word.
+          placeholder="Tìm quán đã lưu hoặc chỗ mới…"
           aria-label="Tìm địa điểm"
           role="combobox"
           aria-expanded={showList}

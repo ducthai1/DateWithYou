@@ -98,9 +98,16 @@ export function MapSheet({
   return (
     <div
       className={cn(
-        "fixed inset-x-0 bottom-0 z-30 flex flex-col rounded-t-3xl border-t border-border bg-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)]",
+        // Sits ON TOP of the bottom nav, not behind it. Anchored at bottom-0 the last
+        // rows of the list were permanently under the nav — scrolling the sheet to
+        // its end still left them covered. Reserving the space inside the sheet
+        // instead only shrank the collapsed state to a useless sliver, so the whole
+        // sheet moves up and its stops are measured against what you can actually see.
+        // 4.75rem, not 4rem: the nav's centre action sticks up past the bar itself,
+        // and at 4rem it sat on top of the sheet's first row.
+        "fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-30 flex flex-col rounded-t-3xl border-t border-border bg-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)]",
         // Desktop: not a sheet at all. `!` beats the inline height below.
-        "lg:!static lg:!h-auto lg:!transform-none lg:!transition-none lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none lg:!pb-0",
+        "lg:!static lg:!bottom-auto lg:!h-auto lg:!transform-none lg:!transition-none lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none lg:!pb-0",
         className,
       )}
       style={{
@@ -109,8 +116,9 @@ export function MapSheet({
         // over. Transitioning during a drag makes it feel laggy.
         transform: dragOffset ? `translateY(${Math.max(0, dragOffset)}px)` : undefined,
         transition: dragOffset ? "none" : "height 260ms cubic-bezier(0.16,1,0.3,1), transform 260ms cubic-bezier(0.16,1,0.3,1)",
-        // Clear the bottom navigation bar.
-        paddingBottom: "calc(env(safe-area-inset-bottom, 0px))",
+        // No bottom inset needed any more: the sheet is positioned above the
+        // nav rather than behind it (see the class list).
+        paddingBottom: 0,
       }}
     >
       {/* Handle. It is a real button so it works without a pointer gesture and

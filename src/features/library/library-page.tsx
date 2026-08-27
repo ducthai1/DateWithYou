@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ScrollStrip } from "@/components/ui/scroll-strip";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
@@ -101,9 +102,9 @@ export function LibraryPage() {
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-        <Tabs tabs={TABS} value={kind} onChange={handleKindChange} className="min-w-max sm:min-w-0" />
-      </div>
+      <ScrollStrip>
+        <Tabs tabs={TABS} value={kind} onChange={handleKindChange} className="w-max sm:w-full" />
+      </ScrollStrip>
       {!isGame && !list.isLoading && allItems.length > 0 && (allTags.length > 0 || allProviders.length > 0) && (
         <div className="bg-card border-border flex flex-row flex-wrap items-center gap-2 rounded-xl border p-2 shadow-sm sm:gap-3 sm:justify-between animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2 px-1 text-sm font-medium text-muted-foreground sm:px-2">

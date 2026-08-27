@@ -31,10 +31,15 @@ export function AppHeader() {
         href="/map"
         className="flex min-w-0 items-center gap-2 overflow-hidden text-lg font-semibold"
       >
-        <BrandMark className="h-10 w-40 shrink-0" />
+        {/* Allowed to shrink, which is the opposite of what it used to do.
+            Pinned at w-40 and shrink-0, the wordmark did not fit next to four
+            40px actions on a 320px phone and was cut by 61px — 38% of it gone,
+            on every screen in the app. The logo is object-contain, so a
+            narrower box scales it down whole instead of slicing it; flex takes
+            exactly the width it must and leaves it at 160px everywhere else. */}
+        <BrandMark className="h-10 w-40 min-w-0" />
       </Link>
-      {/* shrink-0: four 40px targets must stay tappable — the wordmark clips
-          before any of them is allowed to shrink. */}
+      {/* shrink-0: four 40px targets must stay tappable. */}
       <div className="flex shrink-0 items-center gap-1">
         <SyncButton mode="mobile" />
         <ActivityBell />

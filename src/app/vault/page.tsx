@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ScrollStrip } from "@/components/ui/scroll-strip";
 import { motion, AnimatePresence } from "framer-motion";
 import { RoadmapBoard } from "@/features/vault/roadmap-board";
 import { WishlistGrid } from "@/features/vault/wishlist-grid";
@@ -100,10 +101,11 @@ export default function VaultPage() {
         </div>
       </div>
 
-      {/* Tab strip: scrollable on mobile so all 4 tabs stay tappable at 360px */}
-      <div className="overflow-x-auto pb-0.5 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible">
-        <Tabs tabs={TABS} value={tab} onChange={setTab} className="min-w-[400px] md:min-w-0" />
-      </div>
+      {/* Tab strip: scrollable on mobile so all 4 tabs stay tappable at 360px.
+          w-max lets it be as wide as its labels need instead of squeezing them. */}
+      <ScrollStrip>
+        <Tabs tabs={TABS} value={tab} onChange={setTab} className="w-max md:w-full" />
+      </ScrollStrip>
       
       <div className="relative pt-2">
         <AnimatePresence mode="popLayout" initial={false}>

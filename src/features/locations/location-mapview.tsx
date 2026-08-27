@@ -238,6 +238,9 @@ function LocationMapViewImpl({
   // Frame all legs once when a multi-stop trip is first drawn. Keyed on leg
   // count (not array identity) so re-routing a single leg never re-frames the
   // map and yanks the view away while the user is riding.
+  /** Past this many pins, labels stop competing for the same few pixels. */
+  const crowded = pins.length > 8;
+
   const legCount = legGeometries?.length ?? 0;
   useEffect(() => {
     if (!legGeometries?.length) return;
@@ -374,10 +377,25 @@ function LocationMapViewImpl({
               }}
             >
               <div className="group relative flex cursor-pointer flex-col items-center">
-                {/* Name Label - always visible but subtle, pops on hover/select */}
+                {/*
+                  Name label, capped and truncated.
+
+                  It used to be whitespace-nowrap with no width limit, so a real
+                  place name — "Quán Cà Phê Sân Vườn Hoa Giấy Sài Gòn Xưa Chi
+                  Nhánh Nguyễn Thị Minh Khai Quận Ba" — became a pill wider than
+                  a phone. With a dozen saved places the labels stacked over each
+                  other and ran off both edges; the map was unreadable.
+
+                  On a crowded map the labels also step back and appear on
+                  demand, which is what pin-dense maps do: names for the pin you
+                  are pointing at, dots for the rest. pointer-events-none so an
+                  overlapping label can never swallow a tap meant for a dot.
+                */}
                 <span
                   className={cn(
-                    "mb-1 whitespace-nowrap rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-200",
+                    "pointer-events-none mb-1 truncate rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-200",
+                    selectedId === p.id ? "max-w-[11rem]" : "max-w-[7.5rem]",
+                    crowded && selectedId !== p.id && "opacity-0 group-hover:opacity-100",
                     selectedId !== p.id && "group-hover:scale-110 group-hover:text-black",
                     selectedId === p.id ? "scale-110 text-black z-10 ring-1 ring-border" : "text-muted-foreground scale-100"
                   )}

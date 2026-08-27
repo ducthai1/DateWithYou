@@ -290,8 +290,13 @@ export function ActivityFeed() {
                               <span className="min-w-0 flex-1 truncate text-sm">
                                 {item.title}
                               </span>
+                              {/* Allowed to shrink and truncate. As shrink-0 a
+                                  full date range ("06/09/2026 - 16/09/2026")
+                                  could not yield, so once the title had
+                                  truncated to nothing the row still pushed 14px
+                                  past the screen at 320px. */}
                               {item.subtitle && (
-                                <span className="text-muted-foreground shrink-0 text-xs">
+                                <span className="text-muted-foreground min-w-0 max-w-[52%] truncate text-xs">
                                   {item.subtitle}
                                 </span>
                               )}
