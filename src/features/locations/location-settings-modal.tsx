@@ -80,6 +80,7 @@ export function LocationSettingsModal({
               <h3 className="font-medium text-foreground">Loại danh mục</h3>
               <div className="flex gap-2 w-full">
                 <input
+                  aria-label="Tên danh mục mới"
                   type="text"
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
@@ -114,6 +115,7 @@ export function LocationSettingsModal({
               <h3 className="font-medium text-foreground">Khu vực</h3>
               <div className="flex gap-2 w-full">
                 <input
+                  aria-label="Tên khu vực mới"
                   type="text"
                   value={newDistrict}
                   onChange={(e) => setNewDistrict(e.target.value)}

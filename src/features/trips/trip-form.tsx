@@ -97,6 +97,7 @@ export function TripForm({
         <div>
           <label className="mb-1 block text-sm font-medium text-muted-foreground">Tên chuyến đi</label>
           <input
+            aria-label="Tên chuyến đi"
             required
             autoFocus
             maxLength={100}
@@ -111,6 +112,7 @@ export function TripForm({
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">Từ ngày</label>
             <input
+              aria-label="Ngày bắt đầu"
               required
               type="date"
               value={startDate}
@@ -121,6 +123,7 @@ export function TripForm({
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">Đến ngày</label>
             <input
+              aria-label="Ngày kết thúc"
               required
               type="date"
               value={endDate}
@@ -134,6 +137,7 @@ export function TripForm({
         <div>
           <label className="mb-1 block text-sm font-medium text-muted-foreground">Ngân sách dự kiến (VNĐ)</label>
           <input
+            aria-label="Ngân sách dự kiến"
             type="number"
             min={0}
             value={budget}
@@ -159,6 +163,7 @@ export function TripForm({
         <div>
           <label className="mb-1 block text-sm font-medium text-muted-foreground">Ghi chú thêm</label>
           <textarea
+            aria-label="Mô tả chuyến đi"
             rows={3}
             maxLength={1000}
             value={description}

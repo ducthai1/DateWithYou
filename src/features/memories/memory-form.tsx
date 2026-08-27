@@ -181,6 +181,7 @@ export function MemoryForm({
           <div className="relative">
             <Link2 className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
             <input
+              aria-label="Dán link nhạc hoặc video"
               value={linkInput}
               onChange={(e) => setLinkInput(e.target.value)}
               onPaste={onPaste}
@@ -262,6 +263,7 @@ export function MemoryForm({
             </p>
           </div>
           <input
+            aria-label="Chọn ảnh từ máy"
             type="file"
             accept="image/*"
             multiple

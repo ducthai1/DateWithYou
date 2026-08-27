@@ -98,6 +98,7 @@ export function TripChecklist({ trip }: { trip: any }) {
       {/* Add New */}
       <form onSubmit={handleAdd} className="relative mt-2">
         <input
+          aria-label="Thêm mục cần chuẩn bị"
           value={newItem}
           onChange={(e) => setNewItem(e.target.value)}
           placeholder="Thêm mục cần chuẩn bị..."

@@ -72,6 +72,7 @@ export function BottomSheet({
               if (info.offset.y > 120 || info.velocity.y > 600) onClose();
             }}
             onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
             className={cn(
               "bg-card border-border relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border-t shadow-2xl",
               "outline-none",

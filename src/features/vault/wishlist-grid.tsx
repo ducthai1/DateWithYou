@@ -272,7 +272,8 @@ export function WishlistGrid() {
                 </p>
               )}
 
-              <div className="mt-auto flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between" onClick={(e) => e.stopPropagation()}>
+              <div className="mt-auto flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between" onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <button
                     className={cn(

@@ -109,6 +109,7 @@ import { LocationForm, type LocationFormValues } from "./location-form";
 import { useToast } from "@/components/ui/toast";
 import { MeetingFlare } from "./meeting-flare";
 import { MapSheet } from "./map-sheet";
+import { useEscapeKey } from "@/hooks/use-escape-key";
 
 
 export function LocationsPage() {
@@ -281,6 +282,11 @@ export function LocationsPage() {
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeMiss, setGeocodeMiss] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Both of these overlays are hand-rolled rather than built on <Modal>, so
+  // they inherit none of its keyboard behaviour. Escape at minimum.
+  useEscapeKey(showEndConfirm, () => setShowEndConfirm(false));
+  useEscapeKey(showMidpointModal, () => setShowMidpointModal(false));
+  useEscapeKey(Boolean(navInvites.endedTrip), () => navInvites.clearEndedTrip());
   /** Shown on the collapsed filter button so an active filter is never hidden. */
   const activeFilterCount =
     (district ? 1 : 0) + (category ? 1 : 0) + (status ? 1 : 0);
@@ -1843,11 +1849,13 @@ export function LocationsPage() {
       {showEndConfirm && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          role="presentation"
           onClick={() => setShowEndConfirm(false)}
         >
           <div
             className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-foreground">Kết thúc chuyến đi?</h3>
             <p className="mt-1.5 text-sm text-muted-foreground">
@@ -1873,11 +1881,13 @@ export function LocationsPage() {
         (nav.isNavigating || pausedTrip || legGeometries || routeGeometry) && (
           <div
             className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+            role="presentation"
             onClick={() => navInvites.clearEndedTrip()}
           >
             <div
               className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-semibold text-foreground">
                 Người kia đã kết thúc chuyến đi 💔
@@ -1941,6 +1951,7 @@ export function LocationsPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+            role="presentation"
             onClick={() => setShowMidpointModal(false)}
           >
             <motion.div
@@ -1949,6 +1960,7 @@ export function LocationsPage() {
               exit={{ scale: 0.95, y: 20, opacity: 0 }}
               className="bg-card w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="bg-[var(--accent)] p-6 text-white text-center relative">
@@ -2080,6 +2092,8 @@ export function LocationsPage() {
                     {midpointRecommendations.map((_, i) => (
                       <button
                         key={i}
+                        type="button"
+                        aria-label={`Xem gợi ý ${i + 1}`}
                         className={cn("h-1.5 rounded-full transition-all duration-300", i === midpointIndex ? "w-6 bg-rose-400" : "w-1.5 bg-muted-foreground/30")}
                         onClick={() => setMidpointIndex(i)}
                       />
@@ -2108,6 +2122,7 @@ export function LocationsPage() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-card rounded-2xl shadow-xl max-w-sm w-full flex flex-col max-h-[85vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
             >
               {/* Only the content scrolls; the action buttons stay pinned below. */}
               <div className="space-y-4 overflow-y-auto p-6 flex-1">

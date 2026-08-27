@@ -79,6 +79,7 @@ export function TagPicker({
       {adding && (
         <div className="bg-muted/50 flex flex-wrap items-center gap-2 rounded-xl p-2">
           <input
+            aria-label="Tên tag"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Tên tag"

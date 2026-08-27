@@ -219,7 +219,8 @@ export function MemoryTimeline() {
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-medium leading-snug">{m.title}</p>
                         {/* Stop click bubbling so deleting doesn't open the detail. */}
-                        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <div className="shrink-0" onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}>
                           <ConfirmButton idle="" className="text-xs" onConfirm={() => remove.mutate({ id: m.id })} />
                         </div>
                       </div>
@@ -254,7 +255,8 @@ export function MemoryTimeline() {
                     {embedCount > 0 && (
                       // Play inline on the card — stop clicks bubbling so playing
                       // a track/video doesn't also open the detail modal.
-                      <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}>
                         {(m.embeds as EmbedField[]).slice(0, 3).map((e: EmbedField) => (
                           <EmbedPlayer
                             key={e.url}
@@ -283,6 +285,7 @@ export function MemoryTimeline() {
                     <div
                       className="border-border mt-3 space-y-1 border-t pt-2"
                       onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
                     >
                       <ReactionBar
                         targetType="memory"

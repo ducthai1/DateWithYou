@@ -1,0 +1,83 @@
+# Vivu No Plan — quy ước khi sửa repo này
+
+## Accessibility là bắt buộc, không phải phần thêm
+
+Lý do có mục này: những thứ hỏng ở đây không phải chuyện tinh vi, mà là những
+cái cơ bản nhất, và chúng lọt qua vì **không ai kiểm tự động**.
+
+Ba ca thật đã xảy ra:
+
+- Ô tìm kiếm trên `/map` **không có `onKeyDown`**. Gõ địa chỉ xong bấm Enter —
+  phím mà ai cũng bấm — thì không có gì xảy ra. Không phải quên xử lý một
+  trường hợp hiếm, mà là quên đường đi thường gặp nhất.
+- Bốn thẻ chuyển tab trong Két là `<div onClick>`. Người dùng bàn phím
+  **không đổi tab được**, tức là cả một khu vực tính năng không tới được.
+- Ba overlay tự chế đóng bằng click ra ngoài và **không có một handler Escape
+  nào trong cả file**. Không có chuột thì không có đường ra.
+
+### Đã có kiểm tra tự động — đừng tắt nó
+
+`eslint.config.mjs` bật các rule `jsx-a11y` ở mức **error**, nên build đỏ nếu
+tái phạm:
+
+| Rule | Bắt cái gì |
+|---|---|
+| `alt-text` | `<img>` thiếu `alt` (trước đây bị **tắt tay**, đã bật lại) |
+| `click-events-have-key-events` | thẻ tĩnh có `onClick` mà không có phím |
+| `interactive-supports-focus` | thứ tương tác được mà không focus được |
+| `control-has-associated-label` | ô nhập không có tên đọc được |
+| `anchor-is-valid`, `aria-props`, `role-has-required-aria-props` | dùng sai ARIA |
+
+`no-static-element-interactions` **cố ý để `off`** — nó bắt cả những lớp bọc chỉ
+làm `stopPropagation`, vốn không phải điều khiển; gắn `role`/`tabIndex` vào đó
+chỉ tạo điểm dừng focus rỗng. Ca thật mà nó nhắm tới đã bị hai rule trên chặn.
+
+**Đã kiểm bằng cách cố tình vi phạm:** `<div onClick>` và `<img>` thiếu `alt`
+đều bị chặn. **Nút chỉ chứa icon `aria-hidden` thì KHÔNG bị bắt**, kể cả khi
+chỉnh `depth` — cái đó phải tự nhớ.
+
+### Những thứ linter không bắt được — phải tự nghĩ
+
+- **Nút chỉ có icon phải có `aria-label`.** Linter không bắt được ca này (đã
+  thử), nên nó hoàn toàn nằm ở người viết.
+- **`onKeyDown` phải đủ phím.** Nút thì `Enter` **và** `Space`. Ô nhập thì
+  `Enter` phải làm đúng hành động chính. Đừng chỉ bắt `Enter` rồi coi là xong.
+- **Mọi lớp phủ đóng được phải đóng được bằng `Escape`.** Dùng `<Modal>` hoặc
+  `<BottomSheet>` — chúng lo sẵn Escape, bẫy focus và khoá cuộn. Chỉ khi không
+  dùng được thì mới tới `useEscapeKey`, và nhớ nó **chỉ lo việc đóng**.
+- **Lớp bọc `stopPropagation` phải chặn cả phím.** Có `onClick={e =>
+  e.stopPropagation()}` thì phải có `onKeyDown` tương ứng, không thì bấm Enter
+  trên nút bên trong vẫn kích hoạt phần tử cha — đúng cái mà lớp bọc sinh ra để
+  ngăn.
+- **`placeholder` không phải nhãn.** Nó biến mất ngay khi người ta gõ. Ô nhập
+  cần `aria-label` hoặc `<label>` thật.
+- **Nền mờ của modal là trang trí** — `role="presentation"`, và đường ra bằng
+  bàn phím là Escape chứ không phải gắn handler lên tấm nền (không ai focus
+  được nó).
+- **Đừng tắt rule để build xanh.** Nếu một rule kêu ở chỗ nó sai, hãy tắt đúng
+  dòng đó kèm lý do, hoặc sửa cấu hình kèm comment giải thích — như mục
+  `no-static-element-interactions` ở trên.
+
+### Trước khi coi là xong
+
+```bash
+npx tsc --noEmit && npm run lint && npm run build
+```
+
+`npm run lint` phải ra **0 error, 0 warning**. Cảnh báo tồn tại lâu ngày sẽ dạy
+người ta bỏ qua cảnh báo, và rồi cái thật cũng bị bỏ qua.
+
+## Vài điều khác về repo này
+
+- **Route công khai phải thêm vào `MARKETING_ROUTES`**
+  (`src/components/marketing/feature-pages/slugs.ts`). Sitemap, kiểm tra robots
+  và danh sách loại-trừ-vỏ-app đều đọc từ đó. Quên thì khách từ Google bị đá
+  sang onboarding.
+- **`middleware.ts` đọc `PRIVATE_ROUTES`** trong `src/lib/site.ts`. Thêm route
+  riêng tư vào đó là được bảo vệ ở mọi nơi cùng lúc.
+- **Metadata cấp trang GHI ĐÈ `openGraph` của layout**, không gộp. Trường nào
+  layout đặt mà trang cần thì phải viết lại — đã mất `og:image` một lần và
+  `og:site_name` một lần vì chuyện này.
+- **Đừng nói app này chỉ dành cho các cặp đôi.** Bạn bè, anh chị em, người ở
+  cùng đều dùng. Một không gian hiện giới hạn **hai người** — nói thật điều đó,
+  đừng hứa nhóm đông.

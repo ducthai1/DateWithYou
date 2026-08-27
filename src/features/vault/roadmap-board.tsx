@@ -228,7 +228,8 @@ export function RoadmapBoard() {
                             {p.title}
                           </h4>
                         </div>
-                        <div className="text-muted-foreground cursor-grab hover:text-foreground shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <div className="text-muted-foreground cursor-grab hover:text-foreground shrink-0" onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}>
                           <GripVertical className="h-4 w-4" />
                         </div>
                       </div>
@@ -243,7 +244,8 @@ export function RoadmapBoard() {
                         <p className="text-muted-foreground text-[10px]" title={p.createdAt?.toString()}>
                           {p.createdAt ? formatDistanceToNow(p.createdAt, { locale: vi, addSuffix: true }) : ""}
                         </p>
-                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}>
                           <ConfirmButton
                             idle=""
                             confirmText="Xoá"

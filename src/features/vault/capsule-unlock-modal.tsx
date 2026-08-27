@@ -126,6 +126,7 @@ export function CapsuleUnlockModal({
               exit={{ opacity: 0, scale: 1.4, filter: "blur(12px)" }}
               transition={{ duration: 0.6, ease: "easeInOut" }}
               onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
             >
               <CapsuleEnvelope
                 state={unlockState}
@@ -148,6 +149,7 @@ export function CapsuleUnlockModal({
               transition={{ type: "spring", damping: 22, stiffness: 120, delay: 0.1 }}
               className="w-full"
               onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
             >
               <CapsuleLetter
                 title={capsule.title}

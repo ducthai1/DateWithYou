@@ -120,6 +120,7 @@ export function SpecialDatesPanel() {
         <div className="space-y-1">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
+              aria-label="Lặp lại hằng năm"
               type="checkbox"
               checked={recurYearly}
               onChange={(e) => setRecurYearly(e.target.checked)}
