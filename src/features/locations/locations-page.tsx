@@ -1631,7 +1631,10 @@ export function LocationsPage() {
                 exit={{ height: 0, opacity: 0, overflow: "hidden" }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
               >
-                <div className="py-2">
+                {/* pb only. The top padding here had no counterpart in the
+                    left column, so the form sat lower than the search field it
+                    lines up with. */}
+                <div className="pb-2">
                   <LocationForm
                     initial={formInitial}
                     categories={categories}

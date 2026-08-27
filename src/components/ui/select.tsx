@@ -203,7 +203,17 @@ export function Select({
                 exit={{ opacity: 0, scale: 0.95, y: -5 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
                 ref={menuRef}
-                className="border-border bg-card fixed z-50 overflow-y-auto rounded-xl border py-1 shadow-xl origin-top"
+                className={cn(
+                  "border-border bg-card fixed z-50 overflow-y-auto rounded-xl border shadow-xl origin-top",
+                  /*
+                   * No top padding when there is a search field. That field is
+                   * sticky at top:0, which pins it to the padding box — 4px
+                   * below the container's edge — so options scrolled past it
+                   * showed through the strip above it. With pt-0 the field sits
+                   * flush against the top and nothing can appear behind it.
+                   */
+                  searchable ? "pb-1" : "py-1",
+                )}
                 style={{ top: layout.top, left: layout.left, width: layout.width, maxHeight: layout.maxHeight }}
               >
             {searchable ? (
