@@ -15,6 +15,8 @@ import { RecipeDetail } from "./recipe-detail";
 import { GamesPanel } from "./games-panel";
 import { Select } from "@/components/ui/select";
 import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
+import { foldForSearch } from "@/lib/vietnamese-text";
+import { Search } from "lucide-react";
 
 const TABS = [
   { key: "music", label: "Nhạc" },
@@ -29,6 +31,7 @@ export function LibraryPage() {
   const [recipe, setRecipe] = useState<MediaListItem | null>(null);
   const [tagFilter, setTagFilter] = useState<string>("");
   const [providerFilter, setProviderFilter] = useState<string>("");
+  const [query, setQuery] = useState("");
 
   const isGame = kind === "game";
   const list = trpc.media.list.useQuery({ kind });
@@ -38,14 +41,31 @@ export function LibraryPage() {
     setKind(k);
     setTagFilter("");
     setProviderFilter("");
+    setQuery("");
   };
 
   const allTags = Array.from(new Set(allItems.flatMap(it => it.tags))).sort();
   const allProviders = Array.from(new Set(allItems.map(it => it.provider).filter(Boolean))).sort() as EmbedProvider[];
 
+  /*
+   * Search runs client-side here, unlike on the map page, because this page's
+   * other filters already do. Splitting filtering across both sides of one list
+   * is where the awkward bugs live — a tag chip narrowing a set the search box
+   * had already narrowed differently.
+   *
+   * Folded through the shared helper so "banh xeo" finds "Bánh xèo", the same
+   * as everywhere else in the app.
+   */
+  const needle = foldForSearch(query);
   const items = allItems.filter(it => {
     if (tagFilter && !it.tags.includes(tagFilter)) return false;
     if (providerFilter && it.provider !== providerFilter) return false;
+    if (needle) {
+      const haystack = foldForSearch(
+        [it.title, it.note ?? "", ...(it.tags ?? [])].join(" "),
+      );
+      if (!haystack.includes(needle)) return false;
+    }
     return true;
   });
 
@@ -57,6 +77,16 @@ export function LibraryPage() {
           <p className="text-muted-foreground mt-0.5 text-sm">
             Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau.
           </p>
+        </div>
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Tìm công thức, video, trò chơi…"
+            aria-label="Tìm trong bộ sưu tập"
+            className="border-border bg-card focus:border-accent focus:ring-ring/30 h-10 w-full rounded-xl border pl-9 pr-3 text-sm outline-none focus:ring-2"
+          />
         </div>
         <div className="flex gap-2 sm:shrink-0">
           <a

@@ -16,6 +16,7 @@ import { resolveGeoFromMapsUrl, extractFirstUrl } from "@/server/lib/resolve-map
 import { geocodeAddress } from "@/server/lib/geocode-address";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
 import { searchAreas } from "@/lib/vn-admin";
+import { buildPattern } from "@/lib/vietnamese-text";
 
 const districtSchema = z.string().trim().min(1);
 const categorySchema = z.string().trim().min(1);
@@ -60,6 +61,16 @@ export const locationRouter = router({
           district: districtSchema.optional(),
           category: categorySchema.optional(),
           status: statusEnum.optional(),
+          /**
+           * Free-text filter over the place's own fields.
+           *
+           * Server-side alongside the other filters rather than a client filter
+           * over the fetched array, so it behaves the same whether the list is
+           * bounded later or not — and so it uses the same accent folding as
+           * global search. A place findable by one and not the other reads as
+           * broken search, not as two features.
+           */
+          q: z.string().trim().max(80).optional(),
         })
         .optional(),
     )
@@ -69,6 +80,15 @@ export const locationRouter = router({
       if (input?.district) filter.district = input.district;
       if (input?.category) filter.category = input.category;
       if (input?.status) filter.status = input.status;
+      if (input?.q) {
+        const pattern = buildPattern(input.q);
+        // A query that folds to nothing (a lone combining mark) means no
+        // results, not "match everything" — the alternative silently ignores
+        // what was typed.
+        if (!pattern) return [];
+        const rx = new RegExp(pattern, "i");
+        filter.$or = [{ name: rx }, { mustTry: rx }, { note: rx }];
+      }
       const docs = await LocationModel.find(filter)
         .sort({ createdAt: -1 })
         .lean();

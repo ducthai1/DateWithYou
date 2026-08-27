@@ -6,7 +6,7 @@ import { LocationModel } from "@/server/db/models/location";
 import { MediaItemModel } from "@/server/db/models/media-item";
 import { PlanItemModel } from "@/server/db/models/plan-item";
 import { TripModel } from "@/server/db/models/trip";
-import { toBaseLetters } from "@/lib/vietnamese-text";
+import { buildPattern, toBaseLetters } from "@/lib/vietnamese-text";
 
 /* ── Vietnamese diacritic-tolerant matching ──────────────────────────
  *
@@ -28,51 +28,6 @@ import { toBaseLetters } from "@/lib/vietnamese-text";
  * or "*" is matched literally instead of throwing or becoming a quantifier. */
 
 /** Base letter → every Vietnamese form of it (lowercase; uppercase derived). */
-const VN_FORMS: Record<string, string> = {
-  a: "aàáảãạăằắẳẵặâầấẩẫậ",
-  d: "dđ",
-  e: "eèéẻẽẹêềếểễệ",
-  i: "iìíỉĩị",
-  o: "oòóỏõọôồốổỗộơờớởỡợ",
-  u: "uùúủũụưừứửữự",
-  y: "yỳýỷỹỵ",
-};
-
-// Both cases are listed explicitly rather than leaning on the `i` flag alone:
-// MongoDB's case-insensitive matching of non-ASCII code points depends on the
-// server's PCRE build, and a wrong guess would silently drop accented hits.
-const VN_CLASS: Record<string, string> = Object.fromEntries(
-  Object.entries(VN_FORMS).map(([base, forms]) => [
-    base,
-    `[${forms}${forms.toUpperCase()}]`,
-  ]),
-);
-
-const REGEX_META = /[.*+?^${}()|[\]\\]/;
-
-/**
- * Compile the user's query into a safe, accent-tolerant substring pattern.
- * Returns null when nothing matchable is left (e.g. a lone combining mark),
- * which the caller treats as "no results" rather than "match everything".
- */
-function buildPattern(raw: string): string | null {
-  const base = toBaseLetters(raw).toLowerCase();
-  let out = "";
-  let gap = false;
-  for (const ch of base) {
-    if (/\s/.test(ch)) {
-      gap = out.length > 0; // never emit a leading \s+
-      continue;
-    }
-    if (gap) {
-      out += "\\s+";
-      gap = false;
-    }
-    out += VN_CLASS[ch] ?? (REGEX_META.test(ch) ? `\\${ch}` : ch);
-  }
-  return out.length > 0 ? out : null;
-}
-
 /* ── Snippets ──────────────────────────────────────────────────────────────
  * The server returns the matched character range alongside each string so the
  * client can highlight it without re-deriving the same accent-folding logic. */

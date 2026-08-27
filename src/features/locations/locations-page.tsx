@@ -30,6 +30,7 @@ import {
   Loader2,
   Users,
   UserRound,
+  Search as SearchIcon,
   X,
   MapPinned,
   ChevronRight,
@@ -253,13 +254,26 @@ export function LocationsPage() {
   const categories = configQuery.data?.categories || [];
   const districts = configQuery.data?.districts || [];
 
+  /*
+   * Debounced so typing does not fire a query per keystroke. 250ms is short
+   * enough to feel immediate and long enough that a normal typing burst is one
+   * request.
+   */
+  const [queryText, setQueryText] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(queryText.trim()), 250);
+    return () => clearTimeout(t);
+  }, [queryText]);
+
   const listInput = useMemo(
     () => ({
       district: district || undefined,
       category: category || undefined,
       status: (status || undefined) as "want_to_go" | "visited" | undefined,
+      q: debouncedQuery || undefined,
     }),
-    [district, category, status],
+    [district, category, status, debouncedQuery],
   );
   const list = trpc.location.list.useQuery(listInput);
   const toggle = trpc.location.toggleStatus.useMutation({
@@ -1176,7 +1190,31 @@ export function LocationsPage() {
       {/* Mobile: filters top, list middle, map bottom */}
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start">
         <div className="contents lg:block lg:sticky lg:top-[84px] lg:self-start lg:space-y-3">
-          <div className="order-1 grid grid-cols-2 md:grid-cols-3 gap-2 lg:order-none">
+          {/* Name search. Sits above the selects because it is the fastest way
+              to reach a specific pin once there are more than a screenful. */}
+          <div className="order-1 lg:order-none">
+            <div className="relative">
+              <SearchIcon className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+              <input
+                value={queryText}
+                onChange={(e) => setQueryText(e.target.value)}
+                placeholder="Tìm quán theo tên, món nên gọi, ghi chú…"
+                aria-label="Tìm địa điểm"
+                className="border-border bg-card focus:border-accent focus:ring-ring/30 h-10 w-full rounded-xl border pl-9 pr-9 text-sm outline-none focus:ring-2"
+              />
+              {queryText ? (
+                <button
+                  type="button"
+                  onClick={() => setQueryText("")}
+                  aria-label="Xoá tìm kiếm"
+                  className="text-muted-foreground hover:text-foreground absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <div className="order-2 grid grid-cols-2 md:grid-cols-3 gap-2 lg:order-none">
             <Select
               aria-label="Lọc theo quận"
               value={district}
