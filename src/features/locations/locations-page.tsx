@@ -1444,11 +1444,12 @@ export function LocationsPage() {
           */}
           <div
             className={cn(
-              "grid grid-cols-3 gap-2 lg:order-none",
+              "flex gap-2 lg:grid lg:grid-cols-3 lg:order-none",
               !filtersOpen && "hidden lg:grid",
             )}
           >
             <Select
+              className="min-w-0 flex-1"
               aria-label="Lọc theo quận"
               value={district}
               onChange={setDistrict}
@@ -1460,6 +1461,7 @@ export function LocationsPage() {
               searchPlaceholder="Tìm khu vực…"
               />
             <Select
+              className="min-w-0 flex-1"
               aria-label="Lọc theo danh mục"
               value={category}
               onChange={setCategory}
@@ -1469,10 +1471,10 @@ export function LocationsPage() {
               ]}
             />
             <Select
+              className="min-w-0 flex-1"
               aria-label="Lọc theo trạng thái"
               value={status}
               onChange={setStatus}
-              className="col-span-2 md:col-span-1"
               options={[
                 { value: "", label: "Tất cả" },
                 { value: "want_to_go", label: "Muốn đi" },

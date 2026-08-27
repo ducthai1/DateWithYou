@@ -67,6 +67,21 @@ npx tsc --noEmit && npm run lint && npm run build
 `npm run lint` phải ra **0 error, 0 warning**. Cảnh báo tồn tại lâu ngày sẽ dạy
 người ta bỏ qua cảnh báo, và rồi cái thật cũng bị bỏ qua.
 
+## `cn()` phải giữ `tailwind-merge`
+
+`cn()` từng là `classes.join(" ")` thuần. Nghĩa là `className` truyền vào một
+component **không ghi đè** class của chính component đó — cả hai cùng nằm trong
+thuộc tính và **thứ tự trong file CSS quyết định**. Tailwind phát utility theo
+thứ tự thang giá trị, nên `h-11 px-4` của `<Button>` thắng `h-9 px-0` do người
+gọi truyền vào, âm thầm.
+
+Kết quả thật: một nút rộng 36px với 32px padding — còn **4px cho icon 16px**,
+nhìn ra thành nút rỗng và đã bị báo lỗi đúng như vậy. **Bảy** chỗ trong repo
+đang render một kích thước khác với con số viết ngay cạnh nó.
+
+Đừng gỡ `twMerge` ra khỏi `cn()`. Và khi một class ghi đè "không ăn", nghĩ tới
+nguyên nhân này trước khi thêm `!important`.
+
 ## Vài điều khác về repo này
 
 - **Route công khai phải thêm vào `MARKETING_ROUTES`**
