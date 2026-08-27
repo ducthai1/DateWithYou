@@ -146,9 +146,17 @@ export function FeaturePageShell({ page }: { page: FeaturePage }) {
             points at, which makes it harder for a crawler to justify visiting. */}
         <Reveal as="nav">
           <div className="mt-16 border-t border-[#d8cfc1]/60 pt-12">
-            <h2 className="text-sm font-medium uppercase tracking-[0.18em] text-[#a8542f]">
-              Xem thêm
-            </h2>
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h2 className="text-sm font-medium uppercase tracking-[0.18em] text-[#a8542f]">
+                Xem thêm
+              </h2>
+              <Link
+                href="/tinh-nang"
+                className="text-[13px] font-medium text-[#a8542f] transition-opacity hover:opacity-70"
+              >
+                Tất cả tính năng <span aria-hidden="true">→</span>
+              </Link>
+            </div>
             <ul className="mt-7 grid gap-4 sm:grid-cols-3">
               {page.related.map((link) => (
                 <li key={link.href}>

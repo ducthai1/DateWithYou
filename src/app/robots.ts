@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { PRIVATE_ROUTES, SITE_URL } from "@/lib/site";
-import { FEATURE_PAGE_SLUGS } from "@/components/marketing/feature-pages/slugs";
+import { MARKETING_ROUTES } from "@/components/marketing/feature-pages/slugs";
 
 /**
  * Serves /robots.txt. Before this existed the path 404'd, so crawlers had no
@@ -14,7 +14,7 @@ import { FEATURE_PAGE_SLUGS } from "@/components/marketing/feature-pages/slugs";
  * the only symptom would be traffic that never arrives.
  */
 function assertPublicRoutesAreCrawlable() {
-  const publicRoutes = ["/", ...FEATURE_PAGE_SLUGS.map((slug) => `/${slug}`)];
+  const publicRoutes = MARKETING_ROUTES;
   for (const route of publicRoutes) {
     const blockedBy = PRIVATE_ROUTES.find(
       (priv) => route !== "/" && route.startsWith(priv),

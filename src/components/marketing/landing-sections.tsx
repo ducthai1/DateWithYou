@@ -105,6 +105,16 @@ export function LandingSections() {
             </Reveal>
           ))}
         </ul>
+        <Reveal>
+          <div className="mt-12 text-center">
+            <Link
+              href="/tinh-nang"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#d8cfc1]/80 bg-white/40 px-6 py-3 text-[15px] font-medium text-[#6f675d] transition-colors hover:border-[#c2693f]/40 hover:text-[#a8542f]"
+            >
+              Xem tất cả tính năng <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        </Reveal>
       </section>
 
       <div className="mx-auto h-px max-w-4xl bg-[#d8cfc1]/60" />
@@ -179,6 +189,11 @@ export function LandingSections() {
       <footer className="border-t border-[#d8cfc1]/60 px-6 py-10 text-center text-sm font-light text-[#7a6d60]">
         <p>
           {SITE_NAME} — giữ lại những chuyến đi của bạn. Làm tại Việt Nam.
+        </p>
+        <p className="mt-2">
+          <Link href="/tinh-nang" className="transition-colors hover:text-[#a8542f]">
+            Tính năng
+          </Link>
         </p>
       </footer>
     </div>

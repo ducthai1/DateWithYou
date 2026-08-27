@@ -10,7 +10,7 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react";
-import { FEATURE_PAGE_SLUGS } from "@/components/marketing/feature-pages/slugs";
+import { MARKETING_ROUTES } from "@/components/marketing/feature-pages/slugs";
 
 // Shared navigation source for both the mobile bottom nav and the desktop
 // sidebar so the two never drift apart. `center` marks the hero tab (Lịch),
@@ -55,8 +55,7 @@ export const NAV_ITEMS: {
  * the registry in shipped all four pages of marketing prose to every user.
  */
 export const NAV_HIDDEN_ON = [
-  "/",
-  ...FEATURE_PAGE_SLUGS.map((slug) => `/${slug}`),
+  ...MARKETING_ROUTES,
   "/sign-in",
   "/sign-up",
   "/onboarding",

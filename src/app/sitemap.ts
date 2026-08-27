@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
-import { FEATURE_PAGES } from "@/components/marketing/feature-pages";
+import { MARKETING_ROUTES } from "@/components/marketing/feature-pages/slugs";
 
 /**
  * Serves /sitemap.xml.
@@ -21,18 +21,10 @@ import { FEATURE_PAGES } from "@/components/marketing/feature-pages";
  * wrong date is worse than none. An absent lastmod is simply neutral.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: `${SITE_URL}/`,
-      changeFrequency: "monthly",
-      priority: 1,
-    },
-    ...FEATURE_PAGES.map((page) => ({
-      url: `${SITE_URL}/${page.slug}`,
-      changeFrequency: "monthly" as const,
-      // Below the homepage, level with each other. Priority is a weak hint at
-      // best; what matters is that they are listed at all.
-      priority: 0.8,
-    })),
-  ];
+  return MARKETING_ROUTES.map((route) => ({
+    url: route === "/" ? `${SITE_URL}/` : `${SITE_URL}${route}`,
+    changeFrequency: "monthly" as const,
+    // The landing is the entry point; everything else sits a step below it.
+    priority: route === "/" ? 1 : 0.8,
+  }));
 }
