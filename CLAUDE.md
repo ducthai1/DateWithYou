@@ -24,6 +24,31 @@ Nên trước khi code một tính năng có tiền lệ:
 Chi phí của việc bỏ qua bước này không phải là code xấu — mà là **giao cho người
 dùng một thứ họ phải học lại**, trong khi bản chuẩn thì họ đã biết dùng.
 
+### Tìm kiếm địa điểm phải bám vị trí — và phải test đúng đường app đi
+
+Gõ `trà sữa` từng trả về Ninh Bình, Vĩnh Long, An Giang. API không hề sai:
+cùng câu đó kèm `location` thì ra toàn quán gần. Không kèm thì giữa hàng chục
+nghìn kết quả tốt ngang nhau, thứ tự **về cơ bản là ngẫu nhiên**.
+
+- **Bias theo khung nhìn của bản đồ**, không phải theo GPS. Đây là chuẩn của mọi
+  autocomplete đặt cạnh bản đồ, và là nguồn **luôn có câu trả lời**: GPS có thể
+  bị từ chối, danh sách đã lưu có thể rỗng, còn bản đồ thì lúc nào cũng đang
+  hiển thị một chỗ nào đó — đúng chỗ người ta đang nhìn.
+- **Đừng để tồn tại nhánh "không bias".** `suggestPlaces` nay không nhận nữa:
+  truy vấn không bias không phải truy vấn trung lập, nó là truy vấn tệ.
+- **Điểm bias nằm trong cache key** ⇒ làm tròn về lưới ~0.05° (~5km) trước khi
+  đưa vào query. Không làm thì kéo bản đồ vài trăm mét là thêm một request cho
+  kết quả không thể khác, vì bán kính bias tới 25km.
+
+Nhưng bài học nặng hơn nằm ở chỗ khác: **bug sống sót vì mọi bài test đều tự tay
+truyền `location` vào.** Đường mà app thật sự đi — không có toạ độ — chưa từng
+chạy một lần nào. Test cái tham số **có mặt** thì chỉ chứng minh nhánh đó chạy
+được; cái hỏng luôn là nhánh còn lại.
+
+Nên với mọi tham số tuỳ chọn: **chạy thử đúng cái mặc định mà app sẽ gửi**, rồi
+mới tin. Và trước khi tin là "API trả sai", gọi thẳng API một phát để tách bạch
+lỗi ở đâu — ở đây API đúng ngay từ đầu, sai nằm hoàn toàn phía client.
+
 ## Accessibility là bắt buộc, không phải phần thêm
 
 Lý do có mục này: những thứ hỏng ở đây không phải chuyện tinh vi, mà là những
