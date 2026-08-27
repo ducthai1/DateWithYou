@@ -6,6 +6,7 @@ import { LocationModel } from "@/server/db/models/location";
 import { MediaItemModel } from "@/server/db/models/media-item";
 import { PlanItemModel } from "@/server/db/models/plan-item";
 import { TripModel } from "@/server/db/models/trip";
+import { toBaseLetters } from "@/lib/vietnamese-text";
 
 /* ── Vietnamese diacritic-tolerant matching ──────────────────────────
  *
@@ -48,14 +49,6 @@ const VN_CLASS: Record<string, string> = Object.fromEntries(
 );
 
 const REGEX_META = /[.*+?^${}()|[\]\\]/;
-
-/** Drop combining marks (and the standalone đ/Đ, which never decomposes). */
-function toBaseLetters(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[đĐ]/g, "d");
-}
 
 /**
  * Compile the user's query into a safe, accent-tolerant substring pattern.

@@ -1170,7 +1170,9 @@ export function LocationsPage() {
                 { value: "", label: "Khu vực" },
                 ...districts.map((d) => ({ value: d, label: d })),
               ]}
-            />
+            searchable
+              searchPlaceholder="Tìm khu vực…"
+              />
             <Select
               aria-label="Lọc theo danh mục"
               value={category}

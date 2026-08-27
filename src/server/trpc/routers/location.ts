@@ -15,6 +15,7 @@ import { requireEnv } from "@/lib/env";
 import { resolveGeoFromMapsUrl, extractFirstUrl } from "@/server/lib/resolve-maps-geo";
 import { geocodeAddress } from "@/server/lib/geocode-address";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
+import { searchAreas } from "@/lib/vn-admin";
 
 const districtSchema = z.string().trim().min(1);
 const categorySchema = z.string().trim().min(1);
@@ -173,6 +174,17 @@ export const locationRouter = router({
 
   // Server-side Directions proxy — keeps the secret token off the client and
   // validates the destination belongs to the caller's space.
+  /**
+   * Look up ward-level administrative units by name.
+   *
+   * Server-side because the ward dataset is ~600KB — sending it to every
+   * browser to power one dropdown would cost more than the whole rest of the
+   * page. The client sends what was typed and gets back a short list.
+   */
+  searchAreas: protectedProcedure
+    .input(z.object({ query: z.string().max(80).default("") }))
+    .query(({ input }) => searchAreas(input.query)),
+
   getRoute: protectedProcedure
     .input(z.object({
       // Either a saved-place id (looked up) or a raw destination coordinate.

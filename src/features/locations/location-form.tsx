@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,8 +82,35 @@ export function LocationForm({
     toast("Đã lưu địa điểm ✓", "success");
     onDone();
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onError = (err: any) => toast("Lưu thất bại: " + (err?.message || "Thử lại nhé"), "error");
+  /*
+   * Two sources, deliberately. The space's own list is what its members
+   * actually file places under and stays at the top. The official ward list is
+   * 3,320 entries and cannot be shipped to the browser, so it is queried as the
+   * person types and appended below — which is also why filtering is disabled
+   * on the client side here (see Select.onSearch).
+   */
+  const [areaQuery, setAreaQuery] = useState("");
+  const areaSearch = trpc.location.searchAreas.useQuery(
+    { query: areaQuery },
+    { enabled: areaQuery.trim().length > 1, staleTime: 5 * 60 * 1000 },
+  );
+  const areaOptions = useMemo(() => {
+    const own = districts.map((d) => ({ value: d, label: d }));
+    const seen = new Set(own.map((o) => o.value));
+    const official = (areaSearch.data ?? [])
+      .filter((a) => !seen.has(a.value))
+      .map((a) => ({ value: a.value, label: a.label }));
+    // A value already saved on this place must stay selectable even when it is
+    // in neither list — otherwise editing an old pin silently clears its area.
+    const current = v.district && !seen.has(v.district)
+      && !official.some((o) => o.value === v.district)
+      ? [{ value: v.district, label: v.district }]
+      : [];
+    return [...current, ...own, ...official];
+  }, [districts, areaSearch.data, v.district]);
+
+  const onError = (err: { message?: string }) =>
+    toast("Lưu thất bại: " + (err?.message || "Thử lại nhé"), "error");
   const create = trpc.location.create.useMutation({ onSuccess, onError });
   const update = trpc.location.update.useMutation({ onSuccess, onError });
   const pending = create.isPending || update.isPending;
@@ -119,7 +146,11 @@ export function LocationForm({
           aria-label="Khu vực"
           value={v.district}
           onChange={(val) => set("district", val)}
-          options={districts.map((d) => ({ value: d, label: d }))}
+          options={areaOptions}
+          searchable
+          onSearch={setAreaQuery}
+          searchPlaceholder="Tìm phường, xã…"
+          emptyLabel="Không tìm thấy khu vực"
         />
         <Select
           aria-label="Danh mục"

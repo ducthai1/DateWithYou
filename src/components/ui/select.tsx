@@ -2,8 +2,9 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { foldForSearch } from "@/lib/vietnamese-text";
 import { AnimatePresence, motion } from "framer-motion";
 
 export type SelectOption = { value: string; label: string };
@@ -16,6 +17,20 @@ type SelectProps = {
   className?: string;
   disabled?: boolean;
   "aria-label"?: string;
+  /**
+   * Show a filter box inside the menu. Worth turning on past roughly a dozen
+   * options; below that it is a box to skip past.
+   */
+  searchable?: boolean;
+  /**
+   * Called as the filter text changes, for lists too large to hold in the
+   * client — the caller replaces `options` with the results. Without it the
+   * filter runs over `options` locally.
+   */
+  onSearch?: (query: string) => void;
+  searchPlaceholder?: string;
+  /** Shown when the filter matches nothing. */
+  emptyLabel?: string;
 };
 
 const MENU_GAP = 4;
@@ -35,8 +50,38 @@ export function Select({
   className,
   disabled,
   "aria-label": ariaLabel,
+  searchable,
+  onSearch,
+  searchPlaceholder = "Tìm…",
+  emptyLabel = "Không tìm thấy",
 }: SelectProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  /*
+   * With onSearch the caller owns filtering (it is fetching), so `options` is
+   * already the result set and filtering it again would hide rows the server
+   * deliberately returned. Without it, filter here — accent-insensitively,
+   * through the same folding the rest of the app searches with, so "sai gon"
+   * finds "Sài Gòn".
+   */
+  const visible = !searchable || onSearch || !query
+    ? options
+    : options.filter((o) => foldForSearch(o.label).includes(foldForSearch(query)));
+
+  // Reset between openings: a stale filter makes a reopened menu look empty.
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      onSearch?.("");
+      return;
+    }
+    // Focus after the menu has been positioned, or the page jumps.
+    const id = requestAnimationFrame(() => searchRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [layout, setLayout] = useState<{
@@ -137,7 +182,30 @@ export function Select({
                 className="border-border bg-card fixed z-50 overflow-y-auto rounded-xl border py-1 shadow-xl origin-top"
                 style={{ top: layout.top, left: layout.left, width: layout.width, maxHeight: layout.maxHeight }}
               >
-            {options.map((opt) => {
+            {searchable ? (
+              <div className="border-border/70 sticky top-0 z-10 border-b bg-card px-2 pb-2 pt-1.5">
+                <div className="relative">
+                  <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" />
+                  <input
+                    ref={searchRef}
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      onSearch?.(e.target.value);
+                    }}
+                    placeholder={searchPlaceholder}
+                    aria-label={searchPlaceholder}
+                    className="border-border/70 bg-background focus:border-accent focus:ring-ring/30 w-full rounded-lg border py-1.5 pl-8 pr-2 text-sm outline-none focus:ring-2"
+                  />
+                </div>
+              </div>
+            ) : null}
+            {visible.length === 0 ? (
+              <p className="text-muted-foreground px-3 py-4 text-center text-sm">
+                {emptyLabel}
+              </p>
+            ) : null}
+            {visible.map((opt) => {
               const active = opt.value === value;
               return (
                 <button
