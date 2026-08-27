@@ -48,7 +48,23 @@ export function MemoryTimeline() {
   const [selected, setSelected] = useState<string | null>(null);
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
   const [warningEditId, setWarningEditId] = useState<string | null>(null);
-  const list = trpc.memory.list.useQuery();
+  /*
+   * Paged feed. The tag filter is part of the query key rather than applied
+   * afterwards: filtering the pages already fetched would only search what
+   * happens to be loaded, so a tag whose memories sit further down would come
+   * back empty and look like they had been deleted.
+   */
+  const list = trpc.memory.list.useInfiniteQuery(
+    { tag: filter || undefined },
+    { getNextPageParam: (page) => page.nextCursor ?? undefined },
+  );
+  // Chips come from the whole space, not from the loaded pages, or a tag would
+  // appear and vanish as you scroll.
+  const tagsQuery = trpc.memory.tags.useQuery();
+  const loaded = useMemo(
+    () => (list.data?.pages ?? []).flatMap((p) => p.items),
+    [list.data],
+  );
   const utils = trpc.useUtils();
   const remove = trpc.memory.remove.useMutation({
     onSuccess: () => { utils.memory.list.invalidate(); toast("Đã xoá kỷ niệm", "success"); },
@@ -63,19 +79,14 @@ export function MemoryTimeline() {
   const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
   const selfId = members.find((m) => m.isSelf)?.id ?? null;
 
-  const all = list.data ?? [];
+  const all = loaded;
   type Memo = (typeof all)[number];
-  const allTags = useMemo(
-    () => [...new Set((list.data ?? []).flatMap((m) => m.tags ?? []))],
-    [list.data],
-  );
+  const allTags = tagsQuery.data ?? [];
   // Memoised so the tag-filter and month grouping (a reduce over the whole feed)
   // don't re-run on every unrelated re-render — opening the detail modal, typing
   // in the add form, etc. Recompute only when the data or active filter changes.
-  const memories: Memo[] = useMemo(() => {
-    const data = list.data ?? [];
-    return filter ? data.filter((m) => (m.tags ?? []).includes(filter)) : data;
-  }, [list.data, filter]);
+  // Already filtered by the server; the query key changes with `filter`.
+  const memories: Memo[] = loaded;
   const selectedMemo = selected ? all.find((m) => m.id === selected) ?? null : null;
   const groups = useMemo(
     () =>
@@ -90,12 +101,12 @@ export function MemoryTimeline() {
   // never one per card. Batches are cut from the *unfiltered* list so flipping
   // the tag filter doesn't change the query key and force a refetch.
   const idBatches = useMemo(() => {
-    const ids = (list.data ?? []).map((m) => m.id);
+    const ids = loaded.map((m) => m.id);
     const out: string[][] = [];
     for (let i = 0; i < ids.length; i += INTERACTION_BATCH)
       out.push(ids.slice(i, i + INTERACTION_BATCH));
     return out;
-  }, [list.data]);
+  }, [loaded]);
 
   const interactionQueries = trpc.useQueries((t) =>
     idBatches.map((ids) =>
@@ -301,6 +312,21 @@ export function MemoryTimeline() {
           </section>
         ))
       )}
+
+      {/* A button rather than scroll-triggered loading: this feed is browsed by
+          scrolling back through months, and auto-loading on scroll makes it
+          impossible to reach anything below the feed. */}
+      {list.hasNextPage ? (
+        <div className="flex justify-center pt-2 pb-6">
+          <Button
+            variant="outline"
+            onClick={() => list.fetchNextPage()}
+            disabled={list.isFetchingNextPage}
+          >
+            {list.isFetchingNextPage ? "Đang tải…" : "Xem thêm kỷ niệm cũ hơn"}
+          </Button>
+        </div>
+      ) : null}
 
       <Modal open={!!selectedMemo} onClose={() => setSelected(null)}>
         {selectedMemo && (

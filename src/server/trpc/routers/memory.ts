@@ -64,12 +64,61 @@ async function assertLocationInSpace(
 }
 
 export const memoryRouter = router({
-  list: protectedProcedure.query(async ({ ctx }) => {
+  /**
+   * One page of the timeline, newest first.
+   *
+   * Used to return every memory in the space with all its photos and embeds.
+   * A feed that grows for years and carries up to ten photos per entry is not
+   * something to send in one response — the payload only ever gets bigger, and
+   * nobody scrolls to the bottom of it.
+   *
+   * The cursor pairs date with _id because date is not unique: several
+   * memories share a day, and paging on date alone either repeats them across
+   * pages or skips them.
+   *
+   * Tag filtering moved here from the client for the same reason. Filtering a
+   * page that has already been fetched only searches what happens to be loaded,
+   * so picking a tag whose memories sit further down the feed would show
+   * nothing and look like they had been lost.
+   */
+  list: protectedProcedure
+    .input(
+      z
+        .object({
+          cursor: z.string().nullish(),
+          limit: z.number().int().min(1).max(60).default(24),
+          tag: z.string().trim().min(1).max(24).optional(),
+        })
+        .default({ limit: 24 }),
+    )
+    .query(async ({ ctx, input }) => {
     await connectToDatabase();
-    const docs = await MemoryModel.find({ spaceId: ctx.spaceId })
-      .sort({ date: -1 })
+    const filter: Record<string, unknown> = { spaceId: ctx.spaceId };
+    if (input.tag) filter.tags = input.tag;
+    if (input.cursor) {
+      // date is a Date, so the cursor carries it as ISO and it is compared as
+      // a Date — a string comparison against a BSON date matches nothing and
+      // would silently return an empty second page.
+      const [cursorDate, cursorId] = input.cursor.split("|");
+      const at = new Date(cursorDate);
+      filter.$or = [
+        { date: { $lt: at } },
+        { date: at, _id: { $lt: cursorId } },
+      ];
+    }
+    // One extra row tells us whether another page exists without a count query.
+    const docs = await MemoryModel.find(filter)
+      .sort({ date: -1, _id: -1 })
+      .limit(input.limit + 1)
       .lean();
-    return docs.map((d) => ({
+    const hasMore = docs.length > input.limit;
+    const page = hasMore ? docs.slice(0, input.limit) : docs;
+    const last = page[page.length - 1];
+    const nextCursor =
+      hasMore && last
+        ? `${new Date(last.date as Date).toISOString()}|${String(last._id)}`
+        : null;
+    const items = page.map((d) => ({
       id: String(d._id),
       title: d.title,
       caption: d.caption ?? null,
@@ -89,6 +138,20 @@ export const memoryRouter = router({
       locationId: d.locationId ?? null,
       geo: d.geo?.lat != null ? { lat: d.geo.lat, lng: d.geo.lng } : null,
     }));
+    return { items, nextCursor };
+  }),
+
+  /**
+   * Every tag used in the space, for the filter chips.
+   *
+   * Separate from the feed on purpose: the chips have to show tags from the
+   * whole timeline, not only from the pages that happen to be loaded, or a tag
+   * would appear and disappear as you scroll.
+   */
+  tags: protectedProcedure.query(async ({ ctx }) => {
+    await connectToDatabase();
+    const values = await MemoryModel.distinct("tags", { spaceId: ctx.spaceId });
+    return (values as string[]).filter(Boolean).sort((a, b) => a.localeCompare(b, "vi"));
   }),
 
   create: protectedProcedure
