@@ -39,7 +39,9 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
-import { useLiveNavigation, type LegInfo } from "./use-live-navigation";
+import { type LegInfo } from "./use-live-navigation";
+import { useNavigation } from "./navigation-context";
+import { fmtDistance, fmtDuration } from "./format-journey";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
 import type { Category } from "@/lib/districts-categories";
@@ -205,8 +207,20 @@ export function LocationsPage() {
   // Invite id of the trip we already auto-started, so each accepted trip starts
   // exactly once even when it arrives twice (SSE event + polling fallback).
   const handledInviteRef = useRef<string | null>(null);
-  const nav = useLiveNavigation({
-    onOffRoute: async (currentGeo) => {
+  const nav = useNavigation();
+
+  /*
+   * Re-routing stays on this page rather than moving into the provider: it
+   * needs this page's state — which leg is active, what is selected, the query
+   * client. The provider owns the GPS watch so a journey survives leaving here,
+   * and calls back into whatever handler is registered.
+   *
+   * Kept in a ref and registered once. Registering the closure itself would
+   * re-register on every render that touches leg state — harmless, but pointless
+   * churn on a hot path, and it makes the subscription look load-bearing.
+   */
+  const offRouteRef = useRef<((geo: LatLng) => void) | null>(null);
+  offRouteRef.current = async (currentGeo: LatLng) => {
       if (isRecalculating.current) return;
       // On a multi-leg trip, re-route ONLY the active leg: current position →
       // that leg's end point. Upcoming legs are left untouched on the map.
@@ -247,8 +261,13 @@ export function LocationsPage() {
         // Wait a bit before allowing another recalculation to avoid spamming
         setTimeout(() => { isRecalculating.current = false; }, 5000);
       }
-    }
-  });
+    
+  };
+  useEffect(
+    () => nav.setOffRouteHandler((geo) => offRouteRef.current?.(geo)),
+    [nav],
+  );
+
 
   const liveUser = nav.userGeo ?? userGeo;
 
@@ -830,20 +849,6 @@ export function LocationsPage() {
     },
     [formOpen],
   );
-
-  // Format helpers for the HUD.
-  const fmtDistance = (m: number | null) => {
-    if (m == null) return "--";
-    return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`;
-  };
-  const fmtDuration = (s: number | null) => {
-    if (s == null) return "--";
-    const mins = Math.ceil(s / 60);
-    if (mins < 60) return `${mins} phút`;
-    const h = Math.floor(mins / 60);
-    const rem = mins % 60;
-    return rem > 0 ? `${h}h ${rem}p` : `${h}h`;
-  };
 
   // Prefer live remaining values; fall back to initial route totals.
   const displayDistance = nav.remainingMeters ?? routeDistanceMeters;

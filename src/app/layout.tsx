@@ -11,6 +11,8 @@ import { MainWrapper } from "@/components/layout/main-wrapper";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
+import { NavigationProvider } from "@/features/locations/navigation-context";
+import { NavigationMiniDock } from "@/features/locations/navigation-mini-dock";
 import { THEME_COOKIE_NAME, resolveThemeKey } from "@/lib/theme-presets";
 import { SITE_DESCRIPTION, SITE_LOCALE, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
@@ -187,9 +189,16 @@ export default async function RootLayout({
             {/* Single SSE connection for the whole app — both GlobalInviteListener
                 and LocationsPage consume this context instead of opening their own. */}
             <NavigationInvitesProvider>
-              <GlobalInviteListener />
-              <WelcomeIntro />
-              {children}
+              {/* Live navigation is owned here, not by the map page. Mounted
+                  inside the map page it was torn down by any route change,
+                  which stopped the GPS watch and released the wake lock on
+                  someone mid-journey. */}
+              <NavigationProvider>
+                <GlobalInviteListener />
+                <WelcomeIntro />
+                {children}
+                <NavigationMiniDock />
+              </NavigationProvider>
             </NavigationInvitesProvider>
           </MainWrapper>
           <BottomNav />

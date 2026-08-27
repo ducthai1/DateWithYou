@@ -52,6 +52,7 @@ function LocationMapViewImpl({
   onSelect,
   onMapClick,
   onCenterChange,
+  attribution = true,
   className,
 }: {
   pins: MapPin[];
@@ -88,6 +89,17 @@ function LocationMapViewImpl({
    * back to no bias at all, which returns matches from the whole country.
    */
   onCenterChange?: (center: LatLng) => void;
+  /**
+   * Draw MapLibre's own attribution control. Off for thumbnail-sized maps.
+   *
+   * The control is `compact`, but compact still means a panel wide enough to
+   * read a sentence, and at 168px that sentence covers the entire map. A
+   * thumbnail that shows nothing but its own copyright notice is not a map.
+   * Callers that turn this off must attribute some other way — the mini dock
+   * prints a micro credit line and links to the full map, which carries the
+   * control properly.
+   */
+  attribution?: boolean;
   className?: string;
 }) {
   const mapRef = useRef<MapRef>(null);
@@ -270,7 +282,7 @@ function LocationMapViewImpl({
           onMapClick?.({ lat: e.lngLat.lat, lng: e.lngLat.lng })
         }
       >
-        <AttributionControl compact={true} position="top-right" />
+        {attribution ? <AttributionControl compact={true} position="top-right" /> : null}
 
         {/* The point being confirmed.
             The address lookup deliberately does not save what it finds — it
