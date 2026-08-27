@@ -49,6 +49,40 @@ Nên với mọi tham số tuỳ chọn: **chạy thử đúng cái mặc địn
 mới tin. Và trước khi tin là "API trả sai", gọi thẳng API một phát để tách bạch
 lỗi ở đâu — ở đây API đúng ngay từ đầu, sai nằm hoàn toàn phía client.
 
+### Thứ gì phải TỰ NHÌN mới thấy thì đừng đoán — đo nó
+
+Dock bản đồ thu nhỏ build xanh, tsc sạch, lint 0 — và có **ba** bug, cả ba
+chỉ lòi ra khi dựng trang tạm ép nó hiện rồi đo bằng `getBoundingClientRect`:
+
+- Nó nằm **đè 4px dưới thanh nav dưới**. Nav cao 75px chứ không phải 72 như đoán.
+- `LocationMapView` mang sẵn `min-h-[280px]` cho bản full trang. **Chiều cao tối
+  thiểu là thuộc tính KHÁC với chiều cao**, nên `h-full` không đụng tới nó: canvas
+  278px nằm trong khung 104px, marker vị trí rơi xuống dưới vùng nhìn thấy 36px.
+  Phải truyền `min-h-0` để `twMerge` xử — xem mục `cn()` bên dưới.
+- MapLibre vẽ marker trong lớp **tràn ra ngoài canvas có chủ đích**, nên nó đè lên
+  dòng khoảng cách và dock trông như không có chữ nào.
+
+Và một cái sửa hụt: `scale` của Tailwind lên marker **thay thế** `transform`
+định vị của MapLibre chứ không cộng vào, làm marker rời khỏi đúng điểm nó đánh dấu.
+
+Nên: trang nào nằm sau đăng nhập hoặc sau một trạng thái khó dựng, muốn biết nó
+đúng thì **dựng trang tạm ép trạng thái đó ra, chụp màn hình và ĐO** — rồi xoá
+trang tạm. Build xanh không nói gì về chuyện nó trông thế nào.
+
+## PiP / nổi trên app khác: web không làm được, đừng hứa
+
+Yêu cầu "thoát app vẫn thấy khung mini như Google Maps" là **PiP mức hệ điều
+hành**, Google Maps làm được vì nó là app native. Ba đường của web đều tắc:
+
+| Đường | Vướng |
+|---|---|
+| Auto-PiP lúc `visibilitychange` | bắt buộc đang **quay camera/mic** qua `getUserMedia`, và chỉ Chrome desktop |
+| Document PiP | chỉ Chrome/Edge **desktop**; Android còn sau cờ |
+| Canvas → video PiP | `requestAnimationFrame` **không chạy khi trang bị ẩn** ⇒ cửa sổ đứng hình |
+
+Khung mini đứng hình ở vị trí người ta đã đi qua thì **tệ hơn là không có**. Phần
+làm được — và đã làm — là rời khỏi *trang* bản đồ mà chuyến đi vẫn sống.
+
 ## Accessibility là bắt buộc, không phải phần thêm
 
 Lý do có mục này: những thứ hỏng ở đây không phải chuyện tinh vi, mà là những
