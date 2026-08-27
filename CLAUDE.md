@@ -49,6 +49,42 @@ Nên với mọi tham số tuỳ chọn: **chạy thử đúng cái mặc địn
 mới tin. Và trước khi tin là "API trả sai", gọi thẳng API một phát để tách bạch
 lỗi ở đâu — ở đây API đúng ngay từ đầu, sai nằm hoàn toàn phía client.
 
+### Quét responsive: dựng tài khoản thật rồi ĐO, đừng ngắm ảnh
+
+Cách đã dùng và nên dùng lại (19 route × 9 bề rộng 320→1920, 1384 lỗi → 26):
+
+1. **Mongo in-memory dạng replica set** (`MongoMemoryReplSet` — better-auth
+   dùng transaction nên `MongoMemoryServer` thường sẽ lỗi *"Transaction numbers
+   are only allowed on a replica set"*), chạy `next start` trỏ vào đó.
+2. Tạo tài khoản qua `/api/auth/sign-up/email`, tạo space qua tRPC (**phải có
+   header `Origin`**, không thì 403 *Forbidden origin*).
+3. **Seed dữ liệu xấu tính**: tên dài nhất có thể, URL không có chỗ ngắt, note
+   kịch max. Trang rỗng giấu đúng loại tràn cần tìm.
+4. Trang tạm `/audit` tự đăng nhập rồi nhồi từng route vào `<iframe>` theo từng
+   bề rộng, đo trong iframe, POST kết quả về một server nhỏ ở cổng khác.
+5. **Xoá sạch trang tạm sau khi xong.**
+
+Bài học về chính bộ dò — cả bốn đều làm nó nói dối:
+
+- **So với `documentElement.clientWidth`, KHÔNG phải bề rộng iframe.** Thanh
+  cuộn ăn ~16px; đo theo số ngoài là tha bổng mọi lỗi tràn nhỏ hơn 16px.
+- **Modal chào mừng mở trên mọi trang** ⇒ 972 báo động giả. Set cờ localStorage
+  trước khi đo (`dwy:welcomeSeen`).
+- **Cha `display:contents` không có hộp** — so bề rộng với nó là vô nghĩa.
+- **`scrollWidth` tính cả trang trí cố ý tràn** (icon đặt `-right-4` rồi crop).
+  Chỉ tính là lỗi khi **chữ hoặc ảnh trong luồng** bị cắt.
+- **Bị nav che ở đầu trang không phải lỗi** — đó là nội dung cuộn tới được. Chỉ
+  đo sau khi đã cuộn hết cỡ.
+
+Và mấy cái CSS đã cắn thật:
+
+- `min-h-[280px]` **không bị `h-full` ghi đè** — khác thuộc tính. Truyền `min-h-0`.
+- Cho một flex item `min-w-0` để hết tràn có thể làm nó **rớt mỗi dòng một chữ**.
+  Tràn vì cạnh nó có control rộng cứng thì hãy **xếp dọc**, đừng ép chữ co.
+- `scale` của Tailwind **thay thế** `transform` định vị của MapLibre marker.
+- Indicator tab tính bằng `100/tabs.length` **ép mọi tab bằng nhau** ⇒ phải ghim
+  `min-w-[400px]` ⇒ nhãn rớt hai dòng. Đo nút đang active thì hết cả chuỗi đó.
+
 ### Thứ gì phải TỰ NHÌN mới thấy thì đừng đoán — đo nó
 
 Dock bản đồ thu nhỏ build xanh, tsc sạch, lint 0 — và có **ba** bug, cả ba
