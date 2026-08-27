@@ -61,6 +61,7 @@ import {
   calculateDistance,
   calculateMidpoint,
   isPartnerFixFresh,
+  isOpenAt,
   type LatLng,
 } from "@/lib/maps";
 import { authClient } from "@/lib/auth-client";
@@ -833,15 +834,29 @@ export function LocationsPage() {
           // Calculate midpoint
           const midpoint = calculateMidpoint(origin, partnerGeo);
 
-          // Find the 3 closest locations from our saved pins to the midpoint
-          const validPins = (list.data ?? [])
+          /*
+           * Closest saved pins to the midpoint, preferring ones that are open
+           * right now. Suggesting a place to meet that closed an hour ago is
+           * the one way this feature can waste a trip, and the opening hours
+           * were already on the record — the wheel had been using them while
+           * this did not.
+           *
+           * Closed places are kept as a fallback rather than dropped: a
+           * suggestion you have to check beats "no suggestions", and a place
+           * with no hours entered counts as open (see isOpenAt).
+           */
+          const now = new Date();
+          const withDistance = (list.data ?? [])
             .filter((p) => p.geo)
             .map((p) => ({
               ...p,
               distanceToMidpoint: calculateDistance(midpoint, p.geo!),
+              isOpenNow: isOpenAt(p, now),
             }))
-            .sort((a, b) => a.distanceToMidpoint - b.distanceToMidpoint)
-            .slice(0, 3); // top 3
+            .sort((a, b) => a.distanceToMidpoint - b.distanceToMidpoint);
+
+          const openNow = withDistance.filter((p) => p.isOpenNow);
+          const validPins = (openNow.length > 0 ? openNow : withDistance).slice(0, 3);
 
           if (validPins.length === 0) {
             setMidpointError("Chưa có địa điểm nào được lưu có toạ độ. Hãy thêm địa điểm và gắn link Google Maps trước nhé!");
@@ -1691,6 +1706,16 @@ export function LocationsPage() {
                         Cách trung điểm {(midpointRecommendations[midpointIndex].distanceToMidpoint / 1000).toFixed(1)} km
                       </span>
                       <span>·</span>
+                      {/* Say so when a suggestion is closed. The finder falls
+                          back to closed places rather than showing nothing, so
+                          without this the person would only find out on
+                          arrival. */}
+                      {midpointRecommendations[midpointIndex].isOpenNow === false ? (
+                        <>
+                          <span className="text-amber-600">Giờ này đã đóng cửa</span>
+                          <span>·</span>
+                        </>
+                      ) : null}
                       <span>{midpointRecommendations[midpointIndex].district}</span>
                       <span>·</span>
                       <span>{midpointRecommendations[midpointIndex].category}</span>

@@ -21,6 +21,7 @@ const SOURCE_TABS = [
 ] as const;
 
 import { useToast } from "@/components/ui/toast";
+import { isOpenAt } from "@/lib/maps";
 
 export function FoodWheel() {
   const router = useRouter();
@@ -58,34 +59,10 @@ export function FoodWheel() {
     );
   };
 
-  // Helper to parse "HH:mm" to minutes
-  function parseTime(timeStr?: string | null) {
-    if (!timeStr) return null;
-    const [h, m] = timeStr.split(":").map(Number);
-    if (isNaN(h) || isNaN(m)) return null;
-    return h * 60 + m;
-  }
-
-  // Filter places based on open/close time
+  // Opening-hours filtering uses the shared rule (see isOpenAt) so the wheel
+  // and the meeting-point finder cannot disagree about what "open" means.
   const now = new Date();
-  const currentMins = now.getHours() * 60 + now.getMinutes();
-
-  const filteredPlaces = (places.data ?? []).filter((p) => {
-    const openMins = parseTime(p.openTime);
-    const closeMins = parseTime(p.closeTime);
-
-    // If no open/close time specified, keep it
-    if (openMins === null || closeMins === null) return true;
-
-    // Normal case: 08:00 to 22:00
-    if (openMins <= closeMins) {
-      return currentMins >= openMins && currentMins <= closeMins;
-    }
-    // Overnight case: 18:00 to 02:00
-    else {
-      return currentMins >= openMins || currentMins <= closeMins;
-    }
-  });
+  const filteredPlaces = (places.data ?? []).filter((p) => isOpenAt(p, now));
 
   // Normalise both sources to { id, name, mustTry } for the wheel.
   const items =

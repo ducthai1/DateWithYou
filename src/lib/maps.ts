@@ -76,3 +76,32 @@ export function calculateMidpoint(p1: LatLng, p2: LatLng): LatLng {
     lng: (lng3 * 180) / Math.PI,
   };
 }
+
+/**
+ * Whether a place is open at a given moment, from its "HH:mm" opening hours.
+ *
+ * Extracted from the wheel, which had it inline, because the meeting-point
+ * finder needs the same rule. A place that has not been given hours counts as
+ * open: there is no basis to exclude it, and silently hiding pins someone saved
+ * would look like data loss.
+ */
+export function parseClockMinutes(value?: string | null): number | null {
+  if (!value) return null;
+  const [h, m] = value.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+}
+
+export function isOpenAt(
+  place: { openTime?: string | null; closeTime?: string | null },
+  when: Date,
+): boolean {
+  const open = parseClockMinutes(place.openTime);
+  const close = parseClockMinutes(place.closeTime);
+  if (open === null || close === null) return true;
+
+  const now = when.getHours() * 60 + when.getMinutes();
+  // A close time earlier than the open time means the place runs past midnight
+  // (18:00–02:00), so the open window wraps around the end of the day.
+  return open <= close ? now >= open && now <= close : now >= open || now <= close;
+}
