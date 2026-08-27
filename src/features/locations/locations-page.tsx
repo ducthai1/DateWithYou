@@ -114,6 +114,7 @@ import { MeetingFlare } from "./meeting-flare";
  * "OpenStreetMap" tells someone to look twice in a way "nominatim" does not.
  */
 const GEOCODE_SOURCE_LABEL: Record<string, string> = {
+  trackasia: "TrackAsia (bản đồ Việt Nam)",
   google: "Google Maps",
   mapbox: "Mapbox",
   stadia: "OpenStreetMap",

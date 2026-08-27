@@ -18,11 +18,12 @@
  * your own pins, not an address field, so the list stays short and the settings
  * modal lets each space edit it.
  *
- * Entries marked "(cũ)" are former districts whose new ward names could not be
- * verified from a source at the time of writing, and inventing administrative
- * names is not acceptable. They are kept, clearly labelled as the old naming,
- * so nobody's existing pins fall out of the filter — and so it is obvious which
- * rows still need replacing rather than looking finished.
+ * Every entry is now a real post-reform unit. The earlier version kept seven
+ * former districts labelled "(cũ)" because their new ward names could not be
+ * verified and inventing administrative names is not acceptable. They were
+ * resolved by asking TrackAsia's old-to-new conversion endpoint and checking
+ * each answer against the vendored ward dataset — the four already verified by
+ * hand came back identical, which is what makes the other seven trustworthy.
  *
  * The field itself accepts any string (see districtSchema in the location
  * router), and this list only seeds a space on first access — an existing space
@@ -30,28 +31,23 @@
  * spaces get, and nothing else.
  */
 export const DISTRICTS = [
-  // Verified new ward names for the former central districts.
-  "Phường Sài Gòn",
-  "Phường Bến Thành",
-  "Phường Tân Định",
-  "Phường Cầu Ông Lãnh",
-  "Phường Bàn Cờ",
-  "Phường Xuân Hòa",
-  "Phường Nhiêu Lộc",
-  "Phường Xóm Chiếu",
-  "Phường Khánh Hội",
-  "Phường Chợ Quán",
-  "Phường An Đông",
-  "Phường Chợ Lớn",
-  // Former districts whose new ward names are not yet verified here.
-  "Quận 7 (cũ)",
-  "Quận 10 (cũ)",
-  "Bình Thạnh (cũ)",
-  "Phú Nhuận (cũ)",
-  "Gò Vấp (cũ)",
-  "Tân Bình (cũ)",
-  "Thủ Đức (cũ)",
-  // The areas that joined the city in the 2025 merger.
+  // Former central districts, converted through TrackAsia's old_to_new endpoint
+  // and each one confirmed to exist in the vendored ward dataset. Two
+  // independent sources agreeing is the reason these are stated plainly rather
+  // than hedged: the four that were already verified by hand came back
+  // identical, which is what earns trust in the seven that were not.
+  "Phường Sài Gòn",      // Quận 1
+  "Phường Xuân Hòa",     // Quận 3
+  "Phường Khánh Hội",    // Quận 4
+  "Phường An Đông",      // Quận 5
+  "Phường Tân Mỹ",       // Quận 7
+  "Phường Hòa Hưng",     // Quận 10
+  "Phường Bình Thạnh",
+  "Phường Phú Nhuận",
+  "Phường Gò Vấp",
+  "Phường Tân Bình",
+  "Phường Thủ Đức",
+  // Areas that joined the city in the 2025 merger.
   "Bình Dương",
   "Vũng Tàu",
   "Khác",

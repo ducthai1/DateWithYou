@@ -26,6 +26,72 @@ function inRange(lat: number, lng: number): boolean {
   );
 }
 
+/**
+ * TrackAsia — the only provider in this chain built for Vietnam.
+ *
+ * Two things it does that none of the others can. It knows the post-1/7/2025
+ * administrative units, so a result comes back naming the ward that is on
+ * people's actual paperwork rather than a district that no longer exists. And
+ * it finds Vietnamese POIs at alley addresses that global geocoders miss —
+ * verified against a real one during integration, which came back as the
+ * restaurant itself rather than the street.
+ *
+ * `new_admin=true` is sent explicitly and deliberately. The API defaults to the
+ * OLD units today and flips to new on 1/7/2027; relying on either default means
+ * every response silently changes meaning on a date nobody is watching.
+ *
+ * The response is Google-Maps-shaped, including `location_type`, which is a
+ * precision class no other provider here reports:
+ *   ROOFTOP            — the building itself
+ *   RANGE_INTERPOLATED — guessed between two known house numbers
+ *   GEOMETRIC_CENTER   — the centre of a street or area
+ *   APPROXIMATE        — a region, which for a café is useless
+ * That distinction is why this returns it: a loose hit from a Vietnam-aware
+ * provider is not automatically better than an exact hit from Google, so the
+ * caller gets to decide rather than taking the first answer.
+ */
+type TrackAsiaHit = LatLng & { precise: boolean };
+
+const PRECISE_LOCATION_TYPES = new Set(["ROOFTOP", "RANGE_INTERPOLATED"]);
+
+async function viaTrackAsia(
+  query: string,
+  timeoutMs: number,
+): Promise<TrackAsiaHit | null> {
+  const key = process.env.TRACKASIA_API_KEY;
+  if (!key) return null;
+  try {
+    const url =
+      `https://maps.track-asia.com/api/v2/place/textsearch/json` +
+      `?query=${encodeURIComponent(query)}&new_admin=true&key=${key}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      status?: string;
+      results?: Array<{
+        geometry?: {
+          location?: { lat?: number; lng?: number };
+          location_type?: string;
+        };
+      }>;
+    };
+    // Google-compatible status codes: OK, ZERO_RESULTS, INVALID_REQUEST…
+    if (data.status !== "OK") return null;
+    const first = data.results?.[0]?.geometry;
+    const lat = first?.location?.lat;
+    const lng = first?.location?.lng;
+    if (typeof lat !== "number" || typeof lng !== "number") return null;
+    if (!inRange(lat, lng)) return null;
+    return {
+      lat,
+      lng,
+      precise: PRECISE_LOCATION_TYPES.has(first?.location_type ?? ""),
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Google Maps Platform — the only source with the *exact* coordinates of a
 // specific place (its own data), and it isn't IP/region-biased like the scraped
 // page. Optional: only used when GOOGLE_MAPS_API_KEY is configured. Tries
@@ -135,6 +201,22 @@ async function viaNominatim(query: string, timeoutMs: number): Promise<LatLng | 
 // string geocodes best when the provider knows the POI; when it doesn't, a
 // leading business name (no house number) just confuses it — so we also try the
 // plain street address. Most specific first.
+/**
+ * Does the query name a city or province at all?
+ *
+ * This decides more than which suffix to append. A bare POI name is ambiguous
+ * across the country and a geocoder will still answer confidently: "Phở Bát
+ * Đàn" with no city came back as a ROOFTOP hit 400km away in Quảng Bình, while
+ * the same query with "Hà Nội" landed on the right street. Precision class says
+ * how exactly a point was located, not whether it is the point you meant, so
+ * an un-located query cannot be trusted on precision alone.
+ */
+function namesACity(q: string): boolean {
+  return /hồ chí minh|ho chi minh|hcm|sài gòn|sai gon|hà nội|ha noi|đà nẵng|da nang|cần thơ|can tho|huế|hue|hải phòng|hai phong|nha trang|đà lạt|da lat|vũng tàu|vung tau|phú quốc|phu quoc|quận|phường|tỉnh|tp\.?\s/i.test(
+    q,
+  );
+}
+
 function queryVariants(q: string): string[] {
   const variants = [q];
   const parts = q.split(",").map((s) => s.trim()).filter(Boolean);
@@ -166,8 +248,7 @@ function queryVariants(q: string): string[] {
    * the more specific forms have missed.
    */
   const hasCountry = /việt\s*nam|vietnam/i.test(q);
-  const hasCity = /hồ chí minh|ho chi minh|hcm|sài gòn|sai gon|hà nội|ha noi|đà nẵng|da nang|cần thơ|can tho|huế|hue/i.test(q);
-  const tail = hasCity ? "Việt Nam" : "Thành phố Hồ Chí Minh, Việt Nam";
+  const tail = namesACity(q) ? "Việt Nam" : "Thành phố Hồ Chí Minh, Việt Nam";
   if (!hasCountry) {
     for (const base of [...variants]) variants.push(`${base}, ${tail}`);
   }
@@ -196,7 +277,7 @@ function queryVariants(q: string): string[] {
  * OpenStreetMap. Without it the person is agreeing to a coordinate with no idea
  * how it was arrived at.
  */
-export type GeocodeSource = "google" | "mapbox" | "stadia" | "nominatim";
+export type GeocodeSource = "trackasia" | "google" | "mapbox" | "stadia" | "nominatim";
 
 export type GeocodeHit = LatLng & {
   source: GeocodeSource;
@@ -239,9 +320,40 @@ export async function geocodeAddressDetailed(
   if (!q) return null;
   const budget = () => (deadline ? deadline - Date.now() : MAX_CALL_MS);
 
-  // The exact query first, through the providers that know POIs.
+  /*
+   * TrackAsia first, but only trusted outright when it says the hit is precise.
+   *
+   * It goes first because it is the only provider here that knows Vietnam's
+   * current administrative units and it finds alley-address POIs the global
+   * services miss — and because its quota is large enough that trying it costs
+   * nothing worth counting.
+   *
+   * It is not trusted blindly, though: it reports a precision class, and a
+   * GEOMETRIC_CENTER or APPROXIMATE answer is a street or a region, which for
+   * a café is no better than a guess. In that case the answer is kept aside and
+   * Google gets a turn — an exact hit from Google beats a vague hit from
+   * anyone. The loose answer is still used if nothing better turns up, because
+   * a rough coordinate the person can drag beats no coordinate at all.
+   */
+  let loose: GeocodeHit | null = null;
+  if (budget() >= 300) {
+    const hit = await viaTrackAsia(q, Math.min(MAX_CALL_MS, budget()));
+    /*
+     * Trusted outright only when the hit is precise AND the query said where to
+     * look. Precision describes how exactly a point was pinned down, not
+     * whether it is the right point: a bare POI name gets a confident ROOFTOP
+     * answer in the wrong province, which is worse than an admitted guess
+     * because the UI would present it as exact.
+     */
+    if (hit?.precise && namesACity(q)) {
+      return { lat: hit.lat, lng: hit.lng, source: "trackasia", broadened: false };
+    }
+    if (hit) loose = { lat: hit.lat, lng: hit.lng, source: "trackasia", broadened: true };
+  }
+
+  // The exact query through the providers that know POIs.
   for (const { source, run } of NAMED_PROVIDERS) {
-    if (budget() < 300) return null;
+    if (budget() < 300) return loose;
     const hit = await run(q, Math.min(MAX_CALL_MS, budget()));
     if (hit) return { ...hit, source, broadened: false };
   }
@@ -252,12 +364,12 @@ export async function geocodeAddressDetailed(
   for (const [index, variant] of variants.entries()) {
     for (const { source, run } of FALLBACK_PROVIDERS) {
       const left = budget();
-      if (left < 300) return null;
+      if (left < 300) return loose;
       const hit = await run(variant, Math.min(MAX_CALL_MS, left));
       if (hit) return { ...hit, source, broadened: index > 0 };
     }
   }
-  return null;
+  return loose;
 }
 
 /**
