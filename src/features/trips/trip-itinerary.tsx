@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Clock, MapPin } from "lucide-react";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { PlanItemForm } from "@/features/calendar/plan-item-form";
-import { BUCKET_ORDER, BUCKETS } from "@/lib/plan-meta";
+import { BUCKETS } from "@/lib/plan-meta";
 import { todayKey, addDaysKey } from "@/lib/date-keys";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

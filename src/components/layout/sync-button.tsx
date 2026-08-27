@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";

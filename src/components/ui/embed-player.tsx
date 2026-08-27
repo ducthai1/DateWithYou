@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ExternalLink, Play } from "lucide-react";
 import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
 

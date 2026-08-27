@@ -25,6 +25,10 @@ import { MemberStateModel } from "@/server/db/models/member-state";
  * Cost: one indexed, field-narrowed, limited find per collection, in parallel.
  */
 
+// The value exists so ActivityKind can be derived from it below, which keeps
+// the list and the type from drifting apart. Nothing reads it at runtime, and
+// deleting it to satisfy the linter would take the type with it.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const KINDS = [
   "memory",
   "location",

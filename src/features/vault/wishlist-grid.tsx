@@ -47,7 +47,7 @@ export function WishlistGrid() {
     onError: (err) => toast(err.message, "error"),
   });
   const toggle = trpc.wishlist.toggleBought.useMutation({ 
-    onSuccess: (_, variables) => { 
+    onSuccess: () => { 
       invalidate(); 
       toast("Đã cập nhật trạng thái mua", "success"); 
     },

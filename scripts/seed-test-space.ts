@@ -5,7 +5,7 @@ import { LocationModel } from "../src/server/db/models/location";
 import { LocationConfigModel } from "../src/server/db/models/location-config";
 import { WishlistItemModel } from "../src/server/db/models/wishlist-item";
 import { TimeCapsuleModel } from "../src/server/db/models/time-capsule";
-import { RewardTaskModel, RewardAccountModel, RewardVoucherModel } from "../src/server/db/models/reward-models";
+import { RewardTaskModel, RewardAccountModel } from "../src/server/db/models/reward-models";
 import { SpecialDateModel } from "../src/server/db/models/special-date";
 
 const USER_ID = "6a23ff579fdcc76e494592bf";

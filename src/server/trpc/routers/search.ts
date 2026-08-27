@@ -6,7 +6,7 @@ import { LocationModel } from "@/server/db/models/location";
 import { MediaItemModel } from "@/server/db/models/media-item";
 import { PlanItemModel } from "@/server/db/models/plan-item";
 import { TripModel } from "@/server/db/models/trip";
-import { buildPattern, toBaseLetters } from "@/lib/vietnamese-text";
+import { buildPattern } from "@/lib/vietnamese-text";
 
 /* ── Vietnamese diacritic-tolerant matching ──────────────────────────
  *

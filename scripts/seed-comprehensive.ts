@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { SpaceModel } from "../src/server/db/models/space";
 import { MemoryModel } from "../src/server/db/models/memory";
 import { LocationModel } from "../src/server/db/models/location";
 import { LocationConfigModel } from "../src/server/db/models/location-config";

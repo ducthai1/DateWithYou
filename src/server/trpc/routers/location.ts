@@ -13,7 +13,11 @@ import { SpaceModel } from "@/server/db/models/space";
 import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 import { requireEnv } from "@/lib/env";
 import { resolveGeoFromMapsUrl, extractFirstUrl } from "@/server/lib/resolve-maps-geo";
-import { geocodeAddress, geocodeAddressDetailed } from "@/server/lib/geocode-address";
+import {
+  geocodeAddress,
+  placeDetail,
+  suggestPlaces,
+} from "@/server/lib/geocode-address";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
 import { searchAreas } from "@/lib/vn-admin";
 import { buildPattern } from "@/lib/vietnamese-text";
@@ -241,20 +245,6 @@ export const locationRouter = router({
    * page. The client sends what was typed and gets back a short list.
    */
   /**
-   * Turn a typed name or address into a coordinate.
-   *
-   * The geocoder was already here, but only reachable indirectly — it ran when
-   * a place was saved with a Google Maps link. There was no way to type "Bánh
-   * xèo 46A Đinh Công Tráng" and have the map go there.
-   *
-   * Returns one coordinate, not a candidate list, because that is all the
-   * geocoder gives (it walks providers and takes the first hit). So the client
-   * must not save this silently: it flies the map to the result and opens the
-   * form pre-filled, and the person confirms against what they can see. A
-   * wrong geocode that gets written straight to a saved place is a wrong pin
-   * that stays wrong.
-   */
-  /**
    * Rank candidate meeting points by how evenly the journey splits.
    *
    * The geometric midpoint is the wrong answer whenever the two routes are not
@@ -299,14 +289,24 @@ export const locationRouter = router({
         .sort((x, y) => x.gapSeconds - y.gapSeconds);
     }),
 
-  geocode: protectedProcedure
-    .input(z.object({ query: z.string().trim().min(2).max(160) }))
-    .query(async ({ input }) => {
-      const hit = await geocodeAddressDetailed(input.query);
-      return hit
-        ? { lat: hit.lat, lng: hit.lng, source: hit.source, broadened: hit.broadened }
-        : null;
-    }),
+  /**
+   * Suggestions while typing. Biased toward wherever the map is looking, which
+   * is what stops "highland" answering with a café 1,500km away that merely
+   * sorted first.
+   */
+  suggestPlaces: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().trim().max(120),
+        near: geo.nullish(),
+      }),
+    )
+    .query(({ input }) => suggestPlaces(input.query, input.near ?? null)),
+
+  /** The coordinate behind a suggestion, fetched once the person picks one. */
+  placeDetail: protectedProcedure
+    .input(z.object({ placeId: z.string().min(1).max(200) }))
+    .query(({ input }) => placeDetail(input.placeId)),
 
   searchAreas: protectedProcedure
     .input(z.object({ query: z.string().max(80).default("") }))

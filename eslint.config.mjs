@@ -26,7 +26,7 @@ const eslintConfig = [
   },
   {
     rules: {
-      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": "error",
       "@next/next/no-img-element": "off",
       "jsx-a11y/alt-text": "error",
       "jsx-a11y/click-events-have-key-events": "error",

@@ -383,3 +383,109 @@ export async function geocodeAddress(
   const hit = await geocodeAddressDetailed(query, deadline);
   return hit ? { lat: hit.lat, lng: hit.lng } : null;
 }
+
+/**
+ * Place suggestions as someone types, and the coordinate for the one they pick.
+ *
+ * This is the pattern every map app uses and the one this app was missing: it
+ * had a text box that filtered saved pins and a separate button that geocoded
+ * one guess. Typing a shop name and being shown the places it could be is what
+ * people already know how to do.
+ *
+ * TrackAsia's autocomplete is Google-Places-shaped, including
+ * structured_formatting, which is the two-line row — name above, address below
+ * — that makes a list of near-identical branch names distinguishable.
+ *
+ * `location` + `radius` bias results toward wherever the map is looking.
+ * Without it "highland" returns a café in Lào Cai, 1,500km from a user in
+ * Saigon, purely because it sorted first.
+ */
+export type PlaceSuggestion = {
+  placeId: string;
+  /** Shop or place name. */
+  main: string;
+  /** Address line under it. */
+  secondary: string;
+};
+
+export async function suggestPlaces(
+  query: string,
+  near?: LatLng | null,
+  timeoutMs = MAX_CALL_MS,
+): Promise<PlaceSuggestion[]> {
+  const key = process.env.TRACKASIA_API_KEY;
+  if (!key || query.trim().length < 2) return [];
+  try {
+    const bias = near ? `&location=${near.lat},${near.lng}&radius=25000` : "";
+    const url =
+      `https://maps.track-asia.com/api/v2/place/autocomplete/json` +
+      `?input=${encodeURIComponent(query)}&new_admin=true${bias}&key=${key}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      status?: string;
+      predictions?: Array<{
+        place_id?: string;
+        description?: string;
+        structured_formatting?: { main_text?: string; secondary_text?: string };
+      }>;
+    };
+    if (data.status !== "OK") return [];
+    return (data.predictions ?? [])
+      .filter((p) => p.place_id)
+      .slice(0, 8)
+      .map((p) => ({
+        placeId: p.place_id as string,
+        main: p.structured_formatting?.main_text ?? p.description ?? "",
+        secondary: p.structured_formatting?.secondary_text ?? "",
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export type PlaceDetail = LatLng & {
+  name: string;
+  address: string;
+  /** The place's own site or social link, if it has one — the form has a field. */
+  url: string | null;
+};
+
+export async function placeDetail(
+  placeId: string,
+  timeoutMs = MAX_CALL_MS,
+): Promise<PlaceDetail | null> {
+  const key = process.env.TRACKASIA_API_KEY;
+  if (!key) return null;
+  try {
+    const url =
+      `https://maps.track-asia.com/api/v2/place/details/json` +
+      `?place_id=${encodeURIComponent(placeId)}&new_admin=true&key=${key}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      status?: string;
+      result?: {
+        geometry?: { location?: { lat?: number; lng?: number } };
+        name?: string;
+        formatted_address?: string;
+        website?: string;
+      };
+    };
+    if (data.status !== "OK") return null;
+    const loc = data.result?.geometry?.location;
+    if (typeof loc?.lat !== "number" || typeof loc?.lng !== "number") return null;
+    if (!inRange(loc.lat, loc.lng)) return null;
+    const site = data.result?.website;
+    return {
+      lat: loc.lat,
+      lng: loc.lng,
+      name: data.result?.name ?? "",
+      address: data.result?.formatted_address ?? "",
+      // Only https — the same rule the location schema enforces on saved links.
+      url: site && site.startsWith("https://") ? site : null,
+    };
+  } catch {
+    return null;
+  }
+}

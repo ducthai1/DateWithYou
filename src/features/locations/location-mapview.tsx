@@ -5,7 +5,6 @@ import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "rea
 import "maplibre-gl/dist/maplibre-gl.css";
 import { geodesicCircle, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
-import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 
 // OpenFreeMap serves free vector tiles + styles with no API key, no signup, and

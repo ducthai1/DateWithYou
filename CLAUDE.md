@@ -1,5 +1,29 @@
 # Vivu No Plan — quy ước khi sửa repo này
 
+## Trước khi tự nghĩ ra một luồng, xem người ta làm thế nào
+
+Ca thật: ô tìm trên `/map` từng được dựng theo kiểu tự chế — gõ chữ thì lọc pin
+đã lưu, còn muốn tìm chỗ mới thì phải **để ý thấy một cái nút riêng rồi bấm**,
+và nó tra được **đúng một** kết quả. Không ai làm bản đồ theo kiểu đó. Mọi ứng
+dụng bản đồ đều giải bài này giống nhau — **gõ → hiện danh sách → chọn một** —
+và người dùng đã thuộc hình dạng đó từ trước khi mở app này.
+
+Nên trước khi code một tính năng có tiền lệ:
+
+- **Tra xem ứng dụng lớn làm thế nào** (bản đồ, tìm kiếm, lịch, giỏ hàng…).
+  Mẫu quen thuộc thắng mẫu thông minh, vì người dùng không phải học lại.
+- **Tra chuẩn a11y của mẫu đó.** Autocomplete có mẫu WAI-ARIA combobox sẵn:
+  `role="combobox"`, `aria-expanded`, `aria-activedescendant`, phím ↑↓ Enter
+  Escape Tab. Tự chế dropdown là tự tay bỏ hết những cái đó.
+- **Tra con số, đừng đoán.** Debounce ~300ms, tối thiểu 2–3 ký tự, cache truy
+  vấn lặp — đây là những con số đã có người đo, không cần nghĩ lại.
+- **Tra API trước khi tự dựng.** TrackAsia đã có `place/autocomplete` và
+  `place/details` kiểu Google Places từ đầu; tự viết một luồng geocode một-kết-
+  quả là bỏ qua thứ có sẵn tốt hơn.
+
+Chi phí của việc bỏ qua bước này không phải là code xấu — mà là **giao cho người
+dùng một thứ họ phải học lại**, trong khi bản chuẩn thì họ đã biết dùng.
+
 ## Accessibility là bắt buộc, không phải phần thêm
 
 Lý do có mục này: những thứ hỏng ở đây không phải chuyện tinh vi, mà là những
@@ -27,10 +51,15 @@ tái phạm:
 | `interactive-supports-focus` | thứ tương tác được mà không focus được |
 | `control-has-associated-label` | ô nhập không có tên đọc được |
 | `anchor-is-valid`, `aria-props`, `role-has-required-aria-props` | dùng sai ARIA |
+| `@typescript-eslint/no-unused-vars` | biến / import không ai dùng |
 
 `no-static-element-interactions` **cố ý để `off`** — nó bắt cả những lớp bọc chỉ
 làm `stopPropagation`, vốn không phải điều khiển; gắn `role`/`tabIndex` vào đó
 chỉ tạo điểm dừng focus rỗng. Ca thật mà nó nhắm tới đã bị hai rule trên chặn.
+
+`no-unused-vars` từng để `off`, và chính vì thế một đợt dọn dẹp đã **xoá mất ba
+lời gọi `useEscapeKey`** mà không ai biết — import vẫn còn, ba overlay lặng lẽ
+mất đường thoát bằng bàn phím. Bật nó lên là bắt được ngay.
 
 **Đã kiểm bằng cách cố tình vi phạm:** `<div onClick>` và `<img>` thiếu `alt`
 đều bị chặn. **Nút chỉ chứa icon `aria-hidden` thì KHÔNG bị bắt**, kể cả khi

@@ -30,8 +30,6 @@ import {
   Loader2,
   Users,
   UserRound,
-  SlidersHorizontal,
-  Search as SearchIcon,
   X,
   MapPinned,
   ChevronRight,
@@ -110,6 +108,7 @@ import { useToast } from "@/components/ui/toast";
 import { MeetingFlare } from "./meeting-flare";
 import { MapSheet } from "./map-sheet";
 import { useEscapeKey } from "@/hooks/use-escape-key";
+import { PlaceSearchBox } from "./place-search-box";
 
 
 export function LocationsPage() {
@@ -270,87 +269,24 @@ export function LocationsPage() {
     return () => clearTimeout(t);
   }, [queryText]);
 
-  /*
-   * "Not in my pins — look it up on the map."
-   *
-   * Deliberately not a save. The geocoder returns one coordinate with no
-   * confidence score and no alternatives, so the only honest way to use it is
-   * to show the person where it landed and let them decide. The map flies
-   * there, the add form opens with the name and coordinate filled in, and
-   * nothing is written until they submit.
-   */
-  const [isGeocoding, setIsGeocoding] = useState(false);
-  const [geocodeMiss, setGeocodeMiss] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  // Both of these overlays are hand-rolled rather than built on <Modal>, so
-  // they inherit none of its keyboard behaviour. Escape at minimum.
+  // These three overlays are hand-rolled rather than built on <Modal>, so they
+  // inherit none of its keyboard behaviour. Escape at minimum.
   useEscapeKey(showEndConfirm, () => setShowEndConfirm(false));
   useEscapeKey(showMidpointModal, () => setShowMidpointModal(false));
   useEscapeKey(Boolean(navInvites.endedTrip), () => navInvites.clearEndedTrip());
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
   /** Shown on the collapsed filter button so an active filter is never hidden. */
   const activeFilterCount =
     (district ? 1 : 0) + (category ? 1 : 0) + (status ? 1 : 0);
+
   /*
-   * The looked-up point, held separately from the form values so the map can
-   * draw it. Previously the coordinate only went into the form's lat/lng
-   * inputs, so the map flew there and showed nothing — which made the whole
-   * "look at it before saving" idea useless.
+   * The point a chosen suggestion put on the map, held apart from the form's
+   * values so the map can draw it. It is not saved until the form is
+   * submitted — the pin is there to be looked at and corrected first.
    */
   const [draftGeo, setDraftGeo] = useState<LatLng | null>(null);
-  /**
-   * Whether a looked-up point is on screen, and whether it came from a widened
-   * query. Not the provider's name: that was printed for a while and told
-   * nobody what to do about it.
-   */
   const [draftHint, setDraftHint] = useState<null | "exact" | "approx">(null);
-  const handleGeocodeSearch = useCallback(async () => {
-    const q = queryText.trim();
-    if (!q || isGeocoding) return;
-    setIsGeocoding(true);
-    setGeocodeMiss(false);
-    try {
-      const hit = await utils.location.geocode.fetch({ query: q });
-      if (!hit) {
-        setGeocodeMiss(true);
-        return;
-      }
-      const point = { lat: hit.lat, lng: hit.lng };
-      setFocusGeo(point);
-      setDraftGeo(point);
-      setFormInitial({ name: q, geo: point });
-      setFormOpen(true);
-      /*
-       * Bring the map into view. On a phone it sits below the list, so flying
-       * the camera to a point nobody has scrolled to is the same as not
-       * showing it.
-       */
-      requestAnimationFrame(() => {
-        document
-          .getElementById("map-view")
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-      /*
-       * Say where the coordinate came from. The person is about to confirm a
-       * pin, and that decision is much easier knowing whether it came from
-       * Google's POI database or from a street-name guess on OpenStreetMap.
-       *
-       * `broadened` means the hit came from a widened query rather than what
-       * they typed — a street-only or country-appended form — so it is looser
-       * by construction and worth a closer look. Flagged as a warning rather
-       * than a success for exactly that reason.
-       */
-      setDraftHint(hit.broadened ? "approx" : "exact");
-      if (hit.broadened) {
-        toast(`Gần đúng thôi — xem pin trên bản đồ`, "error");
-      } else {
-        toast(`Đã ghim tạm — xem trên bản đồ`, "success");
-      }
-    } catch {
-      setGeocodeMiss(true);
-    } finally {
-      setIsGeocoding(false);
-    }
-  }, [queryText, isGeocoding, utils, toast]);
 
   const listInput = useMemo(
     () => ({
@@ -1284,7 +1220,7 @@ export function LocationsPage() {
       <div className="mx-auto w-full max-w-[1400px] px-4 pt-2 pb-6 md:px-[30px] lg:pt-6 2xl:max-w-none">
       {/* Action bar stays pinned; only the cards below scroll under it. */}
       {/* Mobile: title row + actions row stacked. Desktop: single flex row. */}
-      <div className="sticky top-2 z-30 mb-2 flex flex-col gap-y-2 rounded-2xl border border-border bg-card px-3 py-2 shadow-lg sm:mb-4 sm:px-4 sm:py-3 sm:flex-row lg:border-0 lg:bg-gradient-to-r lg:from-gradient-from/15 lg:to-gradient-to/15 lg:shadow-sm sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
+      <div className="sticky top-2 z-40 mb-2 flex flex-col gap-y-2 rounded-2xl border border-border bg-card px-3 py-2 shadow-lg sm:mb-4 sm:px-4 sm:py-3 sm:flex-row lg:border-0 lg:bg-gradient-to-r lg:from-gradient-from/15 lg:to-gradient-to/15 lg:shadow-sm sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
         {/* Hidden on phones, not deleted: the app header directly above already
             names this screen, so on a 844px viewport this line and its gap were
             44px of duplicate label taken from the map. */}
@@ -1353,81 +1289,32 @@ export function LocationsPage() {
             wrong when anything above changes height.
           */}
           <div className="relative z-30 space-y-2 lg:z-auto lg:space-y-3">
-          <div className="rounded-xl shadow-lg lg:shadow-none">
-            <div className="relative">
-              <SearchIcon className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-              <input
-                value={queryText}
-                onChange={(e) => setQueryText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter") return;
-                  e.preventDefault();
-                  // The list filters live, so Enter cannot mean "search my
-                  // pins" — that already happened. It means the other thing.
-                  if (queryText.trim().length > 1) handleGeocodeSearch();
-                }}
-                placeholder="Tìm quán theo tên, món nên gọi, ghi chú…"
-                aria-label="Tìm địa điểm"
-                className="border-border bg-card focus:border-accent focus:ring-ring/30 h-10 w-full rounded-xl border pl-9 pr-20 text-sm outline-none focus:ring-2 lg:pr-9"
-              />
-              {queryText ? (
-                <button
-                  type="button"
-                  onClick={() => setQueryText("")}
-                  aria-label="Xoá tìm kiếm"
-                  className="text-muted-foreground hover:text-foreground absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-1"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-              {/* Filter toggle, inside the search row so it costs no height of
-                  its own. The badge matters: a filter you cannot see is a
-                  filter you forget is on, and then the list looks broken. */}
-              <button
-                type="button"
-                onClick={() => setFiltersOpen((v) => !v)}
-                aria-expanded={filtersOpen}
-                aria-label="Bộ lọc"
-                className={cn(
-                  "absolute right-9 top-1/2 flex h-7 -translate-y-1/2 items-center gap-1 rounded-lg px-2 text-[12px] font-medium transition-colors lg:hidden",
-                  activeFilterCount > 0
-                    ? "bg-[var(--accent)]/15 text-[var(--accent)]"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                {activeFilterCount > 0 ? activeFilterCount : null}
-              </button>
-            </div>
+            <PlaceSearchBox
+              value={queryText}
+              onValueChange={setQueryText}
+              near={liveUser ?? focusGeo}
+              filterCount={activeFilterCount}
+              filtersOpen={filtersOpen}
+              onToggleFilters={() => setFiltersOpen((v) => !v)}
+              onPickPlace={(place) => {
+                const point = { lat: place.lat, lng: place.lng };
+                setFocusGeo(point);
+                setDraftGeo(point);
+                setDraftHint("exact");
+                setFormInitial({
+                  name: place.name,
+                  geo: point,
+                  ...(place.url ? { socialUrl: place.url } : {}),
+                });
+                setFormOpen(true);
+                requestAnimationFrame(() => {
+                  document
+                    .getElementById("map-view")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                });
+              }}
+            />
 
-            {/* Address lookup, shown whenever there is something to look up.
-                It used to live only in the empty state, which meant it appeared
-                only when nothing matched — so anyone with saved places could
-                never reach it, and the feature was effectively invisible. The
-                two searches answer different questions and both are worth
-                offering at once: "which of my pins is this" and "where is this
-                place". */}
-            {debouncedQuery.length > 1 ? (
-              <button
-                type="button"
-                onClick={handleGeocodeSearch}
-                disabled={isGeocoding}
-                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-[13px] font-medium text-[var(--accent)] shadow-lg transition-colors hover:bg-muted disabled:opacity-50 lg:shadow-none"
-              >
-                <MapPinned className="h-3.5 w-3.5" />
-                {isGeocoding
-                  ? "Đang tra địa chỉ…"
-                  : `Chưa lưu? Tra “${debouncedQuery}” trên bản đồ`}
-              </button>
-            ) : null}
-            {geocodeMiss ? (
-              <p className="mx-auto mt-1.5 w-fit rounded-lg border border-border bg-card px-2.5 py-1 text-center text-xs text-muted-foreground shadow-sm">
-                Không tra được — thử thêm tên đường
-              </p>
-            ) : null}
-            {/* Which service answered. In a toast this vanished before it could
-                be read, and it is the thing that tells someone how hard to
-                squint at the pin. */}
             {draftHint ? (
               <p className="mx-auto mt-1.5 w-fit rounded-lg border border-border bg-card px-2.5 py-1 text-center text-xs text-muted-foreground shadow-sm">
                 {draftHint === "approx"
@@ -1436,6 +1323,7 @@ export function LocationsPage() {
               </p>
             ) : null}
           </div>
+
           {/*
             Collapsed behind a button on phones. Three selects held a permanent
             44px row over the map to say nothing — someone with eight saved
@@ -1481,7 +1369,6 @@ export function LocationsPage() {
                 { value: "visited", label: "Đã đi" },
               ]}
             />
-          </div>
           </div>
 
           {/*

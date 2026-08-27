@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { KeyRound, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
@@ -18,7 +18,6 @@ export default function ResetPasswordPage() {
 }
 
 function ResetPasswordContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams?.get("token");
   

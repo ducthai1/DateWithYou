@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
@@ -41,7 +41,6 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
 }
 
 function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const isSignUp = mode === "sign-up";
   const [name, setName] = useState("");

@@ -10,7 +10,7 @@ async function main() {
       if (match) {
         uri = match[1];
       }
-    } catch (e) {
+    } catch {
       console.error("Could not read .env file");
     }
   }
