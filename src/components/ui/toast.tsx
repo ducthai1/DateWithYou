@@ -67,7 +67,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{t.message}</span>
+                    {/* Two lines, not one. A truncated toast drops the end of the
+                        sentence, which is where the instruction usually is. */}
+                    <span className="line-clamp-2">{t.message}</span>
                   </motion.div>
                 );
               })}

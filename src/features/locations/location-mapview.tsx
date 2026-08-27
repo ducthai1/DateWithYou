@@ -39,6 +39,7 @@ function LocationMapViewImpl({
   partnerRouteGeometry,
   selectedId,
   focusGeo,
+  draftGeo,
   userGeo,
   userAccuracyM,
   partnerLocation,
@@ -62,6 +63,8 @@ function LocationMapViewImpl({
   partnerRouteGeometry?: unknown;
   selectedId?: string | null;
   focusGeo?: LatLng | null;
+  /** A point being confirmed but not saved yet — the address lookup result. */
+  draftGeo?: LatLng | null;
   userGeo?: LatLng | null;
   /** Horizontal GPS accuracy in metres, drawn to scale when known. */
   userAccuracyM?: number | null;
@@ -231,6 +234,31 @@ function LocationMapViewImpl({
         }
       >
         <AttributionControl compact={true} position="top-right" />
+
+        {/* The point being confirmed.
+            The address lookup deliberately does not save what it finds — it
+            shows it and asks. That only works if there is something to look at,
+            and there was not: the map flew to the coordinate and showed bare
+            ground while the form filled in a latitude and longitude, which
+            tells nobody anything. This is drawn differently from a saved pin on
+            purpose, because it is not one yet. */}
+        {draftGeo ? (
+          <Marker longitude={draftGeo.lng} latitude={draftGeo.lat} anchor="bottom">
+            <div className="relative flex flex-col items-center">
+              <span className="mb-1 whitespace-nowrap rounded-full bg-[#c2693f] px-2.5 py-1 text-[11px] font-semibold text-white shadow-lg">
+                Chỗ vừa tìm — chưa lưu
+              </span>
+              <span className="absolute bottom-1 h-10 w-10 animate-ping rounded-full bg-[#c2693f]/30" />
+              <svg width="30" height="38" viewBox="0 0 24 30" className="relative drop-shadow-lg">
+                <path
+                  d="M12 0C5.4 0 0 5.4 0 12c0 8.2 12 18 12 18s12-9.8 12-18c0-6.6-5.4-12-12-12z"
+                  fill="#c2693f"
+                />
+                <circle cx="12" cy="12" r="4.5" fill="#fff" />
+              </svg>
+            </div>
+          </Marker>
+        ) : null}
 
         {/* GPS accuracy, to scale.
             A pixel-radius circle would mean a different distance at every zoom

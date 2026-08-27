@@ -290,6 +290,15 @@ export function LocationsPage() {
    */
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeMiss, setGeocodeMiss] = useState(false);
+  /*
+   * The looked-up point, held separately from the form values so the map can
+   * draw it. Previously the coordinate only went into the form's lat/lng
+   * inputs, so the map flew there and showed nothing — which made the whole
+   * "look at it before saving" idea useless.
+   */
+  const [draftGeo, setDraftGeo] = useState<LatLng | null>(null);
+  /** Which service found the draft point, shown next to the search box. */
+  const [draftSource, setDraftSource] = useState<string | null>(null);
   const handleGeocodeSearch = useCallback(async () => {
     const q = queryText.trim();
     if (!q || isGeocoding) return;
@@ -301,9 +310,21 @@ export function LocationsPage() {
         setGeocodeMiss(true);
         return;
       }
-      setFocusGeo({ lat: hit.lat, lng: hit.lng });
-      setFormInitial({ name: q, geo: { lat: hit.lat, lng: hit.lng } });
+      const point = { lat: hit.lat, lng: hit.lng };
+      setFocusGeo(point);
+      setDraftGeo(point);
+      setFormInitial({ name: q, geo: point });
       setFormOpen(true);
+      /*
+       * Bring the map into view. On a phone it sits below the list, so flying
+       * the camera to a point nobody has scrolled to is the same as not
+       * showing it.
+       */
+      requestAnimationFrame(() => {
+        document
+          .getElementById("map-view")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
       /*
        * Say where the coordinate came from. The person is about to confirm a
        * pin, and that decision is much easier knowing whether it came from
@@ -315,10 +336,11 @@ export function LocationsPage() {
        * than a success for exactly that reason.
        */
       const label = GEOCODE_SOURCE_LABEL[hit.source] ?? hit.source;
+      setDraftSource(hit.broadened ? `${label} · gần đúng` : label);
       if (hit.broadened) {
-        toast(`Chỉ tra được gần đúng (${label}) — kiểm lại pin trên bản đồ nhé.`, "error");
+        toast(`Gần đúng thôi — xem pin trên bản đồ`, "error");
       } else {
-        toast(`Tìm thấy qua ${label} — xem pin có đúng chỗ không.`, "success");
+        toast(`Đã ghim tạm — xem trên bản đồ`, "success");
       }
     } catch {
       setGeocodeMiss(true);
@@ -832,7 +854,13 @@ export function LocationsPage() {
   // Stable click handler for the same reason (inline arrow would bust the memo).
   const handleMapClick = useCallback(
     (geo: LatLng) => {
-      if (formOpen) setFormInitial((p) => ({ ...p, geo }));
+      if (formOpen) {
+        setFormInitial((p) => ({ ...p, geo }));
+        // Move the draft pin with the tap. Without this the map keeps showing
+        // the looked-up point while the form already holds the corrected one,
+        // so the correction appears not to have registered.
+        setDraftGeo(geo);
+      }
     },
     [formOpen],
   );
@@ -1033,6 +1061,7 @@ export function LocationsPage() {
               partnerRouteGeometry={partnerRouteGeometry}
               selectedId={selectedId}
               focusGeo={focusGeo}
+              draftGeo={draftGeo}
               userAccuracyM={nav.accuracyM}
               userGeo={liveUser}
               partnerLocation={nav.partnerLocation}
@@ -1349,6 +1378,14 @@ export function LocationsPage() {
                 Không tra được địa chỉ này. Thử thêm tên đường hoặc tên quận.
               </p>
             ) : null}
+            {/* Which service answered. In a toast this vanished before it could
+                be read, and it is the thing that tells someone how hard to
+                squint at the pin. */}
+            {draftSource ? (
+              <p className="text-muted-foreground mt-1.5 text-center text-xs">
+                Ghim tạm theo <span className="font-medium">{draftSource}</span> — chạm lên bản đồ nếu chưa đúng chỗ
+              </p>
+            ) : null}
           </div>
           <div className="order-2 grid grid-cols-2 md:grid-cols-3 gap-2 lg:order-none">
             <Select
@@ -1394,6 +1431,7 @@ export function LocationsPage() {
               partnerRouteGeometry={partnerRouteGeometry}
               selectedId={selectedId}
               focusGeo={focusGeo}
+              draftGeo={draftGeo}
               userAccuracyM={nav.accuracyM}
               userGeo={liveUser}
               partnerLocation={nav.partnerLocation}
@@ -1516,8 +1554,16 @@ export function LocationsPage() {
                     initial={formInitial}
                     categories={categories}
                     districts={districts}
-                    onDone={() => setFormOpen(false)}
-                    onCancel={() => setFormOpen(false)}
+                    onDone={() => {
+                      setFormOpen(false);
+                      setDraftGeo(null);
+                      setDraftSource(null);
+                    }}
+                    onCancel={() => {
+                      setFormOpen(false);
+                      setDraftGeo(null);
+                      setDraftSource(null);
+                    }}
                   />
                 </div>
               </motion.div>
