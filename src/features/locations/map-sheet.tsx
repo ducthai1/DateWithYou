@@ -44,7 +44,14 @@ export function MapSheet({
   children: React.ReactNode;
   className?: string;
 }) {
-  const [stop, setStop] = useState<Stop>(1);
+  /*
+   * Opens at the lowest stop. Half height on arrival meant the map — the whole
+   * reason for this layout — was a sliver behind the sheet, which is the same
+   * mistake as the 288px strip this replaced, just from the other direction.
+   * The handle says how many places are down there, so the list is one tap
+   * away rather than hidden.
+   */
+  const [stop, setStop] = useState<Stop>(0);
   const [dragOffset, setDragOffset] = useState(0);
   const startY = useRef<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);

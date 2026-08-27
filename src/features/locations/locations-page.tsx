@@ -30,6 +30,7 @@ import {
   Loader2,
   Users,
   UserRound,
+  SlidersHorizontal,
   Search as SearchIcon,
   X,
   MapPinned,
@@ -291,6 +292,10 @@ export function LocationsPage() {
    */
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeMiss, setGeocodeMiss] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  /** Shown on the collapsed filter button so an active filter is never hidden. */
+  const activeFilterCount =
+    (district ? 1 : 0) + (category ? 1 : 0) + (status ? 1 : 0);
   /*
    * The looked-up point, held separately from the form values so the map can
    * draw it. Previously the coordinate only went into the form's lat/lng
@@ -1279,11 +1284,16 @@ export function LocationsPage() {
       )}
 
       {/* ── Normal page layout ── */}
-      <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px]">
+      <div className="mx-auto w-full max-w-[1400px] px-4 pt-2 pb-6 md:px-[30px] lg:pt-6">
       {/* Action bar stays pinned; only the cards below scroll under it. */}
       {/* Mobile: title row + actions row stacked. Desktop: single flex row. */}
-      <div className="sticky top-2 z-30 mb-4 flex flex-col gap-y-2 rounded-2xl bg-gradient-to-r from-gradient-from/15 to-gradient-to/15 px-4 py-3 shadow-sm backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
-        <h1 className="text-2xl font-semibold text-accent">Bản đồ ăn chơi</h1>
+      <div className="sticky top-2 z-30 mb-2 flex flex-col gap-y-2 rounded-2xl bg-gradient-to-r from-gradient-from/15 to-gradient-to/15 px-3 py-2 shadow-sm backdrop-blur-md sm:mb-4 sm:px-4 sm:py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
+        {/* Hidden on phones, not deleted: the app header directly above already
+            names this screen, so on a 844px viewport this line and its gap were
+            44px of duplicate label taken from the map. */}
+        <h1 className="sr-only text-2xl font-semibold text-accent sm:not-sr-only">
+          Bản đồ ăn chơi
+        </h1>
         <div className="flex flex-wrap items-center gap-2">
           {hasTwoMembers && (
             <Button
@@ -1346,7 +1356,7 @@ export function LocationsPage() {
             wrong when anything above changes height.
           */}
           <div className="relative z-30 space-y-2 lg:z-auto lg:space-y-3">
-          <div className="rounded-xl bg-card/95 p-1.5 shadow-lg backdrop-blur lg:bg-transparent lg:p-0 lg:shadow-none">
+          <div className="rounded-xl shadow-lg lg:shadow-none">
             <div className="relative">
               <SearchIcon className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
               <input
@@ -1354,18 +1364,36 @@ export function LocationsPage() {
                 onChange={(e) => setQueryText(e.target.value)}
                 placeholder="Tìm quán theo tên, món nên gọi, ghi chú…"
                 aria-label="Tìm địa điểm"
-                className="border-border bg-card focus:border-accent focus:ring-ring/30 h-10 w-full rounded-xl border pl-9 pr-9 text-sm outline-none focus:ring-2"
+                className="border-border bg-card focus:border-accent focus:ring-ring/30 h-10 w-full rounded-xl border pl-9 pr-20 text-sm outline-none focus:ring-2 lg:pr-9"
               />
               {queryText ? (
                 <button
                   type="button"
                   onClick={() => setQueryText("")}
                   aria-label="Xoá tìm kiếm"
-                  className="text-muted-foreground hover:text-foreground absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1"
+                  className="text-muted-foreground hover:text-foreground absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-1"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               ) : null}
+              {/* Filter toggle, inside the search row so it costs no height of
+                  its own. The badge matters: a filter you cannot see is a
+                  filter you forget is on, and then the list looks broken. */}
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((v) => !v)}
+                aria-expanded={filtersOpen}
+                aria-label="Bộ lọc"
+                className={cn(
+                  "absolute right-9 top-1/2 flex h-7 -translate-y-1/2 items-center gap-1 rounded-lg px-2 text-[12px] font-medium transition-colors lg:hidden",
+                  activeFilterCount > 0
+                    ? "bg-[var(--accent)]/15 text-[var(--accent)]"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                {activeFilterCount > 0 ? activeFilterCount : null}
+              </button>
             </div>
 
             {/* Address lookup, shown whenever there is something to look up.
@@ -1402,7 +1430,18 @@ export function LocationsPage() {
               </p>
             ) : null}
           </div>
-          <div className="grid grid-cols-3 gap-2 lg:order-none">
+          {/*
+            Collapsed behind a button on phones. Three selects held a permanent
+            44px row over the map to say nothing — someone with eight saved
+            places has nothing to filter. Always open at lg, where the column
+            has room and the row costs the map nothing.
+          */}
+          <div
+            className={cn(
+              "grid grid-cols-3 gap-2 lg:order-none",
+              !filtersOpen && "hidden lg:grid",
+            )}
+          >
             <Select
               aria-label="Lọc theo quận"
               value={district}
@@ -1479,13 +1518,13 @@ export function LocationsPage() {
 
           {/* Partner offline helper — shown when coupled but no partner live location */}
           {hasTwoMembers && !nav.partnerLocation && (
-            <p className="text-xs text-muted-foreground bg-muted/50 border border-border rounded-lg px-3 py-2 text-center leading-snug">
+            <p className="relative z-30 text-xs text-muted-foreground bg-muted/50 border border-border rounded-lg px-3 py-2 text-center leading-snug">
               Người kia chưa mở trang Bản đồ gần đây nên chưa thấy vị trí. Nhờ người kia mở trang này nhé.
             </p>
           )}
 
           {/* Follow-me controls appear once a route is on the map. */}
-          <div className="flex flex-col gap-2">
+          <div className="relative z-30 flex flex-col gap-2">
             {nav.isOffline && (
               <div className="flex self-center items-center gap-2 rounded-full bg-red-500 px-3 py-1.5 text-xs font-medium text-white shadow-md mb-1 animate-in fade-in slide-in-from-bottom-2">
                 <WifiOff className="h-3.5 w-3.5" /> Mất kết nối mạng
@@ -1565,7 +1604,7 @@ export function LocationsPage() {
             )) : null}
           </div>
           {(routeError || nav.error) && (
-            <p className="text-destructive text-xs">{routeError ?? nav.error}</p>
+            <p className="relative z-30 text-destructive text-xs">{routeError ?? nav.error}</p>
           )}
           </div>
           )}
