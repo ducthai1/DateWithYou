@@ -406,7 +406,25 @@ export type PlaceSuggestion = {
   main: string;
   /** Address line under it. */
   secondary: string;
+  /** Where it is. Present because text search returns geometry inline. */
+  lat: number;
+  lng: number;
+  /** Straight-line metres from the point the search was biased to. */
+  distanceM: number;
 };
+
+/** Straight-line metres between two points. */
+function metresBetween(a: LatLng, b: LatLng): number {
+  const R = 6371000;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.lat * Math.PI) / 180) *
+      Math.cos((b.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
 
 /**
  * Where to search from when the caller has nothing better yet.
@@ -431,29 +449,51 @@ export async function suggestPlaces(
     // the client passed null before it had a position, and nobody noticed
     // because every test supplied a location by hand.
     const at = near ?? FALLBACK_BIAS;
-    const bias = `&location=${at.lat},${at.lng}&radius=25000`;
+    /*
+     * Text search rather than autocomplete, for the coordinates.
+     *
+     * Autocomplete returns a name and an address and nothing else, so "how far
+     * is this?" would have cost a place/details call per suggestion — eight
+     * extra requests for every search. Text search carries geometry inline, in
+     * the same single call, which also means picking a result no longer needs
+     * a details round trip either.
+     *
+     * It has to be sorted here: the API's own order ignores the bias almost
+     * entirely — searching "trà sữa" from Saigon put a result 1,068km away
+     * first. Nearest-first is the order the question implies.
+     */
     const url =
-      `https://maps.track-asia.com/api/v2/place/autocomplete/json` +
-      `?input=${encodeURIComponent(query)}&new_admin=true${bias}&key=${key}`;
+      `https://maps.track-asia.com/api/v2/place/textsearch/json` +
+      `?query=${encodeURIComponent(query)}&new_admin=true` +
+      `&location=${at.lat},${at.lng}&radius=25000&key=${key}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) return [];
     const data = (await res.json()) as {
       status?: string;
-      predictions?: Array<{
+      results?: Array<{
         place_id?: string;
-        description?: string;
-        structured_formatting?: { main_text?: string; secondary_text?: string };
+        name?: string;
+        formatted_address?: string;
+        geometry?: { location?: { lat?: number; lng?: number } };
       }>;
     };
     if (data.status !== "OK") return [];
-    return (data.predictions ?? [])
-      .filter((p) => p.place_id)
-      .slice(0, 8)
-      .map((p) => ({
-        placeId: p.place_id as string,
-        main: p.structured_formatting?.main_text ?? p.description ?? "",
-        secondary: p.structured_formatting?.secondary_text ?? "",
-      }));
+    return (data.results ?? [])
+      .flatMap((r) => {
+        const lat = r.geometry?.location?.lat;
+        const lng = r.geometry?.location?.lng;
+        if (!r.place_id || typeof lat !== "number" || typeof lng !== "number") return [];
+        return [{
+          placeId: r.place_id,
+          main: r.name ?? r.formatted_address ?? "",
+          secondary: r.formatted_address ?? "",
+          lat,
+          lng,
+          distanceM: Math.round(metresBetween(at, { lat, lng })),
+        }];
+      })
+      .sort((a, b) => a.distanceM - b.distanceM)
+      .slice(0, 8);
   } catch {
     return [];
   }

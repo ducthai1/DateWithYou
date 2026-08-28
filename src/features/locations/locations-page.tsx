@@ -9,34 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import {
-  Link2,
-  Navigation,
-  ExternalLink,
-  Pencil,
-  Trash2,
-  Utensils,
-  Play,
-  Pause,
-  Square,
-  Clock,
-  Route,
-  Settings,
-  CheckCircle2,
-  Circle,
-  WifiOff,
-  LocateOff,
-  Satellite,
-  Loader2,
-  Users,
-  UserRound,
-  X,
-  MapPinned,
-  ChevronRight,
-  ChevronLeft,
-  Plus,
-  MapPin,
-} from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, Loader2, LocateOff, MapPin, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { type LegInfo } from "./use-live-navigation";
@@ -316,6 +289,16 @@ export function LocationsPage() {
    * showing is, by definition, the area the person is looking at.
    */
   const [mapCenter, setMapCenter] = useState<LatLng | null>(null);
+
+  /**
+   * Whether the floating tool column is showing on desktop.
+   *
+   * Even narrowed, the column plus the app sidebar cover most of the left half
+   * of a laptop screen, and the map behind them is the point of the page. This
+   * is the same move a map application makes: let the panel get out of the way,
+   * and leave one control to bring it back.
+   */
+  const [panelOpen, setPanelOpen] = useState(true);
 
   /*
    * One cheap position fix on arrival, so the map opens where the person is.
@@ -1249,6 +1232,60 @@ export function LocationsPage() {
         </div>
       )}
 
+      {/*
+        The map is a layer behind the whole page, not a child of the tool
+        column, and it has to be written that way.
+
+        It used to live inside that column. Folding the column away then took
+        the map with it — and giving the column `max-w-0` instead left the map
+        `position: fixed; inset: 0` resolving to a 0x0 box, so the page went
+        blank either way. Out here nothing about the column can reach it.
+      */}
+      {!nav.isNavigating && (
+              <div
+                id="map-view"
+                className="fixed inset-0 z-0"
+              >
+              <LocationMapView
+                pins={pins}
+                routeGeometry={routeGeometry}
+                legGeometries={legGeometries}
+                currentLegIndex={currentLegIndex}
+                partnerRouteGeometry={partnerRouteGeometry}
+                selectedId={selectedId}
+                focusGeo={focusGeo}
+                draftGeo={draftGeo}
+                onCenterChange={setMapCenter}
+                userAccuracyM={nav.accuracyM}
+                userGeo={liveUser}
+                partnerLocation={nav.partnerLocation}
+                partnerPingAction={navInvites.partnerPingAction}
+                userPingAction={nav.userPingAction}
+                followGeo={nav.isNavigating ? nav.userGeo : null}
+                heading={nav.isNavigating ? nav.heading : null}
+                userAvatar={userAvatar}
+                partnerAvatar={partnerAvatar}
+                traveled={nav.traveled}
+                onSelect={setSelectedId}
+                onMapClick={handleMapClick}
+              />
+            </div>
+      )}
+
+      {/* The way back to the tools once the column has been folded away. */}
+      {!panelOpen && !nav.isNavigating && (
+        <button
+          type="button"
+          onClick={() => setPanelOpen(true)}
+          aria-label="Mở bảng điều khiển"
+          title="Mở bảng điều khiển"
+          className="border-border bg-card/90 hover:bg-card fixed left-[calc(var(--map-panel-left,7rem))] top-6 z-40 hidden h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium shadow-lg backdrop-blur-xl transition-colors lg:inline-flex"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+          Bảng điều khiển
+        </button>
+      )}
+
       {/* ── Normal page layout ── */}
       {/*
         Desktop follows the phone here: the map is the page, laid full-bleed
@@ -1261,14 +1298,35 @@ export function LocationsPage() {
         are the same objects at every width instead of two arrangements to keep
         in step.
       */}
-      <div className="mx-auto w-full max-w-[1400px] px-4 pt-2 pb-6 md:px-[30px] lg:mx-0 lg:flex lg:h-[100dvh] lg:max-w-[27rem] lg:flex-col lg:overflow-hidden lg:px-4 lg:pb-4 lg:pt-4 2xl:max-w-[30rem]">
+      <div
+        className={cn(
+          "mx-auto w-full max-w-[1400px] px-4 pt-2 pb-6 md:px-[30px]",
+          "lg:mx-0 lg:flex lg:h-[100dvh] lg:flex-col lg:overflow-hidden lg:px-4 lg:pb-4 lg:pt-4",
+          // 21rem, not 27: next to a 288px app sidebar the wider column left
+          // less than half the screen for the map.
+          "lg:max-w-[21rem] xl:max-w-[23rem]",
+          // Width, not visibility: the map element lives inside this column,
+          // so hiding it took the map with it and collapsing produced a blank
+          // screen. The tools below hide individually; the map is fixed and
+          // does not care how wide its container is.
+          !panelOpen && "lg:max-w-0 lg:p-0",
+        )}
+      >
       {/* Action bar stays pinned; only the cards below scroll under it. */}
       {/* Mobile: title row + actions row stacked. Desktop: single flex row. */}
-      <div className="sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:px-4 sm:py-3 sm:flex-row lg:static lg:mb-2 lg:py-2 sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
+      <div
+        className={cn(
+          "sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0 sm:px-4 sm:py-3 lg:static lg:mb-2 lg:py-2",
+          !panelOpen && "lg:hidden",
+        )}
+      >
         {/* Hidden on phones, not deleted: the app header directly above already
             names this screen, so on a 844px viewport this line and its gap were
             44px of duplicate label taken from the map. */}
-        <h1 className="sr-only text-2xl font-semibold text-accent sm:not-sr-only lg:text-base">
+        {/* truncate, not wrap. In the narrow column this broke onto three
+            lines, which stretched the row and left the buttons beside it
+            looking like they were different sizes. */}
+        <h1 className="text-accent sr-only shrink-0 truncate text-2xl font-semibold sm:not-sr-only lg:text-base">
           Bản đồ ăn chơi
         </h1>
         <div className="flex items-center gap-2">
@@ -1302,6 +1360,16 @@ export function LocationsPage() {
             <Settings className="h-4 w-4" />
           </Button>
           <Button
+            variant="outline"
+            size="icon"
+            className="hidden h-9 w-9 shrink-0 lg:inline-flex"
+            aria-label="Thu gọn bảng điều khiển"
+            title="Thu gọn để xem bản đồ"
+            onClick={() => setPanelOpen(false)}
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </Button>
+          <Button
             className="ml-auto h-9 shrink-0 px-3"
             onClick={() => {
               setFormInitial({});
@@ -1316,7 +1384,7 @@ export function LocationsPage() {
       {/* Desktop: map + filters pinned left, list scrolls on the right. */}
       {/* Mobile: filters top, list middle, map bottom */}
       <div className="flex min-h-0 flex-1 flex-col gap-6 lg:gap-3">
-        <div className="contents lg:block lg:shrink-0 lg:space-y-2">
+        <div className={cn("contents lg:block lg:shrink-0 lg:space-y-2", !panelOpen && "lg:hidden")}>
           {/* Name search. Sits above the selects because it is the fastest way
               to reach a specific pin once there are more than a screenful. */}
           {/*
@@ -1336,7 +1404,11 @@ export function LocationsPage() {
               which was fine while the map was a static grid cell there; now the
               map is fixed at all widths and fixed paints above static, so the
               search field simply vanished underneath it. */}
-          <div className="relative z-30 space-y-2 lg:space-y-2">
+          {/* z-40, above the filter row and the list. All three used to sit at
+              z-30, and DOM order decides a tie — so the suggestion dropdown,
+              which belongs to the field at the top, opened underneath the row
+              below it. */}
+          <div className="relative z-40 space-y-2 lg:space-y-2">
             <PlaceSearchBox
               value={queryText}
               onValueChange={setQueryText}
@@ -1382,7 +1454,7 @@ export function LocationsPage() {
             className={cn(
               // relative z-30 for the same reason as the search above it: the
               // map is fixed and would otherwise paint straight over this row.
-              "relative z-30 flex gap-2 lg:grid lg:grid-cols-3 lg:order-none",
+              "relative z-30 flex gap-2 lg:order-none lg:grid lg:grid-cols-2 [&>*:last-child]:lg:col-span-2",
               !filtersOpen && "hidden lg:grid",
             )}
           >
@@ -1422,6 +1494,17 @@ export function LocationsPage() {
           </div>
 
           {/*
+            Sits with the controls, in flow. It used to be a sibling of the map,
+            and the map is fixed — so this had no flow position of its own and
+            painted straight over the search box on a phone.
+          */}
+          {hasTwoMembers && !nav.partnerLocation && (
+            <p className="text-muted-foreground relative z-30 rounded-lg border border-border bg-card/90 px-3 py-1.5 text-center text-xs leading-snug shadow-sm backdrop-blur-sm">
+              Người kia chưa mở Bản đồ nên chưa thấy vị trí.
+            </p>
+          )}
+
+          {/*
             The map is the page, so on a phone it gets the phone. It used to be
             a 288px strip below the list — too small to read and big enough to
             push everything else down, losing on both counts.
@@ -1433,41 +1516,7 @@ export function LocationsPage() {
           */}
           {!nav.isNavigating && (
           <div className="lg:order-none lg:space-y-3 lg:pb-0">
-            <div
-              id="map-view"
-              className="fixed inset-0 z-0"
-            >
-            <LocationMapView
-              pins={pins}
-              routeGeometry={routeGeometry}
-              legGeometries={legGeometries}
-              currentLegIndex={currentLegIndex}
-              partnerRouteGeometry={partnerRouteGeometry}
-              selectedId={selectedId}
-              focusGeo={focusGeo}
-              draftGeo={draftGeo}
-              onCenterChange={setMapCenter}
-              userAccuracyM={nav.accuracyM}
-              userGeo={liveUser}
-              partnerLocation={nav.partnerLocation}
-              partnerPingAction={navInvites.partnerPingAction}
-              userPingAction={nav.userPingAction}
-              followGeo={nav.isNavigating ? nav.userGeo : null}
-              heading={nav.isNavigating ? nav.heading : null}
-              userAvatar={userAvatar}
-              partnerAvatar={partnerAvatar}
-              traveled={nav.traveled}
-              onSelect={setSelectedId}
-              onMapClick={handleMapClick}
-            />
-          </div>
 
-          {/* Partner offline helper — shown when coupled but no partner live location */}
-          {hasTwoMembers && !nav.partnerLocation && (
-            <p className="relative z-30 text-xs text-muted-foreground bg-card border border-border rounded-lg px-3 py-2 text-center leading-snug shadow-sm">
-              Người kia chưa mở Bản đồ nên chưa thấy vị trí.
-            </p>
-          )}
 
           {/* Follow-me controls appear once a route is on the map. */}
           <div className="relative z-30 flex flex-col gap-2">
@@ -1559,7 +1608,7 @@ export function LocationsPage() {
         {/* On a phone this rides over the map instead of sitting under it, so
             the map keeps the screen and the list is a thumb away. Same element
             on desktop, where it is simply the right-hand column. */}
-        <MapSheet count={(list.data ?? []).length} className="order-2 lg:order-none">
+        <MapSheet count={(list.data ?? []).length} className={cn("order-2 lg:order-none", !panelOpen && "lg:hidden")}>
         <div className="space-y-4">
           <AnimatePresence initial={false}>
             {formOpen && (

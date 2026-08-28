@@ -34,6 +34,13 @@ const DEBOUNCE_MS = 300;
 /** Bias point is rounded to this, in degrees (~5km) — see biasKey below. */
 const BIAS_GRID = 0.05;
 
+/** Metres → the short form people read on a result row. */
+function fmtAway(m: number): string {
+  if (m < 950) return `${Math.round(m / 10) * 10} m`;
+  if (m < 10000) return `${(m / 1000).toFixed(1)} km`;
+  return `${Math.round(m / 1000)} km`;
+}
+
 export function PlaceSearchBox({
   value,
   onValueChange,
@@ -115,16 +122,16 @@ export function PlaceSearchBox({
     setResolving(true);
     setOpen(false);
     try {
-      // The suggestion carries no coordinate; it is fetched only for the one
-      // that was actually chosen rather than for all eight on every keystroke.
-      const detail = await utils.location.placeDetail.fetch({ placeId: item.placeId });
-      if (detail) {
-        onPickPlace({
-          lat: detail.lat,
-          lng: detail.lng,
-          name: detail.name || item.main,
-          url: detail.url,
-        });
+      // The coordinate came with the suggestion — text search returns geometry
+      // inline — so this no longer needs a details round trip at all. It still
+      // asks for one thing details has and search does not: the place's own
+      // link, which is worth a call for the single result actually chosen.
+      onPickPlace({ lat: item.lat, lng: item.lng, name: item.main, url: null });
+      const detail = await utils.location.placeDetail
+        .fetch({ placeId: item.placeId })
+        .catch(() => null);
+      if (detail?.url) {
+        onPickPlace({ lat: detail.lat, lng: detail.lng, name: detail.name || item.main, url: detail.url });
       }
     } finally {
       setResolving(false);
@@ -262,13 +269,19 @@ export function PlaceSearchBox({
                   )}
                 >
                   <MapPin className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
-                  <span className="min-w-0">
+                  <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{item.main}</span>
                     {item.secondary ? (
                       <span className="text-muted-foreground block truncate text-xs">
                         {item.secondary}
                       </span>
                     ) : null}
+                  </span>
+                  {/* How far, because a list of names cannot answer "which of
+                      these is near me" — which is the whole question. Results
+                      arrive nearest-first for the same reason. */}
+                  <span className="text-muted-foreground mt-0.5 shrink-0 text-xs tabular-nums">
+                    {fmtAway(item.distanceM)}
                   </span>
                 </button>
               </li>
