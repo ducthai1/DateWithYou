@@ -49,7 +49,7 @@ export function CalendarView() {
       <CountdownBanner />
 
       <div className="flex items-center gap-2">
-        <Tabs tabs={VIEW_TABS} value={view} onChange={setView} className="flex-1" />
+        <Tabs tabs={VIEW_TABS} value={view} onChange={setView} className="w-max max-w-full" />
         <button
           type="button"
           onClick={() => setSpecialsOpen(true)}

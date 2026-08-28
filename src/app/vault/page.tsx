@@ -103,7 +103,7 @@ export default function VaultPage() {
       {/* Tab strip: scrollable on mobile so all 4 tabs stay tappable at 360px.
           w-max lets it be as wide as its labels need instead of squeezing them. */}
       <ScrollStrip>
-        <Tabs tabs={TABS} value={tab} onChange={setTab} className="w-max md:w-full" />
+        <Tabs tabs={TABS} value={tab} onChange={setTab} className="w-max" />
       </ScrollStrip>
       
       <div className="relative pt-2">

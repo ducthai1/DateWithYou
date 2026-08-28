@@ -27,7 +27,7 @@ const GROUND = "#021617";
 export function LandingHero() {
   return (
     <div
-      className="hero-band relative flex min-h-dvh flex-col items-center justify-center px-5 py-16"
+      className="hero-band relative flex min-h-dvh flex-col items-center justify-center px-5 py-16 short:py-6"
       style={{ backgroundColor: GROUND }}
     >
       {/* Stacked, not layered. An earlier pass floated the copy over the
@@ -78,7 +78,14 @@ export function LandingHero() {
             // explicitly permits the browser to defer the decode — exactly the
             // paint we are waiting on.
             decoding="sync"
-            className="h-auto w-full"
+            /*
+              Height-capped on a short window. The artwork is 900px wide and
+              tall to match, so at 960x600 — a MacBook at 150% zoom — the hero
+              stack came to ~790px, and justify-center pushed "Vào không gian"
+              clean off the bottom of the screen. The primary way into the app
+              was invisible to anyone zoomed in. Tall windows are untouched.
+            */
+            className="h-auto w-full short:mx-auto short:max-h-[34vh] short:w-auto short:object-contain"
           />
         </picture>
       </div>

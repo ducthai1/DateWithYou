@@ -30,7 +30,7 @@ export function StatCard({
     >
       <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
         <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        <span className="truncate">{label}</span>
+        <span className="leading-tight">{label}</span>
       </div>
       <p className="text-accent text-xl font-bold tracking-tight">{value}</p>
       {hint && (

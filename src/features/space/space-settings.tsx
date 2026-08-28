@@ -212,7 +212,9 @@ export function SpaceSettings() {
           
           <div className="space-y-2 pt-2 border-t border-border">
             <p className="text-xs font-medium text-muted-foreground">Đổi ảnh đại diện của bạn</p>
-            <div className="grid grid-cols-5 gap-2 sm:grid-cols-6 sm:gap-3">
+            {/* Capped: a six-column grid across a 1150px settings column left
+                ~150px of dead space between each 40px avatar. */}
+            <div className="grid max-w-md grid-cols-5 gap-2 sm:grid-cols-6 sm:gap-3">
               {displayAvatars.map((url, idx) => (
                 <button
                   key={url + idx}

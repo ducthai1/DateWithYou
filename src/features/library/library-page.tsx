@@ -102,7 +102,7 @@ export function LibraryPage() {
       />
 
       <ScrollStrip>
-        <Tabs tabs={TABS} value={kind} onChange={handleKindChange} className="w-max sm:w-full" />
+        <Tabs tabs={TABS} value={kind} onChange={handleKindChange} className="w-max" />
       </ScrollStrip>
       {!isGame && !list.isLoading && allItems.length > 0 && (allTags.length > 0 || allProviders.length > 0) && (
         <div className="bg-card border-border flex flex-row flex-wrap items-center gap-2 rounded-xl border p-2 shadow-sm sm:gap-3 sm:justify-between animate-in fade-in slide-in-from-top-2">

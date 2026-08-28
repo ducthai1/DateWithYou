@@ -72,7 +72,14 @@ export function PageHeader({
           <p className="text-muted-foreground mt-0.5 text-sm short:hidden">{subtitle}</p>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {/* Wraps on a narrow screen instead of crushing its contents. The
+          library header holds a search field and two buttons; on one 390px row
+          the field collapsed to ~90px and the button broke onto two lines. */}
+      {actions ? (
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:flex-nowrap">
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }
