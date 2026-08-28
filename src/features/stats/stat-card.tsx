@@ -28,9 +28,11 @@ export function StatCard({
         className,
       )}
     >
-      <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
+      <div className="text-muted-foreground mb-1.5 flex min-w-0 items-center gap-1.5 text-xs font-medium">
         <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        <span className="leading-tight">{label}</span>
+        {/* min-w-0 so a long label wraps inside the row instead of pushing
+            its own right edge past the card. */}
+        <span className="min-w-0 leading-tight">{label}</span>
       </div>
       <p className="text-accent text-xl font-bold tracking-tight">{value}</p>
       {hint && (

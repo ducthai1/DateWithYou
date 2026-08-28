@@ -423,7 +423,9 @@ export function SpaceSettings() {
       <Card className="space-y-3">
         <p className="text-sm font-medium">Màu chủ đạo</p>
         {/* 6-swatch preset grid — one swatch per ThemePresetKey */}
-        <div className="grid grid-cols-6 gap-3 sm:gap-2">
+        {/* Wraps rather than forcing six columns. At 320px each cell was
+            narrower than the 40px swatch, so the row ran past the grid. */}
+        <div className="flex flex-wrap gap-3 sm:gap-2">
           {THEME_PRESET_KEYS.map((key) => {
             const preset = THEME_PRESETS[key];
             const isActive = activePreset === key;

@@ -1325,7 +1325,12 @@ export function LocationsPage() {
       {/* Mobile: title row + actions row stacked. Desktop: single flex row. */}
       <div
         className={cn(
-          "sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0 sm:px-4 sm:py-3 lg:static lg:mb-2 lg:py-2",
+          // flex-wrap so the actions drop to a second line rather than hanging
+          // over the card's right edge. Nothing in this row could shrink — the
+          // title was shrink-0 and so is every button — so once the contents
+          // needed more than the card had, they simply escaped it: measured at
+          // 40px past the edge on a 1440 screen and 72px on a 1152 one.
+          "sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2 sm:px-4 sm:py-3 lg:static lg:mb-2 lg:py-2",
           !panelOpen && "lg:hidden",
         )}
       >
@@ -1335,10 +1340,15 @@ export function LocationsPage() {
         {/* truncate, not wrap. In the narrow column this broke onto three
             lines, which stretched the row and left the buttons beside it
             looking like they were different sizes. */}
-        <h1 className="text-accent sr-only shrink-0 truncate text-2xl font-semibold sm:not-sr-only lg:text-base">
+        <h1 className="text-accent sr-only min-w-0 flex-shrink truncate text-2xl font-semibold sm:not-sr-only lg:text-base">
           Bản đồ ăn chơi
         </h1>
-        <div className="flex items-center gap-2">
+        {/* Wraps internally. As one unwrappable flex item this group was wider
+            than the toolbar card at every desktop width, so it hung over the
+            card's right edge and past its rounded corner — 48px at 1440, 80px
+            at 1152. Letting the toolbar wrap did not help: it could only move
+            the whole group, not break it. */}
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
           {hasTwoMembers && (
             <Button
               variant="outline"
