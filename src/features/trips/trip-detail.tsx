@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ScrollStrip } from "@/components/ui/scroll-strip";
 import Link from "next/link";
 import { ChevronLeft, Settings2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -65,8 +66,13 @@ export function TripDetail({ id }: { id: string }) {
 
       {/* Tabs */}
       <div className="sticky top-[65px] z-10 bg-background px-4 pt-3 pb-2 shadow-sm">
+        {/* Scrolls rather than compressing. Four labels forced into 320px
+            pushed the page 25px wider than the screen once button labels
+            stopped wrapping — the tab strip is the thing that should give. */}
         <div className="mx-auto w-full max-w-4xl">
-          <Tabs tabs={TABS} value={activeTab} onChange={setActiveTab} className="w-full" />
+          <ScrollStrip>
+            <Tabs tabs={TABS} value={activeTab} onChange={setActiveTab} className="w-max sm:w-full" />
+          </ScrollStrip>
         </div>
       </div>
 

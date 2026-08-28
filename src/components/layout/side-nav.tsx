@@ -19,28 +19,41 @@ export function SideNav() {
   return (
     <aside
       className={cn(
-        "fixed inset-y-4 left-4 z-20 hidden flex-col justify-between rounded-2xl border border-white/40 bg-white/70 backdrop-blur-xl shadow-elev-2 md:flex",
+        /*
+          overflow-hidden and a scrollable list, because this box has a fixed
+          height and had neither.
+
+          inset-y-4 makes the sidebar exactly as tall as the window less 32px,
+          and justify-between then pushed the two blocks apart with nothing to
+          absorb the surplus. A logo, ten links and three footer rows need
+          ~644px; at 150% browser zoom the window gives 568px, so ~76px of nav
+          simply painted outside the rounded card. Nothing overflowed the page,
+          which is why every sideways check missed it for so long.
+        */
+        "fixed inset-y-4 left-4 z-20 hidden flex-col justify-between overflow-hidden rounded-2xl border border-white/40 bg-white/70 backdrop-blur-xl shadow-elev-2 md:flex",
         // Only animate width once the saved state is loaded — avoids the
         // expanded→collapsed slide on first paint.
         ready && "transition-[width] duration-300 ease-in-out",
         isCollapsed ? "w-20" : "w-64"
       )}
     >
-      <div className="flex flex-col gap-2 p-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 p-4 short:gap-1 short:p-3">
         <Link
           href="/map"
           className={cn(
-            "mb-4 flex items-center transition-all duration-300",
+            "mb-4 flex items-center transition-all duration-300 short:mb-1",
             isCollapsed ? "justify-center px-0" : "justify-center"
           )}
         >
           <BrandMark className={cn(
             "shrink-0 transition-all duration-300",
-            isCollapsed ? "h-10 w-12" : "h-14 w-44"
+            // Smaller when the window is short — the logo is the cheapest
+            // vertical space in here to give back.
+            isCollapsed ? "h-10 w-12 short:h-8 short:w-10" : "h-14 w-44 short:h-10 short:w-32"
           )} />
         </Link>
         
-        <div className="flex flex-col gap-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain">
           {/* We explicitly define the desktop top items here because mobile bottom nav
               swapped Vault and Settings, but desktop wants Vault in the top section
               and Settings in the bottom section. */}
@@ -60,7 +73,7 @@ export function SideNav() {
                 key={it.href}
                 href={it.href}
                 className={cn(
-                  "group flex items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
+                  "group flex shrink-0 items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 short:py-1.5",
                   active
                     ? "bg-accent-soft font-medium text-accent shadow-sm"
                     : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
@@ -85,11 +98,11 @@ export function SideNav() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-1 p-4">
+      <div className="flex shrink-0 flex-col gap-1 p-4 short:p-3">
         <Link
           href="/settings"
           className={cn(
-            "group flex items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
+            "group flex shrink-0 items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 short:py-1.5",
             pathname.startsWith("/settings")
               ? "bg-accent-soft font-medium text-accent shadow-sm"
               : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
