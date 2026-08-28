@@ -10,7 +10,7 @@ import type { MediaListItem } from "./media-card";
 export function RecipeDetail({ item, onClose }: { item: MediaListItem; onClose: () => void }) {
   const r = item.recipe;
   return (
-    <Modal open onClose={onClose}>
+    <Modal size="xl" open onClose={onClose}>
       <ModalHeader title={item.title} onClose={onClose} />
       <ModalContent className="space-y-4">
         {r?.coverImage && (

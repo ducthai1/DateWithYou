@@ -158,16 +158,32 @@ export { DialogTitleContext, useDialogA11y };
  * open so the page behind doesn't move. Focus moves in on open, is trapped
  * while open, and returns to the trigger on close.
  */
+/** Width steps, so a confirm and a long form stop sharing one size. */
+const MODAL_SIZE = {
+  sm: "max-w-sm",
+  md: "max-w-md",
+  lg: "max-w-lg",
+  xl: "max-w-2xl",
+} as const;
+
 export function Modal({
   open,
   onClose,
   children,
   className,
+  size = "lg",
 }: {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
+  /**
+   * Defaults to `lg` (512px). Most dialogs here are three or four short
+   * fields, and every one of them was 672px wide because that was the only
+   * width available — wide enough to look like the layout had given up.
+   * Content-heavy dialogs ask for `xl` explicitly.
+   */
+  size?: keyof typeof MODAL_SIZE;
 }) {
   const { containerRef, titleId, hasTitle, titleCtx } = useDialogA11y(open);
 
@@ -206,7 +222,8 @@ export function Modal({
             onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
             className={cn(
-              "bg-card border-border relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-2xl cursor-default",
+              "bg-card border-border relative flex w-full flex-col overflow-hidden rounded-2xl border shadow-2xl cursor-default",
+              MODAL_SIZE[size],
               "max-h-[90dvh]",
               "outline-none",
               className,
@@ -223,7 +240,23 @@ export function Modal({
   );
 }
 
-export function ModalHeader({ title, onClose }: { title: React.ReactNode; onClose: () => void }) {
+export function ModalHeader({
+  title,
+  onClose,
+  description,
+  icon,
+}: {
+  title: React.ReactNode;
+  onClose: () => void;
+  /**
+   * One line under the title, for what this dialog is for or what happens
+   * next. Dialogs that need it were putting it as the first paragraph of the
+   * body, where it read as content rather than as a subtitle.
+   */
+  description?: React.ReactNode;
+  /** Small mark to the left of the title, so a dialog has an identity. */
+  icon?: React.ReactNode;
+}) {
   // Registering tells the surrounding shell it has a real heading to point
   // aria-labelledby at; without it the shell keeps its generic aria-label.
   const dialogTitle = useContext(DialogTitleContext);
@@ -233,15 +266,30 @@ export function ModalHeader({ title, onClose }: { title: React.ReactNode; onClos
   }, [registerTitle]);
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border p-5">
-      <h2 id={dialogTitle?.titleId} className="text-lg font-semibold">
-        {title}
-      </h2>
+    <div className="border-border from-muted/40 flex shrink-0 items-start justify-between gap-3 border-b bg-gradient-to-b to-transparent px-5 py-4">
+      <div className="flex min-w-0 items-start gap-3">
+        {icon ? (
+          <span
+            aria-hidden="true"
+            className="bg-accent-soft text-accent mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+          >
+            {icon}
+          </span>
+        ) : null}
+        <div className="min-w-0">
+          <h2 id={dialogTitle?.titleId} className="text-lg font-semibold leading-tight">
+            {title}
+          </h2>
+          {description ? (
+            <p className="text-muted-foreground mt-1 text-sm leading-snug">{description}</p>
+          ) : null}
+        </div>
+      </div>
       <button
         type="button"
         onClick={onClose}
         aria-label="Đóng"
-        className="flex h-10 w-10 items-center justify-center text-muted-foreground hover:bg-muted active:bg-muted -mr-2 rounded-lg transition-colors touch-manipulation"
+        className="text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted -mr-2 -mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors touch-manipulation"
       >
         <X className="h-5 w-5" />
       </button>
@@ -249,15 +297,64 @@ export function ModalHeader({ title, onClose }: { title: React.ReactNode; onClos
   );
 }
 
+/**
+ * The dialog body, with a fade at whichever edge still has content behind it.
+ *
+ * A dialog capped at 90dvh silently cuts its body off: the last field of a long
+ * form sat below the fold with a flat border under it, which reads as the end
+ * of the form rather than as more to come. The fades only appear when there is
+ * actually something past the edge.
+ */
 export function ModalContent({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("flex-1 overflow-y-auto p-5", className)}>{children}</div>;
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ top: false, bottom: false });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const more = el.scrollHeight - el.clientHeight;
+      setEdges({
+        top: el.scrollTop > 4,
+        bottom: more > 4 && el.scrollTop < more - 4,
+      });
+    };
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    Array.from(el.children).forEach((c) => ro.observe(c));
+    return () => { el.removeEventListener("scroll", measure); ro.disconnect(); };
+  }, []);
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        aria-hidden="true"
+        className={cn(
+          "from-card pointer-events-none absolute inset-x-0 top-0 z-10 h-5 bg-gradient-to-b to-transparent transition-opacity duration-200",
+          edges.top ? "opacity-100" : "opacity-0",
+        )}
+      />
+      <div ref={ref} className={cn("min-h-0 flex-1 overflow-y-auto p-5", className)}>
+        {children}
+      </div>
+      <div
+        aria-hidden="true"
+        className={cn(
+          "from-card pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-gradient-to-t to-transparent transition-opacity duration-200",
+          edges.bottom ? "opacity-100" : "opacity-0",
+        )}
+      />
+    </div>
+  );
 }
 
 export function ModalFooter({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
       className={cn(
-        "bg-card border-border flex shrink-0 flex-row items-center w-full gap-2.5 border-t p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
+        "border-border bg-muted/30 flex w-full shrink-0 flex-row items-center gap-2.5 border-t p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
         className,
       )}
     >

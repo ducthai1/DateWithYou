@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ImagePlus } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -169,8 +170,13 @@ export function MemoryTimeline() {
         </div>
       )}
 
-      <Modal open={adding} onClose={() => setAdding(false)}>
-        <ModalHeader title="Thêm kỷ niệm" onClose={() => setAdding(false)} />
+      <Modal size="xl" open={adding} onClose={() => setAdding(false)}>
+        <ModalHeader
+          title="Thêm kỷ niệm"
+          description="Ảnh, cảm xúc, nhạc hoặc video của một hôm đáng nhớ."
+          icon={<ImagePlus className="h-[18px] w-[18px]" />}
+          onClose={() => setAdding(false)}
+        />
         <MemoryForm onDone={() => setAdding(false)} onCancel={() => setAdding(false)} />
       </Modal>
 
@@ -332,7 +338,7 @@ export function MemoryTimeline() {
         </div>
       ) : null}
 
-      <Modal open={!!selectedMemo} onClose={() => setSelected(null)}>
+      <Modal size="xl" open={!!selectedMemo} onClose={() => setSelected(null)}>
         {selectedMemo && (
           <>
             <ModalHeader title={selectedMemo.title} onClose={() => setSelected(null)} />
@@ -389,7 +395,7 @@ export function MemoryTimeline() {
         )}
       </Modal>
 
-      <Modal open={!!warningEditId} onClose={() => setWarningEditId(null)}>
+      <Modal size="xl" open={!!warningEditId} onClose={() => setWarningEditId(null)}>
         <ModalHeader
           title={
             <span className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
@@ -419,7 +425,7 @@ export function MemoryTimeline() {
         </ModalFooter>
       </Modal>
 
-      <Modal open={!!editingMemoId} onClose={() => setEditingMemoId(null)}>
+      <Modal size="xl" open={!!editingMemoId} onClose={() => setEditingMemoId(null)}>
         <ModalHeader title="Chỉnh sửa kỷ niệm" onClose={() => setEditingMemoId(null)} />
         {editingMemoId && (() => {
           const m = all.find((m) => m.id === editingMemoId);

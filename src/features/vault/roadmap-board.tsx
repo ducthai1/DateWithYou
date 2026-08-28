@@ -15,7 +15,7 @@ import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/m
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useCelebrate } from "@/components/ui/celebrate";
-import { Trash2, Plus, Lightbulb, Map, CheckCircle2, GripVertical } from "lucide-react";
+import { CheckCircle2, GripVertical, Lightbulb, Map, Plus, Target, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 
 type PlanStatus = "idea" | "planning" | "done";
@@ -265,7 +265,12 @@ export function RoadmapBoard() {
       </div>
 
       <Modal open={formOpen} onClose={closeForm}>
-        <ModalHeader title={editingId ? "Chỉnh sửa dự định" : "Thêm dự định mới"} onClose={closeForm} />
+        <ModalHeader
+          title={editingId ? "Chỉnh sửa dự định" : "Thêm dự định mới"}
+          description="Nơi muốn tới, việc muốn làm — chưa cần gắn ngày cụ thể."
+          icon={<Target className="h-[18px] w-[18px]" />}
+          onClose={closeForm}
+        />
         <ModalContent className="space-y-4">
           <div>
             <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Tiêu đề</label>

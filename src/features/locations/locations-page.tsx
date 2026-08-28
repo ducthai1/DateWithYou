@@ -1250,14 +1250,25 @@ export function LocationsPage() {
       )}
 
       {/* ── Normal page layout ── */}
-      <div className="mx-auto w-full max-w-[1400px] px-4 pt-2 pb-6 md:px-[30px] lg:pt-6 2xl:max-w-none">
+      {/*
+        Desktop follows the phone here: the map is the page, laid full-bleed
+        underneath, and the tools float on top of it in one column.
+
+        It used to be a 1400px page with a tinted banner across the top and the
+        map boxed into a grid cell — the chrome was the loudest thing on screen
+        and the map, which is the entire point of the screen, read as a widget
+        inside it. One column also means the search, the filters and the list
+        are the same objects at every width instead of two arrangements to keep
+        in step.
+      */}
+      <div className="mx-auto w-full max-w-[1400px] px-4 pt-2 pb-6 md:px-[30px] lg:mx-0 lg:flex lg:h-[100dvh] lg:max-w-[27rem] lg:flex-col lg:overflow-hidden lg:px-4 lg:pb-4 lg:pt-4 2xl:max-w-[30rem]">
       {/* Action bar stays pinned; only the cards below scroll under it. */}
       {/* Mobile: title row + actions row stacked. Desktop: single flex row. */}
-      <div className="sticky top-2 z-40 mb-2 flex flex-col gap-y-2 rounded-2xl border border-border bg-card px-3 py-2 shadow-lg sm:mb-4 sm:px-4 sm:py-3 sm:flex-row lg:border-0 lg:bg-gradient-to-r lg:from-gradient-from/15 lg:to-gradient-to/15 lg:shadow-sm sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
+      <div className="sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:px-4 sm:py-3 sm:flex-row lg:static lg:mb-2 lg:py-2 sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-0">
         {/* Hidden on phones, not deleted: the app header directly above already
             names this screen, so on a 844px viewport this line and its gap were
             44px of duplicate label taken from the map. */}
-        <h1 className="sr-only text-2xl font-semibold text-accent sm:not-sr-only">
+        <h1 className="sr-only text-2xl font-semibold text-accent sm:not-sr-only lg:text-base">
           Bản đồ ăn chơi
         </h1>
         <div className="flex items-center gap-2">
@@ -1304,8 +1315,8 @@ export function LocationsPage() {
 
       {/* Desktop: map + filters pinned left, list scrolls on the right. */}
       {/* Mobile: filters top, list middle, map bottom */}
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_27rem]">
-        <div className="contents lg:block lg:sticky lg:top-[84px] lg:self-start lg:space-y-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 lg:gap-3">
+        <div className="contents lg:block lg:shrink-0 lg:space-y-2">
           {/* Name search. Sits above the selects because it is the fastest way
               to reach a specific pin once there are more than a screenful. */}
           {/*
@@ -1321,7 +1332,11 @@ export function LocationsPage() {
             below the header" is; hard-coding a pixel offset only means being
             wrong when anything above changes height.
           */}
-          <div className="relative z-30 space-y-2 lg:z-auto lg:space-y-3">
+          {/* z-30 at every width. This used to fall back to z-auto on desktop,
+              which was fine while the map was a static grid cell there; now the
+              map is fixed at all widths and fixed paints above static, so the
+              search field simply vanished underneath it. */}
+          <div className="relative z-30 space-y-2 lg:space-y-2">
             <PlaceSearchBox
               value={queryText}
               onValueChange={setQueryText}
@@ -1365,7 +1380,9 @@ export function LocationsPage() {
           */}
           <div
             className={cn(
-              "flex gap-2 lg:grid lg:grid-cols-3 lg:order-none",
+              // relative z-30 for the same reason as the search above it: the
+              // map is fixed and would otherwise paint straight over this row.
+              "relative z-30 flex gap-2 lg:grid lg:grid-cols-3 lg:order-none",
               !filtersOpen && "hidden lg:grid",
             )}
           >
@@ -1418,7 +1435,7 @@ export function LocationsPage() {
           <div className="lg:order-none lg:space-y-3 lg:pb-0">
             <div
               id="map-view"
-              className="fixed inset-0 z-0 lg:!static lg:h-[calc(100dvh-11rem)]"
+              className="fixed inset-0 z-0"
             >
             <LocationMapView
               pins={pins}
@@ -1594,7 +1611,9 @@ export function LocationsPage() {
               action={{ label: "+ Thêm địa điểm", onClick: () => { setFormInitial({}); setFormOpen(true); } }}
             />
           ) : (
-            <StaggerList className="grid gap-3 sm:grid-cols-2">
+            // One across inside the floating panel: two columns in 27rem left
+            // each card ~200px and broke the place names one word per line.
+            <StaggerList className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               {(list.data ?? []).map((l) => {
                 const meta =
                   CATEGORY_META[l.category as Category] ??

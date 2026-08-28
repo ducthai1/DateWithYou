@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus, Save } from "lucide-react";
+import { Plus, Save, SlidersHorizontal, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/modal";
@@ -67,8 +67,13 @@ export function LocationSettingsModal({
   };
 
   return (
-    <Modal open={true} onClose={onClose} className="max-w-4xl">
-      <ModalHeader title="Cài đặt Danh mục & Khu vực" onClose={onClose} />
+    <Modal size="xl" open={true} onClose={onClose} className="max-w-4xl">
+      <ModalHeader
+        title="Cài đặt Danh mục & Khu vực"
+        description="Sửa danh sách dùng cho bộ lọc và cho form thêm địa điểm."
+        icon={<SlidersHorizontal className="h-[18px] w-[18px]" />}
+        onClose={onClose}
+      />
       <ModalContent className="space-y-8 p-6">
           <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
             <strong>Lưu ý:</strong> Nếu bạn xoá một Danh mục hoặc Khu vực đang được sử dụng bởi các địa điểm đã lưu, các địa điểm đó có thể không được hiển thị đúng khi lọc. Hãy cân nhắc trước khi xoá.

@@ -151,7 +151,12 @@ export function TripList() {
 
       {formOpen && (
         <Modal open onClose={() => setFormOpen(false)} className="max-w-xl">
-          <ModalHeader title="Tạo chuyến đi mới" onClose={() => setFormOpen(false)} />
+          <ModalHeader
+            title="Tạo chuyến đi mới"
+            description="Đặt tên, chọn ngày đi và ngân sách dự kiến — sửa lại lúc nào cũng được."
+            icon={<Plane className="h-[18px] w-[18px]" />}
+            onClose={() => setFormOpen(false)}
+          />
           <TripForm onSuccess={() => setFormOpen(false)} />
         </Modal>
       )}

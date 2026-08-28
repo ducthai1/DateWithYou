@@ -107,7 +107,10 @@ export function MapSheet({
         // and at 4rem it sat on top of the sheet's first row.
         "fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-30 flex flex-col rounded-t-3xl border-t border-border bg-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)]",
         // Desktop: not a sheet at all. `!` beats the inline height below.
-        "lg:!static lg:!bottom-auto lg:!h-auto lg:!transform-none lg:!transition-none lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none lg:!pb-0",
+        // Desktop: still not a sheet, but no longer a bare block either. It is the
+        // scrolling body of the floating panel that sits over the map, so it keeps
+        // a surface of its own and takes the leftover height.
+        "lg:!static lg:!bottom-auto lg:!h-auto lg:min-h-0 lg:!flex-1 lg:!transform-none lg:!transition-none lg:rounded-2xl lg:border lg:border-border lg:bg-card/90 lg:shadow-xl lg:backdrop-blur-xl lg:!pb-0",
         className,
       )}
       style={{
@@ -155,7 +158,7 @@ export function MapSheet({
         ref={scrollRef}
         className={cn(
           "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4",
-          "lg:overflow-visible lg:px-0 lg:pb-0",
+          "lg:overflow-y-auto lg:px-3 lg:py-2",
           // Collapsed, the content is a hint of what is below rather than
           // something to scroll — letting it scroll at 16dvh just traps a
           // finger meant for the map.
