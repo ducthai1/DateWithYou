@@ -49,6 +49,43 @@ Nên với mọi tham số tuỳ chọn: **chạy thử đúng cái mặc địn
 mới tin. Và trước khi tin là "API trả sai", gọi thẳng API một phát để tách bạch
 lỗi ở đâu — ở đây API đúng ngay từ đầu, sai nằm hoàn toàn phía client.
 
+### Hộp cao cố định mà không clip thì nội dung SƠN RA NGOÀI — không check ngang nào bắt được
+
+Sidebar `fixed inset-y-4` = cao đúng bằng viewport − 32px, `justify-between`,
+**không `overflow` gì cả**. Logo + 10 link + 3 dòng chân cần ~644px; zoom 150%
+cửa sổ chỉ còn 568px ⇒ **~76px nav sơn ra ngoài khung bo tròn**. Trang không hề
+tràn, nên mọi phép đo cũ (đều nhìn theo chiều ngang, hoặc cần tổ tiên có clip)
+đều mù.
+
+Bộ dò cho đúng hình dạng này:
+
+```js
+// hộp có position + nội dung cao hơn chính nó + overflow-y: visible
+if ((cs.position === "fixed" || cs.position === "absolute" || cs.position === "sticky")
+    && cs.overflowY === "visible" && el.scrollHeight - el.clientHeight > 2)
+```
+
+Nó tìm ra sidebar trên **mọi route app, 4 mức zoom, 264px tràn**. Kèm luật:
+**hộp nào có chiều cao cố định thì phải có chỗ cho phần thừa** — `overflow-hidden`
+ở ngoài + `min-h-0 flex-1 overflow-y-auto` ở danh sách bên trong.
+
+### Route con cũng phải test — `/trips/[id]` là chỗ tôi tự gây hồi quy
+
+Thêm `whitespace-nowrap` vào `Button` (đúng) làm 3 nhãn tab của trang chi tiết
+chuyến đi không co được nữa ⇒ tràn 25px ở 320px. **Chỉ lòi ra khi test route
+động.** Lấy id thật từ `trip.list` rồi đưa `/trips/<id>` vào danh sách quét.
+
+### Firefox trên máy này KHÔNG dùng được cho headless
+
+Bản **snap**: headless lỗi `RenderCompositorSWGL failed mapping default
+framebuffer` nên không render, `--screenshot` không ra file, và tiến trình của
+chính mình cũng **`kill: Permission denied`** (namespace snap). Dọn tay:
+`snap stop firefox` hoặc `systemctl --user restart snap.firefox.*`.
+
+Dùng headless Chrome, nhưng **ghi PID lúc launch và chỉ giết theo PID**
+(`/tmp/chrome-run.sh`). **KHÔNG BAO GIỜ `pkill -x chrome`** — nó khớp luôn
+trình duyệt người dùng đang mở và `-9` là mất sạch tab.
+
 ### Đo xong vẫn phải NHÌN — và nhìn HẾT route, không phải vài cái
 
 Sweep 228 lượt render báo 0 lỗi. Rồi chụp ảnh từng route thì ra 6 lỗi nữa,
