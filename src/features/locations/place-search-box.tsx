@@ -182,8 +182,9 @@ export function PlaceSearchBox({
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          // Short enough to survive a 390px screen — the old one was cut mid-word.
-          placeholder="Tìm quán đã lưu hoặc chỗ mới…"
+          // Short enough to clear the filter and clear buttons that sit inside the
+          // field's right padding. Two longer versions were cut mid-word.
+          placeholder="Tìm quán hoặc chỗ mới…"
           aria-label="Tìm địa điểm"
           role="combobox"
           aria-expanded={showList}
@@ -202,7 +203,7 @@ export function PlaceSearchBox({
             aria-expanded={filtersOpen}
             aria-label="Bộ lọc"
             className={cn(
-              "absolute right-9 top-1/2 flex h-7 -translate-y-1/2 items-center gap-1 rounded-lg px-2 text-[12px] font-medium transition-colors lg:hidden",
+              "absolute right-9 top-1/2 flex h-7 -translate-y-1/2 items-center gap-1 rounded-lg px-2 text-[12px] font-medium transition-colors",
               filterCount > 0
                 ? "bg-[var(--accent)]/15 text-[var(--accent)]"
                 : "text-muted-foreground hover:bg-muted",

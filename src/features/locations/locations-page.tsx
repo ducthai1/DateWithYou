@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { CheckCircle2, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, Loader2, LocateOff, MapPin, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, List as ListIcon, Loader2, LocateOff, MapPin, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { type LegInfo } from "./use-live-navigation";
@@ -299,6 +299,15 @@ export function LocationsPage() {
    * and leave one control to bring it back.
    */
   const [panelOpen, setPanelOpen] = useState(true);
+
+  /**
+   * Whether the saved-place list is showing on desktop.
+   *
+   * Closed to begin with. The tools belong over the map; the full list does
+   * not, and stacking it under them made one tall cluster that covered the
+   * left of the screen at every desktop width. The count chip opens it.
+   */
+  const [listOpen, setListOpen] = useState(false);
 
   /*
    * One cheap position fix on arrival, so the map opens where the person is.
@@ -1445,17 +1454,25 @@ export function LocationsPage() {
           </div>
 
           {/*
-            Collapsed behind a button on phones. Three selects held a permanent
-            44px row over the map to say nothing — someone with eight saved
-            places has nothing to filter. Always open at lg, where the column
-            has room and the row costs the map nothing.
+            Behind the toggle at every width. Three selects held a permanent
+            row over the map to say nothing — someone with eight saved places
+            has nothing to filter. Desktop used to keep them open on the theory
+            that the column had room; it did not. They were two rows of the
+            cluster that covered the left of the screen.
           */}
           <div
             className={cn(
               // relative z-30 for the same reason as the search above it: the
               // map is fixed and would otherwise paint straight over this row.
-              "relative z-30 flex gap-2 lg:order-none lg:grid lg:grid-cols-2 [&>*:last-child]:lg:col-span-2",
-              !filtersOpen && "hidden lg:grid",
+              "relative z-30 gap-2 lg:order-none",
+              // The display utilities are emitted only while open. Adding
+              // `hidden` next to `lg:grid` does nothing at lg — both set
+              // display at the same breakpoint and the cascade, not the order
+              // written here, picks the winner. So the row stayed visible on
+              // desktop no matter what the toggle said.
+              filtersOpen
+                ? "flex lg:grid lg:grid-cols-2 [&>*:last-child]:lg:col-span-2"
+                : "hidden",
             )}
           >
             <Select
@@ -1492,6 +1509,24 @@ export function LocationsPage() {
               ]}
             />
           </div>
+
+          {/* Opens the saved list on desktop. On a phone the sheet handle
+              already does this job, so this is desktop-only. */}
+          <button
+            type="button"
+            onClick={() => setListOpen((v) => !v)}
+            aria-expanded={listOpen}
+            className="border-border bg-card/90 text-foreground hover:bg-card relative z-30 hidden h-9 w-full items-center justify-between rounded-xl border px-3 text-sm font-medium shadow-sm backdrop-blur-xl transition-colors lg:flex"
+          >
+            <span className="flex items-center gap-2">
+              <ListIcon className="h-4 w-4" aria-hidden="true" />
+              {(list.data ?? []).length} địa điểm đã lưu
+            </span>
+            <ChevronDown
+              className={cn("h-4 w-4 transition-transform", listOpen && "rotate-180")}
+              aria-hidden="true"
+            />
+          </button>
 
           {/*
             Sits with the controls, in flow. It used to be a sibling of the map,
@@ -1608,7 +1643,10 @@ export function LocationsPage() {
         {/* On a phone this rides over the map instead of sitting under it, so
             the map keeps the screen and the list is a thumb away. Same element
             on desktop, where it is simply the right-hand column. */}
-        <MapSheet count={(list.data ?? []).length} className={cn("order-2 lg:order-none", !panelOpen && "lg:hidden")}>
+        <MapSheet
+          count={(list.data ?? []).length}
+          className={cn("order-2 lg:order-none", (!panelOpen || !listOpen) && "lg:hidden")}
+        >
         <div className="space-y-4">
           <AnimatePresence initial={false}>
             {formOpen && (
