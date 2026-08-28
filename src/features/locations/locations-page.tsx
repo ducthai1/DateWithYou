@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useSidebar } from "@/components/layout/sidebar-context";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { AnimatePresence, motion } from "framer-motion";
@@ -298,6 +299,7 @@ export function LocationsPage() {
    * is the same move a map application makes: let the panel get out of the way,
    * and leave one control to bring it back.
    */
+  const { isCollapsed: sidebarCollapsed } = useSidebar();
   const [panelOpen, setPanelOpen] = useState(true);
 
   /**
@@ -1288,7 +1290,14 @@ export function LocationsPage() {
           onClick={() => setPanelOpen(true)}
           aria-label="Mở bảng điều khiển"
           title="Mở bảng điều khiển"
-          className="border-border bg-card/90 hover:bg-card fixed left-[calc(var(--map-panel-left,7rem))] top-6 z-40 hidden h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium shadow-lg backdrop-blur-xl transition-colors lg:inline-flex"
+          className={cn(
+            // Clears the sidebar, which is 7rem collapsed and 18rem open —
+            // the same measure MainWrapper pads by. This used to offset by
+            // var(--map-panel-left), a variable defined nowhere, so it always
+            // took the 7rem fallback and sat on top of an open sidebar.
+            "border-border bg-card/90 hover:bg-card fixed top-6 z-40 hidden h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium shadow-lg backdrop-blur-xl transition-colors lg:inline-flex",
+            sidebarCollapsed ? "left-[8rem]" : "left-[19rem]",
+          )}
         >
           <PanelLeftOpen className="h-4 w-4" />
           Bảng điều khiển
@@ -1314,11 +1323,22 @@ export function LocationsPage() {
           // 21rem, not 27: next to a 288px app sidebar the wider column left
           // less than half the screen for the map.
           "lg:max-w-[21rem] xl:max-w-[23rem]",
-          // Width, not visibility: the map element lives inside this column,
-          // so hiding it took the map with it and collapsing produced a blank
-          // screen. The tools below hide individually; the map is fixed and
-          // does not care how wide its container is.
-          !panelOpen && "lg:max-w-0 lg:p-0",
+          /*
+           * Collapsing slides and fades the column; it does not take it apart.
+           *
+           * It used to set max-w-0 on this element and display:none on each
+           * block inside, which meant the whole layout was torn down and
+           * rebuilt: it snapped instead of animating, and reopening
+           * recomputed everything at whatever width the animation was
+           * passing through, so the panel came back arranged differently
+           * from how it started.
+           *
+           * Nothing needs to be removed. The map is fixed and full-bleed, so
+           * this column has no background of its own — once the tools are
+           * transparent and out of the way, the map is all there is.
+           */
+          "lg:transition-[opacity,transform] lg:duration-300 lg:ease-out motion-reduce:lg:transition-none",
+          !panelOpen && "lg:pointer-events-none lg:-translate-x-6 lg:opacity-0",
         )}
       >
       {/* Action bar stays pinned; only the cards below scroll under it. */}
@@ -1331,7 +1351,6 @@ export function LocationsPage() {
           // needed more than the card had, they simply escaped it: measured at
           // 40px past the edge on a 1440 screen and 72px on a 1152 one.
           "sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2 sm:px-4 sm:py-3 lg:static lg:mb-2 lg:py-2",
-          !panelOpen && "lg:hidden",
         )}
       >
         {/* Hidden on phones, not deleted: the app header directly above already
@@ -1403,7 +1422,7 @@ export function LocationsPage() {
       {/* Desktop: map + filters pinned left, list scrolls on the right. */}
       {/* Mobile: filters top, list middle, map bottom */}
       <div className="flex min-h-0 flex-1 flex-col gap-6 lg:gap-3">
-        <div className={cn("contents lg:block lg:shrink-0 lg:space-y-2", !panelOpen && "lg:hidden")}>
+        <div className="contents lg:block lg:shrink-0 lg:space-y-2">
           {/* Name search. Sits above the selects because it is the fastest way
               to reach a specific pin once there are more than a screenful. */}
           {/*
@@ -1655,7 +1674,7 @@ export function LocationsPage() {
             on desktop, where it is simply the right-hand column. */}
         <MapSheet
           count={(list.data ?? []).length}
-          className={cn("order-2 lg:order-none", (!panelOpen || !listOpen) && "lg:hidden")}
+          className={cn("order-2 lg:order-none", !listOpen && "lg:hidden")}
         >
         <div className="space-y-4">
           <AnimatePresence initial={false}>
