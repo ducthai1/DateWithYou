@@ -49,6 +49,39 @@ Nên với mọi tham số tuỳ chọn: **chạy thử đúng cái mặc địn
 mới tin. Và trước khi tin là "API trả sai", gọi thẳng API một phát để tách bạch
 lỗi ở đâu — ở đây API đúng ngay từ đầu, sai nằm hoàn toàn phía client.
 
+### Quét "toàn bộ" phải gồm 3 TRẠNG THÁI TÀI KHOẢN, không chỉ 3 kích thước
+
+Quét bao nhiêu viewport cũng vô nghĩa nếu chỉ có một loại tài khoản. Đủ bộ là:
+
+| Trạng thái | Cách dựng | Thấy được gì |
+|---|---|---|
+| **có dữ liệu** | seed 48 bản ghi | tràn do nội dung dài |
+| **có space, RỖNG** | tạo tài khoản + `space.create`, **không seed** | empty state thật |
+| **chưa có space** | chỉ đăng ký | `/onboarding` |
+| **chưa đăng nhập** | `sign-out` | marketing, auth, **404** |
+
+**Cái bẫy đã dính:** định test empty state bằng tài khoản mới toanh — nhưng
+`SpaceGuard` đá thẳng về `/onboarding`, nên **cả 12 route đo đúng một trang** và
+báo sạch. Empty state thật cần tài khoản **có space nhưng không có dữ liệu**.
+
+Nên sweep phải **ghi lại `location.pathname` sau khi load** và báo `redirected`
+nếu khác route yêu cầu. Không có phép đó thì một chuỗi redirect đọc ra y hệt một
+kết quả hoàn hảo.
+
+Đừng quên: `not-found.tsx`, `error.tsx`, `global-error.tsx`, `/forgot-password`,
+`/reset-password?token=…` — không nằm trong danh sách route sinh từ `page.tsx`
+theo cách thông thường.
+
+### Trang 404 là URL CÔNG KHAI nằm trong layout app
+
+Đây là trang public duy nhất render bên trong layout app, nên khách gõ sai URL
+thấy **toàn bộ sidebar + bottom nav riêng tư**, kèm 2 nút chỉ đá họ về đăng nhập.
+
+Trang không tự ẩn được chrome do layout render phía trên nó, và chrome không
+nhận ra 404 qua `pathname`. Cách nối: **trang đặt `data-chromeless`, CSS đọc**
+(`body:has([data-chromeless]) [data-app-chrome]{display:none}`). Đọc phiên bằng
+`cookies()` để đổi cả CTA.
+
 ### Quét tĩnh KHÔNG đủ — phải LÁI trình duyệt qua từng luồng
 
 Mọi sweep trước chỉ load route rồi đo lúc đứng yên. Lái thật qua 10 luồng
