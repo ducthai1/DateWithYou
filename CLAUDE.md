@@ -193,6 +193,30 @@ trước khi chụp — đủ để soi từng tab (`Wishlist`, `Ngân sách`, `
 từng modal (`+ Thêm`, `Thêm dự định`…). Thêm `&only=1&w=&h=` để chụp **một khung
 không thu nhỏ** khi cần nhìn chi tiết như dải mờ cuộn.
 
+### Gập/mở một panel: TRƯỢT + MỜ, đừng tháo layout ra
+
+Gập bằng `max-w-0` + `display:none` cho từng khối gây đúng ba lỗi cùng lúc:
+
+1. **Giật cái đùng** — `display` **không animate được**, bất kể transition.
+2. **Mở lại ra layout khác** — tháo rồi dựng lại nghĩa là mọi thứ tính lại ở
+   **bề rộng mà animation đang đi qua**, nên hàng công cụ wrap khác lúc đầu.
+3. Phải nhớ ẩn từng khối con, và quên một cái là hỏng (đã từng ẩn cả map).
+
+Cách đúng khi panel nằm trên nền `fixed` full-bleed: **không tháo gì cả**, chỉ
+`-translate-x-6 opacity-0 pointer-events-none` + transition. Nội dung giữ nguyên
+kích thước nên không reflow, và bản đồ phía dưới vốn đã chiếm hết màn.
+
+Kiểm bằng cách **đo trước khi gập và sau khi mở lại** — hai bộ số phải trùng
+từng pixel. Nếu lệch là layout đã bị dựng lại.
+
+### Nút nổi phải né sidebar bằng state THẬT, đừng bằng biến CSS tưởng tượng
+
+Nút "mở lại" đặt `left-[calc(var(--map-panel-left,7rem))]` — biến đó **không tồn
+tại ở đâu trong repo**, nên luôn rơi về fallback 7rem và **nằm đè lên sidebar**
+đang mở (rộng tới 17rem). Đọc `useSidebar().isCollapsed` như `NavigationMiniDock`
+vẫn làm. Kiểm bằng cách so hình chữ nhật hai phần tử ở **cả hai** trạng thái
+sidebar, đừng chỉ trạng thái mặc định.
+
 ### So BỀ RỘNG con-với-cha là chưa đủ — phải so MÉP
 
 Check cũ hỏi "con có rộng hơn lòng cha không". Nó **không bao giờ** thấy một
