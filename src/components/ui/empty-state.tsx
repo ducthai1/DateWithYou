@@ -5,7 +5,10 @@
 // CTA is polymorphic: onClick uses Button; href uses a styled Link that matches
 // Button's primary variant exactly — Button has no asChild/Slot support.
 
+import Image from "next/image";
 import Link from "next/link";
+import { useTone } from "@/components/theme/tone-provider";
+import { artSrc, type ArtName } from "@/lib/tone";
 import { resolveIcon } from "@/lib/icon-registry";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,6 +26,14 @@ interface EmptyStateProps {
   subtitle?: string;
   /** Optional primary CTA. Supports both onClick handler and next/link href. */
   action?: Action;
+  /**
+   * Show a piece of the brand artwork instead of the icon medallion.
+   *
+   * Only where a picture says something the icon cannot — an empty map, an
+   * empty scrapbook. The image follows the current tone, and falls back to
+   * whichever tone that piece exists in.
+   */
+  art?: ArtName;
   className?: string;
 }
 
@@ -49,8 +60,9 @@ const FADE_STYLE = `
  * project's spring tokens (--ease-spring / --dur). All colours come from CSS
  * custom properties — fully theme-aware, no hardcoded hex.
  */
-export function EmptyState({ icon, title, subtitle, action, className }: EmptyStateProps) {
+export function EmptyState({ icon, title, subtitle, action, art, className }: EmptyStateProps) {
   const Icon = resolveIcon(icon);
+  const { tone } = useTone();
 
   return (
     <>
@@ -63,10 +75,21 @@ export function EmptyState({ icon, title, subtitle, action, className }: EmptySt
           className,
         )}
       >
-        {/* Accent-soft medallion — flat (no elevation shadow), rounded-full */}
-        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-accent-soft">
-          <Icon className="h-7 w-7 text-accent" strokeWidth={1.6} />
-        </span>
+        {/* Artwork when one was chosen for this screen, medallion otherwise. */}
+        {art ? (
+          <Image
+            src={artSrc(art, tone)}
+            alt=""
+            width={640}
+            height={360}
+            aria-hidden="true"
+            className="h-auto w-full max-w-[min(22rem,80%)] rounded-2xl object-contain"
+          />
+        ) : (
+          <span className="bg-accent-soft flex h-16 w-16 shrink-0 items-center justify-center rounded-full">
+            <Icon className="text-accent h-7 w-7" strokeWidth={1.6} />
+          </span>
+        )}
 
         {/* Title: serif, h2-scale weight */}
         <p className="font-serif text-h2 font-semibold leading-snug">{title}</p>

@@ -59,7 +59,7 @@ export function WelcomeIntro() {
       <div className="space-y-5 p-6 overflow-y-auto max-h-[90dvh]">
         <div className="space-y-2 text-center">
           <span className="bg-accent-soft text-accent mx-auto flex h-12 w-12 items-center justify-center rounded-2xl">
-            <BrandMark className="h-6 w-6" />
+            <BrandMark variant="icon" className="h-6 w-6" />
           </span>
           <h2
             className="text-2xl font-semibold [font-family:var(--font-display)]"

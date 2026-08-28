@@ -195,6 +195,7 @@ export function MemoryTimeline() {
           />
         ) : (
           <EmptyState
+            art="memoriesScrapbook"
             icon="sparkles"
             title="Chưa có kỷ niệm nào"
             subtitle="Lưu khoảnh khắc đầu tiên — hình ảnh, cảm xúc, khoảnh khắc nhỏ."

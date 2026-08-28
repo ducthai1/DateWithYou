@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ToneProvider } from "@/components/theme/tone-provider";
+import type { Tone } from "@/lib/tone";
 import { MotionConfig } from "framer-motion";
 import dynamic from "next/dynamic";
 import {
@@ -72,7 +74,14 @@ function recoverFromStaleSpace(error: unknown) {
   window.location.reload();
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  initialTone,
+}: {
+  children: React.ReactNode;
+  /** Server's best guess at the tone; see ToneProvider for how it is refined. */
+  initialTone: Tone;
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -122,6 +131,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
      * provider covers all of them.
      */
     <MotionConfig reducedMotion="user">
+    <ToneProvider initialTone={initialTone}>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <PhotoProvider maskOpacity={0.8} speed={() => 300}>
@@ -135,6 +145,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         </PhotoProvider>
       </QueryClientProvider>
     </trpc.Provider>
+    </ToneProvider>
     </MotionConfig>
   );
 }

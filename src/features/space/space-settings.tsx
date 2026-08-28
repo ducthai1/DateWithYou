@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { TonePicker } from "@/components/theme/tone-picker";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
@@ -418,6 +419,11 @@ export function SpaceSettings() {
         >
           {updateTheme.isPending ? "Đang lưu…" : "Lưu tên"}
         </Button>
+      </Card>
+
+      <Card className="space-y-3">
+        <p className="text-sm font-medium">Tông ảnh</p>
+        <TonePicker />
       </Card>
 
       <Card className="space-y-3">

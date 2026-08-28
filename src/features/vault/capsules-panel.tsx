@@ -121,6 +121,7 @@ export function CapsulesPanel() {
         </div>
       ) : list.data?.length === 0 ? (
         <EmptyState
+          art="vaultSafe"
           icon="gift"
           title="Chưa có hộp nào"
           subtitle="Viết bức thư bí mật + chọn ngày mở khoá để tạo bất ngờ cho người kia."

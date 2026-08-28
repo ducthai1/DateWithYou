@@ -14,6 +14,7 @@ import { NavigationInvitesProvider } from "@/features/locations/navigation-invit
 import { NavigationProvider } from "@/features/locations/navigation-context";
 import { NavigationMiniDock } from "@/features/locations/navigation-mini-dock";
 import { THEME_COOKIE_NAME, resolveThemeKey } from "@/lib/theme-presets";
+import { TONE_COOKIE_NAME, TONE_FALLBACK, isTone, resolvePreference } from "@/lib/tone";
 import { SITE_DESCRIPTION, SITE_LOCALE, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
 const inter = Inter({
@@ -170,8 +171,20 @@ export default async function RootLayout({
   const rawTheme = cookieStore.get(THEME_COOKIE_NAME)?.value;
   const themeKey = resolveThemeKey(rawTheme);
 
+  /*
+   * Artwork tone, as far as the server can know it.
+   *
+   * An explicit choice is in the cookie, so it renders correctly first time.
+   * "auto" depends on the reader's own clock — their timezone is not the
+   * server's — so it renders the fallback and ToneProvider corrects it on
+   * mount. A blocking script cannot help here: React owns data-tone on <html>
+   * and puts its own value back during hydration.
+   */
+  const tonePref = resolvePreference(cookieStore.get(TONE_COOKIE_NAME)?.value);
+  const initialTone = isTone(tonePref) ? tonePref : TONE_FALLBACK;
+
   return (
-    <html lang="vi" data-theme={themeKey}>
+    <html lang="vi" data-theme={themeKey} data-tone={initialTone}>
       {/* Scroll reveals hide their content until an observer flips them on.
           With JavaScript off nothing would ever flip, so the whole landing page
           below the hero would render as a blank column. */}
@@ -181,7 +194,7 @@ export default async function RootLayout({
       <body className={`${inter.variable} ${playfair.variable} ${lora.variable} antialiased`}>
         {/* SpaceGuard is mounted inside <Providers> — it is client-only
             (ssr: false), which a Server Component cannot declare. */}
-        <Providers>
+        <Providers initialTone={initialTone}>
           <SideNav />
           {/* Offset for the bottom nav on mobile, for the sidebar on desktop. */}
           <MainWrapper>
