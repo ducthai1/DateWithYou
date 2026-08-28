@@ -120,6 +120,26 @@ export function Select({
     });
   }, [open]);
 
+  /*
+   * Close if the trigger stops being rendered.
+   *
+   * The menu is portalled and position:fixed, so it outlives its trigger:
+   * folding the map's tool column away while a filter was open left the menu —
+   * and the empty box behind it — stranded over the map with nothing to close
+   * it. A ResizeObserver reports 0x0 the moment an element goes display:none,
+   * which is exactly the signal needed and costs nothing while closed.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const el = triggerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      if (!el.isConnected || el.getClientRects().length === 0) setOpen(false);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {

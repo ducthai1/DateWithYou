@@ -105,7 +105,12 @@ export function MapSheet({
         // sheet moves up and its stops are measured against what you can actually see.
         // 4.75rem, not 4rem: the nav's centre action sticks up past the bar itself,
         // and at 4rem it sat on top of the sheet's first row.
-        "fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-30 flex flex-col rounded-t-3xl border-t border-border bg-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)]",
+        // z-50 on a phone so the sheet covers the floating controls when it is
+        // raised. The toolbar sits at z-40 and the search block at z-30, so at
+        // the taller stops both painted straight over the first card in the
+        // list — the sheet was underneath the very chrome it had covered. On
+        // desktop it is a panel beside them, not over them, so it drops back.
+        "fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-50 flex flex-col rounded-t-3xl border-t border-border bg-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)] lg:z-30",
         // Desktop: not a sheet at all. `!` beats the inline height below.
         // Desktop: still not a sheet, but no longer a bare block either. It is the
         // scrolling body of the floating panel that sits over the map, so it keeps
@@ -163,7 +168,13 @@ export function MapSheet({
           // something to scroll — letting it scroll at 16dvh just traps a
           // finger meant for the map.
           // Only while it is a sheet — on desktop the list is the column.
-          stop === 0 && "pointer-events-none overflow-hidden opacity-60 lg:pointer-events-auto lg:overflow-visible lg:opacity-100",
+          // NOT lg:overflow-visible. `stop` is a phone concept — on desktop the
+          // sheet is a static panel and stays at 0 forever, so that escape hatch
+          // applied permanently and let 4,665px of list spill out of a 642px
+          // panel. The overflow then landed on the page column, which is
+          // overflow:hidden, so a focus could scroll the toolbar off the top
+          // with no scrollbar to bring it back.
+          stop === 0 && "pointer-events-none overflow-hidden opacity-60 lg:pointer-events-auto lg:overflow-y-auto lg:opacity-100",
         )}
       >
         {children}

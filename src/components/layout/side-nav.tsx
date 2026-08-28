@@ -123,6 +123,7 @@ export function SideNav() {
         <SyncButton mode="desktop" isCollapsed={isCollapsed} />
         <button
           onClick={toggleSidebar}
+          aria-label={isCollapsed ? "Phóng to thanh bên" : "Thu gọn thanh bên"}
           className={cn(
             "flex h-10 items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground outline-none",
             isCollapsed ? "w-full justify-center" : "w-full px-3 gap-3"

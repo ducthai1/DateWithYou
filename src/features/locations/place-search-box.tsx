@@ -164,6 +164,9 @@ export function PlaceSearchBox({
     }
   }
 
+  /** Typed text has not reached the query yet, so no verdict is available. */
+  const settling = value.trim() !== debounced || suggestions.isFetching;
+
   const showList = open && debounced.length >= MIN_CHARS;
 
   return (
@@ -229,11 +232,7 @@ export function PlaceSearchBox({
       {/* Announced to screen readers without being drawn — the list's own
           contents are visual, but "how many results" is not conveyed by them. */}
       <span className="sr-only" role="status" aria-live="polite">
-        {showList
-          ? suggestions.isFetching
-            ? "Đang tìm địa điểm"
-            : `${items.length} gợi ý`
-          : ""}
+        {showList ? (settling ? "Đang tìm địa điểm" : `${items.length} gợi ý`) : ""}
       </span>
 
       {showList ? (
@@ -243,7 +242,14 @@ export function PlaceSearchBox({
           aria-label="Địa điểm gợi ý"
           className="border-border bg-card absolute inset-x-0 top-full z-50 mt-1.5 max-h-72 overflow-y-auto rounded-xl border py-1 shadow-xl"
         >
-          {suggestions.isFetching && items.length === 0 ? (
+          {/*
+            "still working" covers the debounce window too, not just the request.
+            Between a keystroke and the query starting, isFetching is false and
+            there is no data — which rendered "no such place" for a beat every
+            single time, telling people their search had failed while it had not
+            yet begun.
+          */}
+          {settling || (suggestions.isFetching && items.length === 0) ? (
             <li className="text-muted-foreground px-3 py-3 text-center text-sm">
               Đang tìm…
             </li>

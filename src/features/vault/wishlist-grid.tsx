@@ -313,6 +313,7 @@ export function WishlistGrid() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-muted text-muted-foreground hover:text-foreground inline-flex min-h-[40px] w-full items-center justify-center rounded-lg px-3 py-2 transition-colors touch-manipulation sm:w-auto"
+                      aria-label={`Mở link của ${w.itemName}`}
                       title="Mở link"
                     >
                       <LinkIcon className="h-3.5 w-3.5" />

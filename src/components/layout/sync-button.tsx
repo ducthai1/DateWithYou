@@ -58,6 +58,7 @@ export function SyncButton({
     <button
       onClick={handleSync}
       disabled={isSyncing}
+      aria-label="Đồng bộ"
       className={cn(
         "group flex items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 text-muted-foreground hover:bg-muted/80 hover:text-foreground outline-none",
         isCollapsed ? "justify-center px-0" : "gap-3"

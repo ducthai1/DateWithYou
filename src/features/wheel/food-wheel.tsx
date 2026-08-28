@@ -247,7 +247,10 @@ export function FoodWheel() {
               <div className="flex flex-col gap-2 pt-4">
                 {source === "place" ? (
                   <Button
-                    className="w-full gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white border-none shadow-md"
+                    // On the accent, not a rose/pink gradient. Every other primary action in
+                    // the app is terracotta; this one shouted from a different palette
+                    // and read as belonging to some other product.
+                    className="w-full gap-2 shadow-md"
                     disabled={sendInvite.isPending}
                     onClick={() => handleSendCompanionInvite(winner.id, winner.name)}
                   >

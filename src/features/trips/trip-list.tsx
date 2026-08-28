@@ -22,6 +22,7 @@ export function TripList() {
         </h1>
         <button
           onClick={() => setFormOpen(true)}
+          aria-label="Tạo chuyến đi mới"
           className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md transition-transform hover:scale-105 active:scale-95"
         >
           <Plus className="h-6 w-6" />
