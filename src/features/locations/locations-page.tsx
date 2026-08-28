@@ -312,6 +312,19 @@ export function LocationsPage() {
   const [listOpen, setListOpen] = useState(false);
 
   /*
+   * The add/edit form renders inside the saved-place panel, so the panel has
+   * to be open whenever the form is.
+   *
+   * Here rather than at each call site: the form can be opened from the
+   * toolbar, from a search suggestion, from tapping the map and from the
+   * empty state, and closing the panel by default left "+ Thêm" flipping to
+   * "Đóng" with nothing on screen.
+   */
+  useEffect(() => {
+    if (formOpen) setListOpen(true);
+  }, [formOpen]);
+
+  /*
    * One cheap position fix on arrival, so the map opens where the person is.
    * Low accuracy and a generous cache age: this is for choosing a city, not for
    * navigating, and a coarse fix from the last few minutes answers that. Denial

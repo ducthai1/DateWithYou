@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MotionConfig } from "framer-motion";
 import dynamic from "next/dynamic";
 import {
   MutationCache,
@@ -110,6 +111,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
+    /*
+     * reducedMotion="user" makes every motion.* in the tree honour the
+     * operating system's "reduce motion" setting.
+     *
+     * globals.css already flattens CSS transitions and animations for that
+     * setting, but it cannot reach animation driven from JavaScript — and 21
+     * of the 23 files using framer-motion never called useReducedMotion, so
+     * they kept moving for people who had asked everything to stop. One
+     * provider covers all of them.
+     */
+    <MotionConfig reducedMotion="user">
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <PhotoProvider maskOpacity={0.8} speed={() => 300}>
@@ -123,5 +135,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         </PhotoProvider>
       </QueryClientProvider>
     </trpc.Provider>
+    </MotionConfig>
   );
 }

@@ -1,5 +1,74 @@
 # Vivu No Plan — quy ước khi sửa repo này
 
+## Làm bất kỳ mảng UI nào: liệt kê ĐỦ TRẠNG THÁI, rồi kiểm ĐỦ CHUYỂN TIẾP
+
+Một component không phải một màn hình. Nó là **một tập trạng thái** cộng với
+**mọi đường đi giữa chúng** — và bug nằm ở các đường đi nhiều hơn ở các trạng
+thái. Bảng điều khiển bản đồ đã ra ba lỗi cùng lúc chỉ vì tôi dựng trạng thái
+"mở", nhìn thấy đẹp, rồi coi là xong.
+
+### 1. Liệt kê trạng thái trước khi code
+
+Với mỗi mảng UI, viết ra và **dựng thật** từng cái:
+
+| Nhóm | Phải có |
+|---|---|
+| Dữ liệu | rỗng · **đang tải** · 1 mục · nhiều mục · **nội dung dài nhất có thật** · lỗi |
+| Đóng/mở | đóng · đang mở · mở · đang đóng |
+| Tương tác | mặc định · hover · **focus bàn phím** · active · disabled · đang gửi |
+| Ngữ cảnh | 1 thành viên vs **2 thành viên** · sidebar mở vs thu gọn · đã/chưa đăng nhập |
+
+Ba lần trong repo này "sạch" hoá ra là chưa từng dựng đúng trạng thái:
+space cá nhân giấu mất nút "Gặp ở giữa" (ca toolbar rộng nhất), tài khoản mới bị
+`SpaceGuard` đá về onboarding nên 12 route đo cùng một trang, và seed hỏng khiến
+`/timeline` được chụp lúc trống trơn.
+
+### 2. Kiểm chuyển tiếp theo CẶP, và A→B→A phải quay về ĐÚNG A
+
+Không chỉ xem trạng thái cuối. Đi qua từng đường, **cả hai chiều**, rồi **đo**:
+
+```js
+// trước khi gập và sau khi mở lại — hai bộ số phải trùng từng pixel
+{col:{x:288,w:368,h:900}, bar:{x:304,y:16,w:336,h:130}}
+```
+
+Lệch một pixel nghĩa là layout đã bị **dựng lại** chứ không phải hiện lại — đó
+chính là bug "mở ra thấy layout khác lúc đầu".
+
+### 3. Chuyển tiếp phải MƯỢT — nghĩa là phải animate được
+
+**`display`, `hidden`, unmount: KHÔNG animate được.** Có `transition` cũng vô
+nghĩa; nó sẽ giật cái đùng. Muốn ẩn/hiện có hiệu ứng thì đổi thứ animate được:
+
+```jsx
+// SAI — giật, và dựng lại layout khi quay về
+!open && "lg:hidden"
+!open && "lg:max-w-0 lg:p-0"
+
+// ĐÚNG — mượt, không tháo gì, quay về đúng chỗ cũ
+"transition-[opacity,transform] duration-300 ease-out",
+!open && "pointer-events-none -translate-x-6 opacity-0"
+```
+
+- `pointer-events-none` khi ẩn, không thì vẫn bấm trúng thứ vô hình.
+- Đừng animate `width`/`height`/`max-width` nếu nội dung bên trong co giãn theo:
+  nó sẽ reflow suốt quá trình. Ưu tiên `opacity` + `transform`.
+
+**Reduced-motion đã lo sẵn ở hai chỗ, đừng thêm class thừa:**
+`globals.css` dập mọi CSS transition/animation, và `<MotionConfig
+reducedMotion="user">` trong `providers.tsx` lo phần framer-motion. Guard CSS
+**không** chạm được animation chạy bằng JS — trước khi có `MotionConfig`, 21
+trong 23 file dùng framer-motion vẫn nhảy múa với người đã tắt chuyển động.
+Việc cần làm là **đừng chọc thủng hai lớp đó**: đừng animate bằng
+`requestAnimationFrame`/`setInterval` tự chế, và nếu buộc phải thì đọc
+`useReducedMotion()`.
+
+### 4. Cách kiểm, không phải cách đoán
+
+Lái trình duyệt qua chuỗi thật (`/tmp/driver.mjs`), chụp **mỗi bước**, và
+`getBoundingClientRect` trước/sau. Xem thêm mục "Quét tĩnh KHÔNG đủ" bên dưới.
+
+
 ## Trước khi tự nghĩ ra một luồng, xem người ta làm thế nào
 
 Ca thật: ô tìm trên `/map` từng được dựng theo kiểu tự chế — gõ chữ thì lọc pin
