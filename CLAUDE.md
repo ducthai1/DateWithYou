@@ -49,6 +49,39 @@ Nên với mọi tham số tuỳ chọn: **chạy thử đúng cái mặc địn
 mới tin. Và trước khi tin là "API trả sai", gọi thẳng API một phát để tách bạch
 lỗi ở đâu — ở đây API đúng ngay từ đầu, sai nằm hoàn toàn phía client.
 
+### Quét tĩnh KHÔNG đủ — phải LÁI trình duyệt qua từng luồng
+
+Mọi sweep trước chỉ load route rồi đo lúc đứng yên. Lái thật qua 10 luồng
+(34 bước, chụp + assert sau **mỗi** bước) ra thêm 5 bug mà sweep tĩnh không thấy:
+
+- Panel danh sách giữ `lg:overflow-visible` ⇒ 4.665px nội dung tràn ra cột
+  `overflow:hidden` ⇒ lưu xong là focus cuộn mất toolbar, **không có thanh cuộn
+  để kéo lại**. Đo được: cột `scrollHeight 4908` trong khung 900px.
+- Kéo sheet lên hết cỡ trên điện thoại thì toolbar (`z-40`) và search (`z-30`)
+  **đè lên thẻ đầu** vì sheet cũng `z-30`.
+- Dropdown `Select` portal + `fixed` **sống lâu hơn trigger**: gập cột đi thì
+  menu mắc kẹt trên bản đồ, không gì đóng được.
+- Danh sách gợi ý báo **"không tìm thấy"** ngay trong cửa sổ debounce — tuyên bố
+  thất bại trước khi kịp tìm.
+- CTA vòng quay là gradient hồng trong khi cả app dùng terracotta.
+
+Bộ lái ở `/tmp/driver.mjs` (CDP): `goto → click/type/select → wait → screenshot
+→ health-check`. Health-check mỗi bước: tràn ngang, `map-view` có hộp không,
+dialog lọt màn, **trapped content** (`scrollHeight > clientHeight` trong hộp
+`overflow:hidden`), console error.
+
+Hai bẫy của chính bộ lái, đừng nhầm với bug app:
+- **Đợi quá ngắn** → tưởng search hỏng. Debounce 300ms + mạng ~800–1500ms ⇒ chờ ≥3.5s.
+- **`offsetParent` luôn `null` với `position: fixed`** ⇒ lọc kiểu đó là không bao
+  giờ tìm thấy nút nổi. Dùng `getClientRects().length > 0`.
+
+### Nút chỉ có icon: `title` KHÔNG phải tên khả truy cập
+
+4 chỗ có `title` mà thiếu `aria-label`. Trình đọc màn hình không đọc `title` như
+tên, và script cũng không tìm ra nút. Rà bằng:
+`grep -rn '<button\|<a ' src --include=*.tsx` rồi lọc thẻ có `title=` mà không có
+`aria-label=`.
+
 ### Gợi ý địa điểm: `textsearch` chứ không phải `autocomplete`
 
 `place/autocomplete` **chỉ trả tên + địa chỉ** — không toạ độ, không khoảng cách.
