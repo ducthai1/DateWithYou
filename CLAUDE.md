@@ -193,6 +193,37 @@ trước khi chụp — đủ để soi từng tab (`Wishlist`, `Ngân sách`, `
 từng modal (`+ Thêm`, `Thêm dự định`…). Thêm `&only=1&w=&h=` để chụp **một khung
 không thu nhỏ** khi cần nhìn chi tiết như dải mờ cuộn.
 
+### So BỀ RỘNG con-với-cha là chưa đủ — phải so MÉP
+
+Check cũ hỏi "con có rộng hơn lòng cha không". Nó **không bao giờ** thấy một
+phần tử **hẹp hơn cha nhưng bị đẩy lệch ra khỏi mép** — đúng thứ xảy ra khi một
+item `shrink-0` nằm trong hàng flex đã đầy. Nút "+ Thêm" thò ra khỏi thẻ toolbar
+**48px ở 1440, 80px ở 1152**, qua cả padding lẫn góc bo, mà mọi sweep đều báo
+sạch.
+
+Phép đo đúng: so mép con với **content-box của cha** cả hai bên.
+
+```js
+const padL=parseFloat(ps.paddingLeft)||0, padR=parseFloat(ps.paddingRight)||0;
+const bL=parseFloat(ps.borderLeftWidth)||0, bR=parseFloat(ps.borderRightWidth)||0;
+const innerL=pr.left+bL+padL, innerR=pr.right-bR-padR;
+const esc = Math.max(r.right-innerR, innerL-r.left);   // >1.5px là thoát khung
+```
+
+**Hai thứ bắt buộc phải loại trừ, không thì báo oan liên tục:**
+- **Lề âm** (`-mx-*`) — kỹ thuật tràn mép có chủ đích.
+- **Transform.** Và **Tailwind v4 phát ra `scale` / `rotate` / `translate` thành
+  thuộc tính riêng**, không phải shorthand `transform` — chỉ check `transform`
+  thì swatch `scale-110` vẫn báo 2px mãi. Phải check cả bốn.
+
+**Sửa thì đừng chỉ cho cha `flex-wrap`.** Cụm nút là **một** flex item; cha chỉ
+có thể đẩy cả cụm xuống dòng chứ không bẻ được nó. Chính cụm đó cũng phải
+`flex-wrap`, và thứ có thể co (tiêu đề) phải bỏ `shrink-0`.
+
+**Test với space 2 NGƯỜI.** Space cá nhân giấu mất nút "Gặp ở giữa" — tức là
+giấu luôn ca toolbar rộng nhất. Tạo mã mời bằng `space.createInvite` rồi
+`space.joinByCode` từ tài khoản thứ hai.
+
 ### Hộp cao cố định mà không clip thì nội dung SƠN RA NGOÀI — không check ngang nào bắt được
 
 Sidebar `fixed inset-y-4` = cao đúng bằng viewport − 32px, `justify-between`,
