@@ -49,6 +49,28 @@ Nên với mọi tham số tuỳ chọn: **chạy thử đúng cái mặc địn
 mới tin. Và trước khi tin là "API trả sai", gọi thẳng API một phát để tách bạch
 lỗi ở đâu — ở đây API đúng ngay từ đầu, sai nằm hoàn toàn phía client.
 
+### Gợi ý địa điểm: `textsearch` chứ không phải `autocomplete`
+
+`place/autocomplete` **chỉ trả tên + địa chỉ** — không toạ độ, không khoảng cách.
+Muốn hiện "cách bao xa" thì phải gọi `place/details` cho **từng** gợi ý = 8
+request mỗi lần tìm. `place/textsearch` trả **geometry ngay trong cùng một
+request** ⇒ tính được khoảng cách, **và** lúc chọn cũng không cần details nữa.
+
+**Phải tự sắp xếp.** Thứ tự của API gần như bỏ qua `location` bias: tìm "trà sữa"
+từ Sài Gòn mà kết quả đầu cách **1.068 km**. Sắp theo khoảng cách tăng dần rồi
+mới `slice(0,8)`.
+
+### Hộp `fixed inset-0` vẫn có thể thành 0×0 — đo, đừng đoán
+
+Gập cột công cụ làm **map biến mất**. Hai lần sửa hụt: ẩn cột thì ẩn luôn map
+(map nằm *trong* cột); cho cột `max-w-0` thì map `fixed inset-0` ra **rect 0×0**
+dù `top/left/right/bottom` đều `0px` và **chuỗi tổ tiên sạch** (không transform/
+filter/backdrop/contain — đã probe từng cái).
+
+Kết luận đúng không phải là tìm cho ra thủ phạm CSS, mà là: **map là lớp nền của
+cả trang, đừng đặt nó trong một container có thể bị thu/ẩn.** Đưa ra ngoài là hết
+cả lớp vấn đề. Sweep nay có check `map-collapsed` (rect < 50px) để không tái diễn.
+
 ### Khi map thành `fixed` ở mọi bề rộng, mọi thứ khác phải tự nâng z-index
 
 `/map` desktop nay giống mobile: map `fixed inset-0 z-0` full-bleed, công cụ nổi
