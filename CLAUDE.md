@@ -69,6 +69,34 @@ Lái trình duyệt qua chuỗi thật (`/tmp/driver.mjs`), chụp **mỗi bư�
 `getBoundingClientRect` trước/sau. Xem thêm mục "Quét tĩnh KHÔNG đủ" bên dưới.
 
 
+## Tông ảnh sáng/chiều (`src/lib/tone.ts`)
+
+Ảnh có hai bảng màu: **morning** (xanh ngọc) và **afternoon** (hổ phách ấm).
+Chọn tay hoặc theo đồng hồ — trước 12h là sáng, sau là chiều. Cookie `vivu_tone`
+giữ **lựa chọn** (`morning`/`afternoon`/`auto`).
+
+**Khác hoàn toàn `theme-presets.ts`.** Cái kia là màu nhấn của cặp đôi, lưu trên
+space. Tông chỉ đổi ảnh nên là lựa chọn **theo thiết bị**.
+
+- Thêm ảnh mới → **đăng ký vào `ART`** kèm `tones` liệt kê tông nào thật sự có
+  file. Xin tông không có thì tự rơi về tông còn lại — ảnh nhạt hơn, không vỡ.
+- `artSrc(name, tone)` / `logoSrc(variant, tone)` là hai cửa duy nhất. Đừng ghép
+  chuỗi đường dẫn tay.
+- Đặt tên asset **theo vai trò** (`wheel-food.png`), không theo công cụ sinh ra.
+
+### Hai bẫy đã trả giá, đừng lặp
+
+**1. Script chặn trong `<head>` KHÔNG quyết được attribute React quản lý.**
+`<html data-tone={...}>` do React render ⇒ **hydration khôi phục giá trị của
+server**, xoá sạch thứ script vừa ghi. Cách đúng: **server đọc cookie** cho lựa
+chọn tường minh (render đúng ngay lần đầu), chỉ `auto` mới cần client sửa sau
+mount vì server không biết múi giờ người đọc.
+
+**2. Effect chạy lần commit đầu với state KHỞI TẠO, không phải state sắp có.**
+Effect "theo đồng hồ" chạy khi `preference` còn là `"auto"` mặc định — trước cả
+effect đọc cookie — nên nó **đè lên lựa chọn đã lưu**. Phải có cờ `ready` do
+effect đọc cookie bật lên. Triệu chứng: chọn Chiều, reload, ra Sáng.
+
 ## Trước khi tự nghĩ ra một luồng, xem người ta làm thế nào
 
 Ca thật: ô tìm trên `/map` từng được dựng theo kiểu tự chế — gõ chữ thì lọc pin
