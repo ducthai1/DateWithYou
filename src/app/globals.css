@@ -12,6 +12,23 @@
  *   short   — 150% zoom on a 13" MacBook, and most laptops in a docked window
  *   shorter — 175-200% zoom, and phone landscape
  */
+/*
+ * Strip the app chrome when the page says it is for a signed-out visitor.
+ *
+ * The 404 page is the one public URL rendered inside the app layout, so a
+ * stranger who mistyped a URL was shown the entire private navigation. The page
+ * cannot hide chrome the layout renders above it, and the chrome cannot
+ * recognise a 404 from the pathname — an attribute the page sets and the
+ * stylesheet reads is the join between them.
+ */
+body:has([data-chromeless]) [data-app-chrome] {
+  display: none;
+}
+body:has([data-chromeless]) [data-app-main] {
+  padding-left: 0;
+  padding-bottom: 0;
+}
+
 @custom-variant short (@media (max-height: 760px));
 @custom-variant shorter (@media (max-height: 620px));
 

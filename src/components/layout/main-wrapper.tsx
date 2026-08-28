@@ -11,7 +11,7 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
   const { isCollapsed, ready } = useSidebar();
 
   return (
-    <div className={cn(
+    <div data-app-main className={cn(
       // Match the sidebar: skip the padding transition until the saved collapse
       // state is loaded, so content doesn't slide on first paint.
       ready && "transition-[padding] duration-300 ease-in-out",

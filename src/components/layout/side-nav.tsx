@@ -18,6 +18,7 @@ export function SideNav() {
 
   return (
     <aside
+      data-app-chrome
       className={cn(
         /*
           overflow-hidden and a scrollable list, because this box has a fixed
