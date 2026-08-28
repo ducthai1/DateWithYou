@@ -137,6 +137,32 @@ Kết luận đúng không phải là tìm cho ra thủ phạm CSS, mà là: **m
 cả trang, đừng đặt nó trong một container có thể bị thu/ẩn.** Đưa ra ngoài là hết
 cả lớp vấn đề. Sweep nay có check `map-collapsed` (rect < 50px) để không tái diễn.
 
+### `hidden` KHÔNG thắng `lg:grid` — cùng breakpoint thì cascade quyết, không phải thứ tự viết
+
+```js
+// SAI: hàng lọc vẫn hiện trên desktop dù toggle nói đóng
+cn("flex lg:grid lg:grid-cols-2", !open && "hidden")
+
+// ĐÚNG: đóng thì đừng phát ra utility display nào khác
+cn("gap-2", open ? "flex lg:grid lg:grid-cols-2" : "hidden")
+```
+
+Cùng đặt `display` ở cùng breakpoint thì **thứ tự trong file CSS quyết**, không
+phải thứ tự trong lời gọi `cn()`. Đây là họ hàng của bug `cn()` thiếu `twMerge`
+đã ghi bên dưới — cùng một cái bẫy "class viết sau chưa chắc thắng".
+
+### Trên bản đồ, chỉ CÔNG CỤ mới được nổi vĩnh viễn — danh sách thì không
+
+Thu hẹp cột và thêm nút gập **không** sửa được gốc: mọi thứ vẫn xếp thành **một
+cụm dọc vĩnh viễn** (toolbar → search → 3 select → toàn bộ danh sách chạy tới
+đáy màn, thẻ cuối bị chém). Ở 1920, nơi map thừa cả nghìn pixel, bức tường vẫn y
+nguyên. Và gập là all-or-nothing: mất luôn cả công cụ.
+
+Luật: trên một trang bản đồ, thứ được nổi thường trực chỉ là **ô tìm kiếm + vài
+nút**. Bộ lọc nấp sau một chip. Danh sách là **ngăn kéo**, mặc định đóng, mở
+bằng chip có kèm số lượng. Đó là hình dạng mọi ứng dụng bản đồ dùng, và nó giữ
+map làm trang chứ không phải làm nền.
+
 ### Khi map thành `fixed` ở mọi bề rộng, mọi thứ khác phải tự nâng z-index
 
 `/map` desktop nay giống mobile: map `fixed inset-0 z-0` full-bleed, công cụ nổi
