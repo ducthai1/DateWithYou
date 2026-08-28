@@ -49,6 +49,38 @@ Nên với mọi tham số tuỳ chọn: **chạy thử đúng cái mặc địn
 mới tin. Và trước khi tin là "API trả sai", gọi thẳng API một phát để tách bạch
 lỗi ở đâu — ở đây API đúng ngay từ đầu, sai nằm hoàn toàn phía client.
 
+### Đo xong vẫn phải NHÌN — và nhìn HẾT route, không phải vài cái
+
+Sweep 228 lượt render báo 0 lỗi. Rồi chụp ảnh từng route thì ra 6 lỗi nữa,
+không cái nào là tràn: **CTA của trang chủ nằm dưới mép màn ở zoom 150%**, tab
+kéo giãn 1150px, nhãn nút gãy đôi, avatar giãn cách 150px, ô lịch cao 145px nên
+tháng 6 tuần chỉ thấy 4. Script đo *tràn*; **cân đối, mật độ, thứ có trong tầm
+mắt hay không thì phải nhìn**.
+
+Cách rẻ để nhìn hết: trang tạm `/matrix?r=<route>` render **cùng route trong 3
+iframe** (390×844, 960×600, 1440×900) đặt cạnh nhau, `transform: scale(.46)`,
+rồi chụp **một** ảnh mỗi route. 19 ảnh là duyệt được cả hệ thống.
+
+Hai cái bẫy đã dính:
+
+- **Seed hỏng thì đang chụp màn hình rỗng mà tưởng là layout.** `/timeline` và
+  tab hộp thời gian chụp lúc không có dữ liệu vì 1 tag dài quá 24 ký tự làm
+  hỏng *toàn bộ* memory, và `capsule.create` nhận `z.date()` nên qua HTTP phải
+  kèm meta superjson `{"values":{"unlockDate":["Date"]}}`. **Kiểm số bản ghi
+  từng collection trước khi tin ảnh.**
+- **Đừng kết luận từ ảnh đã thu nhỏ.** Tôi đã định "sửa" `/search`, `/activity`,
+  `/home` vì tưởng chúng kéo dài hết màn — đọc code thì cả ba **đã cap sẵn**
+  (`max-w-[900px]`, `max-w-2xl`, `max-w-[760px]`). Nhìn ra nghi vấn → **đọc code
+  xác nhận** rồi mới sửa.
+
+Và vài luật rút ra:
+
+- **Tab phân đoạn là điều khiển, không phải banner** — rộng bằng chữ của nó,
+  đừng `w-full`.
+- **Nhãn nút không bao giờ xuống dòng** (`whitespace-nowrap` đã vào `Button`).
+  Không vừa thì hàng bao quanh phải wrap, hoặc đổi nhãn ngắn hơn.
+- **Nhãn 2–3 chữ thì cho wrap, đừng `truncate`** — "Hộp thời gi…" tệ hơn hai dòng.
+
 ### Zoom trình duyệt = viewport nhỏ lại CẢ HAI CHIỀU — phải test theo CẶP
 
 Lượt quét đầu chạy 9 bề rộng nhưng **giữ nguyên chiều cao 900px**, nên không
