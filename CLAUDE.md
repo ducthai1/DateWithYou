@@ -49,6 +49,36 @@ Nên với mọi tham số tuỳ chọn: **chạy thử đúng cái mặc địn
 mới tin. Và trước khi tin là "API trả sai", gọi thẳng API một phát để tách bạch
 lỗi ở đâu — ở đây API đúng ngay từ đầu, sai nằm hoàn toàn phía client.
 
+### Khi map thành `fixed` ở mọi bề rộng, mọi thứ khác phải tự nâng z-index
+
+`/map` desktop nay giống mobile: map `fixed inset-0 z-0` full-bleed, công cụ nổi
+thành **một cột trái**, sidebar nổi luôn trên map. Đổi xong thì **ô tìm kiếm và
+hàng lọc biến mất** — chúng vẫn để `lg:z-auto` từ thời map là ô tĩnh trong lưới.
+**Phần tử `fixed` sơn đè lên nội dung tĩnh bất kể thứ tự DOM**, nên cả hai chui
+xuống dưới map. Luật: chuyển gì sang `fixed` thì rà lại **mọi anh em cùng tầng**
+xem có `z-index` chưa.
+
+Kèm: lưới thẻ `sm:grid-cols-2` nằm trong panel 27rem cho mỗi thẻ ~200px ⇒ tên
+quán rớt mỗi dòng một chữ. Panel hẹp thì ép `lg:grid-cols-1`.
+
+### Modal: mặc định hẹp, và phải nói cho biết còn cuộn
+
+- **Mọi dialog đều `max-w-2xl` vì đó là bề rộng duy nhất có.** Form 3 ô rộng
+  672px trông như layout bỏ cuộc. `<Modal size>` mặc định nay là `lg` (512px);
+  chỉ cái nào thật sự nhiều nội dung mới xin `xl`.
+- **Dialog `max-h-[90dvh]` cắt thân form bằng một đường viền phẳng** — đọc ra
+  thành "hết form" chứ không phải "còn nữa". `ModalContent` nay **mờ dần ở mép
+  nào còn nội dung phía sau** (đo `scrollHeight/scrollTop`, có `ResizeObserver`).
+- `ModalHeader` có thêm `description` + `icon` (tuỳ chọn) — một dòng nói dialog
+  này để làm gì, thay vì nhét thành đoạn đầu của thân form.
+
+### Chụp cả tab con và modal, không chỉ route
+
+Trang `/shot?r=<route>&click=<nhãn>` load route rồi **click phần tử có nhãn đó**
+trước khi chụp — đủ để soi từng tab (`Wishlist`, `Ngân sách`, `Nhật ký`…) và
+từng modal (`+ Thêm`, `Thêm dự định`…). Thêm `&only=1&w=&h=` để chụp **một khung
+không thu nhỏ** khi cần nhìn chi tiết như dải mờ cuộn.
+
 ### Hộp cao cố định mà không clip thì nội dung SƠN RA NGOÀI — không check ngang nào bắt được
 
 Sidebar `fixed inset-y-4` = cao đúng bằng viewport − 32px, `justify-between`,
