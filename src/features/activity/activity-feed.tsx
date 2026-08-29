@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { AppRouter } from "@/server/trpc/root";
+import { ToneArt } from "@/components/theme/tone-art";
 import { trpc } from "@/lib/trpc";
 import { dateKeyFromDate, todayKey } from "@/lib/date-keys";
 import { cn } from "@/lib/utils";
@@ -202,6 +203,16 @@ export function ActivityFeed() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6 px-4 pt-6 pb-6">
+      {/* At this column's 672px cap a side-by-side image cramps the text, so
+          the artwork runs full-width above the header instead of beside it —
+          the piece that shows every feature at once, which is what this feed
+          is. Not the compass art the empty state below uses: reproducing its
+          real 672x112 crop showed the window lands on blank kraft paper, so
+          the band read as a brown smear rather than a picture. */}
+      <div className="relative h-28 w-full overflow-hidden rounded-2xl short:h-20 shorter:h-16">
+        <ToneArt name="bannerWide" alt="" fill position="center 45%" sizes="(max-width: 672px) 100vw, 672px" />
+      </div>
+
       <header className="space-y-1">
         <h1 className="text-accent font-serif text-2xl font-semibold">Hoạt động</h1>
         <p className="text-muted-foreground text-sm">

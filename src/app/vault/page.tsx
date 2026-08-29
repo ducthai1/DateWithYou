@@ -42,6 +42,7 @@ export default function VaultPage() {
         <PageHeader
           title="Góc bí mật"
           subtitle="Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn."
+          art="bannerOurPage"
         />
 
         {/* Summary Stats — 2 cols on mobile, 4 on md+ */}

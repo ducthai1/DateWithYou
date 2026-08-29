@@ -1,145 +1,142 @@
+"use client";
+
+import Image from "next/image";
 import Link from "next/link";
+import { useTone } from "@/components/theme/tone-provider";
+import { logoSrc } from "@/lib/tone";
+import { ToneArt } from "@/components/theme/tone-art";
 
 /*
  * The landing hero.
  *
- * The brand artwork is a dark, atmospheric piece with its glow and mist baked
- * in, so it cannot be cut out and dropped onto the cream page — the hero band
- * goes dark around it instead and the page opens back into cream below. The
- * ground colour is sampled from the artwork's own corners (#021617), and the
- * images ship with their edges already feathered to that exact value — baked
- * into the pixels rather than layered on in CSS, so a narrow phone viewport
- * cannot make the fade too short to hide the boundary.
+ * Used to be a dark teal band built around one wide artwork with the wordmark
+ * baked into its pixels. That artwork is retired — it read as a different,
+ * moodier product than the warm parchment (#fdfaf6) the rest of the page
+ * opens into right below it, which is exactly the seam a hero should not
+ * have. The ground here now matches that parchment so the page reads as one
+ * place from the first pixel.
  *
- * The artwork carries the wordmark, so the <h1> is present for crawlers and
- * screen readers but visually hidden — showing both would print the brand name
- * twice.
+ * Two columns above lg: wordmark, tagline, CTAs and scroll cue on one side,
+ * the `heroDesk` artwork on the other. Below lg there is no width to split, so
+ * it stacks — wordmark and copy first, artwork after, in plain source order
+ * (no `order-*` needed).
  *
- * A Server Component: the entrance animations are CSS, so nothing here needs to
- * ship to the browser. It used framer-motion, which made it client-side and put
- * ~45kB of JavaScript in front of the largest paint on the one page search
- * engines actually read.
+ * The wordmark is rendered directly through `logoSrc` + next/image rather than
+ * <BrandMark>: that component hard-codes `sizes="176px"`, tuned for the header
+ * lockup, and stretching it here would ship a header-sized file scaled up in
+ * CSS instead of a properly sized one.
+ *
+ * A Client Component now, where the old dark hero was a Server Component — the
+ * wordmark's file depends on the reader's tone (`useTone`), which is a React
+ * context read, not a library. What actually cost LCP before was
+ * framer-motion holding the image at opacity 0 until hydration ran (measured:
+ * 4.7s of render delay, 91% of a 5.1s LCP, while the file itself downloaded in
+ * 0ms) — a client component that paints its <img> straight into the
+ * server-rendered HTML, as this one does, never hides it like that. The
+ * entrance motion below is still plain CSS (`vivu-rise`), not JS re-added.
  */
 
-/** Sampled from the artwork's corners so `object-contain` bars are invisible. */
-const GROUND = "#021617";
+/** Matches the parchment the rest of the page opens into. */
+const GROUND = "#fdfaf6";
 
 export function LandingHero() {
+  const { tone } = useTone();
+
   return (
     <div
-      className="hero-band relative flex min-h-dvh flex-col items-center justify-center px-5 py-16 short:py-6"
+      className="hero-band relative flex min-h-dvh items-center px-5 py-16 short:py-8"
       style={{ backgroundColor: GROUND }}
     >
-      {/* Stacked, not layered. An earlier pass floated the copy over the
-          artwork and the tagline landed on top of the "NO PLAN" plaque; laying
-          them out in flow makes that collision impossible at any viewport. */}
-      {/*
-        Deliberately NOT animated in from opacity 0. This is the LCP element,
-        and framer-motion holds an element invisible until hydration runs — so
-        fading it in parked the largest paint behind the entire client runtime.
-        Measured: 4.7s of render delay, 91% of a 5.1s LCP, while the image
-        itself downloaded in 0ms. It paints with the HTML now; the copy below
-        still animates, which reads as the page settling rather than a delay.
-      */}
-      <div className="relative w-full max-w-[560px] md:max-w-[900px]">
+      <div className="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        {/* Copy column. */}
+        <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+          {/*
+            Decorative, same reasoning as the old baked-in artwork: the name is
+            already in the sr-only <h1> below, so a screen reader would
+            announce it twice if this carried alt text too.
+
+            Sized off width with an aspect-ratio box matching the file's own
+            1672x941 canvas, rather than `fill` inside a height-only box — the
+            file has generous letterboxing built in, so driving the box from
+            width and letting height follow keeps that letterboxing intact
+            instead of cropping into it.
+          */}
+          <div className="relative aspect-[1672/941] w-[200px] sm:w-[250px]">
+            <Image
+              src={logoSrc("wordmark", tone)}
+              alt=""
+              aria-hidden="true"
+              fill
+              sizes="250px"
+              className="object-contain"
+            />
+          </div>
+
+          <h1 className="sr-only">Vivu No Plan</h1>
+
+          <p
+            className="vivu-rise mt-7 max-w-sm text-[15px] font-light leading-relaxed text-[#6b5c51] sm:text-base"
+            style={{ animationDelay: "320ms" }}
+          >
+            Nơi giữ lại những chỗ đã đi, món đã ăn và những hôm đáng nhớ — đi một
+            mình cũng được, có người đi cùng càng vui.
+          </p>
+
+          <div
+            className="vivu-rise mt-9 flex w-full max-w-sm flex-col gap-3.5"
+            style={{ animationDelay: "560ms" }}
+          >
+            <Link
+              href="/map"
+              className="group relative flex h-14 w-full items-center justify-center overflow-hidden rounded-full bg-[#c2693f] text-white shadow-[0_10px_28px_rgba(194,105,63,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#a8542f] active:translate-y-0 active:scale-[0.98]"
+            >
+              <span className="relative z-10 text-[17px] font-medium tracking-wide">
+                Vào không gian
+              </span>
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 ease-in-out group-hover:translate-x-full" />
+            </Link>
+
+            <Link
+              href="/sign-up"
+              className="flex h-14 w-full items-center justify-center rounded-full border border-[#d8cfc1]/80 bg-white/40 text-[#6f675d] backdrop-blur-md transition-all hover:border-[#d8cfc1] hover:bg-white/70 active:scale-[0.98]"
+            >
+              <span className="text-[17px] font-medium tracking-wide">
+                Tạo tài khoản
+              </span>
+            </Link>
+          </div>
+
+          {/* Scroll affordance — the hero is min-h-dvh, so without it everything
+              below sits past the fold with nothing hinting it exists. */}
+          <a
+            href="#gioi-thieu"
+            className="vivu-rise mt-10 flex w-fit flex-col items-center gap-1.5 rounded-full px-4 py-2 text-[#8a7c6f] transition-colors hover:text-[#a8542f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a8542f]"
+            style={{ animationDelay: "1400ms" }}
+          >
+            <span className="text-xs font-light tracking-wide">Tìm hiểu thêm</span>
+            <span aria-hidden="true" className="vivu-nudge text-lg leading-none">
+              ↓
+            </span>
+          </a>
+        </div>
+
         {/*
-          Two crops of the same artwork: the wide one keeps the filigree that
-          sweeps out either side, which on a phone would shrink the lettering to
-          nothing, so a tighter crop takes over below md.
-
-          Deliberately a <picture> with plain <img> rather than next/image. Art
-          direction needs exactly ONE of the two files to download, and the
-          browser's preload scanner has to find it in the raw HTML — this is the
-          LCP element. Rendering both through next/image and hiding one with CSS
-          fetched both and left the scanner preloading the wrong one, which cost
-          seconds of LCP. The files are already sized and compressed for their
-          breakpoints, so the optimiser has nothing left to add.
+          Artwork column, capped on short viewports the same way the old
+          picture was: `short:` plus `w-auto`, letting the intrinsic aspect
+          ratio drive the shrink instead of a fixed height that would crop it.
+          This lives inside a grid row, so an oversized image here would drag
+          the copy column's vertical centring down with it rather than just
+          growing past the fold on its own.
         */}
-        <picture>
-          <source
-            media="(min-width: 768px)"
-            type="image/webp"
-            srcSet="/hero-logo.webp"
-            width={1800}
-            height={840}
+        <div className="mx-auto w-full max-w-[420px] lg:mx-0 lg:max-w-none">
+          <ToneArt
+            name="heroDesk"
+            priority
+            sizes="(min-width: 1024px) 540px, (min-width: 640px) 420px, 90vw"
+            className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 shadow-[0_20px_50px_rgba(59,50,42,0.12)] short:mx-auto short:max-h-[30vh] short:w-auto"
           />
-          <source type="image/webp" srcSet="/hero-logo-tight.webp" width={1200} height={749} />
-          {/* JPEG stays as the last-resort source for anything without WebP.
-              eslint-disable-next-line @next/next/no-img-element */}
-          { }
-          <img
-            src="/hero-logo-tight.jpg"
-            alt=""
-            aria-hidden="true"
-            width={1200}
-            height={749}
-            fetchPriority="high"
-            // No decoding="async" here: this is the LCP element, and async
-            // explicitly permits the browser to defer the decode — exactly the
-            // paint we are waiting on.
-            decoding="sync"
-            /*
-              Height-capped on a short window. The artwork is 900px wide and
-              tall to match, so at 960x600 — a MacBook at 150% zoom — the hero
-              stack came to ~790px, and justify-center pushed "Vào không gian"
-              clean off the bottom of the screen. The primary way into the app
-              was invisible to anyone zoomed in. Tall windows are untouched.
-            */
-            className="h-auto w-full short:mx-auto short:max-h-[34vh] short:w-auto short:object-contain"
-          />
-        </picture>
+        </div>
       </div>
-
-      {/* The artwork already sets the name; this keeps it in the document for
-          search engines and screen readers without printing it twice. */}
-      <h1 className="sr-only">Vivu No Plan</h1>
-
-      <p
-        className="vivu-rise mt-7 max-w-sm text-center text-[15px] font-light leading-relaxed text-[#BFD9DE] sm:text-base"
-        style={{ animationDelay: "320ms" }}
-      >
-        Nơi giữ lại những chỗ đã đi, món đã ăn và những hôm đáng nhớ — đi một
-        mình cũng được, có người đi cùng càng vui.
-      </p>
-
-      <div
-        className="vivu-rise mt-9 flex w-full max-w-sm flex-col gap-3.5"
-        style={{ animationDelay: "560ms" }}
-      >
-        <Link
-          href="/map"
-          className="group relative flex h-14 w-full items-center justify-center overflow-hidden rounded-full bg-[#c2693f] text-white shadow-[0_10px_28px_rgba(0,0,0,0.45)] transition-all hover:-translate-y-0.5 hover:bg-[#a8542f] active:translate-y-0 active:scale-[0.98]"
-        >
-          <span className="relative z-10 text-[17px] font-medium tracking-wide">
-            Vào không gian
-          </span>
-          <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 ease-in-out group-hover:translate-x-full" />
-        </Link>
-
-        <Link
-          href="/sign-up"
-          className="flex h-14 w-full items-center justify-center rounded-full border border-white/25 bg-white/5 text-[#E4F2F5] backdrop-blur-md transition-all hover:border-white/45 hover:bg-white/10 active:scale-[0.98]"
-        >
-          <span className="text-[17px] font-medium tracking-wide">
-            Tạo tài khoản
-          </span>
-        </Link>
-      </div>
-
-      {/* Scroll affordance — the hero is min-h-dvh, so without it everything
-          below sits past the fold with nothing hinting it exists. */}
-      {/* In flow, not absolutely positioned: pinned to the bottom it landed on
-          top of the second button on shorter viewports. */}
-      <a
-        href="#gioi-thieu"
-        className="vivu-rise mt-10 flex w-fit flex-col items-center gap-1.5 rounded-full px-4 py-2 text-[#8FB3BB] transition-colors hover:text-[#DCEFF2] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5FAAC3]"
-        style={{ animationDelay: "1400ms" }}
-      >
-        <span className="text-xs font-light tracking-wide">Tìm hiểu thêm</span>
-        <span aria-hidden="true" className="vivu-nudge text-lg leading-none">
-          ↓
-        </span>
-      </a>
     </div>
   );
 }

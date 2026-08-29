@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Lock, Unlock, Loader2, Hourglass } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ToneArt } from "@/components/theme/tone-art";
 import { formatDistanceToNow, format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { CapsuleUnlockModal } from "./capsule-unlock-modal";
@@ -58,13 +59,26 @@ export function CapsulesPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-bold font-serif flex items-center gap-2">
-          <Hourglass className="h-5 w-5 text-accent shrink-0" /> Hộp Thời Gian
-        </h2>
-        <Button onClick={() => setFormOpen(true)} className="gap-2 rounded-full shadow-md bg-accent hover:bg-accent/90 text-white w-full sm:w-auto shrink-0">
-          <Plus className="h-4 w-4" /> Giấu kỷ niệm
-        </Button>
+      {/*
+        Bespoke instead of the shared PageHeader: this panel is one tab of
+        VaultPage, which already renders its own <h1> above the tab strip.
+        Reusing PageHeader here would put two <h1>s on one page, so this
+        keeps the <h2> and borrows PageHeader's art-plus-scrim look by hand.
+      */}
+      <div className="relative min-h-[6rem] overflow-hidden rounded-2xl sm:min-h-[7rem]">
+        <ToneArt name="mapTreasure" alt="" fill position="center 35%" sizes="(max-width: 768px) 100vw, 900px" className="-z-10" />
+        <div
+          aria-hidden="true"
+          className="from-card/95 via-card/70 to-card/15 absolute inset-0 -z-10 bg-gradient-to-r"
+        />
+        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-bold font-serif flex items-center gap-2">
+            <Hourglass className="h-5 w-5 text-accent shrink-0" /> Hộp Thời Gian
+          </h2>
+          <Button onClick={() => setFormOpen(true)} className="gap-2 rounded-full shadow-md bg-accent hover:bg-accent/90 text-white w-full sm:w-auto shrink-0">
+            <Plus className="h-4 w-4" /> Giấu kỷ niệm
+          </Button>
+        </div>
       </div>
       <p className="text-muted-foreground text-sm">
         Viết một bức thư bí mật, chọn ngày mở khoá. Đến hạn, người kia mới đọc được — như một bất ngờ gửi từ hiện tại tới tương lai.
@@ -148,9 +162,12 @@ export function CapsulesPanel() {
                     : "bg-accent/10 border-accent shadow-lg shadow-accent/20"
                 }`}
               >
-                {/* Background decorative icon */}
-                <div className="absolute -right-4 -bottom-4 opacity-5">
-                  {isLocked ? <Lock className="h-32 w-32" /> : <Unlock className="h-32 w-32" />}
+                {/* Background decorative artwork — was a Lock/Unlock glyph at
+                    5% opacity; the badge above already states locked/opened,
+                    so this spot was pure decoration and can carry the
+                    vault's own art instead. */}
+                <div className="pointer-events-none absolute -right-4 -bottom-4 h-32 w-32 overflow-hidden rounded-2xl opacity-10">
+                  <ToneArt name="vaultSafe" alt="" fill position="center" sizes="128px" />
                 </div>
 
                 <div className="relative z-10">

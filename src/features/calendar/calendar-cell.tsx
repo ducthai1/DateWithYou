@@ -97,12 +97,13 @@ export const CalendarCell = memo(function CalendarCell({
         // 150% zoom — seven columns made every cell ~94px tall and only four
         // weeks of the month fit on screen. Short windows cap the height instead.
         "relative flex aspect-square flex-col items-start justify-start overflow-hidden p-1 md:p-3 text-sm transition-all touch-manipulation",
-        // From md up the height follows the viewport instead of the column
-        // width. Seven aspect-square columns across a 1050px grid made every
-        // cell ~145px tall, so even a 900px-tall window showed four weeks of a
-        // six-week month. clamp() keeps a usable floor, tracks the height that
-        // is actually available, and needs no breakpoint of its own.
-        "md:aspect-auto md:h-[clamp(3.25rem,11vh,7rem)]",
+        // Square cells stay square on desktop too. A previous fix clamped
+        // md height to viewport height (clamp(3.25rem,11vh,7rem)) to solve a
+        // short-window problem, but that clamp ran at every desktop height,
+        // not just short ones: at 1440x900 it forced ~99–112px-tall cells
+        // against a ~185px-wide column, i.e. wide rectangles on an ordinary
+        // window. Short/zoomed windows are handled below by short:/shorter:
+        // instead, which only kicks in under the max-height breakpoints.
         "short:aspect-auto short:min-h-[3.25rem] short:p-1.5 shorter:min-h-[2.5rem]",
         "rounded-2xl md:rounded-xl md:transition-colors",
         cell.inMonth && !isToday && "md:border-[3px]",

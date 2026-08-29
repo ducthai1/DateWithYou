@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-shell";
+import { ToneArt } from "@/components/theme/tone-art";
 import { motion, useAnimationControls } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -102,7 +103,7 @@ export function FoodWheel() {
 
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-6 pb-8 md:px-[30px] short:gap-3 short:pt-3">
-      <PageHeader title="Hôm nay ăn gì?" className="w-full" />
+      <PageHeader title="Hôm nay ăn gì?" art="wheelFood" className="w-full" />
 
       {/*
         Controls beside the wheel once there is room, stacked below that.
@@ -141,6 +142,16 @@ export function FoodWheel() {
           />
         </div>
       )}
+
+      {/* The left column is short — two tabs and, at most, one dropdown — while
+          the wheel column next to it runs to 400px plus a button. On lg that
+          left a slab of empty air below the filters. Hidden below lg where
+          there is no room to spare, and dropped again when short regardless
+          of width (the !-forced override wins over lg:block either way the
+          two media queries happen to sort in the compiled CSS). */}
+      <div className="short:!hidden relative hidden h-48 overflow-hidden rounded-2xl lg:block xl:h-56">
+        <ToneArt name="wheelFood" alt="" fill position="center 65%" sizes="352px" />
+      </div>
 
       </div>
 

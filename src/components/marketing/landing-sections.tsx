@@ -20,13 +20,19 @@ function SectionHeading({
   eyebrow,
   title,
   lead,
+  align = "center",
 }: {
   eyebrow: string;
   title: string;
   lead?: string;
+  /** "left" is for a heading sharing a row with an image half — it stays
+   *  centred below lg, where there is no second column to sit beside. */
+  align?: "center" | "left";
 }) {
   return (
-    <div className="mx-auto max-w-2xl text-center">
+    <div
+      className={`mx-auto max-w-2xl text-center ${align === "left" ? "lg:mx-0 lg:text-left" : ""}`}
+    >
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#a8542f]">
         {eyebrow}
       </p>
@@ -47,22 +53,44 @@ export function LandingSections() {
     <div className="relative bg-[#fdfaf6] text-[#3b322a]">
       {/* Intro — the one paragraph that answers "what is this?" in prose.
           Crawlers weight early body copy heavily, and the hero above is only
-          a headline plus one line. */}
-      <section id="gioi-thieu" className="mx-auto max-w-3xl px-6 py-20 sm:py-28">
-        <Reveal>
-          <SectionHeading
-            eyebrow="Giới thiệu"
-          title={`${SITE_NAME} là gì?`}
-            lead="Là một góc riêng để giữ lại những nơi đã đi qua, tấm ảnh của hôm nào đó, kế hoạch đi chơi cuối tuần này và cả những điều chưa muốn nói ra vội — tất cả nằm gọn ở một chỗ, thay vì trôi mất giữa hàng nghìn tin nhắn."
-          />
-        </Reveal>
-        <Reveal delay={180}>
-        <p className="mx-auto mt-8 max-w-2xl text-center text-base font-light leading-relaxed text-[#6b5c51]">
-          Không bảng tin, không người lạ, không thuật toán gợi ý. Đi một mình
-          thì đây là góc của riêng bạn. Có người đi cùng thì ai thêm gì vào,
-          người kia thấy gần như ngay — khỏi chụp màn hình gửi qua gửi lại.
-        </p>
-        </Reveal>
+          a headline plus one line.
+
+          Two columns above lg, text against `memoriesScrapbook`: this was the
+          first of the plain centred-text sections down the page, and pairing
+          it with the one piece of art that is literally about keeping
+          moments matches what the paragraph is arguing. Image sits on the
+          right — the steps band further down mirrors this with its own
+          artwork on the left, so the page alternates rather than lining every
+          picture up on the same side. */}
+      <section id="gioi-thieu" className="mx-auto max-w-5xl px-6 py-20 sm:py-28">
+        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
+          <div>
+            <Reveal>
+              <SectionHeading
+                eyebrow="Giới thiệu"
+                title={`${SITE_NAME} là gì?`}
+                lead="Là một góc riêng để giữ lại những nơi đã đi qua, tấm ảnh của hôm nào đó, kế hoạch đi chơi cuối tuần này và cả những điều chưa muốn nói ra vội — tất cả nằm gọn ở một chỗ, thay vì trôi mất giữa hàng nghìn tin nhắn."
+                align="left"
+              />
+            </Reveal>
+            <Reveal delay={180}>
+              <p className="mx-auto mt-8 max-w-2xl text-center text-base font-light leading-relaxed text-[#6b5c51] lg:mx-0 lg:text-left">
+                Không bảng tin, không người lạ, không thuật toán gợi ý. Đi một
+                mình thì đây là góc của riêng bạn. Có người đi cùng thì ai thêm
+                gì vào, người kia thấy gần như ngay — khỏi chụp màn hình gửi
+                qua gửi lại.
+              </p>
+            </Reveal>
+          </div>
+          <Reveal delay={120}>
+            <div className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 bg-white/50 shadow-[0_12px_40px_rgba(59,50,42,0.08)]">
+              <ToneArt
+                name="memoriesScrapbook"
+                sizes="(max-width: 1024px) 100vw, 480px"
+              />
+            </div>
+          </Reveal>
+        </div>
       </section>
 
       {/*
@@ -144,26 +172,47 @@ export function LandingSections() {
 
       <div className="mx-auto h-px max-w-4xl bg-[#d8cfc1]/60" />
 
-      {/* Steps */}
+      {/* Steps — the second of the two alternating image bands. `tripPlanner`
+          on the left this time (the intro band above put its artwork on the
+          right), and matches the section's own subject: getting a trip
+          moving. The three steps drop from a 3-column row to a stack, since
+          they now share the row with an image instead of the full width. */}
       <section id="bat-dau" className="mx-auto max-w-5xl px-6 py-20 sm:py-28">
-        <Reveal>
-          <SectionHeading eyebrow="Bắt đầu" title="Ba bước là xong" />
-        </Reveal>
-        <ol className="mt-14 grid gap-10 sm:grid-cols-3">
-          {STEPS.map((step, i) => (
-            <Reveal as="li" key={step.number} delay={i * 140}>
-              <span className="text-sm font-medium tracking-[0.2em] text-[#a8542f]">
-                {step.number}
-              </span>
-              <h3 className="mt-4 text-lg font-medium text-[#3b322a]">
-                {step.title}
-              </h3>
-              <p className="mt-3 text-[15px] font-light leading-relaxed text-[#6b5c51]">
-                {step.body}
-              </p>
+        {/* Text block written first in source, same as the intro band above,
+            so mobile always reads heading-then-picture regardless of which
+            side the picture lands on at lg. `lg:order-first` is what actually
+            moves the artwork to the left column once there is a row to have
+            a side at all. */}
+        <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+          <div className="lg:order-last">
+            <Reveal>
+              <SectionHeading eyebrow="Bắt đầu" title="Ba bước là xong" align="left" />
             </Reveal>
-          ))}
-        </ol>
+            <ol className="mt-10 space-y-8">
+              {STEPS.map((step, i) => (
+                <Reveal as="li" key={step.number} delay={i * 140}>
+                  <span className="text-sm font-medium tracking-[0.2em] text-[#a8542f]">
+                    {step.number}
+                  </span>
+                  <h3 className="mt-4 text-lg font-medium text-[#3b322a]">
+                    {step.title}
+                  </h3>
+                  <p className="mt-3 text-[15px] font-light leading-relaxed text-[#6b5c51]">
+                    {step.body}
+                  </p>
+                </Reveal>
+              ))}
+            </ol>
+          </div>
+          <Reveal delay={120} className="lg:order-first">
+            <div className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 bg-white/50 shadow-[0_12px_40px_rgba(59,50,42,0.08)]">
+              <ToneArt
+                name="tripPlanner"
+                sizes="(max-width: 1024px) 100vw, 480px"
+              />
+            </div>
+          </Reveal>
+        </div>
       </section>
 
       <div className="mx-auto h-px max-w-4xl bg-[#d8cfc1]/60" />

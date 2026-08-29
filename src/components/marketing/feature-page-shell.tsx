@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ToneArt } from "@/components/theme/tone-art";
 import { Reveal } from "./reveal";
 import { FaqItem } from "./faq-item";
-import type { FeaturePage } from "./feature-pages";
+import type { FeaturePage, FeaturePageSection } from "./feature-pages";
 import { FEATURE_PAGE_APP_HREF } from "./feature-pages";
 import { SITE_NAME } from "@/lib/site";
 
@@ -38,6 +38,39 @@ function Prose({ paragraphs }: { paragraphs: string[] }) {
         </p>
       ))}
     </div>
+  );
+}
+
+/**
+ * Heading + prose/list for one section, factored out so a section WITH art
+ * and a section without it render identically apart from what wraps them —
+ * see the two branches in the `page.sections.map` below.
+ */
+function SectionBody({ section }: { section: FeaturePageSection }) {
+  return (
+    <>
+      <h2 className="text-2xl font-medium tracking-tight text-[#3b322a] sm:text-[1.75rem]">
+        {section.heading}
+      </h2>
+      {section.paragraphs ? <Prose paragraphs={section.paragraphs} /> : null}
+      {section.items ? (
+        <ul className="mt-8 space-y-6">
+          {section.items.map((item) => (
+            <li
+              key={item.label}
+              className="rounded-2xl border border-[#d8cfc1]/70 bg-white/50 p-6"
+            >
+              <h3 className="text-base font-medium text-[#3b322a]">
+                {item.label}
+              </h3>
+              <p className="mt-2.5 text-[15px] font-light leading-relaxed text-[#6b5c51]">
+                {item.body}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </>
   );
 }
 
@@ -83,27 +116,37 @@ export function FeaturePageShell({ page }: { page: FeaturePage }) {
         {page.sections.map((section, i) => (
           <Reveal as="section" key={section.heading} delay={Math.min(i, 4) * 110}>
             <div className="mt-16 border-t border-[#d8cfc1]/60 pt-12">
-              <h2 className="text-2xl font-medium tracking-tight text-[#3b322a] sm:text-[1.75rem]">
-                {section.heading}
-              </h2>
-              {section.paragraphs ? <Prose paragraphs={section.paragraphs} /> : null}
-              {section.items ? (
-                <ul className="mt-8 space-y-6">
-                  {section.items.map((item) => (
-                    <li
-                      key={item.label}
-                      className="rounded-2xl border border-[#d8cfc1]/70 bg-white/50 p-6"
-                    >
-                      <h3 className="text-base font-medium text-[#3b322a]">
-                        {item.label}
-                      </h3>
-                      <p className="mt-2.5 text-[15px] font-light leading-relaxed text-[#6b5c51]">
-                        {item.body}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+              {section.art ? (
+                /*
+                 * Two-column band for a section that opted into art. Still
+                 * inside the same max-w-3xl reading column as the rest of the
+                 * page (not a full-bleed break-out), so at a phone width this
+                 * is one column same as any other section, and at desktop
+                 * width it is two roughly 330px halves — enough room for a
+                 * picture without stretching the article wider than the
+                 * prose either side of it is comfortable at.
+                 *
+                 * Side alternates by section index so a page with two or
+                 * three of these does not line every picture up on the same
+                 * side: even index puts the picture on the right (default DOM
+                 * order), odd index moves the text second via `sm:order-last`
+                 * so the picture (unordered, so still first) lands on the
+                 * left instead.
+                 */
+                <div className="grid gap-8 sm:grid-cols-2 sm:items-center sm:gap-10">
+                  <div className={i % 2 === 1 ? "sm:order-last" : undefined}>
+                    <SectionBody section={section} />
+                  </div>
+                  <div className="overflow-hidden rounded-[20px] border border-[#d8cfc1]/70 bg-white/60 shadow-sm">
+                    <ToneArt
+                      name={section.art}
+                      sizes="(max-width: 640px) 100vw, 330px"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <SectionBody section={section} />
+              )}
             </div>
           </Reveal>
         ))}

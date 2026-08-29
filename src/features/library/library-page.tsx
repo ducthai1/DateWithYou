@@ -76,6 +76,7 @@ export function LibraryPage() {
       <PageHeader
         title="Bộ sưu tập"
         subtitle="Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau."
+        art="appShowcase"
         actions={
           <>
             <div className="relative w-full sm:max-w-xs">

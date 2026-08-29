@@ -70,6 +70,10 @@ export const HOM_NAY_AN_GI: FeaturePage = {
     },
     {
       heading: "Quay xong thì rủ luôn",
+      // mapIsland here, not wheelFood again: this section is about what
+      // happens right after the wheel stops — the map invite — so it earns
+      // its own picture instead of repeating the page's masthead art.
+      art: "mapIsland",
       paragraphs: [
         "Ra kết quả rồi, nếu có người đi cùng thì gửi lời mời dẫn đường ngay từ đó. Người kia mở bản đồ lên là thấy, khỏi copy địa chỉ dán qua chỗ khác.",
         "Đi một mình thì bấm vào ra bản đồ. Xong.",

@@ -12,6 +12,7 @@ import { TripChecklist } from "./trip-checklist";
 import { TripBudget } from "./trip-budget";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { TripForm } from "./trip-form";
+import { ToneArt } from "@/components/theme/tone-art";
 
 const TABS = [
   { key: "itinerary", label: "Lịch trình" },
@@ -63,6 +64,19 @@ export function TripDetail({ id }: { id: string }) {
           <Settings2 className="h-5 w-5" />
         </button>
       </header>
+
+      {/* Artwork band — the only screen with nothing between the app-bar and
+          its content. Deliberately NOT sticky: the tab strip below is pinned
+          at top-[65px] to sit flush under the sticky app-bar, and a sticky
+          band here would either fight that hard-coded offset or need the
+          tabs re-pinned to a height that now depends on this band's own. */}
+      <div className="relative h-28 shrink-0 overflow-hidden sm:h-36 short:hidden">
+        <ToneArt name="bannerSub" alt="" fill position="center 40%" sizes="(max-width: 1024px) 100vw, 1024px" />
+        <div
+          aria-hidden="true"
+          className="from-background/80 via-background/10 to-transparent absolute inset-0 bg-gradient-to-b"
+        />
+      </div>
 
       {/* Tabs */}
       <div className="sticky top-[65px] z-10 bg-background px-4 pt-3 pb-2 shadow-sm">

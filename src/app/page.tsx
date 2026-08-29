@@ -152,26 +152,14 @@ export default function Home() {
   return (
     <>
       {/*
-        Preload the hero artwork, matched to the same breakpoint the <picture>
-        uses so only one file is ever fetched. Without this the browser did not
-        discover the LCP image until ~1s after the document arrived, because it
-        sits inside a client component well past the render-blocking font CSS.
-        React hoists these into <head>.
+        No manual <link rel="preload"> here anymore. It used to hand-match a
+        breakpoint to the old hero's <picture> because the browser's preload
+        scanner cannot see into a component tree on its own. The new hero's
+        artwork renders through <ToneArt priority>, which is next/image with
+        `priority` — Next emits its own preload for that, already pointed at
+        the resolved, tone-correct file. A manual link here would have to
+        guess the tone and would just add a second, unused fetch.
       */}
-      <link
-        rel="preload"
-        as="image"
-        href="/hero-logo-tight.webp"
-        media="(max-width: 767px)"
-        fetchPriority="high"
-      />
-      <link
-        rel="preload"
-        as="image"
-        href="/hero-logo.webp"
-        media="(min-width: 768px)"
-        fetchPriority="high"
-      />
       <StructuredData />
       {/* Anchor for the back-to-top link. An id beats scrollTo(0) here: it
           inherits the page's smooth scroll-behavior and works without JS. */}

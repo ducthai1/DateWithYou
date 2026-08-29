@@ -31,6 +31,11 @@ export const NHAT_KY_DU_LICH: FeaturePage = {
     },
     {
       heading: "Trước chuyến đi",
+      // calendarTablet over memoriesScrapbook (the page's own masthead art):
+      // this section is the planning half — dates, budget, checklist — and
+      // the memories piece is for the half that comes after the trip, not
+      // before it.
+      art: "calendarTablet",
       items: [
         {
           label: "Lịch trình từng ngày",

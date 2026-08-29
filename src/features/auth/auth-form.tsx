@@ -101,11 +101,14 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
         </div>
         {/* Wordmark */}
         <div className="relative z-10 text-center">
-          {/* Visually hidden once the brand panel is on screen — the artwork
-              beside it already says the name, and printing it twice reads as a
-              mistake. Kept in the document for screen readers either way. */}
+          {/* Always visible now. It used to go sr-only once the brand panel
+              appeared above lg, because that panel's artwork carried the
+              wordmark baked into its own pixels. The panel's current artwork
+              (auth-shell.tsx) is a decorative flat-lay photo with no wordmark
+              in it, so this heading is the only place the name shows on that
+              side of the screen at any width. */}
           <h1
-            className="text-4xl font-bold tracking-tight lg:sr-only"
+            className="text-4xl font-bold tracking-tight"
             style={{
               fontFamily: "var(--font-display)",
               background:

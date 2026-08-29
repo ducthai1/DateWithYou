@@ -4,11 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plane, Plus, CalendarDays, Wallet, CheckSquare, Map } from "lucide-react";
+import { Plane, Plus, CalendarDays, Wallet, CheckSquare } from "lucide-react";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { TripForm } from "./trip-form";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/layout/page-shell";
+import { ToneArt } from "@/components/theme/tone-art";
 
 export function TripList() {
   const { data: trips, isLoading } = trpc.trip.list.useQuery();
@@ -16,19 +18,20 @@ export function TripList() {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px] md:py-8 short:py-4">
-      <div className="mb-6 flex items-center justify-between rounded-2xl bg-gradient-to-r from-gradient-from/15 to-gradient-to/15 p-4 -mx-1">
-        <h1 className="flex items-center gap-2 font-serif text-2xl font-semibold text-accent">
-          <Plane className="h-7 w-7 text-accent" />
-          Chuyến đi
-        </h1>
-        <button
-          onClick={() => setFormOpen(true)}
-          aria-label="Tạo chuyến đi mới"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md transition-transform hover:scale-105 active:scale-95"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
-      </div>
+      <PageHeader
+        title="Chuyến đi"
+        subtitle="Lên lịch, tính ngân sách và chuẩn bị hành trang cho từng chuyến đi."
+        art="tripPlanner"
+        actions={
+          <button
+            onClick={() => setFormOpen(true)}
+            aria-label="Tạo chuyến đi mới"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md transition-transform hover:scale-105 active:scale-95"
+          >
+            <Plus className="h-6 w-6" />
+          </button>
+        }
+      />
 
       <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
         {isLoading ? (
@@ -43,7 +46,9 @@ export function TripList() {
           <div className="col-span-full">
             <EmptyState
               icon="plane"
-              art="tripPlanner"
+              // Header above already carries tripPlanner. A backpack is
+              // also the truer picture of a trip not packed yet.
+              art="emptyBackpack"
               title="Chưa có chuyến đi nào"
               subtitle="Tạo chuyến đầu tiên — ngày đi, việc cần mang và tiền tiêu, gom hết vào một chỗ."
             />
@@ -63,10 +68,22 @@ export function TripList() {
                 href={`/trips/${trip.id}`}
                 className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md hover:border-accent/40 active:scale-[0.98]"
               >
-                {/* Decorative Top Banner */}
-                <div className="relative h-24 bg-gradient-to-br from-gradient-from/20 to-gradient-to/30 p-4 overflow-hidden">
-                  <Map className="absolute -right-4 -bottom-4 h-24 w-24 text-accent/10 rotate-12" />
-                  
+                {/* Cover — was a flat gradient tint plus a 10%-opacity Map
+                    icon; the strip always had the right shape for a photo,
+                    it just never had one. The tint survives as a scrim so the
+                    pill and duration chip below keep the contrast they had. */}
+                <div className="relative h-24 overflow-hidden p-4">
+                  <ToneArt
+                    name="bannerWide"
+                    alt=""
+                    fill
+                    sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 bg-gradient-to-br from-gradient-from/30 to-gradient-to/40"
+                  />
+
                   {/* Status Pill */}
                   <div className="absolute top-3 right-3">
                     <span

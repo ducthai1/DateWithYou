@@ -43,6 +43,10 @@ export const LUU_DIA_DIEM_DA_DI: FeaturePage = {
     },
     {
       heading: "Hai danh sách, vì chúng thật sự khác nhau",
+      // wheelFood, not mapIsland again: the "Muốn tới" item below names the
+      // wheel by name as what reads from this exact list, so the picture that
+      // earns its place here is the wheel, not another map.
+      art: "wheelFood",
       items: [
         {
           label: "Đã ghé",

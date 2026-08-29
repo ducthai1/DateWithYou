@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToneArt } from "@/components/theme/tone-art";
 import { viNumber } from "./home-format";
 
 type Greeting = { title: string; sub: string };
@@ -37,40 +38,57 @@ export function HomeGreeting({ daysTogether, pending }: HomeGreetingProps) {
   useEffect(() => setGreeting(greetingFor(new Date().getHours())), []);
 
   return (
-    <header className="space-y-1.5">
-      {greeting ? (
-        <>
-          <h1 className="text-h1 text-accent font-semibold">{greeting.title}</h1>
-          <p className="text-muted-foreground text-sm">{greeting.sub}</p>
-        </>
-      ) : (
-        <>
-          <Skeleton className="h-8 w-52" />
-          <Skeleton className="h-4 w-64" />
-        </>
-      )}
+    <header className="space-y-3">
+      {/* Brand band above the greeting. This was the one screen the couple
+          lands on every single day and it was pure text, so the artwork never
+          reached anyone who actually has data — only the empty states did.
+          Rendered unconditionally, unlike the text below: it needs no
+          client-resolved hour, so it must not wait behind `greeting` and
+          leave the top of the screen blank for that first frame. */}
+      <div className="relative h-28 w-full overflow-hidden rounded-2xl short:h-20 shorter:h-16">
+        <ToneArt
+          name="mapIsland"
+          fill
+          position="center 55%"
+          sizes="(max-width: 768px) 100vw, 700px"
+        />
+      </div>
 
-      {!pending && daysTogether !== null && (
-        <p className="text-foreground/80 flex items-center gap-1.5 pt-1 text-sm">
-          <Heart className="text-accent h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
-          <span>
-            Tụi mình đã đi cùng nhau{" "}
-            <strong className="font-semibold">{viNumber(daysTogether)} ngày</strong>
-          </span>
-        </p>
-      )}
+      <div className="space-y-1.5">
+        {greeting ? (
+          <>
+            <h1 className="text-h1 text-accent font-semibold">{greeting.title}</h1>
+            <p className="text-muted-foreground text-sm">{greeting.sub}</p>
+          </>
+        ) : (
+          <>
+            <Skeleton className="h-8 w-52" />
+            <Skeleton className="h-4 w-64" />
+          </>
+        )}
 
-      {!pending && daysTogether === null && (
-        <p className="text-muted-foreground pt-1 text-sm">
-          <Link
-            href="/settings"
-            className="text-accent focus-visible:ring-ring/50 rounded underline decoration-dotted underline-offset-4 outline-none focus-visible:ring-2"
-          >
-            Đặt ngày kỷ niệm
-          </Link>{" "}
-          để tụi mình bắt đầu đếm từ ngày đầu tiên.
-        </p>
-      )}
+        {!pending && daysTogether !== null && (
+          <p className="text-foreground/80 flex items-center gap-1.5 pt-1 text-sm">
+            <Heart className="text-accent h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+            <span>
+              Tụi mình đã đi cùng nhau{" "}
+              <strong className="font-semibold">{viNumber(daysTogether)} ngày</strong>
+            </span>
+          </p>
+        )}
+
+        {!pending && daysTogether === null && (
+          <p className="text-muted-foreground pt-1 text-sm">
+            <Link
+              href="/settings"
+              className="text-accent focus-visible:ring-ring/50 rounded underline decoration-dotted underline-offset-4 outline-none focus-visible:ring-2"
+            >
+              Đặt ngày kỷ niệm
+            </Link>{" "}
+            để tụi mình bắt đầu đếm từ ngày đầu tiên.
+          </p>
+        )}
+      </div>
     </header>
   );
 }

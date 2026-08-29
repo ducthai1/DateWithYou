@@ -1,3 +1,5 @@
+import { ToneArt } from "@/components/theme/tone-art";
+
 /**
  * Shared frame for the four auth screens.
  *
@@ -7,9 +9,18 @@
  * layout splits: the brand artwork takes one half and the form sits in the
  * other, which gives the column a wall to stand against instead of an ocean.
  *
- * It also sequences the product. The landing page is dark teal, the app inside
- * is warm parchment, and these screens are the doorway between them — teal
- * panel on one side, warm ground under the form on the other.
+ * The panel used to run the same dark teal artwork as the old landing hero, so
+ * arriving here read as a sequence: dark landing, dark doorway, warm app. Now
+ * that the landing hero opens on the same warm parchment as the app, that
+ * argument is gone, so the panel switches to warm cream too.
+ *
+ * `bannerOurPage`, not `appShowcase`: the landing page already spends
+ * `appShowcase` on its own showcase band, and running the same picture again
+ * one click later would read as reused stock art rather than a considered
+ * choice. `bannerOurPage` also happens to show the product's own splash
+ * screen — "Vivu No Plan" in-frame on the left phone — inside the flat-lay,
+ * which is a second, incidental brand touch on a panel that carries no
+ * wordmark of its own.
  *
  * A Server Component: nothing here is interactive.
  */
@@ -21,35 +32,30 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
       <aside
         aria-hidden="true"
         className="relative hidden w-[46%] shrink-0 overflow-hidden lg:block xl:w-1/2"
-        style={{ backgroundColor: "#021617" }}
+        style={{ backgroundColor: "#f6ede1" }}
       >
-        {/* The same artwork as the landing hero, so arriving here reads as the
-            same place rather than a different product. Decorative: the form
-            still carries the name in real text for assistive tech.
+        {/* `fill` + `object-cover`, not `contain`: the source is a wide 16:9
+            flat-lay and this panel is tall and narrow, so covering it crops
+            the sides rather than letterboxing top and bottom — right for a
+            background photo, wrong for text, which is why the wordmark
+            artwork was never a candidate for this treatment.
 
-            `contain`, not `cover`: the artwork is wide and this panel is tall,
-            so covering it cropped straight through the lettering. Contained, it
-            sits whole on the teal ground — and that ground is sampled from the
-            artwork's own corners, so the letterboxing is invisible. */}
-        <div
-          className="absolute inset-0 bg-center bg-no-repeat"
-          style={{
-            backgroundImage: "url('/hero-logo-tight.webp')",
-            // Slightly wider than the panel so the artwork's own feathered side
-            // edges fall just outside it, and it reads as filling the width.
-            backgroundSize: "112% auto",
-          }}
-        />
-        {/* The artwork is far brighter than the ground it sits on, so contained
-            inside a tall panel its top and bottom edges showed as a band. These
-            dissolve them into the panel colour. */}
+            `position` biases the crop toward the left third of the frame,
+            where the phone actually showing "Vivu No Plan" sits, rather than
+            the geometric centre between the two phones. Decorative: the form
+            still carries the name in real text (see auth-form.tsx's <h1>,
+            no longer sr-only above lg — this panel does not repeat it). */}
+        <ToneArt name="bannerOurPage" fill position="38% 42%" />
+        {/* The artwork runs edge to edge, so contained inside a tall panel its
+            top and bottom edges would show as a hard cut. These dissolve them
+            into the panel's own cream ground instead. */}
         <div
           className="absolute inset-x-0 top-0 h-1/3"
-          style={{ background: "linear-gradient(to bottom, #021617, transparent)" }}
+          style={{ background: "linear-gradient(to bottom, #f6ede1, transparent)" }}
         />
         <div
           className="absolute inset-x-0 bottom-0 h-1/3"
-          style={{ background: "linear-gradient(to top, #021617, transparent)" }}
+          style={{ background: "linear-gradient(to top, #f6ede1, transparent)" }}
         />
         {/* Feathered inner edge, so the panel dissolves into the form side
             instead of ending on a hard vertical line. */}

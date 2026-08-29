@@ -151,6 +151,7 @@ export function MemoryTimeline() {
       <PageHeader
         title="Dòng kỷ niệm"
         subtitle="Lưu lại khoảnh khắc đã qua: ảnh, cảm xúc, nhạc/video kỷ niệm."
+        art="memoriesScrapbook"
         actions={
           <Button className="w-full sm:w-auto sm:shrink-0" onClick={() => setAdding(true)}>
             + Thêm
@@ -195,7 +196,9 @@ export function MemoryTimeline() {
           />
         ) : (
           <EmptyState
-            art="memoriesScrapbook"
+            // Header above already carries memoriesScrapbook; the same
+            // picture twice on one screen reads as a rendering bug.
+            art="emptyCanvas"
             icon="sparkles"
             title="Chưa có kỷ niệm nào"
             subtitle="Lưu khoảnh khắc đầu tiên — hình ảnh, cảm xúc, khoảnh khắc nhỏ."

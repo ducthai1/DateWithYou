@@ -22,9 +22,19 @@ export interface FeaturePageSection {
   paragraphs?: string[];
   /** Optional list, for pages where the point is genuinely enumerable. */
   items?: { label: string; body: string }[];
+  /**
+   * Optional artwork for this one section, rendered as a two-column band
+   * instead of the plain full-width prose block. These pages exist to be
+   * read — see the file comment on FeaturePageShell — so this is deliberately
+   * per-section and optional rather than a slot every section fills. Reach
+   * for it on a section whose point a picture actually restates, not on
+   * every section, or the page stops being an argument and starts being a
+   * slideshow with captions.
+   */
+  art?: FeaturePageArt;
 }
 
-/** Artwork shown under the tagline. Keyed into the tone registry. */
+/** Artwork shown under the tagline, or on one section. Keyed into the tone registry. */
 export type FeaturePageArt =
   | "wheelFood"
   | "mapIsland"

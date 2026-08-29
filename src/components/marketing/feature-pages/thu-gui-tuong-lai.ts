@@ -61,6 +61,11 @@ export const THU_GUI_TUONG_LAI: FeaturePage = {
     },
     {
       heading: "Két bí mật còn gì nữa",
+      // vaultSafe again, deliberately: this section is about the vault
+      // itself (the door the time capsule lives behind), not a different
+      // feature, so repeating the page's own masthead art is the accurate
+      // choice rather than reaching for an unrelated piece for variety.
+      art: "vaultSafe",
       paragraphs: [
         "Hộp thời gian nằm trong phần két, cùng với vài thứ khác cho những việc chưa muốn nói ra vội: một wishlist riêng để ghi điều mình muốn có, nhiệm vụ tính điểm, và voucher đổi quà tự đặt ra với nhau.",
         "Tất cả nằm sau cùng một cánh cửa, tách khỏi phần lịch và bản đồ dùng hằng ngày.",

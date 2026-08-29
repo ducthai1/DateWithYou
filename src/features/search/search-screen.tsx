@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/layout/page-shell";
 import { KIND_META, SearchResultRow, type SearchHit } from "./search-result-row";
 
 const DEBOUNCE_MS = 250;
@@ -97,12 +98,11 @@ export function SearchScreen() {
 
   return (
     <div className="mx-auto w-full max-w-[900px] space-y-5 px-4 pt-6 pb-6 md:px-[30px]">
-      <div className="space-y-1">
-        <h1 className="text-accent text-2xl font-semibold">Tìm kiếm</h1>
-        <p className="text-muted-foreground text-sm">
-          Gõ vài chữ là tụi mình lục lại kỷ niệm, quán xá, công thức, lịch trình và chuyến đi.
-        </p>
-      </div>
+      <PageHeader
+        title="Tìm kiếm"
+        subtitle="Gõ vài chữ là tụi mình lục lại kỷ niệm, quán xá, công thức, lịch trình và chuyến đi."
+        art="heroDesk"
+      />
 
       <div className="relative">
         <Search
@@ -138,6 +138,7 @@ export function SearchScreen() {
         <EmptyState
           icon="sparkles"
           art="emptyMap"
+          artSize="lg"
           title="Tìm gì đó đi"
           subtitle="Không dấu cũng được — gõ “ca phe” là ra “cà phê” nhé."
         />

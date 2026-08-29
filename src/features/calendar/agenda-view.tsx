@@ -42,7 +42,8 @@ export function AgendaView({ onSelectDay }: { onSelectDay: (dateKey: string) => 
     return (
       <EmptyState
         icon="calendar-heart"
-        art="calendarTablet"
+        // No art: the page header above carries calendarTablet and stays
+        // on screen while this tab is open.
         title="Chưa có kế hoạch sắp tới"
         subtitle="Mở một ngày trên lịch để thêm việc cùng nhau nhé."
         action={{ label: "Xem lịch tháng", onClick: () => onSelectDay(todayKey()) }}

@@ -78,7 +78,7 @@ export function PageHeader({
         // With artwork the gradient moves to the scrim below, so painting it
         // here too would double-tint the picture.
         art
-          ? "relative overflow-hidden min-h-[7.5rem] justify-end sm:min-h-[8.5rem] short:min-h-0 short:justify-between"
+          ? "relative min-h-[7.5rem] justify-end sm:min-h-[8.5rem] short:min-h-0 short:justify-between"
           : "from-gradient-from/15 to-gradient-to/15 bg-gradient-to-r",
         "sm:flex-row sm:items-center sm:justify-between sm:gap-y-0",
         // Zoomed in, the banner keeps its job — saying where you are — on
@@ -95,19 +95,17 @@ export function PageHeader({
           and flattening the whole picture to make room for text nobody has
           reached yet wastes the picture. */}
       {art ? (
-        <>
+        // Its own clipping box, so the artwork is rounded off at the band's
+        // corners without the band clipping the actions row on top of it.
+        <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden rounded-2xl">
           <ToneArt
             name={art}
             fill
             position={artPosition ?? "center 40%"}
-            sizes="(max-width: 768px) 100vw, (max-width: 1400px) 100vw, 1400px"
-            className="-z-10"
+            sizes="(max-width: 768px) 100vw, 960px"
           />
-          <div
-            aria-hidden="true"
-            className="from-card/95 via-card/70 to-card/15 absolute inset-0 -z-10 bg-gradient-to-r"
-          />
-        </>
+          <div className="from-card/95 via-card/70 to-card/15 absolute inset-0 bg-gradient-to-r" />
+        </div>
       ) : null}
 
       <div className="min-w-0">
@@ -124,7 +122,7 @@ export function PageHeader({
           library header holds a search field and two buttons; on one 390px row
           the field collapsed to ~90px and the button broke onto two lines. */}
       {actions ? (
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:flex-nowrap">
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:shrink-0 lg:flex-nowrap">
           {actions}
         </div>
       ) : null}
