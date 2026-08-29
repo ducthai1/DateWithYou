@@ -29,7 +29,19 @@ body:has([data-chromeless]) [data-app-main] {
   padding-bottom: 0;
 }
 
-@custom-variant short (@media (max-height: 760px));
+/*
+ * 760px was too high a bar for "this window is short". A MacBook Air 13" gives
+ * a browser viewport around 745px and a Pro 14" around 800, so an ordinary
+ * laptop was getting the compacted layout meant for a zoomed-in or docked
+ * window: the landing hero's picture collapsed to 27% of the screen, page
+ * subtitles vanished, header artwork flattened to a strip and the trip and
+ * onboarding illustrations disappeared outright.
+ *
+ * 700px still catches what this was written for — a 1366x768 laptop lands near
+ * 640, and 150% zoom on a 1080p screen near 590 — while leaving every Mac
+ * laptop on the full layout.
+ */
+@custom-variant short (@media (max-height: 700px));
 @custom-variant shorter (@media (max-height: 620px));
 
 /*

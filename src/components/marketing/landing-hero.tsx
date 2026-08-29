@@ -49,7 +49,7 @@ export function LandingHero() {
     >
       <div className="mx-auto grid w-full max-w-[1400px] items-center gap-10 lg:grid-cols-[24rem_minmax(0,1fr)] lg:gap-12 xl:max-w-[1600px] xl:grid-cols-[26rem_minmax(0,1fr)] xl:gap-14 2xl:max-w-[1800px] 2xl:grid-cols-[28rem_minmax(0,1fr)]">
         {/* Copy column. */}
-        <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+        <div className="flex flex-col items-center text-center lg:items-start lg:text-left shorter:items-center shorter:text-center">
           {/*
             Decorative, same reasoning as the old baked-in artwork: the name is
             already in the sr-only <h1> below, so a screen reader would
@@ -61,7 +61,7 @@ export function LandingHero() {
             width and letting height follow keeps that letterboxing intact
             instead of cropping into it.
           */}
-          <div className="relative aspect-[1672/941] w-[240px] sm:w-[300px] lg:w-full short:w-[210px]">
+          <div className="relative aspect-[1672/941] w-[240px] sm:w-[300px] lg:w-full shorter:w-[210px]">
             <Image
               src={logoSrc("wordmark", tone)}
               alt=""
@@ -109,9 +109,12 @@ export function LandingHero() {
         </div>
 
         {/*
-          Artwork column, capped on short viewports the same way the old
-          picture was: `short:` plus `w-auto`, letting the intrinsic aspect
-          ratio drive the shrink instead of a fixed height that would crop it.
+          Artwork column, capped only on a genuinely short window — `shorter:`,
+          not `short:`. Measured on a 1440x745 viewport, which is a MacBook Air
+          13" with browser chrome, the `short:` cap left the picture 395x224:
+          27% of the window across, when the whole point of this hero is the
+          picture. `w-auto` rather than a fixed height so the intrinsic aspect
+          ratio drives the shrink and nothing gets cropped.
           This lives inside a grid row, so an oversized image here would drag
           the copy column's vertical centring down with it rather than just
           growing past the fold on its own.
@@ -121,7 +124,7 @@ export function LandingHero() {
             name="heroDesk"
             priority
             sizes="(min-width: 1536px) 1400px, (min-width: 1024px) 68vw, (min-width: 640px) 560px, 92vw"
-            className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 shadow-[0_20px_50px_rgba(59,50,42,0.12)] short:mx-auto short:max-h-[30vh] short:w-auto"
+            className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 shadow-[0_20px_50px_rgba(59,50,42,0.12)] shorter:mx-auto shorter:max-h-[42vh] shorter:w-auto"
           />
         </div>
       </div>
