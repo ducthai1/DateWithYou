@@ -6,6 +6,7 @@
 
 import { CalendarCheck, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { HomeSection, SectionPrompt } from "./home-section";
 import { bucketLabel } from "./home-format";
@@ -25,7 +26,14 @@ export function PlanRow({ item }: { item: HomePlanItem }) {
   const done = item.status === "done";
   const skipped = item.status === "skipped";
   return (
-    <li className="flex min-h-10 items-center gap-2.5 py-1">
+    <li>
+    {/* The whole row is the link: a plan you are reading about on /home should
+        take one tap to reach where you can change it, landing on its own day
+        rather than on the month and a hunt. */}
+    <Link
+      href={`/calendar?d=${item.date}`}
+      aria-label={`${item.title} — mở ngày ${item.date}`}
+      className="hover:bg-muted/60 -mx-2 flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1 transition-colors">
       <span
         className={cn(
           "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
@@ -50,6 +58,7 @@ export function PlanRow({ item }: { item: HomePlanItem }) {
       <Badge tone={done ? "accent" : "neutral"} className="shrink-0">
         {bucketLabel(item.bucket)}
       </Badge>
+    </Link>
     </li>
   );
 }

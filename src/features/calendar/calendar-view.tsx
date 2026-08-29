@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/layout/page-shell";
 import { CalendarGrid } from "./calendar-grid";
@@ -13,6 +13,7 @@ import { SpecialDatesPanel } from "./special-dates-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { Star } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { useIsMobile } from "@/hooks/use-media-query";
 
@@ -27,9 +28,33 @@ const initialYM = () => {
 };
 
 export function CalendarView() {
+  /*
+   * `?d=YYYY-MM-DD` opens straight onto that day.
+   *
+   * Everything on /home that mentions a plan used to link at "/calendar" and
+   * stop there, leaving the reader to find the day they had just been reading
+   * about. The date travels in the URL rather than in client state so the link
+   * survives a new tab, a bookmark and the back button.
+   */
+  const requestedDay = useSearchParams().get("d");
   const [{ year, month }, setYM] = useState(initialYM);
   const [view, setView] = useState<(typeof VIEW_TABS)[number]["key"]>("month");
   const [selected, setSelected] = useState<string | null>(null);
+
+  /*
+   * Honour the deep link once per distinct date, not on every render: the
+   * reader has to be able to close the day detail and stay on the month, and
+   * re-opening it because the query string still says so would trap them.
+   */
+  const handledDay = useRef<string | null>(null);
+  useEffect(() => {
+    if (!requestedDay || handledDay.current === requestedDay) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDay)) return;
+    handledDay.current = requestedDay;
+    const [y, m] = requestedDay.split("-").map(Number);
+    setYM({ year: y, month: m - 1 });
+    setSelected(requestedDay);
+  }, [requestedDay]);
   const [specialsOpen, setSpecialsOpen] = useState(false);
 
   const summary = trpc.calendar.monthSummary.useQuery({ year, month });

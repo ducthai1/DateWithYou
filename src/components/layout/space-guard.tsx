@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { NAV_HIDDEN_ON } from "./nav-items";
+import { NAV_HIDDEN_ON, POST_LOGIN_REDIRECT } from "./nav-items";
 import { useSession } from "@/lib/auth-client";
 
 /**
@@ -17,12 +17,32 @@ import { useSession } from "@/lib/auth-client";
  * from the previous user — that stale hit was the cause of the "flash of full
  * app UI before redirect to onboarding" bug.
  */
+/** Routes whose only purpose is to get you signed in. */
+const AUTH_ROUTES = ["/sign-in", "/sign-up"];
+
 export function SpaceGuard() {
   const pathname = usePathname();
   const router = useRouter();
   const needsSpace = !NAV_HIDDEN_ON.includes(pathname);
-  const { data: session } = useSession();
+  const { data: session, isPending: sessionPending } = useSession();
   const userId = session?.user?.id;
+
+  /*
+   * Already signed in and standing on the sign-in or sign-up page: send them
+   * inside. Landing here while authenticated is a typed URL, a stale
+   * bookmark or a back-button — never an intention to sign in as someone
+   * else, and showing an empty password field to someone who is already
+   * through the door reads as being logged out.
+   *
+   * Waits for `isPending` to settle: acting on the first render, when the
+   * session has not resolved yet, would bounce a genuinely signed-out visitor
+   * away from the form they came for.
+   */
+  useEffect(() => {
+    if (sessionPending || !userId) return;
+    if (!AUTH_ROUTES.includes(pathname)) return;
+    router.replace(POST_LOGIN_REDIRECT);
+  }, [sessionPending, userId, pathname, router]);
 
   const mine = trpc.space.getMine.useQuery(undefined, {
     enabled: needsSpace && !!userId,

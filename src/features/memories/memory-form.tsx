@@ -10,7 +10,7 @@ import {
   cloudinaryConfigured,
   type UploadedPhoto,
 } from "@/lib/cloudinary-upload";
-import { ImagePlus, Link2, X, ExternalLink, Play } from "lucide-react";
+import { ImagePlus, Link2, X, ExternalLink, Play, Loader2 } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
@@ -67,6 +67,8 @@ export function MemoryForm({
     return `${y}-${m}-${day}`;
   });
   const [photos, setPhotos] = useState<UploadedPhoto[]>(initialMemory?.photos ?? []);
+  /** Object URLs for files being uploaded right now, shown in their place. */
+  const [pending, setPending] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>(initialMemory?.tags ?? []);
   const [embeds, setEmbeds] = useState<ParsedEmbed[]>(() => {
     if (initialMemory?.embeds) {
@@ -125,20 +127,40 @@ export function MemoryForm({
   const create = trpc.memory.create.useMutation({ onSuccess, onError });
   const update = trpc.memory.update.useMutation({ onSuccess, onError });
 
+  /*
+   * Show the picked files immediately, from the browser's own copy, instead of
+   * waiting for the round trip. Cloudinary can take several seconds on a phone
+   * connection, and until it answered there was nothing on screen at all — no
+   * way to tell whether the right picture had been chosen, or whether the tap
+   * had registered.
+   */
   async function onFiles(files: FileList | null) {
     if (!files) return;
     setErr(null);
+    const slots = Math.max(0, 10 - photos.length);
+    const picked = Array.from(files).slice(0, slots);
+    if (picked.length === 0) return;
+
+    const previews = picked.map((f) => URL.createObjectURL(f));
+    setPending(previews);
     setUploading(true);
     try {
-      const slots = Math.max(0, 10 - photos.length);
-      const picked = Array.from(files).slice(0, slots);
       const uploaded = await Promise.all(picked.map(uploadToCloudinary));
       setPhotos((p) => [...p, ...uploaded]);
     } catch {
       setErr("Upload ảnh thất bại. Kiểm tra cấu hình Cloudinary.");
     } finally {
+      // Release the object URLs: they pin the file in memory until revoked, and
+      // ten phone photos is tens of megabytes held for the life of the tab.
+      previews.forEach(URL.revokeObjectURL);
+      setPending([]);
       setUploading(false);
     }
+  }
+
+  /** Drop one picture from the draft. Nothing is saved until the form is. */
+  function removePhoto(publicId: string) {
+    setPhotos((p) => p.filter((x) => x.publicId !== publicId));
   }
 
   /** Collect all embeds including: saved ones, pending link input, and URLs in caption. */
@@ -278,14 +300,58 @@ export function MemoryForm({
         </p>
       )}
       {uploading && <p className="text-muted-foreground text-xs">Đang tải ảnh…</p>}
-      {photos.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-muted-foreground text-xs">{photos.length} ảnh</p>
-          <div className="flex flex-wrap gap-2">
+      {(photos.length > 0 || pending.length > 0) && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-muted-foreground text-xs">
+              {photos.length} ảnh{pending.length > 0 ? ` · đang tải ${pending.length}` : ""}
+            </p>
+            {photos.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setPhotos([])}
+                className="text-muted-foreground hover:text-destructive text-xs underline-offset-2 hover:underline"
+              >
+                Xoá hết ảnh
+              </button>
+            )}
+          </div>
+          {/* 80px rather than 64: at 64 a photo of a place and a photo of a
+              plate of food are the same brown smudge, and the point of the
+              thumbnail is to tell you whether you picked the right one. */}
+          <div className="flex flex-wrap gap-2.5">
             {photos.map((p) => (
-              <PhotoView key={p.publicId} src={p.url}>
-                <img src={p.url} alt="" className="h-16 w-16 cursor-zoom-in rounded-lg object-cover" />
-              </PhotoView>
+              <div key={p.publicId} className="group relative">
+                <PhotoView src={p.url}>
+                  <img
+                    src={p.url}
+                    alt=""
+                    className="border-border h-20 w-20 cursor-zoom-in rounded-xl border object-cover"
+                  />
+                </PhotoView>
+                {/* Always visible, not hover-only: this form is used on a phone
+                    more than anywhere else, and there is no hover there. */}
+                <button
+                  type="button"
+                  onClick={() => removePhoto(p.publicId)}
+                  aria-label="Xoá ảnh này"
+                  className="bg-card text-muted-foreground hover:bg-destructive hover:text-destructive-foreground border-border absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border shadow-sm transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            {pending.map((url) => (
+              <div key={url} className="relative">
+                <img
+                  src={url}
+                  alt=""
+                  className="border-border h-20 w-20 rounded-xl border object-cover opacity-50"
+                />
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="text-accent h-5 w-5 animate-spin" />
+                </span>
+              </div>
             ))}
           </div>
         </div>

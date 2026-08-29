@@ -173,7 +173,7 @@ export const CalendarCell = memo(function CalendarCell({
 
       {/* ── Top row: day number + count badge ── */}
       <div className="relative flex w-full items-start justify-between z-20">
-        <div className="flex items-center gap-1">
+        <div className="min-w-0 flex items-center gap-1">
           {/* Today gets a solid filled circle around the number on all devices */}
           <span
             className={cn(
@@ -192,7 +192,7 @@ export const CalendarCell = memo(function CalendarCell({
         {/* Mobile special-date marker: a small filled heart (the desktop ribbon
             below is hidden on mobile). Count badge takes priority when present. */}
         {count > 0 ? (
-          <span className="bg-accent text-accent-foreground flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none shadow-sm md:h-4 md:min-w-4">
+          <span className="bg-accent text-accent-foreground flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none shadow-sm md:h-4 md:min-w-4">
             {count}
           </span>
         ) : (
