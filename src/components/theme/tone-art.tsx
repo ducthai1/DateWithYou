@@ -39,7 +39,6 @@ export function ToneArt({
   const { tone } = useTone();
   const common = {
     src: artSrc(name, tone),
-    alt,
     "aria-hidden": alt === "" ? true : undefined,
     priority,
     sizes,
@@ -58,11 +57,12 @@ export function ToneArt({
    * collapses to nothing.
    */
   if (fill) {
-    return <Image {...common} fill className={cn("object-cover", className)} />;
+    return <Image {...common} alt={alt} fill className={cn("object-cover", className)} />;
   }
   return (
     <Image
       {...common}
+      alt={alt}
       width={1672}
       height={941}
       className={cn("h-auto w-full object-cover", className)}
