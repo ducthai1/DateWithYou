@@ -24,7 +24,7 @@ import {
   type ReactionRow,
 } from "@/features/interactions/reaction-bar";
 import { NoteThread } from "@/features/interactions/note-thread";
-import { Edit, AlertTriangle } from "lucide-react";
+import { Edit, AlertTriangle, Trash2 } from "lucide-react";
 
 type EmbedField = {
   provider: string;
@@ -387,13 +387,24 @@ export function MemoryTimeline() {
               )}
             </ModalContent>
             <ModalFooter>
-              <Button 
-                variant="outline" 
-                className="w-full" 
+              <Button
+                variant="outline"
+                className="flex-1"
                 onClick={() => setWarningEditId(selectedMemo.id)}
               >
-                <Edit className="w-4 h-4 mr-2" /> Chỉnh sửa kỷ niệm
+                <Edit className="w-4 h-4 mr-2" /> Chỉnh sửa
               </Button>
+              <ConfirmButton
+                idle="Xoá"
+                icon={<Trash2 className="mr-2 h-4 w-4" />}
+                title="Xoá kỷ niệm này?"
+                description={`"${selectedMemo.title}" cùng ảnh và ghi chú trong đó sẽ mất. Không hoàn tác được.`}
+                className="text-destructive border-destructive/30 hover:bg-destructive-soft inline-flex h-11 flex-1 cursor-pointer items-center justify-center rounded-xl border text-sm font-medium transition-all active:scale-[.98]"
+                onConfirm={() => {
+                  remove.mutate({ id: selectedMemo.id });
+                  setSelected(null);
+                }}
+              />
             </ModalFooter>
           </>
         )}

@@ -7,6 +7,8 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { colorsForTags, mergeTags } from "@/lib/plan-meta";
 import { resolveIcon } from "@/lib/icon-registry";
+import { ToneArt } from "@/components/theme/tone-art";
+import { artForDate } from "./day-art";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const WD_LONG = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
@@ -63,10 +65,20 @@ export function CalendarDayHero({
             <img src={cover.url} alt="" className="h-full w-full cursor-zoom-in object-cover" />
           </PhotoView>
         ) : (
-          <div
-            className="h-full w-full"
-            style={{ background: "linear-gradient(135deg, var(--gradient-from), var(--gradient-to))" }}
-          />
+          <div className="relative h-full w-full">
+            <ToneArt
+              name={artForDate(date)}
+              fill
+              position="center 45%"
+              sizes="(max-width: 768px) 100vw, 720px"
+            />
+            {/* Warm the picture toward the accent so an empty day still reads
+                as part of this space rather than as a stock photo. */}
+            <div
+              className="absolute inset-0 opacity-45 mix-blend-multiply"
+              style={{ background: "linear-gradient(135deg, var(--gradient-from), var(--gradient-to))" }}
+            />
+          </div>
         )}
         {/* Scrim so the headline stays legible over any photo. */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />

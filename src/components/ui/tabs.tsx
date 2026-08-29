@@ -86,13 +86,18 @@ export function Tabs<T extends string>({
       aria-label={label}
       aria-orientation="horizontal"
       className={cn(
-        "bg-muted/60 flex rounded-xl p-1 text-sm relative border border-border/40",
+        "relative flex rounded-xl p-1 text-sm",
+        "bg-card/85 border border-border shadow-sm backdrop-blur-xl",
+        // A hairline of light along the top edge. It is what separates a
+        // raised surface from a painted rectangle, and it is the difference
+        // between the strip sitting ON the page and sitting IN it.
+        "ring-1 ring-inset ring-white/50",
         className,
       )}
     >
       <div className="absolute inset-y-1 left-0 right-0 pointer-events-none" aria-hidden="true">
         <motion.div
-          className="h-full rounded-lg bg-accent shadow-md"
+          className="bg-accent h-full rounded-lg shadow-[0_2px_8px_var(--accent-soft),0_1px_3px_rgb(0_0_0/0.18)]"
           initial={false}
           animate={ind ? { width: ind.width, x: ind.left } : { width: 0, x: 0 }}
           transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}

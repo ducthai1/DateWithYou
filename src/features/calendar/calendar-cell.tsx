@@ -7,14 +7,11 @@ import type { GridCell } from "@/lib/date-keys";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
 import { resolveIcon } from "@/lib/icon-registry";
 import { ToneArt } from "@/components/theme/tone-art";
-import type { ArtName } from "@/lib/tone";
+import { artForDate, hashKey } from "./day-art";
 
 /* ── deterministic pseudo-random based on string ── */
-function hash(s: string) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h);
-  return Math.abs(h);
-}
+// Layout scatter and artwork both key off the same date hash — see day-art.
+const hash = hashKey;
 
 /* ── pastel sticky-note palette (bg + text pairs) ── */
 const NOTE_STYLES = [
@@ -36,8 +33,6 @@ const PIN_BG = ["#E53935", "#1E88E5", "#43A047", "#FB8C00", "#8E24AA"];
  *  so the picture always matches the active morning/afternoon palette
  *  instead of silently falling back to the other tone's colours the way an
  *  afternoon-only piece would under the morning tone. */
-const CELL_ART: ArtName[] = ["heroDesk", "appShowcase", "mapIsland", "memoriesScrapbook", "wheelFood"];
-
 /* ── pre-computed positions for up to 3 notes scattered inside a cell ─
  *  Each entry is [top%, left%, rotation°].
  *  We pick from several layout presets based on the date hash so every
@@ -86,7 +81,7 @@ export const CalendarCell = memo(function CalendarCell({
   const layout = LAYOUTS[dayHash % LAYOUTS.length];
   // Same date-derived hash picks the background artwork, so a month never
   // reshuffles its pictures on re-render or when navigating away and back.
-  const artName = CELL_ART[dayHash % CELL_ART.length];
+  const artName = artForDate(cell.key);
 
   // Resolve Lucide icon for special date
   const SpecialIcon = hasSpecial ? resolveIcon(summary!.special!.icon ?? undefined) : null;

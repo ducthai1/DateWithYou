@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Check, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, MapPin, Users, Plane } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { useCelebrate } from "@/components/ui/celebrate";
 import { useToast } from "@/components/ui/toast";
 import type { Tag } from "@/lib/plan-meta";
@@ -182,7 +183,15 @@ export function PlanItemCard({
             <IconBtn label="Xuống" onClick={() => move.mutate({ id: item.id, direction: "down" })}><ChevronDown className="h-4 w-4" /></IconBtn>
             <IconBtn label="Lưu thành kỷ niệm" onClick={onSaveAsMemory}><ImagePlus className="h-4 w-4" /></IconBtn>
             <IconBtn label="Sửa" onClick={onEdit}><Pencil className="h-4 w-4" /></IconBtn>
-            <IconBtn label="Xoá" onClick={() => remove.mutate({ id: item.id })} danger><Trash2 className="h-4 w-4" /></IconBtn>
+            <ConfirmButton
+              idle=""
+              icon={<Trash2 className="h-4 w-4" />}
+              aria-label="Xoá việc này"
+              title="Xoá việc này?"
+              description={`"${item.title}" sẽ bị xoá khỏi ngày này. Không hoàn tác được.`}
+              className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive active:bg-muted -m-1 flex h-9 w-9 items-center justify-center rounded-lg p-2.5 transition-colors touch-manipulation"
+              onConfirm={() => remove.mutate({ id: item.id })}
+            />
           </div>
         </div>
       </div>
