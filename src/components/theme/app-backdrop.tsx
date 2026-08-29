@@ -71,11 +71,26 @@ export function AppBackdrop() {
         // 1920 screen the full-width hint pulled the 3840 file for something
         // nobody can resolve.
         sizes="(max-width: 768px) 100vw, 960px"
-        className="scale-105 opacity-[0.28] blur-[2px] saturate-[1.1]"
+        className="scale-110 opacity-[0.55] blur-[14px] saturate-[1.25]"
       />
       {/* Readability wash. Heaviest top-left, where every screen puts its
-          heading and its first line of text. */}
-      <div className="from-background/94 via-background/80 to-background/55 absolute inset-0 bg-gradient-to-br" />
+          heading and its first line of text, thinning toward the bottom right
+          where cards do the covering.
+
+          These numbers were picked by compositing the real artwork over the
+          real --background at four strengths and reading a heading and a card
+          against each. The first pass multiplied out to about 1.7% of the
+          picture surviving at the top left, which is why it looked like
+          nothing was there at all.
+
+          The blur is heavy on purpose. At 2px the artwork was still a legible
+          scene — on /calendar a camper van and the wordmark sat behind the
+          month grid and fought the day numbers for attention. Blurred this far
+          the same picture reads as the colour and movement of that screen's
+          own illustration, which is what a ground should do, without ever
+          asking to be looked at. `scale-110` hides the transparent edge the
+          blur pulls in from outside the box. */}
+      <div className="from-background/78 via-background/58 to-background/32 absolute inset-0 bg-gradient-to-br" />
     </div>
   );
 }

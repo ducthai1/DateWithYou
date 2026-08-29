@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmbedPlayer } from "@/components/ui/embed-player";
-import { type EmbedProvider } from "@/lib/embed";
-import { Clock, Users, ChefHat, Edit } from "lucide-react";
+import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
+import { Clock, Users, ChefHat, Edit, Play } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { MediaForm } from "./media-form";
+import { useNowPlaying } from "./now-playing-dock";
+import { cn } from "@/lib/utils";
 
 export type MediaListItem = {
   id: string;
@@ -34,9 +36,17 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
   const toast = useToast();
   const utils = trpc.useUtils();
   const [editing, setEditing] = useState(false);
-  
-  const remove = trpc.media.remove.useMutation({ 
-    onSuccess: () => { utils.media.list.invalidate(); toast("Đã xoá mục khỏi bộ sưu tập", "success"); },
+  const { stop } = useNowPlaying();
+
+  const remove = trpc.media.remove.useMutation({
+    onSuccess: () => {
+      utils.media.list.invalidate();
+      toast("Đã xoá mục khỏi bộ sưu tập", "success");
+      // No-ops unless this item was the one tracked as "now playing" — deleting
+      // it must not leave the mini dock pointing at something that no longer
+      // exists.
+      stop(item.id);
+    },
     onError: (err) => toast(err.message, "error")
   });
 
@@ -72,11 +82,7 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
           </div>
         </button>
       ) : (
-        item.url && (
-          <EmbedPlayer
-            data={{ provider: (item.provider ?? "other") as EmbedProvider, url: item.url, embedUrl: item.embedUrl, thumbnailUrl: item.thumbnailUrl, title: item.title }}
-          />
-        )
+        item.url && <PlayableEmbed item={item} url={item.url} />
       )}
 
       {item.note && <p className="text-muted-foreground text-xs">{item.note}</p>}
@@ -99,5 +105,112 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
       />
     </Modal>
     </>
+  );
+}
+
+/**
+ * Gates the embed behind a poster + play button instead of mounting the
+ * iframe immediately.
+ *
+ * This is the only reliable "the user pressed play" signal this app can
+ * produce (see now-playing-dock.tsx for why: the iframe is cross-origin, so
+ * there is no way to observe activity inside it once mounted). Before this
+ * gate existed, every card with a URL rendered its iframe unconditionally,
+ * which meant nothing ever counted as "the one playing" — every visible card
+ * looked equally active.
+ */
+function PlayableEmbed({ item, url }: { item: MediaListItem; url: string }) {
+  const { playing, start, stop, setVisible } = useNowPlaying();
+  const [activated, setActivated] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const isPlaying = playing?.id === item.id;
+
+  const handleActivate = () => {
+    setActivated(true);
+    start({
+      id: item.id,
+      kind: item.kind,
+      title: item.title,
+      thumbnailUrl: item.thumbnailUrl,
+      providerLabel: PROVIDER_LABEL[(item.provider ?? "other") as EmbedProvider],
+      onReturn: () =>
+        wrapperRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+    });
+  };
+
+  // Reports visibility once activated; the provider drops updates for any id
+  // that isn't the current "now playing" item, so this never needs to check
+  // `isPlaying` itself.
+  useEffect(() => {
+    if (!activated) return;
+    const el = wrapperRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(item.id, entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [activated, item.id, setVisible]);
+
+  // Leaving the grid entirely (switch tabs, apply a filter that excludes this
+  // item) really does kill the iframe, unlike a scroll — there is no player
+  // left to return to, so this clears "now playing" instead of leaving the
+  // dock pointed at a card that no longer exists.
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
+  useEffect(() => {
+    return () => {
+      if (isPlayingRef.current) stop(item.id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
+
+  return (
+    <div ref={wrapperRef}>
+      {activated ? (
+        <EmbedPlayer
+          data={{
+            provider: (item.provider ?? "other") as EmbedProvider,
+            url,
+            embedUrl: item.embedUrl,
+            thumbnailUrl: item.thumbnailUrl,
+            title: item.title,
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={handleActivate}
+          aria-label={`Phát ${item.title}`}
+          className="group border-border bg-accent-soft relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {item.thumbnailUrl && (
+            <>
+              <img
+                src={item.thumbnailUrl}
+                alt=""
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <span aria-hidden="true" className="absolute inset-0 bg-black/20" />
+            </>
+          )}
+          <span
+            className={cn(
+              "text-accent relative z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform group-hover:scale-110",
+              item.thumbnailUrl && "backdrop-blur-sm",
+            )}
+          >
+            <Play className="h-5 w-5 translate-x-0.5" aria-hidden="true" fill="currentColor" />
+          </span>
+        </button>
+      )}
+      {isPlaying && (
+        <span className="sr-only" role="status">
+          Đang phát: {item.title}
+        </span>
+      )}
+    </div>
   );
 }

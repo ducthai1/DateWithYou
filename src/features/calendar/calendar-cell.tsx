@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import type { GridCell } from "@/lib/date-keys";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
 import { resolveIcon } from "@/lib/icon-registry";
+import { ToneArt } from "@/components/theme/tone-art";
+import type { ArtName } from "@/lib/tone";
 
 /* ── deterministic pseudo-random based on string ── */
 function hash(s: string) {
@@ -28,6 +30,13 @@ const NOTE_STYLES = [
 
 /* ── pin colours ── */
 const PIN_BG = ["#E53935", "#1E88E5", "#43A047", "#FB8C00", "#8E24AA"];
+
+/* ── faint default artwork for cells with no photo memory ──────────────────
+ *  Restricted to the five pieces that exist in BOTH tones (src/lib/tone.ts)
+ *  so the picture always matches the active morning/afternoon palette
+ *  instead of silently falling back to the other tone's colours the way an
+ *  afternoon-only piece would under the morning tone. */
+const CELL_ART: ArtName[] = ["heroDesk", "appShowcase", "mapIsland", "memoriesScrapbook", "wheelFood"];
 
 /* ── pre-computed positions for up to 3 notes scattered inside a cell ─
  *  Each entry is [top%, left%, rotation°].
@@ -75,6 +84,9 @@ export const CalendarCell = memo(function CalendarCell({
   // pick a layout for this cell based on the date — stable per cell.key
   const dayHash = useMemo(() => hash(cell.key), [cell.key]);
   const layout = LAYOUTS[dayHash % LAYOUTS.length];
+  // Same date-derived hash picks the background artwork, so a month never
+  // reshuffles its pictures on re-render or when navigating away and back.
+  const artName = CELL_ART[dayHash % CELL_ART.length];
 
   // Resolve Lucide icon for special date
   const SpecialIcon = hasSpecial ? resolveIcon(summary!.special!.icon ?? undefined) : null;
@@ -92,19 +104,22 @@ export const CalendarCell = memo(function CalendarCell({
       className={cn(
         // Mobile: soft borderless tile with tap feedback. Desktop (md+): the
         // original bordered square with hover + sticky-note layout is restored.
-        // aspect-square ties a cell's height to its width, which is right on a
-        // phone and wrong on a wide-but-short window: at 960x600 — a MacBook at
-        // 150% zoom — seven columns made every cell ~94px tall and only four
-        // weeks of the month fit on screen. Short windows cap the height instead.
+        //
+        // aspect-square ties height to width unconditionally now. Two earlier
+        // attempts both got this wrong in opposite directions: a viewport-height
+        // clamp (clamp(3.25rem,11vh,7rem)) forced ~99–112px-tall cells against a
+        // ~185px-wide column at an ordinary 1440x900; the `short`/`shorter`
+        // variants that replaced it (max-height:760px/620px, globals.css) fire
+        // on completely everyday laptop windows, not just zoomed-in ones —
+        // measured, 1440x740 and 1280x720 both collapsed a 153px/130px-wide
+        // square cell to a 52px-tall sliver (ratio ~2.5–2.9). The calendar's
+        // container is `max-w-[1400px]` (calendar-view.tsx), so a square cell
+        // can never exceed roughly 188px tall regardless of screen width —
+        // there is no wide-but-short blow-up left to guard against, only a
+        // taller page. A six-week month of square cells doesn't fit under
+        // ~1100px of viewport height and the page scrolls; square cells are
+        // what was asked for twice, so scrolling is the accepted trade-off.
         "relative flex aspect-square flex-col items-start justify-start overflow-hidden p-1 md:p-3 text-sm transition-all touch-manipulation",
-        // Square cells stay square on desktop too. A previous fix clamped
-        // md height to viewport height (clamp(3.25rem,11vh,7rem)) to solve a
-        // short-window problem, but that clamp ran at every desktop height,
-        // not just short ones: at 1440x900 it forced ~99–112px-tall cells
-        // against a ~185px-wide column, i.e. wide rectangles on an ordinary
-        // window. Short/zoomed windows are handled below by short:/shorter:
-        // instead, which only kicks in under the max-height breakpoints.
-        "short:aspect-auto short:min-h-[3.25rem] short:p-1.5 shorter:min-h-[2.5rem]",
         "rounded-2xl md:rounded-xl md:transition-colors",
         cell.inMonth && !isToday && "md:border-[3px]",
         cell.inMonth && !isToday && !hasSpecial && "bg-card shadow-sm active:scale-[0.96] md:shadow-none md:border-border md:hover:border-accent md:active:scale-100",
@@ -115,6 +130,21 @@ export const CalendarCell = memo(function CalendarCell({
           "bg-transparent text-muted-foreground/40 md:border-transparent md:border-[3px]",
       )}
     >
+      {/* Faint default artwork so an empty day (no plans, no memory photo) is
+          not a blank card. The real memory thumbnail below already does this
+          job at much higher opacity, so it wins when both would apply.
+          Skipped outside the current month — those cells are already dimmed
+          to read as "not really part of this view", and a crisp image there
+          would fight that. sizes="190px" matches the measured cell width
+          across every desktop breakpoint (98px at a 768px-wide viewport up
+          to 188px at 1920px, bounded by the grid's own max-w-[1400px]), so
+          next/image serves its 256w bucket — the smallest built-in size
+          above 190px — instead of ToneArt's 720w/100vw default, which would
+          be a wasteful fetch repeated 35-42 times a month. */}
+      {cell.inMonth && !summary?.thumbnailUrl && (
+        <ToneArt name={artName} fill sizes="190px" className="z-0 opacity-[0.07] pointer-events-none" />
+      )}
+
       {/* Soft radial glow background for special dates */}
       {hasSpecial && cell.inMonth && (
         <div

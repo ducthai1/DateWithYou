@@ -15,6 +15,7 @@ import { MediaForm, type MediaKind } from "./media-form";
 import { MediaCard, type MediaListItem } from "./media-card";
 import { RecipeDetail } from "./recipe-detail";
 import { GamesPanel } from "./games-panel";
+import { NowPlayingProvider } from "./now-playing-dock";
 import { Select } from "@/components/ui/select";
 import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
 import { foldForSearch } from "@/lib/vietnamese-text";
@@ -72,6 +73,12 @@ export function LibraryPage() {
   });
 
   return (
+    // Provider owns the floating "now playing" dock (see now-playing-dock.tsx)
+    // and is scoped to this page on purpose: the embeds it tracks are
+    // cross-origin iframes that get torn down the moment this page unmounts
+    // (route navigation), so the dock has nothing left to represent past that
+    // point anyway — there is no real playback state to carry across routes.
+    <NowPlayingProvider>
     <PageShell className="space-y-4">
       <PageHeader
         title="Bộ sưu tập"
@@ -192,7 +199,14 @@ export function LibraryPage() {
         </Modal>
       )}
 
-      {recipe && <RecipeDetail item={recipe} onClose={() => setRecipe(null)} />}
+      {recipe && (
+        <RecipeDetail
+          item={recipe}
+          onClose={() => setRecipe(null)}
+          onReopen={() => setRecipe(recipe)}
+        />
+      )}
     </PageShell>
+    </NowPlayingProvider>
   );
 }
