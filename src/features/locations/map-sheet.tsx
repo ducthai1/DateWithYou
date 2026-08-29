@@ -59,6 +59,7 @@ export function MapSheet({
   children,
   className,
   raiseTo,
+  collapseSignal,
 }: {
   /** How many places are in the list, shown while collapsed. */
   count: number;
@@ -71,6 +72,14 @@ export function MapSheet({
    * afterwards is not fought on every render.
    */
   raiseTo?: 1 | 2;
+  /**
+   * Bump this number to drop the sheet back to its lowest stop.
+   *
+   * A counter rather than a boolean because the parent needs to ask twice in a
+   * row for the same thing — pressing "Chỉ đường" on a second place has to
+   * lower the sheet again even though it asked last time too.
+   */
+  collapseSignal?: number;
 }) {
   /*
    * Opens at the lowest stop. Half height on arrival meant the map — the whole
@@ -102,6 +111,17 @@ export function MapSheet({
     if (raiseTo == null) return;
     setStop((s) => (s < raiseTo ? raiseTo : s));
   }, [raiseTo]);
+
+  // Lower-on-signal. Skips the first run so a mounted sheet is not yanked down
+  // before the reader has done anything. Goes through the same height
+  // transition as every other stop change, so it glides rather than snapping.
+  const collapseSeen = useRef<number | undefined>(collapseSignal);
+  useEffect(() => {
+    if (collapseSignal === undefined) return;
+    if (collapseSeen.current === collapseSignal) return;
+    collapseSeen.current = collapseSignal;
+    setStop(0);
+  }, [collapseSignal]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     startY.current = e.clientY;

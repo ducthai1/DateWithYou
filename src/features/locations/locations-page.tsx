@@ -16,6 +16,7 @@ import { StaggerList } from "@/components/ui/stagger-list";
 import { type LegInfo } from "./use-live-navigation";
 import { useNavigation } from "./navigation-context";
 import { fmtDistance, fmtDuration } from "./format-journey";
+import { ToneArt } from "@/components/theme/tone-art";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
 import type { Category } from "@/lib/districts-categories";
@@ -135,6 +136,20 @@ export function LocationsPage() {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   // ── Companion navigation ("Cùng khởi hành") ──
+  /*
+   * On a phone the start-of-trip choice is a dialog, not a row of buttons.
+   *
+   * "Chỉ đường" is pressed from a card inside the sheet, so the sheet is raised
+   * when the route finishes drawing — and the controls that offer "Đi 1 mình"
+   * and "Cùng khởi hành" live in the map column at z-30, under the sheet at
+   * z-45. The choice appeared and was covered in the same frame, so the button
+   * read as doing nothing at all. Raising those controls above the sheet would
+   * only trade one covered thing for another; asking in a dialog answers the
+   * question where nothing can sit on top of it.
+   */
+  const [tripChoiceOpen, setTripChoiceOpen] = useState(false);
+  /** Bumped to drop the sheet so the freshly drawn route is visible behind the dialog. */
+  const [sheetCollapseTick, setSheetCollapseTick] = useState(0);
   const [showCompanionChoice, setShowCompanionChoice] = useState(false);
   const [companionLocationId, setCompanionLocationId] = useState<string | null>(null);
   const [companionLocationName, setCompanionLocationName] = useState("");
@@ -412,6 +427,11 @@ export function LocationsPage() {
   const userAvatar = session?.user.image || undefined;
   const partnerAvatar = members.data?.find((m) => m.id !== session?.user.id)?.image || undefined;
   const hasTwoMembers = (members.data?.length ?? 0) >= 2;
+  /* Read from the live list rather than copied into state when the pin was
+     picked — one source of truth with what the map is drawing. */
+  const selectedName = selectedId
+    ? (list.data?.find((l) => l.id === selectedId)?.name ?? null)
+    : null;
 
   // Fetch weather when destination is selected
   useEffect(() => {
@@ -615,6 +635,7 @@ export function LocationsPage() {
     waypoints?: Array<{ lat: number; lng: number }>,
   ) {
     if (!dest) return;
+    const isManualTrip = !waypoints || waypoints.length === 0;
     setSelectedId(id);
     setFocusGeo({ ...dest }); // new object each call so the map re-flies
 
@@ -682,6 +703,20 @@ export function LocationsPage() {
             if (coords) {
               nav.setRouteInfo(coords, r.distanceMeters, r.durationSeconds);
             }
+          }
+
+          /*
+           * Ask now, not when the button was pressed: until this point there
+           * may be no route to start, and a dialog offering to begin a trip
+           * that failed to draw is worse than no dialog.
+           *
+           * Only for a hand-pressed "Chỉ đường". A trip opened from an accepted
+           * companion invite arrives with waypoints and the question has
+           * already been answered by both people.
+           */
+          if (isManualTrip && typeof window !== "undefined" && window.innerWidth < 1024) {
+            setSheetCollapseTick((t) => t + 1);
+            setTripChoiceOpen(true);
           }
 
           if (partnerR) {
@@ -1636,8 +1671,9 @@ export function LocationsPage() {
                 <Pause className="h-4 w-4" /> Tạm dừng
               </Button>
             ) : hasTwoMembers ? (
-              /* Space has 2 members — show choice */
-              <div className="flex gap-2">
+              /* Space has 2 members — show choice. Desktop only: on a phone the
+                 same choice is a dialog, because here it sits under the sheet. */
+              <div className="hidden gap-2 lg:flex">
                 <Button
                   variant="outline"
                   className="flex-1 gap-2"
@@ -1665,7 +1701,7 @@ export function LocationsPage() {
               </div>
             ) : (
               <Button
-                className="w-full gap-2"
+                className="hidden w-full gap-2 lg:flex"
                 onClick={() => {
                   setFocusGeo(null);
                   nav.start();
@@ -1699,6 +1735,7 @@ export function LocationsPage() {
           // this value actually changing, so it raises once on open and leaves
           // a manual drag back down alone for as long as the form stays open.
           raiseTo={formOpen ? 2 : undefined}
+          collapseSignal={sheetCollapseTick}
         >
         <div className="space-y-4">
           <AnimatePresence initial={false}>
@@ -2199,6 +2236,89 @@ export function LocationsPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Start-of-trip choice, phones only ── */}
+      <AnimatePresence>
+        {tripChoiceOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            /* z-50, the same tier as the other dialogs here. It has to beat the
+               sheet at z-45 and the nav at z-48, which is the whole reason this
+               exists. */
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 backdrop-blur-sm lg:hidden"
+            onClick={() => setTripChoiceOpen(false)}
+            role="presentation"
+          >
+            <motion.div
+              initial={{ y: 28, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 28, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="trip-choice-title"
+              className="border-border bg-card mb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] w-full max-w-sm overflow-hidden rounded-3xl border shadow-2xl"
+            >
+              <div className="relative h-24 overflow-hidden">
+                <ToneArt name="mapTreasure" alt="" fill position="center 45%" sizes="384px" />
+                <div className="from-card via-card/55 absolute inset-0 bg-gradient-to-t to-transparent" />
+              </div>
+
+              <div className="px-5 pb-5 -mt-6 relative">
+                <p id="trip-choice-title" className="font-serif text-lg font-semibold leading-snug">
+                  {selectedName ? `Đi tới ${selectedName}` : "Bắt đầu đi thôi"}
+                </p>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {routeDistanceMeters != null
+                    ? `Đường đã vẽ xong — ${fmtDistance(routeDistanceMeters)}${routeDurationSeconds != null ? ` · ${fmtDuration(routeDurationSeconds)}` : ""}.`
+                    : "Đường đã vẽ xong trên bản đồ."}
+                </p>
+
+                <div className="mt-4 flex flex-col gap-2.5">
+                  {hasTwoMembers && (
+                    <Button
+                      className="h-12 w-full gap-2"
+                      onClick={() => {
+                        setTripChoiceOpen(false);
+                        if (!selectedId) return;
+                        const loc = list.data?.find((l) => l.id === selectedId);
+                        if (!loc) return;
+                        setCompanionLocationId(loc.id);
+                        setCompanionLocationName(loc.name);
+                        setShowCompanionChoice(true);
+                      }}
+                    >
+                      <Users className="h-4 w-4" /> Đồng hành cùng nhau
+                    </Button>
+                  )}
+                  <Button
+                    variant={hasTwoMembers ? "outline" : undefined}
+                    className="h-12 w-full gap-2"
+                    onClick={() => {
+                      setTripChoiceOpen(false);
+                      setFocusGeo(null);
+                      nav.start();
+                    }}
+                  >
+                    {hasTwoMembers ? <UserRound className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    {hasTwoMembers ? " Đi một mình" : " Bắt đầu đi"}
+                  </Button>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground h-10 text-sm"
+                    onClick={() => setTripChoiceOpen(false)}
+                  >
+                    Để xem đường đã
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
