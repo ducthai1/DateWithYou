@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,33 @@ export function MemoryForm({
   const [photos, setPhotos] = useState<UploadedPhoto[]>(initialMemory?.photos ?? []);
   /** Object URLs for files being uploaded right now, shown in their place. */
   const [pending, setPending] = useState<string[]>([]);
+  const photosRef = useRef<HTMLDivElement>(null);
+
+  /*
+   * Bring the thumbnails into view the moment they appear.
+   *
+   * The picker sits above the list, and on a phone the list starts below the
+   * fold of the sheet — so choosing a photo produced a change the person who
+   * chose it could not see, and it read as nothing having happened. Scrolling
+   * on the count going UP, not on every render, so removing a photo does not
+   * yank the view around while someone is tidying up.
+   *
+   * `block: "nearest"` does nothing when the block is already on screen, which
+   * is the common case from the second photo onward.
+   */
+  const shownCount = photos.length + pending.length;
+  const prevShown = useRef(shownCount);
+  useEffect(() => {
+    if (shownCount > prevShown.current) {
+      photosRef.current?.scrollIntoView({
+        // The global reduced-motion guard only reaches CSS transitions; a
+        // scripted scroll has to ask for itself.
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "nearest",
+      });
+    }
+    prevShown.current = shownCount;
+  }, [shownCount]);
   const [tags, setTags] = useState<string[]>(initialMemory?.tags ?? []);
   const [embeds, setEmbeds] = useState<ParsedEmbed[]>(() => {
     if (initialMemory?.embeds) {
@@ -301,7 +328,7 @@ export function MemoryForm({
       )}
       {uploading && <p className="text-muted-foreground text-xs">Đang tải ảnh…</p>}
       {(photos.length > 0 || pending.length > 0) && (
-        <div className="space-y-2">
+        <div ref={photosRef} className="scroll-mt-4 space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-xs">
               {photos.length} ảnh{pending.length > 0 ? ` · đang tải ${pending.length}` : ""}
