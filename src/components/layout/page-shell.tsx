@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { ToneArt } from "@/components/theme/tone-art";
+import type { ArtName } from "@/lib/tone";
 
 /**
  * The page container and its sticky title banner, in one place.
@@ -43,18 +45,41 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  art,
+  artPosition,
   className,
 }: {
   title: React.ReactNode;
   /** One line of orientation. Hidden when the window is too short to spare it. */
   subtitle?: React.ReactNode;
   actions?: React.ReactNode;
+  /**
+   * Artwork behind the band, instead of the flat accent gradient.
+   *
+   * The band was two accent tints and a line of type on every screen in the
+   * app, which made every screen look like every other one. A picture behind
+   * it is the cheapest way for a screen to say what it is before you read a
+   * word — and it is where the brand artwork earns its keep on screens that
+   * HAVE data, rather than only in the empty state nobody with data ever sees.
+   *
+   * The gradient does not go away: it becomes a scrim over the picture, so the
+   * title keeps its contrast whatever the artwork does underneath.
+   */
+  art?: ArtName;
+  /** Which part of the artwork survives the crop, e.g. "center 35%". */
+  artPosition?: string;
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        "from-gradient-from/15 to-gradient-to/15 sticky top-2 z-20 mb-6 flex flex-col gap-y-3 rounded-2xl bg-gradient-to-r px-4 py-4 shadow-sm backdrop-blur-md",
+        "sticky top-2 z-20 mb-6 flex flex-col gap-y-3 rounded-2xl px-4 py-4 shadow-sm backdrop-blur-md",
+        // Without artwork the band keeps the accent gradient it always had.
+        // With artwork the gradient moves to the scrim below, so painting it
+        // here too would double-tint the picture.
+        art
+          ? "relative overflow-hidden min-h-[7.5rem] justify-end sm:min-h-[8.5rem] short:min-h-0 short:justify-between"
+          : "from-gradient-from/15 to-gradient-to/15 bg-gradient-to-r",
         "sm:flex-row sm:items-center sm:justify-between sm:gap-y-0",
         // Zoomed in, the banner keeps its job — saying where you are — on
         // roughly half the height.
@@ -62,6 +87,29 @@ export function PageHeader({
         className,
       )}
     >
+      {/* Artwork layer + scrim. Both are aria-hidden decoration; the heading
+          below is the accessible name of the screen either way.
+
+          The scrim is a left-to-right ramp rather than a flat wash: the title
+          sits left, so that is the only region that must guarantee contrast,
+          and flattening the whole picture to make room for text nobody has
+          reached yet wastes the picture. */}
+      {art ? (
+        <>
+          <ToneArt
+            name={art}
+            fill
+            position={artPosition ?? "center 40%"}
+            sizes="(max-width: 768px) 100vw, (max-width: 1400px) 100vw, 1400px"
+            className="-z-10"
+          />
+          <div
+            aria-hidden="true"
+            className="from-card/95 via-card/70 to-card/15 absolute inset-0 -z-10 bg-gradient-to-r"
+          />
+        </>
+      ) : null}
+
       <div className="min-w-0">
         <h1 className="text-accent truncate text-2xl font-semibold short:text-xl shorter:text-lg">
           {title}

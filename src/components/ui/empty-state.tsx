@@ -34,6 +34,14 @@ interface EmptyStateProps {
    * whichever tone that piece exists in.
    */
   art?: ArtName;
+  /**
+   * How much room the artwork gets. "sm" (default) is the medallion-sized
+   * picture that stands in for the icon. "lg" is for screens where the empty
+   * state IS the screen — /search before anything is typed, a space with
+   * nothing in it yet — where 352px marooned in an empty viewport reads as an
+   * error rather than an invitation.
+   */
+  artSize?: "sm" | "lg";
   className?: string;
 }
 
@@ -60,7 +68,7 @@ const FADE_STYLE = `
  * project's spring tokens (--ease-spring / --dur). All colours come from CSS
  * custom properties — fully theme-aware, no hardcoded hex.
  */
-export function EmptyState({ icon, title, subtitle, action, art, className }: EmptyStateProps) {
+export function EmptyState({ icon, title, subtitle, action, art, artSize = "sm", className }: EmptyStateProps) {
   const Icon = resolveIcon(icon);
   const { tone } = useTone();
 
@@ -87,8 +95,11 @@ export function EmptyState({ icon, title, subtitle, action, art, className }: Em
             // for a box that is never wider than 22rem — measured 1920w served
             // into a 352px slot. The cap below is the real upper bound, so say
             // so and let the 384/768 variants do the work.
-            sizes="352px"
-            className="h-auto w-full max-w-[min(22rem,80%)] rounded-2xl object-contain"
+            sizes={artSize === "lg" ? "(max-width: 640px) 92vw, 560px" : "352px"}
+            className={cn(
+              "h-auto w-full rounded-2xl object-contain",
+              artSize === "lg" ? "max-w-[min(35rem,92%)]" : "max-w-[min(22rem,80%)]",
+            )}
           />
         ) : (
           <span className="bg-accent-soft flex h-16 w-16 shrink-0 items-center justify-center rounded-full">

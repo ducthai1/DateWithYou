@@ -22,24 +22,49 @@ export function ToneArt({
   alt = "",
   className,
   priority = false,
+  fill = false,
+  position,
   sizes = "(max-width: 768px) 100vw, 720px",
 }: {
   name: ArtName;
   alt?: string;
   className?: string;
   priority?: boolean;
+  /** Sit BEHIND content — the parent sets the box. Parent needs `relative`. */
+  fill?: boolean;
+  /** CSS object-position, e.g. "center 30%" — which part survives the crop. */
+  position?: string;
   sizes?: string;
 }) {
   const { tone } = useTone();
+  const common = {
+    src: artSrc(name, tone),
+    alt,
+    "aria-hidden": alt === "" ? true : undefined,
+    priority,
+    sizes,
+    style: position ? { objectPosition: position } : undefined,
+  } as const;
+
+  /*
+   * Two modes, because artwork does two different jobs.
+   *
+   * Default is intrinsic: the image carries its own 1672x941 box and the layout
+   * grows around it — right when the picture IS the content.
+   *
+   * `fill` hands sizing to the parent, for a picture that sits behind content:
+   * a header band, a card cover, one half of a split hero. Those parents own
+   * the height, and an intrinsic image inside them either overflows or
+   * collapses to nothing.
+   */
+  if (fill) {
+    return <Image {...common} fill className={cn("object-cover", className)} />;
+  }
   return (
     <Image
-      src={artSrc(name, tone)}
-      alt={alt}
-      aria-hidden={alt === "" ? true : undefined}
+      {...common}
       width={1672}
       height={941}
-      priority={priority}
-      sizes={sizes}
       className={cn("h-auto w-full object-cover", className)}
     />
   );
