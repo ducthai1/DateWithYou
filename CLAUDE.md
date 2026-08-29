@@ -1,5 +1,140 @@
 # Vivu No Plan — quy ước khi sửa repo này
 
+## Thao tác không hoàn tác được thì PHẢI HỎI — và phải quét cả hệ thống
+
+`plan-item-card.tsx` xoá một việc **ngay lần chạm đầu tiên**, trong khi tám chỗ
+xoá khác trong app đều mở modal hỏi trước. Nút thùng rác đó nằm cách nút bút chì
+9px trong một hàng năm nút icon — chỗ dễ chạm nhầm nhất sản phẩm, đặt lên đúng
+thứ không lấy lại được. User mất dữ liệu thật rồi mới báo.
+
+**Luật:** mọi thao tác không hoàn tác được đều đi qua `ConfirmButton`
+(`src/components/ui/confirm-button.tsx`), không có ngoại lệ vì "nút nhỏ", "chỉ
+là icon", "người dùng chắc biết mình làm gì".
+
+Cụ thể là những gì:
+
+| Loại | Ví dụ trong repo | Bắt buộc |
+|---|---|---|
+| Xoá bản ghi | kỷ niệm, địa điểm, kế hoạch, chuyến đi, wishlist, media, trò chơi, ngày đặc biệt | modal hỏi |
+| Xoá hàng loạt | "Xoá hết ảnh" trong form kỷ niệm | modal hỏi, nêu **số lượng** |
+| Rời / ngắt liên kết | rời space, gỡ người kia | modal hỏi, nêu **hậu quả** |
+| Ghi đè không khôi phục | thay ảnh bìa, reset cấu hình | modal hỏi |
+| Kết thúc phiên đang chạy | kết thúc chuyến đi đang dẫn đường | modal hỏi |
+
+**Câu chữ trong modal phải nói ĐÚNG cái sắp mất**, không dùng câu chung chung.
+`"${item.title}" sẽ bị xoá khỏi ngày này. Không hoàn tác được.` đọc xong biết
+ngay mình sắp xoá gì; *"Bạn có chắc không?"* thì không.
+
+**Khi sửa một chỗ, quét cả repo** — lỗi kiểu này không bao giờ đứng một mình:
+
+```bash
+# Xét 6 dòng trước mỗi lời gọi xoá: callback onConfirm thường nhiều dòng nên
+# grep một dòng sẽ báo oan, mà lệnh báo oan thì lần sau không ai chạy nữa.
+grep -rn -B6 "remove\.mutate\|delete\.mutate\|destroy\.mutate" src --include=*.tsx \
+ | grep -E "\.mutate" | while IFS= read -r l; do
+     f=${l%%:*}; n=$(echo "$l" | cut -d: -f2)
+     sed -n "$((n>6?n-6:1)),${n}p" "$f" | grep -q "onConfirm\|ConfirmButton" \
+       || echo "  ✗ CHƯA HỎI: ${f#src/}:$n"
+   done
+# In ra dòng nào là còn chỗ xoá thẳng, không hỏi.
+```
+
+Thêm nút xoá mới mà không chạy lệnh trên trước khi báo xong = làm chưa xong.
+
+## Trạng thái TOÀN CỤC thì không được component nào tự sở hữu
+
+Cuộn trang chết trên Android, phải tắt app mở lại. Nguyên nhân: `Modal` và
+`BottomSheet` mỗi cái tự lưu `document.body.style.overflow` lúc mở rồi trả lại
+lúc đóng. Đúng với **một** hộp thoại, sai ngay khi có **hai** — mà app này chồng
+hộp thoại liên tục (xác nhận đè lên form, form đè lên sheet):
+
+```
+A mở   -> lưu ""        đặt hidden
+B mở   -> lưu "hidden"  đặt hidden      <- B chép nhầm khoá của A
+A đóng -> trả về ""                      <- cuộn mở lại trong khi B còn mở
+B đóng -> trả về "hidden"                <- KHOÁ CHẾT, không còn gì để đóng
+```
+
+Dòng cuối là thứ user gặp: chỉ reload mới thoát, mà tắt app mở lại chính là
+reload.
+
+**Luật:** thứ gì nằm ngoài component — `body.style`, `document.title`,
+`window` listener, khoá cuộn, wake lock, tham số URL — thì **đếm tham chiếu ở
+một module dùng chung**, không để mỗi instance tự lưu-và-trả.
+Mẫu: `src/lib/body-scroll-lock.ts` — acquire đầu tiên chụp giá trị thật, release
+cuối cùng trả lại, ở giữa là no-op.
+
+**Ba câu tự hỏi trước khi viết `useEffect` đụng vào cái gì ngoài component:**
+1. Hai bản của component này mở cùng lúc thì sao?
+2. Bản A unmount trong khi B còn sống thì sao? (`memory-timeline` làm đúng thế:
+   đóng modal cảnh báo và mở modal sửa trong **cùng một handler**)
+3. Component chết vì lỗi/điều hướng, cleanup không chạy — có để lại rác không?
+
+**Kiểm bằng cách tái hiện, không phải bằng lý luận.** Trước khi vá, hãy dựng
+đúng chuỗi thao tác và đọc giá trị toàn cục lúc **đã đóng hết**:
+
+```js
+// đóng hết rồi mà vẫn thấy "hidden" với 0 dialog => còn rò rỉ
+JSON.stringify({body: document.body.style.overflow,
+  dialogs: [...document.querySelectorAll('[role=dialog]')]
+    .filter(d => d.getBoundingClientRect().width > 0).length})
+```
+
+Vá xong chạy lại đúng kịch bản đó. Không so trước–sau thì không biết mình sửa
+đúng chỗ hay chỉ vá triệu chứng.
+
+### Hộp thoại chồng nhau: kèm theo cả a11y
+
+Chồng hộp thoại còn hỏng nhiều thứ khác ngoài cuộn, phải kiểm đủ:
+
+- **Escape** chỉ được đóng cái TRÊN CÙNG, không đóng cả chồng. `useDialogA11y`
+  đã so `node` với phần tử cuối trong danh sách portal — giữ nguyên cơ chế đó,
+  đừng thêm listener riêng.
+- **Focus trap** thuộc về cái trên cùng; cái dưới phải nhả.
+- **Đóng xong focus phải quay về** đúng nút đã mở nó, không nhảy về `<body>`.
+- **`aria-modal` + `role="dialog"`** trên đúng phần tử, và `aria-labelledby` trỏ
+  tới tiêu đề thật — không phải một `<div>` trang trí.
+- **Ảnh trang trí** `alt=""` + `aria-hidden`; **con số badge** là glyph nên phải
+  đưa vào `aria-label` của link bọc ngoài (xem `unread-badge.tsx`).
+- **`prefers-reduced-motion`**: luật toàn cục trong `globals.css` chỉ chạm CSS
+  transition. **Cuộn bằng script và animation của framer-motion phải tự hỏi**
+  `window.matchMedia("(prefers-reduced-motion: reduce)")`.
+
+## Đo trên THIẾT BỊ THẬT NGƯỜI TA DÙNG, không phải khổ màn tiện tay
+
+Hai lần liên tiếp báo "đã sửa" rồi user mở máy của họ ra vẫn hỏng:
+
+| Lần | Tôi đo ở | User dùng | Sót gì |
+|---|---|---|---|
+| Ô lịch | 1440×900 | 1440×**740** | `short:` (≤760px) ép ô cao còn 52px |
+| Hero landing | 1440×900 / 1920×1221 | MacBook Air **1440×745** | ảnh co còn 27% màn |
+| Splash PWA | Android | iOS | Safari bỏ qua manifest, cần `apple-touch-startup-image` |
+
+**Danh sách khổ màn bắt buộc đo** khi đụng layout:
+
+```
+Ngang: 360 · 390 · 414 · 768 · 1024 · 1280 · 1440 · 1920
+Cao:   745 (MacBook Air 13") · 800 (MacBook Pro 14") · 900 · 1080
+       690 (zoom 125%) · 620 (zoom 150%) · 560 (zoom 175%)
+```
+
+`short:` = `max-height: 700px`, `shorter:` = `max-height: 620px`. **Ngưỡng
+`short` từng là 760px và đó là bug** — nó bắt trúng mọi laptop Mac. Trước khi
+thêm `short:` vào chỗ nào, hỏi: *máy bình thường có rơi vào đây không?*
+
+**Khác biệt nền tảng phải tra, không được suy từ Android sang iOS:**
+
+| Thứ | Android/Chrome | iOS/Safari |
+|---|---|---|
+| Splash khi cài | tự dựng từ manifest | **chỉ** từ `apple-touch-startup-image` khớp đúng độ phân giải |
+| `start_url` | có đọc | **không đọc** — dùng URL lúc bấm "Thêm vào MH chính" |
+| Chiều cao viewport | `100vh` ổn | phải `100dvh`, thanh địa chỉ co giãn |
+| `:hover` | có chuột | dính lại sau khi chạm — phải gói trong `@media (hover: hover)` |
+
+Có 24 file splash trong `public/splash/` khớp `apple-splash-links.tsx`. **Sinh
+ảnh và sửa bảng phải đi cùng nhau** — thiếu file hoặc thiếu query đều ra màn
+trắng, và không bên nào báo lỗi.
+
 ## Làm bất kỳ mảng UI nào: liệt kê ĐỦ TRẠNG THÁI, rồi kiểm ĐỦ CHUYỂN TIẾP
 
 Một component không phải một màn hình. Nó là **một tập trạng thái** cộng với
