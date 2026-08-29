@@ -8,6 +8,7 @@ import { Plane, Plus, CalendarDays, Wallet, CheckSquare, Map } from "lucide-reac
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { TripForm } from "./trip-form";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export function TripList() {
   const { data: trips, isLoading } = trpc.trip.list.useQuery();
@@ -36,10 +37,16 @@ export function TripList() {
             <Skeleton className="h-64 rounded-2xl" />
           </>
         ) : !trips?.length ? (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
-            <Plane className="mb-3 h-12 w-12 opacity-20" />
-            <p className="text-lg font-medium">Chưa có chuyến đi nào.</p>
-            <p className="text-sm mt-1">Hãy tạo chuyến đi đầu tiên của hai bạn nhé!</p>
+          // Was a hand-rolled block: dashed border, a 20%-opacity icon and two
+          // <p>s. Every other empty screen in the app is <EmptyState/>, so this
+          // one was the odd one out in type, spacing and tone for no reason.
+          <div className="col-span-full">
+            <EmptyState
+              icon="plane"
+              art="tripPlanner"
+              title="Chưa có chuyến đi nào"
+              subtitle="Tạo chuyến đầu tiên — ngày đi, việc cần mang và tiền tiêu, gom hết vào một chỗ."
+            />
           </div>
         ) : (
           trips.map((trip) => {

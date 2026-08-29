@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Reveal } from "./reveal";
+import { ToneArt } from "@/components/theme/tone-art";
 import { FaqItem } from "./faq-item";
 import { FAQ, FEATURES, STEPS } from "./landing-content";
 import { SITE_NAME } from "@/lib/site";
@@ -61,6 +62,30 @@ export function LandingSections() {
           thì đây là góc của riêng bạn. Có người đi cùng thì ai thêm gì vào,
           người kia thấy gần như ngay — khỏi chụp màn hình gửi qua gửi lại.
         </p>
+        </Reveal>
+      </section>
+
+      {/*
+        The one picture on the way down the page.
+
+        Everything from the hero to the FAQ was type on parchment — accurate to
+        the product's calm, but it never showed the product. This band answers
+        "what does it actually look like" once, in the place a reader asks it:
+        straight after the paragraph explaining what the app is and before the
+        list of what it does.
+
+        Not next/image with priority — the hero above is the LCP element and is
+        hand-tuned webp/jpg for exactly that reason. This one loads lazily so it
+        cannot compete for it.
+      */}
+      <section className="px-6 pb-4 sm:pb-8">
+        <Reveal>
+          <div className="mx-auto max-w-4xl overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 bg-white/50 shadow-[0_12px_40px_rgba(59,50,42,0.08)]">
+            <ToneArt
+              name="appShowcase"
+              sizes="(max-width: 1024px) 100vw, 900px"
+            />
+          </div>
         </Reveal>
       </section>
 

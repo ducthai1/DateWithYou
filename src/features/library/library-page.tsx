@@ -164,6 +164,7 @@ export function LibraryPage() {
       ) : allItems.length === 0 ? (
         <EmptyState
           icon="music"
+          art="emptyBackpack"
           title="Bộ sưu tập trống"
           subtitle="Lưu link nhạc, video món ngon hoặc công thức đầu tiên nhé."
           action={{ label: "+ Thêm ngay", onClick: () => setAdding(true) }}

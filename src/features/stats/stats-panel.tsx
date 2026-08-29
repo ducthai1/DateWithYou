@@ -171,6 +171,7 @@ export function StatsPanel({ className }: { className?: string }) {
       <section className={className}>
         <EmptyState
           icon="heart-handshake"
+          art="emptyCanvas"
           title="Chúng mình mới bắt đầu thôi"
           subtitle="Lưu một kỷ niệm hay ghim một chỗ muốn đi, rồi những con số ở đây sẽ tự lớn lên."
           action={{ label: "Lưu kỷ niệm đầu tiên", href: "/timeline" }}

@@ -31,6 +31,7 @@ export const HOM_NAY_AN_GI: FeaturePage = {
   eyebrow: "Vòng quay chọn món",
   tagline:
     "Câu hỏi ngốn nhiều thời gian nhất trong ngày, và thường kết thúc bằng việc ăn lại đúng chỗ hôm qua.",
+  art: "wheelFood",
   sections: [
     {
       heading: "Vấn đề không phải là ít chỗ ăn",

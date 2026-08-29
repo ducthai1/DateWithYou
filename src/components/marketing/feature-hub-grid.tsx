@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ToneArt } from "@/components/theme/tone-art";
 import { Reveal } from "./reveal";
 import { FEATURE_PAGES, FEATURE_PAGE_STYLE, FEATURE_PAGE_APP_HREF } from "./feature-pages";
 
@@ -40,6 +41,20 @@ export function FeatureHubGrid() {
             className={wide ? "lg:col-span-2" : ""}
           >
             <div className="group relative flex h-full flex-col overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 bg-white/60 transition-colors hover:border-[#c2693f]/40 hover:bg-white/90">
+              {/* A strip of the page's own artwork above the tint band. The
+                  tiles were colour and text only; this is what the page is
+                  actually about, and it is the same picture the page leads
+                  with, so the tile and the page introduce each other. */}
+              {page.art ? (
+                <div className={`relative overflow-hidden ${wide ? "h-40" : "h-32"}`}>
+                  <ToneArt
+                    name={page.art}
+                    className="h-full transition-transform duration-500 group-hover:scale-[1.03]"
+                    sizes="(max-width: 1024px) 100vw, 460px"
+                  />
+                </div>
+              ) : null}
+
               {/* Tint band. Carries the colour that a text-only tile lacked,
                   and scales with the cell so wide tiles read as heavier. */}
               <div

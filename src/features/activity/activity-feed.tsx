@@ -233,6 +233,7 @@ export function ActivityFeed() {
       {list.isSuccess && items.length === 0 && (
         <EmptyState
           icon="sparkles"
+          art="emptyCompass"
           title="Chưa có hoạt động nào"
           subtitle="Khi một trong hai người thêm kỷ niệm, địa điểm hay kế hoạch, nó sẽ hiện ở đây."
           action={{ label: "Thêm kỷ niệm đầu tiên", href: "/timeline" }}

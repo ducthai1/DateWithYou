@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Reveal } from "@/components/marketing/reveal";
+import { ToneArt } from "@/components/theme/tone-art";
 import { FEATURE_PAGES } from "@/components/marketing/feature-pages";
 import { FeatureHubGrid } from "@/components/marketing/feature-hub-grid";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -107,7 +108,7 @@ export default function Page() {
           {/* Hero spans the full width in two columns rather than stacking in a
               narrow centred stack, which is what left the sides empty. */}
           <Reveal delay={80}>
-            <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-end lg:gap-14">
+            <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-center lg:gap-14">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#a8542f]">
                   Tính năng
@@ -116,9 +117,18 @@ export default function Page() {
                   Vivu No Plan làm được những gì
                 </h1>
               </div>
-              <p className="text-[17px] font-light leading-relaxed text-[#6b5c51] lg:pb-2">
-                {SITE_DESCRIPTION}
-              </p>
+              <div>
+                <p className="text-[17px] font-light leading-relaxed text-[#6b5c51]">
+                  {SITE_DESCRIPTION}
+                </p>
+                {/* The whole product in one picture, next to the sentence that
+                    describes it. The hero was a headline in one column and a
+                    paragraph in the other, which on a wide screen is two blocks
+                    of text pretending to be a layout. */}
+                <div className="mt-7 overflow-hidden rounded-[22px] border border-[#d8cfc1]/70 shadow-[0_10px_30px_rgba(59,50,42,0.09)]">
+                  <ToneArt name="heroDesk" sizes="(max-width: 1024px) 100vw, 560px" />
+                </div>
+              </div>
             </div>
           </Reveal>
 

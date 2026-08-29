@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs } from "@/components/ui/tabs";
+import { ToneArt } from "@/components/theme/tone-art";
 
 const ONBOARDING_TABS = [
   { key: "create", label: "Tạo mới" },
@@ -79,9 +80,26 @@ export function Onboarding() {
           }}
         />
 
-        {/* Heart motif */}
+        {/*
+          The picture, on the one screen that has nothing else to show. This is
+          the first thing after sign-up: there is no content yet, so a 48px
+          heart in a rounded square was the entire visual argument for opening
+          an account.
+
+          Hidden below 760px of viewport height rather than shrunk. This column
+          is centred inside min-h-dvh with a form under it; on a laptop in
+          landscape the picture is what pushes the submit button off-screen, and
+          a picture nobody can reach the button past is worse than no picture.
+          The heart motif comes back in its place so the header never collapses
+          to bare text.
+        */}
+        <div className="relative z-10 w-full overflow-hidden rounded-2xl border border-border/60 shadow-sm short:hidden">
+          <ToneArt name="mapTreasure" sizes="384px" />
+        </div>
+
+        {/* Heart motif — the short-viewport stand-in for the artwork above. */}
         <div
-          className="relative z-10 flex h-12 w-12 items-center justify-center rounded-2xl"
+          className="relative z-10 hidden h-12 w-12 items-center justify-center rounded-2xl short:flex"
           style={{ background: "var(--accent-soft)" }}
         >
           <Heart

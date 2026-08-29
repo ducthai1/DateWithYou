@@ -20,6 +20,7 @@ export const NHAT_KY_DU_LICH: FeaturePage = {
   eyebrow: "Chuyến đi & nhật ký",
   tagline:
     "Không ai mở lại thư mục ảnh chuyến đi năm ngoái. Vì mở ra thì chẳng biết đang xem ngày thứ mấy, ở đâu, đi với ai.",
+  art: "memoriesScrapbook",
   sections: [
     {
       heading: "Phần khó không phải là chụp ảnh",

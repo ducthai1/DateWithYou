@@ -83,6 +83,11 @@ export function EmptyState({ icon, title, subtitle, action, art, className }: Em
             width={640}
             height={360}
             aria-hidden="true"
+            // Without this next/image assumes 100vw and picks the 1920px file
+            // for a box that is never wider than 22rem — measured 1920w served
+            // into a 352px slot. The cap below is the real upper bound, so say
+            // so and let the 384/768 variants do the work.
+            sizes="352px"
             className="h-auto w-full max-w-[min(22rem,80%)] rounded-2xl object-contain"
           />
         ) : (

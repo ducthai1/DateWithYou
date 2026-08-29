@@ -25,6 +25,7 @@ export const LUU_DIA_DIEM_DA_DI: FeaturePage = {
   eyebrow: "Bản đồ nơi đã đi",
   tagline:
     "Quán ngon nhất bạn từng ăn có thể đang nằm trong một tấm ảnh chụp màn hình từ tháng ba.",
+  art: "mapIsland",
   sections: [
     {
       heading: "Chỗ nào cũng lưu, nhưng lưu ở mười nơi khác nhau",

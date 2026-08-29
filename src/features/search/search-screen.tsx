@@ -137,6 +137,7 @@ export function SearchScreen() {
       {!enabled && (
         <EmptyState
           icon="sparkles"
+          art="emptyMap"
           title="Tìm gì đó đi"
           subtitle="Không dấu cũng được — gõ “ca phe” là ra “cà phê” nhé."
         />

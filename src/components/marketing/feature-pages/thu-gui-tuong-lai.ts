@@ -28,6 +28,7 @@ export const THU_GUI_TUONG_LAI: FeaturePage = {
   eyebrow: "Hộp thời gian",
   tagline:
     "Viết ra, chọn một ngày, rồi để đó. Đến hẹn nó mới mở — và đó là toàn bộ ý nghĩa của nó.",
+  art: "vaultSafe",
   sections: [
     {
       heading: "Niêm phong thì phải là niêm phong thật",

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ToneArt } from "@/components/theme/tone-art";
 import { Reveal } from "./reveal";
 import { FaqItem } from "./faq-item";
 import type { FeaturePage } from "./feature-pages";
@@ -68,6 +69,16 @@ export function FeaturePageShell({ page }: { page: FeaturePage }) {
             {page.tagline}
           </p>
         </Reveal>
+
+        {/* One picture of the thing the page is about, under the promise and
+            before the argument for it. These pages had no imagery at all. */}
+        {page.art ? (
+          <Reveal delay={140}>
+            <div className="mt-10 overflow-hidden rounded-[20px] border border-[#d8cfc1]/70 bg-white/60 shadow-sm">
+              <ToneArt name={page.art} priority sizes="(max-width: 768px) 100vw, 768px" />
+            </div>
+          </Reveal>
+        ) : null}
 
         {page.sections.map((section, i) => (
           <Reveal as="section" key={section.heading} delay={Math.min(i, 4) * 110}>

@@ -1733,7 +1733,7 @@ export function LocationsPage() {
               // Only on the genuinely-empty state. A search that found nothing
               // is a different message, and a picture of a full map would
               // contradict it.
-              art={debouncedQuery ? undefined : "mapIsland"}
+              art={debouncedQuery ? undefined : "emptyMap"}
               icon="map-pin"
               title={debouncedQuery ? `Không có chỗ nào khớp “${debouncedQuery}”` : "Chưa có địa điểm nào"}
               subtitle={

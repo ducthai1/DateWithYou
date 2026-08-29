@@ -97,6 +97,66 @@ Effect "theo đồng hồ" chạy khi `preference` còn là `"auto"` mặc đị
 effect đọc cookie — nên nó **đè lên lựa chọn đã lưu**. Phải có cờ `ready` do
 effect đọc cookie bật lên. Triệu chứng: chọn Chiều, reload, ra Sáng.
 
+### Đăng ký ảnh KHÔNG phải là dùng ảnh — phải đếm chỗ RENDER
+
+Sau khi đổi tên 30 asset và dựng xong `ART` + `ToneProvider`, hệ thống chạy đúng
+100% mà user vẫn báo *"không thấy hình ở đâu hết"*. Đo ra: **16 ảnh đã đăng ký,
+đúng 3 ảnh được render** — cả 3 đều nằm trong empty state, nên tài khoản có dữ
+liệu thì không bao giờ thấy tấm nào. Không có gì hỏng; chỉ là chưa ai đặt ảnh
+vào chỗ người ta nhìn.
+
+Phép đo đúng **không phải** `grep` file trong `public/`, cũng không phải đếm
+entry trong `ART`. Phải mở trình duyệt, vào từng route, đếm `<img>` thật:
+
+```bash
+# đăng ký vs. thật sự được tham chiếu trong code
+grep -rhoE 'art="[a-zA-Z]+"|name="[a-zA-Z]+"|art: "[a-zA-Z]+"' src --include=*.tsx | ...
+# rồi mở browser đếm <img> có brand-image trên từng route
+```
+
+Và nhớ **route mặc định mở tab nào**: `/vault` mở tab "Kế hoạch", `/calendar` mở
+tab "Tháng", `/activity` của space mới đã có sẵn 2 sự kiện. Ba route đó "không
+ra ảnh" mà **không phải lỗi** — empty state có ảnh nằm ở tab khác.
+
+### Chỗ ĐƯỢC đặt ảnh, và chỗ KHÔNG
+
+| Đặt | Vì |
+|---|---|
+| Trang marketing (`/`, `/tinh-nang`, 4 trang tính năng) | người ta tới để xem sản phẩm trông thế nào |
+| Empty state **lần đầu** (chưa có gì) | không có nội dung thì ảnh là thứ duy nhất nói được |
+| Onboarding | màn đầu sau đăng ký, chưa có gì để hiện |
+| **KHÔNG** đặt ở empty state do **lọc/tìm không ra** | ảnh to đẩy mất bộ lọc đang cần sửa |
+| **KHÔNG** đặt banner ở `/home` | màn dùng hằng ngày, banner đẩy nội dung xuống mỗi lần mở |
+| **KHÔNG** đặt ở cột kanban / panel nhỏ | ảnh 16:9 ép vào cột hẹp thành vệt mỏng |
+| **KHÔNG** đặt 2 ảnh lớn trên cùng một màn | `agenda-view` lấy ảnh, `special-dates-panel` giữ icon — chúng render cùng chỗ |
+
+Và **đừng đụng vào ảnh đã tối ưu có chủ đích**: hero trang chủ là LCP element,
+dùng webp/jpg đã cắt sẵn kèm comment giải thích; auth shell cố ý dùng chung ảnh
+đó để vào trang đăng nhập vẫn thấy là cùng một sản phẩm. Thay bằng PNG 4MB là
+phá đúng thứ người trước đã đo.
+
+### `next/image` không có `sizes` thì tải bản 1920 cho khung 352px
+
+`EmptyState` cap ảnh ở `max-w-[min(22rem,80%)]` = 352px, nhưng không khai
+`sizes` ⇒ next mặc định `100vw` ⇒ **đo được `w=1920` phục vụ vào khung 352px**.
+Khai `sizes="352px"` thì xuống `w=750`. Hễ ảnh có `max-w` cứng thì phải nói cho
+next biết bề rộng thật.
+
+### Ảnh `loading=lazy` dưới màn hình: `img.src` là bản TO NHẤT — đừng báo oan
+
+Detector của tôi đọc `currentSrc || src`. Ảnh lazy chưa cuộn tới thì `currentSrc`
+rỗng, rơi về `src` — mà next/image đặt `src` = **bản `w=3840`**, và
+`naturalWidth === 0`. Nhìn vào tưởng "tải ảnh 3840 rồi hỏng". Cuộn tới rồi đo
+lại: cả 5 tấm đều chọn `w=828` và tải xong. **Trước khi kết luận ảnh hỏng, phải
+cuộn nó vào viewport rồi đo lại.**
+
+### `overflow-x: auto` KHÔNG phải là cắt — chỉ `hidden`/`clip` mới cắt
+
+Bộ dò tràn khung coi mọi ancestor có `overflow` khác `visible` là "khung cắt",
+nên báo thanh tab `/library` tràn 37px ở 360px. Đo thật: `clientWidth 360 /
+scrollWidth 413`, đẩy `scrollLeft` thì **cuộn được 53px và tab cuối hiện đủ** —
+cuộn ngang chính là thiết kế. Chỉ so mép với ancestor `overflow-x: hidden|clip`.
+
 ## Trước khi tự nghĩ ra một luồng, xem người ta làm thế nào
 
 Ca thật: ô tìm trên `/map` từng được dựng theo kiểu tự chế — gõ chữ thì lọc pin

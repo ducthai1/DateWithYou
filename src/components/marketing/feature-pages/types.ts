@@ -24,6 +24,15 @@ export interface FeaturePageSection {
   items?: { label: string; body: string }[];
 }
 
+/** Artwork shown under the tagline. Keyed into the tone registry. */
+export type FeaturePageArt =
+  | "wheelFood"
+  | "mapIsland"
+  | "memoriesScrapbook"
+  | "vaultSafe"
+  | "tripPlanner"
+  | "calendarTablet";
+
 export interface RelatedLink {
   href: string;
   label: string;
@@ -41,6 +50,8 @@ export interface FeaturePage {
   eyebrow: string;
   /** One line under the h1. */
   tagline: string;
+  /** Artwork under the tagline. Omit on a page where a picture adds nothing. */
+  art?: FeaturePageArt;
   sections: FeaturePageSection[];
   /** Page-specific FAQ. Mirrored verbatim into this page's FAQPage JSON-LD. */
   faq: FaqItem[];
