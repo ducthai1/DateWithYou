@@ -88,12 +88,11 @@ export function LandingHero() {
           >
             <Link
               href="/map"
-              className="group relative flex h-14 w-full items-center justify-center overflow-hidden rounded-full bg-[#c2693f] text-white shadow-[0_10px_28px_rgba(194,105,63,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#a8542f] active:translate-y-0 active:scale-[0.98]"
+              className="btn-sheen group flex h-14 w-full items-center justify-center rounded-full bg-[#c2693f] text-white shadow-[0_10px_28px_rgba(194,105,63,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#a8542f] active:translate-y-0 active:scale-[0.98]"
             >
-              <span className="relative z-10 text-[17px] font-medium tracking-wide">
+              <span className="text-[17px] font-medium tracking-wide">
                 Vào không gian
               </span>
-              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 ease-in-out group-hover:translate-x-full" />
             </Link>
 
             <Link

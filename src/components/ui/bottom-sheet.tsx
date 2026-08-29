@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { lockBodyScroll, releaseBodyScroll } from "@/lib/body-scroll-lock";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { DialogTitleContext, dialogAttrs, useDialogA11y } from "./modal";
 
@@ -35,11 +36,12 @@ export function BottomSheet({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // The lock is counted and shared — see body-scroll-lock. Owning it here
+    // per-dialog is what left the page unscrollable after two overlapped.
+    lockBodyScroll();
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+      releaseBodyScroll();
     };
   }, [open, onClose]);
 

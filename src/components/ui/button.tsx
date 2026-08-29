@@ -24,7 +24,7 @@ export function Button({
         "focus-visible:ring-ring/50 outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
         "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
         variant === "primary" &&
-          "bg-accent text-accent-foreground hover:bg-accent-hover shadow-sm",
+          "btn-sheen bg-accent text-accent-foreground hover:bg-accent-hover shadow-sm",
         variant === "secondary" &&
           "bg-muted text-muted-foreground hover:bg-muted/80",
         variant === "outline" &&

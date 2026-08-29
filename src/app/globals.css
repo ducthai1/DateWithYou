@@ -41,6 +41,46 @@ body:has([data-chromeless]) [data-app-main] {
  * 640, and 150% zoom on a 1080p screen near 590 — while leaving every Mac
  * laptop on the full layout.
  */
+/*
+ * The sheen that sweeps across an accent button.
+ *
+ * It started life hand-written on the landing page's "Vào không gian" and
+ * nowhere else, so every other button in the same accent looked like a
+ * cheaper version of it. Living here instead means the shared Button carries
+ * it and they cannot drift apart again.
+ *
+ * Hover is gated behind `hover: hover` — on a touch screen the hover state can
+ * stick after a tap, leaving the highlight parked mid-button. `:active` covers
+ * touch instead, so a tap sweeps once and ends.
+ *
+ * The global reduced-motion rule collapses the transition duration, which
+ * turns this into nothing rather than into a flash.
+ */
+.btn-sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.22) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  transition: transform 900ms ease-in-out;
+}
+@media (hover: hover) {
+  .btn-sheen:hover::after { transform: translateX(100%); }
+}
+.btn-sheen:active::after { transform: translateX(100%); }
+
 @custom-variant short (@media (max-height: 700px));
 @custom-variant shorter (@media (max-height: 620px));
 

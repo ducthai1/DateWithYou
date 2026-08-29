@@ -20,23 +20,25 @@ export const NAV_ITEMS: {
   label: string;
   Icon: LucideIcon;
   center?: boolean;
-  /** Kept out of the mobile bottom bar, which only has room for six targets
-   *  at 390px. Still rendered in the desktop sidebar, and reachable on mobile
-   *  from the top bar, so nothing is orphaned. */
+  /** Kept out of the mobile bottom bar. Still rendered in the desktop sidebar,
+   *  and reachable on mobile from the top bar, so nothing is orphaned. */
   mobileHidden?: boolean;
 }[] = [
+  // Array order IS the order of the mobile bottom bar, left to right.
+  { href: "/map", label: "Bản đồ", Icon: Map },
   { href: "/calendar", label: "Lịch", Icon: CalendarHeart },
   { href: "/timeline", label: "Kỷ niệm", Icon: Images },
   // "Hôm nay" takes the raised centre slot: it is the screen a returning
   // visitor should land on, so it gets the bar's most reachable target.
   { href: "/home", label: "Hôm nay", Icon: Sun, center: true },
-  { href: "/map", label: "Bản đồ", Icon: Map },
-  { href: "/library", label: "Bộ sưu tập", Icon: Library },
   { href: "/trips", label: "Chuyến đi", Icon: Plane },
-  // Reachable on mobile from the top bar (bell + search), so they stay out of
-  // the bottom bar and only appear in the desktop sidebar.
+  // Moved down out of the top bar. What the other person adds is the reason to
+  // come back, and a count is only useful where the thumb already is.
+  { href: "/activity", label: "Hoạt động", Icon: Bell },
+  { href: "/library", label: "Bộ sưu tập", Icon: Library },
+  // Still reachable on mobile from the top bar, so they stay out of the bottom
+  // bar and appear only in the desktop sidebar.
   { href: "/search", label: "Tìm kiếm", Icon: Search, mobileHidden: true },
-  { href: "/activity", label: "Hoạt động", Icon: Bell, mobileHidden: true },
   { href: "/settings", label: "Cài đặt", Icon: Settings, mobileHidden: true },
 ];
 

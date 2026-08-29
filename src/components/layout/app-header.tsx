@@ -6,7 +6,6 @@ import { Lock, Settings } from "lucide-react";
 import { NAV_HIDDEN_ON } from "./nav-items";
 import { BrandMark } from "./brand-mark";
 import { SyncButton } from "./sync-button";
-import { ActivityBell } from "@/features/activity/activity-bell";
 
 // 40px tap target + focus ring, shared by every header action link.
 const ACTION_CLASS = (active: boolean) =>
@@ -43,7 +42,9 @@ export function AppHeader() {
       {/* shrink-0: four 40px targets must stay tappable. */}
       <div className="flex shrink-0 items-center gap-1">
         <SyncButton mode="mobile" />
-        <ActivityBell />
+        {/* No bell here any more. This header is md:hidden — phones only — and
+            the count now lives in the bottom bar, where the thumb already is.
+            Two copies of the same number on one screen is worse than one. */}
         <Link
           href="/vault"
           aria-label="Bí mật"

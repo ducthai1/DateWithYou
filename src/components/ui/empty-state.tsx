@@ -48,7 +48,7 @@ interface EmptyStateProps {
 // Shared primary-button classes — mirrors Button variant="primary" exactly so
 // the link variant is visually identical without needing an asChild wrapper.
 const PRIMARY_BTN =
-  "inline-flex cursor-pointer items-center justify-center rounded-xl text-sm font-medium transition-all active:scale-[.98] h-11 px-4 focus-visible:ring-ring/50 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-accent text-accent-foreground hover:bg-accent-hover shadow-sm";
+  "btn-sheen inline-flex cursor-pointer items-center justify-center rounded-xl text-sm font-medium transition-all active:scale-[.98] h-11 px-4 focus-visible:ring-ring/50 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-accent text-accent-foreground hover:bg-accent-hover shadow-sm";
 
 // Keyframe injected as a scoped <style> tag so we don't touch globals.css.
 // Uses the project's --ease-spring / --dur tokens from :root.
