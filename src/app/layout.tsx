@@ -9,6 +9,7 @@ import { SideNav } from "@/components/layout/side-nav";
 import { AppHeader } from "@/components/layout/app-header";
 import { MainWrapper } from "@/components/layout/main-wrapper";
 import { AppBackdrop } from "@/components/theme/app-backdrop";
+import { AppleSplashLinks } from "@/components/layout/apple-splash-links";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
@@ -192,6 +193,9 @@ export default async function RootLayout({
       <noscript>
         <style>{`[data-reveal]{opacity:1 !important;animation:none !important}`}</style>
       </noscript>
+      <head>
+        <AppleSplashLinks />
+      </head>
       <body className={`${inter.variable} ${playfair.variable} ${lora.variable} antialiased`}>
         {/* SpaceGuard is mounted inside <Providers> — it is client-only
             (ssr: false), which a Server Component cannot declare. */}

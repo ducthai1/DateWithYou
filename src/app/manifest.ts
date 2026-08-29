@@ -11,7 +11,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: SITE_NAME,
     short_name: "Vivu",
     description: SITE_DESCRIPTION,
-    start_url: "/",
+    start_url: "/home",
     display: "standalone",
     // Matches the mark's tile colour, so the launch splash flows into the
     // brand rather than flashing a different ground first.
