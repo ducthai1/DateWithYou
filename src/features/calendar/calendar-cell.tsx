@@ -127,7 +127,7 @@ export const CalendarCell = memo(function CalendarCell({
         cell.inMonth && isToday &&
           "bg-accent/15 border-[3px] border-accent shadow-sm active:scale-[0.96] md:shadow-none md:active:scale-100",
         !cell.inMonth &&
-          "bg-transparent text-muted-foreground/40 md:border-transparent md:border-[3px]",
+          "bg-card/45 text-muted-foreground/60 md:border-transparent md:border-[3px]",
       )}
     >
       {/* Faint default artwork so an empty day (no plans, no memory photo) is

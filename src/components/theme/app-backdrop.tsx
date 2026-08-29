@@ -28,7 +28,7 @@ import { NAV_HIDDEN_ON } from "@/components/layout/nav-items";
 
 /** Which piece grounds which section. Falls through to the app-wide banner. */
 const BY_PREFIX: ReadonlyArray<readonly [string, ArtName]> = [
-  ["/calendar", "calendarTablet"],
+  ["/calendar", "mapIsland"],
   ["/timeline", "memoriesScrapbook"],
   ["/trips", "tripPlanner"],
   ["/library", "appShowcase"],
@@ -71,7 +71,7 @@ export function AppBackdrop() {
         // 1920 screen the full-width hint pulled the 3840 file for something
         // nobody can resolve.
         sizes="(max-width: 768px) 100vw, 960px"
-        className="scale-110 opacity-[0.55] blur-[14px] saturate-[1.25]"
+        className="scale-[1.02] opacity-[0.55] blur-[0.5px] saturate-[1.2]"
       />
       {/* Readability wash. Heaviest top-left, where every screen puts its
           heading and its first line of text, thinning toward the bottom right
@@ -83,13 +83,12 @@ export function AppBackdrop() {
           picture surviving at the top left, which is why it looked like
           nothing was there at all.
 
-          The blur is heavy on purpose. At 2px the artwork was still a legible
-          scene — on /calendar a camper van and the wordmark sat behind the
-          month grid and fought the day numbers for attention. Blurred this far
-          the same picture reads as the colour and movement of that screen's
-          own illustration, which is what a ground should do, without ever
-          asking to be looked at. `scale-110` hides the transparent edge the
-          blur pulls in from outside the box. */}
+          Effectively unblurred. A heavy radius was tried and rejected: it
+          turned the ground into coloured fog, and the point of using the
+          product's own illustrations rather than a gradient is that you can
+          tell what they are. Half a pixel only takes the hard edge off the
+          upscale. Readability is bought with the wash above and with opaque
+          cards, not by destroying the picture. */}
       <div className="from-background/78 via-background/58 to-background/32 absolute inset-0 bg-gradient-to-br" />
     </div>
   );

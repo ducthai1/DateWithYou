@@ -44,10 +44,10 @@ export function LandingHero() {
 
   return (
     <div
-      className="hero-band relative flex min-h-dvh items-center px-5 py-16 short:py-8"
+      className="hero-band relative flex min-h-dvh flex-col items-center justify-center px-5 py-16 lg:px-10 xl:px-14 short:py-8"
       style={{ backgroundColor: GROUND }}
     >
-      <div className="mx-auto grid w-full max-w-[1240px] items-center gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.25fr)] lg:gap-14 xl:gap-16">
+      <div className="mx-auto grid w-full max-w-[1400px] items-center gap-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.4fr)] lg:gap-12 xl:gap-14 2xl:max-w-[1700px]">
         {/* Copy column. */}
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           {/*
@@ -106,18 +106,6 @@ export function LandingHero() {
             </Link>
           </div>
 
-          {/* Scroll affordance — the hero is min-h-dvh, so without it everything
-              below sits past the fold with nothing hinting it exists. */}
-          <a
-            href="#gioi-thieu"
-            className="vivu-rise mt-10 flex w-full max-w-sm flex-col items-center gap-1.5 self-center rounded-full px-4 py-2 text-[#8a7c6f] transition-colors hover:text-[#a8542f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a8542f]"
-            style={{ animationDelay: "1400ms" }}
-          >
-            <span className="text-xs font-light tracking-wide">Tìm hiểu thêm</span>
-            <span aria-hidden="true" className="vivu-nudge text-lg leading-none">
-              ↓
-            </span>
-          </a>
         </div>
 
         {/*
@@ -128,15 +116,33 @@ export function LandingHero() {
           the copy column's vertical centring down with it rather than just
           growing past the fold on its own.
         */}
-        <div className="mx-auto w-full max-w-[520px] lg:mx-0 lg:max-w-none">
+        <div className="mx-auto w-full max-w-[560px] lg:mx-0 lg:max-w-none">
           <ToneArt
             name="heroDesk"
             priority
-            sizes="(min-width: 1280px) 700px, (min-width: 1024px) 55vw, (min-width: 640px) 520px, 92vw"
+            sizes="(min-width: 1536px) 1100px, (min-width: 1024px) 62vw, (min-width: 640px) 560px, 92vw"
             className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 shadow-[0_20px_50px_rgba(59,50,42,0.12)] short:mx-auto short:max-h-[30vh] short:w-auto"
           />
         </div>
       </div>
+
+      {/* Scroll affordance — the hero is min-h-dvh, so without it everything
+          below sits past the fold with nothing hinting it exists.
+
+          It sits outside the two-column grid on purpose. Inside the copy
+          column it centred against the text, which on a wide screen put it
+          well left of the middle of the window — and this link belongs to the
+          whole hero, not to one half of it. */}
+      <a
+        href="#gioi-thieu"
+        className="vivu-rise mt-12 flex flex-col items-center gap-1.5 rounded-full px-4 py-2 text-[#8a7c6f] transition-colors hover:text-[#a8542f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a8542f] short:mt-6"
+        style={{ animationDelay: "1400ms" }}
+      >
+        <span className="text-xs font-light tracking-wide">Tìm hiểu thêm</span>
+        <span aria-hidden="true" className="vivu-nudge text-lg leading-none">
+          ↓
+        </span>
+      </a>
     </div>
   );
 }
