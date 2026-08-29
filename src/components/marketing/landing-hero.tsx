@@ -47,7 +47,7 @@ export function LandingHero() {
       className="hero-band relative flex min-h-dvh flex-col items-center justify-center px-5 py-16 lg:px-10 xl:px-14 short:py-8"
       style={{ backgroundColor: GROUND }}
     >
-      <div className="mx-auto grid w-full max-w-[1400px] items-center gap-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.4fr)] lg:gap-12 xl:gap-14 2xl:max-w-[1700px]">
+      <div className="mx-auto grid w-full max-w-[1400px] items-center gap-10 lg:grid-cols-[24rem_minmax(0,1fr)] lg:gap-12 xl:max-w-[1600px] xl:grid-cols-[26rem_minmax(0,1fr)] xl:gap-14 2xl:max-w-[1800px] 2xl:grid-cols-[28rem_minmax(0,1fr)]">
         {/* Copy column. */}
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           {/*
@@ -61,13 +61,13 @@ export function LandingHero() {
             width and letting height follow keeps that letterboxing intact
             instead of cropping into it.
           */}
-          <div className="relative aspect-[1672/941] w-[240px] sm:w-[300px] lg:w-[340px] short:w-[210px]">
+          <div className="relative aspect-[1672/941] w-[240px] sm:w-[300px] lg:w-full short:w-[210px]">
             <Image
               src={logoSrc("wordmark", tone)}
               alt=""
               aria-hidden="true"
               fill
-              sizes="(min-width: 1024px) 340px, (min-width: 640px) 300px, 240px"
+              sizes="(min-width: 1536px) 448px, (min-width: 1280px) 416px, (min-width: 1024px) 384px, (min-width: 640px) 300px, 240px"
               className="object-contain"
             />
           </div>
@@ -75,7 +75,7 @@ export function LandingHero() {
           <h1 className="sr-only">Vivu No Plan</h1>
 
           <p
-            className="vivu-rise mt-7 max-w-sm text-[15px] font-light leading-relaxed text-[#6b5c51] sm:text-base"
+            className="vivu-rise mt-7 max-w-sm text-[15px] font-light leading-relaxed text-[#6b5c51] sm:text-base lg:max-w-none"
             style={{ animationDelay: "320ms" }}
           >
             Nơi giữ lại những chỗ đã đi, món đã ăn và những hôm đáng nhớ — đi một
@@ -83,7 +83,7 @@ export function LandingHero() {
           </p>
 
           <div
-            className="vivu-rise mt-9 flex w-full max-w-sm flex-col gap-3.5"
+            className="vivu-rise mt-9 flex w-full max-w-sm flex-col gap-3.5 lg:max-w-none"
             style={{ animationDelay: "560ms" }}
           >
             <Link
@@ -120,7 +120,7 @@ export function LandingHero() {
           <ToneArt
             name="heroDesk"
             priority
-            sizes="(min-width: 1536px) 1100px, (min-width: 1024px) 62vw, (min-width: 640px) 560px, 92vw"
+            sizes="(min-width: 1536px) 1400px, (min-width: 1024px) 68vw, (min-width: 640px) 560px, 92vw"
             className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 shadow-[0_20px_50px_rgba(59,50,42,0.12)] short:mx-auto short:max-h-[30vh] short:w-auto"
           />
         </div>
