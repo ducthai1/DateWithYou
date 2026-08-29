@@ -1688,6 +1688,17 @@ export function LocationsPage() {
         <MapSheet
           count={(list.data ?? []).length}
           className={cn("order-2 lg:order-none", !listOpen && "lg:hidden")}
+          // On a phone the form renders inside the sheet's body, so opening it
+          // while the sheet sits at its collapsed stop (dimmed, pointer-events
+          // none) used to leave "+ Thêm" appearing to do nothing — the form was
+          // there, just invisible under the handle. Stop 2 rather than 1: the
+          // form runs name + two selects + two links + must-try + open/close
+          // times + rating, taller than stop 1 (55dvh) leaves free even before
+          // the keyboard takes its share. `formOpen ? 2 : undefined`, not a
+          // boolean-derived stop number kept in state — MapSheet only reacts to
+          // this value actually changing, so it raises once on open and leaves
+          // a manual drag back down alone for as long as the form stays open.
+          raiseTo={formOpen ? 2 : undefined}
         >
         <div className="space-y-4">
           <AnimatePresence initial={false}>

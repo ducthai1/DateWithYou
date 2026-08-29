@@ -22,6 +22,15 @@ import { cn } from "@/lib/utils";
  * somewhere useless, and "tap the handle to cycle" works without a gesture at
  * all. Drag is an accelerator, not the only way in.
  *
+ * `raiseTo` is a one-shot nudge, not a clamp. The add/edit form renders
+ * inside this sheet's scrollable body, so opening it while the sheet sits at
+ * its collapsed stop (pointer-events-none, opacity-60) put the form in the
+ * DOM with nothing visible to the person who just tapped "+ Thêm". The parent
+ * flips `raiseTo` on the closed→open transition of the form; this only ever
+ * raises `stop`, never lowers it, and closing the form does not move the
+ * sheet — a manual drag back down while the form stays open (to tap the map
+ * and correct a pin) must keep working.
+ *
  * One mount, two layouts. At lg and above this stops being a sheet and becomes
  * a plain block in the desktop two-column grid — done with `lg:!` utilities
  * rather than a JS breakpoint check on purpose. Rendering two copies and hiding
@@ -34,15 +43,34 @@ import { cn } from "@/lib/utils";
 const STOPS = [0.16, 0.55, 0.92] as const;
 type Stop = 0 | 1 | 2;
 
+/**
+ * Vertical gap kept between the sheet's bottom edge and the true bottom of
+ * the screen — the bottom nav's own footprint (see its z-index comment
+ * below for why the sheet must stop short of it). Shared by the `bottom`
+ * offset and the height cap a few lines down so the two cannot drift apart:
+ * a stop's height is a fraction of the *whole* viewport, but the space
+ * actually free for the sheet is one nav-height less than that, and the cap
+ * has to subtract the same amount the offset adds.
+ */
+const NAV_CLEARANCE = "calc(4.75rem + env(safe-area-inset-bottom, 0px))";
+
 export function MapSheet({
   count,
   children,
   className,
+  raiseTo,
 }: {
   /** How many places are in the list, shown while collapsed. */
   count: number;
   children: React.ReactNode;
   className?: string;
+  /**
+   * Bump the sheet up to at least this stop. Read once per change, not held
+   * as a floor: pass a new value (e.g. from `formOpen`) to raise the sheet,
+   * and leave it `undefined`/unchanged the rest of the time so a manual drag
+   * afterwards is not fought on every render.
+   */
+  raiseTo?: 1 | 2;
 }) {
   /*
    * Opens at the lowest stop. Half height on arrival meant the map — the whole
@@ -65,6 +93,15 @@ export function MapSheet({
   useEffect(() => {
     if (stop === 0) scrollRef.current?.scrollTo({ top: 0 });
   }, [stop]);
+
+  // Raise-on-open for the form (see the `raiseTo` doc above). Fires on every
+  // change of `raiseTo`, not on every render — the parent only changes it on
+  // the false→true transition of `formOpen`, so this does not re-fight a
+  // manual drag taken after the form was already open and raised once.
+  useEffect(() => {
+    if (raiseTo == null) return;
+    setStop((s) => (s < raiseTo ? raiseTo : s));
+  }, [raiseTo]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     startY.current = e.clientY;
@@ -98,19 +135,24 @@ export function MapSheet({
   return (
     <div
       className={cn(
-        // Sits ON TOP of the bottom nav, not behind it. Anchored at bottom-0 the last
-        // rows of the list were permanently under the nav — scrolling the sheet to
-        // its end still left them covered. Reserving the space inside the sheet
-        // instead only shrank the collapsed state to a useless sliver, so the whole
-        // sheet moves up and its stops are measured against what you can actually see.
-        // 4.75rem, not 4rem: the nav's centre action sticks up past the bar itself,
-        // and at 4rem it sat on top of the sheet's first row.
-        // z-50 on a phone so the sheet covers the floating controls when it is
-        // raised. The toolbar sits at z-40 and the search block at z-30, so at
-        // the taller stops both painted straight over the first card in the
-        // list — the sheet was underneath the very chrome it had covered. On
-        // desktop it is a panel beside them, not over them, so it drops back.
-        "fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-50 flex flex-col rounded-t-3xl border-t border-border bg-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)] lg:z-30",
+        // Positioned ABOVE the bottom nav, not behind it. Anchored at bottom-0 the
+        // last rows of the list were permanently under the nav — scrolling the
+        // sheet to its end still left them covered. Reserving the space inside the
+        // sheet instead only shrank the collapsed state to a useless sliver, so the
+        // whole sheet moves up and its stops are measured against what you can
+        // actually see. 4.75rem, not 4rem: the nav's centre action sticks up past
+        // the bar itself, and at 4rem it sat on top of the sheet's first row.
+        // z-45 on a phone: above the floating toolbar and search block (both
+        // z-40), so raising the sheet doesn't leave them painting over the first
+        // card in the list — but below the bottom nav's z-48. This used to be
+        // z-50, which beat the nav too: the offset above only moves the sheet's
+        // *position* clear of the nav, it says nothing about paint order once a
+        // drag or a tall stop brings the two boxes' edges back together, and at
+        // z-50 the sheet won that overlap and rode over the nav bar. The nav is
+        // this app's one fixed piece of chrome and has to stay the top layer on
+        // every route, so it, not the sheet, gets the higher number. On desktop
+        // it is a panel beside the toolbar, not over it, so it drops to lg:z-30.
+        "fixed inset-x-0 z-[45] flex flex-col rounded-t-3xl border-t border-border bg-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)] lg:z-30",
         // Desktop: not a sheet at all. `!` beats the inline height below.
         // Desktop: still not a sheet, but no longer a bare block either. It is the
         // scrolling body of the floating panel that sits over the map, so it keeps
@@ -119,7 +161,19 @@ export function MapSheet({
         className,
       )}
       style={{
-        height: `${heightVh}dvh`,
+        // Moved out of the Tailwind class list and into here so it shares one
+        // source (NAV_CLEARANCE) with the height cap below — the two used to be
+        // written out separately and only one of them got updated.
+        bottom: NAV_CLEARANCE,
+        // min() caps the tallest stop: 0.92 is a fraction of the *whole*
+        // viewport, but the sheet's bottom already eats NAV_CLEARANCE off the
+        // top of that space, so 92dvh alone runs the sheet's top edge off the
+        // screen. Worked out for a 700px-tall viewport (required test height)
+        // with zero safe-area inset: 92dvh is 644px, but only 624px is actually
+        // free above the offset (700 - 76) — 20px of the sheet's top, including
+        // the drag handle, would sit above y=0 with no way to scroll it into
+        // view. The cap keeps the top at y=0 in that case instead.
+        height: `min(${heightVh}dvh, calc(100dvh - ${NAV_CLEARANCE}))`,
         // Follow the finger while dragging, then let the height transition take
         // over. Transitioning during a drag makes it feel laggy.
         transform: dragOffset ? `translateY(${Math.max(0, dragOffset)}px)` : undefined,

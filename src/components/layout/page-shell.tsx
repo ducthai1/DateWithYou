@@ -73,17 +73,19 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "sticky top-2 z-20 mb-6 flex flex-col gap-y-3 rounded-2xl px-4 py-4 shadow-sm backdrop-blur-md",
+        "z-20 mb-6 flex flex-col gap-y-3 rounded-2xl px-4 py-4 shadow-sm backdrop-blur-md",
+        art ? "relative" : "sticky top-2",
         // Without artwork the band keeps the accent gradient it always had.
         // With artwork the gradient moves to the scrim below, so painting it
         // here too would double-tint the picture.
         art
-          ? "relative min-h-[7.5rem] justify-end sm:min-h-[8.5rem] short:min-h-0 short:justify-between"
+          ? "min-h-[9.5rem] justify-end sm:min-h-[12rem] short:min-h-0 short:justify-between"
           : "from-gradient-from/15 to-gradient-to/15 bg-gradient-to-r",
         "sm:flex-row sm:items-center sm:justify-between sm:gap-y-0",
         // Zoomed in, the banner keeps its job — saying where you are — on
         // roughly half the height.
-        "short:mb-3 short:rounded-xl short:py-2.5 shorter:top-1 shorter:py-2",
+        "short:mb-3 short:rounded-xl short:py-2.5 shorter:py-2",
+        !art && "shorter:top-1",
         className,
       )}
     >

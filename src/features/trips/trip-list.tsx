@@ -72,7 +72,7 @@ export function TripList() {
                     icon; the strip always had the right shape for a photo,
                     it just never had one. The tint survives as a scrim so the
                     pill and duration chip below keep the contrast they had. */}
-                <div className="relative h-24 overflow-hidden p-4">
+                <div className="relative h-36 sm:h-40 overflow-hidden p-4">
                   <ToneArt
                     name="bannerWide"
                     alt=""

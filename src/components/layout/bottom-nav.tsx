@@ -15,7 +15,15 @@ export function BottomNav() {
 
   return (
     <nav data-app-chrome
-      className="fixed inset-x-0 bottom-0 z-40 flex items-end justify-around border-t border-white/40 bg-white/70 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl shadow-[0_-10px_40px_rgba(0,0,0,0.04)] md:hidden">
+      // z-48: above every piece of page content that can float over it —
+      // notably /map's saved-place sheet (z-45), which used to sit at z-50
+      // and rode over this bar at its taller stops. Left below z-50 on
+      // purpose: that tier is full-screen takeovers (the in-app turn-by-turn
+      // overlay, its own floating stop/pause buttons) and toast-style
+      // banners anchored a few pixels above the very bottom of the screen —
+      // going higher than those would let this bar's full-width links steal
+      // taps meant for controls sharing that same strip.
+      className="fixed inset-x-0 bottom-0 z-[48] flex items-end justify-around border-t border-white/40 bg-white/70 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl shadow-[0_-10px_40px_rgba(0,0,0,0.04)] md:hidden">
       {NAV_ITEMS.filter((it) => !it.mobileHidden).map((it) => {
         const active = pathname.startsWith(it.href);
         const Icon = it.Icon;

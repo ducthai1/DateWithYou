@@ -46,11 +46,11 @@ export function FeatureHubGrid() {
                   actually about, and it is the same picture the page leads
                   with, so the tile and the page introduce each other. */}
               {page.art ? (
-                <div className={`relative overflow-hidden ${wide ? "h-40" : "h-32"}`}>
+                <div className={`relative overflow-hidden ${wide ? "h-56 sm:h-64" : "h-44 sm:h-48"}`}>
                   <ToneArt
                     name={page.art}
                     className="h-full transition-transform duration-500 group-hover:scale-[1.03]"
-                    sizes="(max-width: 1024px) 100vw, 460px"
+                    sizes="(max-width: 1024px) 100vw, 620px"
                   />
                 </div>
               ) : null}

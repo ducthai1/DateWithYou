@@ -47,7 +47,7 @@ export function LandingHero() {
       className="hero-band relative flex min-h-dvh items-center px-5 py-16 short:py-8"
       style={{ backgroundColor: GROUND }}
     >
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
+      <div className="mx-auto grid w-full max-w-[1240px] items-center gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.25fr)] lg:gap-14 xl:gap-16">
         {/* Copy column. */}
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           {/*
@@ -61,13 +61,13 @@ export function LandingHero() {
             width and letting height follow keeps that letterboxing intact
             instead of cropping into it.
           */}
-          <div className="relative aspect-[1672/941] w-[200px] sm:w-[250px]">
+          <div className="relative aspect-[1672/941] w-[240px] sm:w-[300px] lg:w-[340px] short:w-[210px]">
             <Image
               src={logoSrc("wordmark", tone)}
               alt=""
               aria-hidden="true"
               fill
-              sizes="250px"
+              sizes="(min-width: 1024px) 340px, (min-width: 640px) 300px, 240px"
               className="object-contain"
             />
           </div>
@@ -110,7 +110,7 @@ export function LandingHero() {
               below sits past the fold with nothing hinting it exists. */}
           <a
             href="#gioi-thieu"
-            className="vivu-rise mt-10 flex w-fit flex-col items-center gap-1.5 rounded-full px-4 py-2 text-[#8a7c6f] transition-colors hover:text-[#a8542f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a8542f]"
+            className="vivu-rise mt-10 flex w-full max-w-sm flex-col items-center gap-1.5 self-center rounded-full px-4 py-2 text-[#8a7c6f] transition-colors hover:text-[#a8542f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a8542f]"
             style={{ animationDelay: "1400ms" }}
           >
             <span className="text-xs font-light tracking-wide">Tìm hiểu thêm</span>
@@ -128,11 +128,11 @@ export function LandingHero() {
           the copy column's vertical centring down with it rather than just
           growing past the fold on its own.
         */}
-        <div className="mx-auto w-full max-w-[420px] lg:mx-0 lg:max-w-none">
+        <div className="mx-auto w-full max-w-[520px] lg:mx-0 lg:max-w-none">
           <ToneArt
             name="heroDesk"
             priority
-            sizes="(min-width: 1024px) 540px, (min-width: 640px) 420px, 90vw"
+            sizes="(min-width: 1280px) 700px, (min-width: 1024px) 55vw, (min-width: 640px) 520px, 92vw"
             className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 shadow-[0_20px_50px_rgba(59,50,42,0.12)] short:mx-auto short:max-h-[30vh] short:w-auto"
           />
         </div>
