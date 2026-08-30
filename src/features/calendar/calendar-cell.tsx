@@ -116,8 +116,11 @@ export const CalendarCell = memo(function CalendarCell({
         // what was asked for twice, so scrolling is the accepted trade-off.
         "relative flex aspect-square flex-col items-start justify-start overflow-hidden p-1 md:p-3 text-sm transition-all touch-manipulation",
         "rounded-2xl md:rounded-xl md:transition-colors",
+        // #E5E7EB against a near-white page was a border you had to look for.
+        // A tint of the space's own accent separates the card from the ground
+        // and ties the grid to whichever preset the couple picked.
         cell.inMonth && !isToday && "md:border-[3px]",
-        cell.inMonth && !isToday && !hasSpecial && "bg-card shadow-sm active:scale-[0.96] md:shadow-none md:border-border md:hover:border-accent md:active:scale-100",
+        cell.inMonth && !isToday && !hasSpecial && "bg-card shadow-sm active:scale-[0.96] md:shadow-sm md:border-accent/35 md:hover:border-accent md:active:scale-100",
         cell.inMonth && !isToday && hasSpecial && "bg-pink-50 shadow-sm active:scale-[0.96] md:bg-card md:shadow-none md:border-pink-300 md:active:scale-100 dark:md:border-pink-700",
         cell.inMonth && isToday &&
           "bg-accent/15 border-[3px] border-accent shadow-sm active:scale-[0.96] md:shadow-none md:active:scale-100",
@@ -137,7 +140,23 @@ export const CalendarCell = memo(function CalendarCell({
           above 190px — instead of ToneArt's 720w/100vw default, which would
           be a wasteful fetch repeated 35-42 times a month. */}
       {cell.inMonth && !summary?.thumbnailUrl && (
-        <ToneArt name={artName} fill sizes="190px" className="z-0 opacity-[0.38] pointer-events-none" />
+        <>
+          <ToneArt name={artName} fill sizes="190px" className="z-0 pointer-events-none" />
+          {/* The artwork is unfaded now, so the day number can no longer rely
+              on it staying pale — at 38% over a white card nothing could land
+              below 158/255, and at full strength anything can. This scrim
+              buys that guarantee back in the one corner that needs it: opaque
+              enough at the top-left for the numeral, gone by a third of the
+              way down so it never veils the picture. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 z-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(155deg, var(--card) 0%, var(--card) 14%, color-mix(in srgb, var(--card) 78%, transparent) 27%, color-mix(in srgb, var(--card) 30%, transparent) 40%, transparent 54%)",
+            }}
+          />
+        </>
       )}
 
       {/* Soft radial glow background for special dates */}
@@ -175,7 +194,11 @@ export const CalendarCell = memo(function CalendarCell({
               "leading-none",
               isToday
                 ? "flex h-7 w-7 items-center justify-center rounded-full bg-accent text-[14px] font-bold text-accent-foreground shadow-sm"
-                : "font-semibold pt-1 pl-1",
+                // A halo in the card colour, not a bigger scrim. Widening the
+                // scrim costs picture on every cell to protect two digits;
+                // this protects the digits and costs nothing else, and it
+                // holds for artwork nobody has drawn yet.
+                : "font-semibold pt-1 pl-1 [text-shadow:0_0_3px_var(--card),0_0_6px_var(--card),0_1px_2px_var(--card)]",
             )}
           >
             {cell.day}
