@@ -1,5 +1,166 @@
 # Vivu No Plan — quy ước khi sửa repo này
 
+## Tài sản thương hiệu — tông, giờ, và các bẫy đã trả giá
+Đọc file này trước khi thêm/đổi bất cứ ảnh nào của thương hiệu (mark, ảnh minh
+hoạ, icon). Mục tiêu: người sau không phải đoán ảnh nào đi đâu, không phải dò
+lại vì sao một tấm không hiện, và không lặp lại bốn cái bẫy đã trả giá thật ở
+cuối file.
+
+### 1. Ba LOẠI tài sản — khác nhau vì công dụng, không phải vì thư mục
+
+Bốn thư mục dưới `public/brand-image/` chứa **ba loại tranh khác nhau**, không
+phải bốn biến thể của cùng một thứ:
+
+| Loại | Thư mục | Hình dạng | Dùng ở đâu |
+|---|---|---|---|
+| Cảnh rộng | `morning-tone/`, `afternoon-tone/` | tỉ lệ ~16:9, lấp một dải hoặc nền cả trang | banner, hero, empty-state lớn |
+| Minh hoạ đơn lẻ | `common-page/` | một vật thể, nền trong suốt, không dựng cảnh | chip, empty-state nhỏ, góc thẻ |
+| Logo | `logo-icon/` | mark thật, alpha thật | header, sidebar, dialog |
+
+**`morning-tone/` và `afternoon-tone/`** đóng cùng một tập vai trò ở hai bảng
+màu khác nhau (sáng: xanh ngọc, chiều: hổ phách ấm) — cùng file `hero-desk.png`
+tồn tại ở cả hai thư mục, khác nội dung nhưng cùng vai trò. Đây là cảnh rộng,
+lấp trọn một dải hoặc nền trang.
+
+**`common-page/`** không phải "một biến thể nhỏ hơn" của cảnh rộng — nó là một
+LOẠI tranh khác: một vật thể duy nhất, nền trong suốt, không có bối cảnh xung
+quanh. Lý do tách riêng: nhét một cảnh rộng vào một chip 96px hay một góc thẻ
+là **cắt thành một vệt mờ**, không phải thu nhỏ đẹp. Cố ý **không mang tông** —
+một cái hộp thư trên nền trống không có gì ấm hay lạnh, nên nó đọc đúng ở cả
+hai bảng màu, và vì thế dùng được ở những chỗ cả hai tông cùng đi qua.
+
+**`logo-icon/`** là mark, có alpha thật (không nền trắng), tồn tại ở cả hai
+tông × hai biến thể (`wordmark`, `icon`) × hai bản vẽ mỗi cặp — xem mục 3.
+
+Nguồn sự thật cho asset nào tồn tại, ở tông nào: `ART` (cảnh rộng) và `SPOT`
+(minh hoạ đơn lẻ) trong `src/lib/tone.ts`. Đừng ghép chuỗi đường dẫn tay —
+luôn qua `artSrc(name, tone)` / `spotSrc(name)` / `logoSrc(variant, tone, hour?)`.
+
+### 2. Luật tông (sáng/chiều)
+
+- Cookie `vivu_tone` giữ **lựa chọn**: `"morning"` | `"afternoon"` | `"auto"`.
+- `"auto"` đổi tông theo đồng hồ máy người đọc, mốc là 12:00
+  (`AFTERNOON_FROM_HOUR` trong `tone.ts`).
+- Server đọc cookie và render đúng tông ngay lần đầu khi có lựa chọn tường
+  minh; chỉ `"auto"` mới cần client sửa lại sau mount, vì chỉ đồng hồ của
+  người đọc mới biết giờ thật — server không có thông tin đó.
+- `artSrc(name, tone)` rơi về tông còn lại khi ảnh xin không tồn tại ở tông đó
+  (`entry.tones` không chứa `tone`) — ảnh nhạt hơn một nấc, không vỡ trang.
+- `ART` trong `src/lib/tone.ts` là nơi khai **cái gì thật sự tồn tại**. Đọc nó
+  trước khi giả định một vai trò đã có ở cả hai tông.
+
+### 3. Luật giờ (mark đổi bản vẽ theo giờ chẵn/lẻ)
+
+`logoSrc(variant, tone, hour?)` nhận thêm tham số `hour` tuỳ chọn. Mỗi tông ×
+biến thể có **hai** bản vẽ (không phải một):
+
+```
+wordmark: morning → [wordmark-morning, wordmark-dual]
+          afternoon → [wordmark-afternoon, wordmark-afternoon-2]
+icon:     morning → [icon-morning, icon-duotone]
+          afternoon → [icon-afternoon, icon-afternoon-2]
+```
+
+Giờ chẵn → bản đầu, giờ lẻ → bản hai (`pair[hour % 2]`). Không có `hour` (gọi
+không truyền, hoặc lúc chưa biết giờ) → luôn trả bản đầu.
+
+**Vì sao có luật này**: mỗi tông được vẽ **hai** bản wordmark và **hai** bản
+icon, không phải một. Chọn cố định một bản là bỏ phí bản còn lại đã trả tiền
+vẽ. Đổi theo giờ dùng hết cả hai, và đổi tối đa hai lần trong lúc ai đó đang mở
+app đọc như "app đang sống" chứ không như một lỗi giật hình.
+
+**Áp dụng ở**: `BrandMark` (`src/components/layout/brand-mark.tsx`) — nơi duy
+nhất gọi `logoSrc` với `hour`. Mọi nơi `<BrandMark>` render (`side-nav.tsx`,
+`app-header.tsx`, cả hai dùng `variant="wordmark"` mặc định) tự động được luật
+này mà không cần sửa gì ở nơi gọi.
+
+Cách `BrandMark` tránh hydration mismatch: `hour` khởi tạo `undefined`, không
+đọc `new Date().getHours()` lúc render — vì server không biết giờ địa phương
+của người đọc, một hàm trả lời khác nhau ở server và ở client chính là hydration
+mismatch. Bỏ trống `hour` khiến `logoSrc` trả về bản đầu của cặp một cách xác
+định, đúng bằng thứ server render — nên bản thân giá trị `undefined` đã đóng
+vai "chưa sẵn sàng", không cần thêm cờ `ready` riêng. Giờ thật được nạp vào sau
+khi mount (`useEffect`), rồi giữ mới bằng một timer nhắm đúng mốc đầu giờ tiếp
+theo (`msUntilNextHour`, cùng hình dạng với `msUntilNextToneChange` trong
+`tone.ts`, nhưng nhắm mọi giờ chứ không riêng mốc 12h).
+
+### 4. Thêm asset mới — làm theo thứ tự
+
+1. **Đặt tên theo CÁI GÌ TRONG TRANH**, không theo chỗ sẽ dùng nó
+   (`wheel-food.png`, không phải `homepage-banner-3.png`).
+2. **Bỏ đúng thư mục** theo bảng ở mục 1 — cảnh rộng vào `morning-tone/` hoặc
+   `afternoon-tone/`, minh hoạ đơn lẻ vào `common-page/`.
+3. **Đăng ký vào `ART`** (cảnh rộng) hoặc `SPOT` (minh hoạ đơn lẻ) trong
+   `src/lib/tone.ts`. Với `ART`, khai `tones` **trung thực** — chỉ liệt kê tông
+   nào file thật sự tồn tại, đừng khai `BOTH` rồi để một tông rơi vào fallback
+   âm thầm.
+4. **Kiểm file có thật trên đĩa** trước khi báo xong — đăng ký sai tên hoặc
+   thiếu file không tự báo lỗi, nó chỉ lặng lẽ rơi về tông kia hoặc 404. Lệnh
+   kiểm mọi khai báo `ART`/`SPOT` so với đĩa:
+
+   ```bash
+   # ART: từng entry { file: "...", tones: BOTH|ONLY_MORNING|ONLY_AFTERNOON }
+   # phải có file ở đúng (các) thư mục tông mà `tones` khai
+   awk '/^export const ART = \{/,/^\} satisfies/' src/lib/tone.ts \
+     | grep -E '"[a-z0-9.-]+\.png"' \
+     | while IFS= read -r line; do
+         file=$(echo "$line" | grep -oE '"[a-z0-9.-]+\.png"' | tr -d '"')
+         tones=$(echo "$line" | grep -oE 'BOTH|ONLY_MORNING|ONLY_AFTERNOON')
+         [ "$tones" != "ONLY_AFTERNOON" ] && { [ -f "public/brand-image/morning-tone/$file" ] || echo "MISSING: public/brand-image/morning-tone/$file"; }
+         [ "$tones" != "ONLY_MORNING" ] && { [ -f "public/brand-image/afternoon-tone/$file" ] || echo "MISSING: public/brand-image/afternoon-tone/$file"; }
+       done
+
+   # SPOT: mỗi entry là "ten-vat-the.png", phải có trong common-page/
+   awk '/^export const SPOT = \{/,/^\} as const;/' src/lib/tone.ts \
+     | grep -oE '"[a-z0-9.-]+\.png"' | tr -d '"' \
+     | while IFS= read -r file; do
+         [ -f "public/brand-image/common-page/$file" ] || echo "MISSING: public/brand-image/common-page/$file"
+       done
+   ```
+
+   Không in dòng `MISSING:` nào là sạch. (Chạy lần cuối lúc viết tài liệu này:
+   36 khai báo, 0 thiếu.)
+
+### 5. Bốn bẫy đã trả giá — đừng lặp lại
+
+**Bẫy 1 — iOS launch image cần PNG truecolour, không phải palette PNG.**
+Triệu chứng: ảnh tải qua HTTP 200 bình thường, mở trong trình duyệt hiện đúng
+— tối ưu palette PNG "sống sót qua review" chính vì mọi decoder thường đều đọc
+được nó. Nhưng đường nạp launch-image của Safari kén hơn: nó cần PNG truecolour,
+palette PNG bị nó **âm thầm bỏ qua** dù link và media query đều đúng. Luật: 24
+ảnh trong `public/splash/` phải luôn là RGB truecolour (kiểm bằng `file
+public/splash/*.png`, phải thấy `8-bit/color RGB`, không phải `color palette`).
+
+**Bẫy 2 — `apple-mobile-web-app-capable` mở khoá launch image; Next chỉ phát
+`mobile-web-app-capable`.** Triệu chứng: icon đã mở app kiểu standalone (không
+thanh trình duyệt) nên trông như PWA đã cấu hình đúng — dễ tưởng nhầm launch
+image cũng đã ổn. Nhưng iOS 15.4+ chỉ tôn trọng tên chuẩn `mobile-web-app-capable`
+cho *display standalone*; đường nạp launch-image lại là code WebKit cũ hơn,
+đọc riêng tên có tiền tố `apple-`. Thiếu `<meta name="apple-mobile-web-app-capable">`
+thì 24 link splash đúng tuyệt đối vẫn bị đọc và bỏ qua. Xem
+`src/components/layout/apple-splash-links.tsx`.
+
+**Bẫy 3 — media query của splash phải khớp CHÍNH XÁC kích thước máy báo cáo;
+một link không kèm media query có thể che mất link đúng.** Từng thử thêm một
+link fallback không media query, lý do "có splash mờ còn hơn trắng màn" — sai:
+Safari chọn link ĐẦU TIÊN khớp; một link không điều kiện khớp MỌI thiết bị theo
+định nghĩa, nên nếu Safari chọn nó trước rồi từ chối vì sai kích thước, kết quả
+là **không splash nào cả** — tệ hơn cả việc không có entry, vì nó có thể che
+mất entry đúng đứng sau. Danh sách `SPLASH` trong `apple-splash-links.tsx` chỉ
+gồm các link có device-width/height/dpr/orientation tường minh, không có
+catch-all. Máy không nằm trong bảng thì không có splash — đó là thất bại trung
+thực, sửa bằng cách thêm đúng kích thước máy đó vào bảng.
+
+**Bẫy 4 — đọc tông hoặc giờ lúc RENDER là hydration mismatch.** `new
+Date().getHours()` (hay đọc cookie tông) gọi trực tiếp trong thân component sẽ
+cho server một câu trả lời và client một câu trả lời khác — server không biết
+múi giờ hay cookie phía trình duyệt của người đọc. Triệu chứng: React cảnh báo
+hydration mismatch, hoặc tệ hơn, âm thầm dựng lại cả cây sau khi thấy client
+không khớp server. Luật: giá trị phụ thuộc đồng hồ/cookie phải khởi tạo bằng
+giá trị server-safe (mặc định trung tính hoặc `undefined`) rồi nạp giá trị thật
+trong `useEffect` sau mount — xem `ToneProvider` (tông) và `BrandMark` (giờ,
+mục 3) làm cùng một hình dạng.
+
 ## KHÔNG bịa dữ liệu của người dùng — trống thì để trống
 
 Lúc tạo space, hệ thống chèn sẵn hai dòng: **"Ngày kỷ niệm"** và **"Sinh nhật"**,
