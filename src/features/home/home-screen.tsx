@@ -26,6 +26,7 @@ import { UpcomingCard } from "./upcoming-card";
 import { ActivityLinkCard } from "./activity-link-card";
 import { FirstRunPanel } from "./first-run-panel";
 import { HomeSearchLink } from "./home-search-link";
+import { PageShell } from "@/components/layout/page-shell";
 import { StatsPanel } from "@/features/stats/stats-panel";
 
 export function HomeScreen() {
@@ -33,7 +34,18 @@ export function HomeScreen() {
   const data = today.data;
 
   return (
-    <div className="mx-auto w-full max-w-[760px] space-y-5 px-4 pt-6 pb-6 md:px-[30px]">
+    /*
+     * The shell is the standard 1400px column now, the same as every other
+     * screen — a narrower one made the page start and end at a different place
+     * than the route you just came from, which reads as the app settling rather
+     * than as a design.
+     *
+     * The CONTENT does not simply stretch with it. These are cards of short
+     * text, and one sentence spread across 1400px is worse than the 760px it
+     * had. The extra width buys a second column from lg instead, which is what
+     * the space is actually good for.
+     */
+    <PageShell className="space-y-5">
       <HomeGreeting daysTogether={data?.daysTogether ?? null} pending={!data} />
       <HomeSearchLink />
 
@@ -43,14 +55,19 @@ export function HomeScreen() {
         <HomeError onRetry={() => void today.refetch()} retrying={today.isRefetching} />
       ) : data ? (
         <>
-          <StaggerList className="space-y-4">{buildCards(data)}</StaggerList>
+          {/* Two columns from lg with a masonry flow: the cards have very
+              different heights (a plan list vs a one-line link), and a grid
+              would leave a ragged hole beside the tall one. */}
+          <StaggerList className="space-y-4 lg:columns-2 lg:gap-4 lg:space-y-0 [&>*]:lg:mb-4 [&>*]:lg:break-inside-avoid">
+            {buildCards(data)}
+          </StaggerList>
           {/* Warm reminiscence, deliberately last: it rewards scrolling to the
               bottom rather than competing with today's actionable cards. It
               fetches on its own so a slow count never delays the cards above. */}
           <StatsPanel className="pt-2" />
         </>
       ) : null}
-    </div>
+    </PageShell>
   );
 }
 

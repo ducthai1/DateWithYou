@@ -11,6 +11,7 @@ import { deleteSpaceAndData } from "@/server/db/delete-space-cascade";
 import { resolveMemberProfiles } from "@/server/auth/member-profiles";
 import { mergeTags, type Tag } from "@/lib/plan-meta";
 import { THEME_PRESET_KEYS, resolveThemeKey } from "@/lib/theme-presets";
+import { todayKey } from "@/lib/date-keys";
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 // Server-side validation: only known preset keys accepted, not arbitrary strings.
@@ -215,27 +216,32 @@ export const spaceRouter = router({
         });
         const spaceId = String(doc._id);
 
-        // Seed 2 clearly-placeholder special dates so the countdown banner is
-        // never empty on a brand-new space. Both are set to today's date as a
-        // sensible starting point — the couple can edit or delete them freely.
+        // Seed exactly one special date, and only one that is actually true:
+        // the day this space was created. Earlier this seeded an "anniversary"
+        // and a "birthday" too, both dated to account-creation day — neither
+        // was information anyone entered, so the countdown, calendar and /home
+        // presented an invented relationship claim as if the couple had typed
+        // it in. A birthday nobody typed has no honest value at all, so it's
+        // gone; the real anniversary already has its own home (Space.anniversaryDate,
+        // set from /settings and surfaced by dashboard/stats), so this seed
+        // doesn't need to imitate it. "Ngày mở góc riêng" only claims what is
+        // verifiably true today — the space itself just opened — and avoids
+        // "tụi mình" since isPersonal spaces have a single member, not a couple.
+        // Not recurYearly: it's a one-time note ("welcome, this is day one"),
+        // not a yearly milestone the couple asked to keep celebrating — it
+        // shows today, then quietly drops out of the countdown, leaving room
+        // for the couple's own recurring dates (added via the special-dates
+        // panel) instead of an app-invented one competing with them forever.
         // create-only: never called again so couple edits are never overwritten.
-        const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
         await SpecialDateModel.insertMany([
           {
             spaceId,
             createdBy: ctx.userId,
-            title: "Ngày kỷ niệm",
-            icon: "heart",       // registry key — resolveIcon renders a Heart
-            date: todayStr,
-            recurYearly: true,
-          },
-          {
-            spaceId,
-            createdBy: ctx.userId,
-            title: "Sinh nhật",
-            icon: "cake",        // registry key — resolveIcon renders a Cake
-            date: todayStr,
-            recurYearly: true,
+            title: "Ngày mở góc riêng",
+            icon: "sparkles",     // registry key — resolveIcon renders Sparkles
+            date: todayKey(),     // Saigon-local day, matching how the rest of
+                                   // the app buckets "today" (see date-keys.ts)
+            recurYearly: false,
           },
         ]);
 

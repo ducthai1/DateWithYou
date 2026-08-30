@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PageShell } from "@/components/layout/page-shell";
 import { useRouter } from "next/navigation";
 import { RotateCw, Search, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -97,7 +98,14 @@ export function SearchScreen() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[900px] space-y-5 px-4 pt-6 pb-6 md:px-[30px]">
+    /*
+     * Same shape as the feed: the shell matches every other route, the results
+     * keep a reading width inside it. A search hit is a title over a snippet,
+     * and a snippet dragged to 1400px is unreadable in exactly the way a feed
+     * row is.
+     */
+    <PageShell className="space-y-5">
+      <div className="mx-auto w-full max-w-3xl space-y-5">
       <PageHeader
         title="Tìm kiếm"
         subtitle="Gõ vài chữ là tụi mình lục lại kỷ niệm, quán xá, công thức, lịch trình và chuyến đi."
@@ -213,6 +221,7 @@ export function SearchScreen() {
           })}
         </div>
       )}
-    </div>
+      </div>
+    </PageShell>
   );
 }

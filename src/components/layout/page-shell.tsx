@@ -47,6 +47,7 @@ export function PageHeader({
   actions,
   art,
   artPosition,
+  banner,
   className,
 }: {
   title: React.ReactNode;
@@ -68,6 +69,18 @@ export function PageHeader({
   art?: ArtName;
   /** Which part of the artwork survives the crop, e.g. "center 35%". */
   artPosition?: string;
+  /**
+   * A line of live status to sit inside the artwork band.
+   *
+   * Things like "còn 362 ngày" were rendering as their own full-width strip
+   * under the header, which spends a whole row of a phone screen on one short
+   * sentence while the band above it has empty space across most of its width.
+   * Put it in the band and the sentence gets read more, not less.
+   *
+   * Only rendered when there IS a band — without artwork the header is a title
+   * bar with no room to host anything.
+   */
+  banner?: React.ReactNode;
   className?: string;
 }) {
   return (
@@ -79,7 +92,15 @@ export function PageHeader({
         // With artwork the gradient moves to the scrim below, so painting it
         // here too would double-tint the picture.
         art
-          ? "min-h-[9.5rem] justify-end sm:min-h-[12rem] short:min-h-0 short:justify-between"
+          // One height for every screen that carries artwork. They were drifting
+          // — a band that is 192px on one route and 140px on the next makes the
+          // content below start at a different place each time you navigate,
+          // which reads as the page settling rather than as a design.
+          // Measured: at 11rem the band was 176px holding one title and one
+          // subtitle at its foot, so roughly 100px of it was empty and every
+          // screen's content started that much further down. 9rem still shows
+          // enough picture to be a picture.
+          ? "min-h-[8rem] justify-end sm:min-h-[9rem] short:min-h-0 short:justify-between"
           : "from-gradient-from/15 to-gradient-to/15 bg-gradient-to-r",
         "sm:flex-row sm:items-center sm:justify-between sm:gap-y-0",
         // Zoomed in, the banner keeps its job — saying where you are — on
@@ -107,6 +128,15 @@ export function PageHeader({
             sizes="(max-width: 768px) 100vw, 960px"
           />
           <div className="from-card/95 via-card/70 to-card/15 absolute inset-0 bg-gradient-to-r" />
+        </div>
+      ) : null}
+
+      {/* Status line, top-right of the band. Away from the title so neither
+          truncates the other, and inside the scrim's thin end where the
+          artwork is busiest — a chip needs its own surface there anyway. */}
+      {art && banner ? (
+        <div className="absolute right-3 top-3 z-10 max-w-[min(60%,22rem)] short:static short:mb-1 short:max-w-none">
+          {banner}
         </div>
       ) : null}
 

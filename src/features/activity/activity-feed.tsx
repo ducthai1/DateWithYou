@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { AppRouter } from "@/server/trpc/root";
-import { ToneArt } from "@/components/theme/tone-art";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { trpc } from "@/lib/trpc";
 import { dateKeyFromDate, todayKey } from "@/lib/date-keys";
 import { cn } from "@/lib/utils";
@@ -202,23 +202,23 @@ export function ActivityFeed() {
   const canLoadMore = Boolean(list.data?.nextCursor) && limit < MAX_ITEMS;
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6 px-4 pt-6 pb-6">
-      {/* At this column's 672px cap a side-by-side image cramps the text, so
-          the artwork runs full-width above the header instead of beside it —
-          the piece that shows every feature at once, which is what this feed
-          is. Not the compass art the empty state below uses: reproducing its
-          real 672x112 crop showed the window lands on blank kraft paper, so
-          the band read as a brown smear rather than a picture. */}
-      <div className="relative h-28 w-full overflow-hidden rounded-2xl short:h-20 shorter:h-16">
-        <ToneArt name="bannerWide" alt="" fill position="center 45%" sizes="(max-width: 672px) 100vw, 672px" />
-      </div>
+    /*
+     * Full-width shell, capped feed. A chronological list of one-line events
+     * is the clearest case where stretching hurts: at 1400px the actor, the
+     * verb and the timestamp end up so far apart the eye has to travel to
+     * connect them. The band and the page rhythm match every other route; the
+     * list stays at a reading width and centres inside it.
+     */
+    <PageShell className="space-y-6">
+      <div className="mx-auto w-full max-w-3xl space-y-6">
 
-      <header className="space-y-1">
-        <h1 className="text-accent font-serif text-2xl font-semibold">Hoạt động</h1>
-        <p className="text-muted-foreground text-sm">
+      {/* The same band component every other screen uses, rather than a
+          hand-rolled strip above a hand-rolled heading — two bands of two
+          different heights is what made the content start at a different
+          place on every route. */}
+      <PageHeader title="Hoạt động" subtitle="
           Những gì tụi mình đã thêm vào không gian chung.
-        </p>
-      </header>
+        " art="bannerWide" artPosition="center 45%" />
 
       {list.isPending && <FeedSkeleton />}
 
@@ -335,6 +335,7 @@ export function ActivityFeed() {
           </Button>
         </div>
       )}
-    </div>
+      </div>
+    </PageShell>
   );
 }

@@ -80,9 +80,8 @@ export function CalendarView() {
         title="Lịch"
         subtitle="Lịch tháng, nhật ký việc và ngày đặc biệt của tụi mình."
         art="calendarTablet"
+        banner={<CountdownBanner />}
       />
-
-      <CountdownBanner />
 
       <div className="flex items-center gap-2">
         <Tabs tabs={VIEW_TABS} value={view} onChange={setView} className="w-max max-w-full" />

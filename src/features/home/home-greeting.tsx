@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ToneArt } from "@/components/theme/tone-art";
+import { PageHeader } from "@/components/layout/page-shell";
 import { viNumber } from "./home-format";
 
 type Greeting = { title: string; sub: string };
@@ -38,34 +38,29 @@ export function HomeGreeting({ daysTogether, pending }: HomeGreetingProps) {
   useEffect(() => setGreeting(greetingFor(new Date().getHours())), []);
 
   return (
-    <header className="space-y-3">
-      {/* Brand band above the greeting. This was the one screen the couple
-          lands on every single day and it was pure text, so the artwork never
-          reached anyone who actually has data — only the empty states did.
-          Rendered unconditionally, unlike the text below: it needs no
-          client-resolved hour, so it must not wait behind `greeting` and
-          leave the top of the screen blank for that first frame. */}
-      <div className="relative h-28 w-full overflow-hidden rounded-2xl short:h-20 shorter:h-16">
-        <ToneArt
-          name="mapIsland"
-          fill
-          position="center 55%"
-          sizes="(max-width: 768px) 100vw, 700px"
-        />
-      </div>
+    <header className="space-y-2">
+      {/*
+        The shared band, not a strip of artwork above a hand-rolled heading.
+        Two bands of two different heights is what made content start at a
+        different place on /home than on every other route.
+
+        The greeting resolves from the reader's own clock after mount, so the
+        title and subtitle are passed as nodes and stand in as skeletons until
+        it does — the band itself needs no hour and must not wait behind it,
+        or the top of the screen is blank for that first frame.
+      */}
+      <PageHeader
+        art="mapIsland"
+        artPosition="center 55%"
+        title={
+          greeting ? greeting.title : <Skeleton className="h-8 w-52" />
+        }
+        subtitle={
+          greeting ? greeting.sub : <Skeleton className="h-4 w-64" />
+        }
+      />
 
       <div className="space-y-1.5">
-        {greeting ? (
-          <>
-            <h1 className="text-h1 text-accent font-semibold">{greeting.title}</h1>
-            <p className="text-muted-foreground text-sm">{greeting.sub}</p>
-          </>
-        ) : (
-          <>
-            <Skeleton className="h-8 w-52" />
-            <Skeleton className="h-4 w-64" />
-          </>
-        )}
 
         {!pending && daysTogether !== null && (
           <p className="text-foreground/80 flex items-center gap-1.5 pt-1 text-sm">
