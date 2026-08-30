@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function TripsPage() {
   return (
-    <main className="min-h-dvh bg-background pb-20">
+    <main className="min-h-dvh pb-20">
       <TripList />
     </main>
   );

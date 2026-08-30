@@ -137,7 +137,7 @@ export const CalendarCell = memo(function CalendarCell({
           above 190px — instead of ToneArt's 720w/100vw default, which would
           be a wasteful fetch repeated 35-42 times a month. */}
       {cell.inMonth && !summary?.thumbnailUrl && (
-        <ToneArt name={artName} fill sizes="190px" className="z-0 opacity-[0.07] pointer-events-none" />
+        <ToneArt name={artName} fill sizes="190px" className="z-0 opacity-[0.16] pointer-events-none" />
       )}
 
       {/* Soft radial glow background for special dates */}

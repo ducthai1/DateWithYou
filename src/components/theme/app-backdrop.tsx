@@ -26,16 +26,25 @@ import { NAV_HIDDEN_ON } from "@/components/layout/nav-items";
  * element, so cards, headers and text all keep their own surfaces.
  */
 
-/** Which piece grounds which section. Falls through to the app-wide banner. */
+/**
+ * Which piece grounds which section. Falls through to the app-wide banner.
+ *
+ * Deliberately NOT the same piece that route's header band shows. The first
+ * pass matched them on purpose — the idea was that the ground would read as
+ * the band's texture continuing down the page. On screen it reads as the same
+ * picture printed twice at two sizes, which looks like a mistake rather than a
+ * motif. The ground is texture; the band is the subject. They should not be
+ * the same photograph.
+ */
 const BY_PREFIX: ReadonlyArray<readonly [string, ArtName]> = [
   ["/calendar", "mapIsland"],
-  ["/timeline", "memoriesScrapbook"],
-  ["/trips", "tripPlanner"],
-  ["/library", "appShowcase"],
-  ["/vault", "vaultSafe"],
-  ["/wheel", "wheelFood"],
+  ["/timeline", "emptyCanvas"],
+  ["/trips", "bannerSub"],
+  ["/library", "emptyBackpack"],
+  ["/vault", "mapTreasure"],
+  ["/wheel", "bannerOurPage"],
   ["/search", "emptyMap"],
-  ["/activity", "bannerWide"],
+  ["/activity", "emptyCompass"],
   ["/home", "heroDesk"],
   ["/settings", "bannerOurPage"],
   ["/onboarding", "mapTreasure"],
