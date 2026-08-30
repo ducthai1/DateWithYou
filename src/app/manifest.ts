@@ -14,9 +14,13 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/home",
     display: "standalone",
     // Matches the mark's tile colour, so the launch splash flows into the
-    // brand rather than flashing a different ground first.
-    background_color: "#0E3E4A",
-    theme_color: "#0E3E4A",
+    // brand rather than flashing a different ground first. The icon and all
+    // 24 iOS launch images were rebuilt on a navy #1E3A5F tile (picked by
+    // rendering the mark at 16px against four candidate grounds); this used
+    // to read teal (#0E3E4A) from before that rebuild, which left Android's
+    // generated splash ground mismatched against the icon it surrounds.
+    background_color: "#1E3A5F",
+    theme_color: "#1E3A5F",
     lang: "vi",
     categories: ["lifestyle", "productivity"],
     icons: [
