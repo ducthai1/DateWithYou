@@ -140,23 +140,7 @@ export const CalendarCell = memo(function CalendarCell({
           above 190px — instead of ToneArt's 720w/100vw default, which would
           be a wasteful fetch repeated 35-42 times a month. */}
       {cell.inMonth && !summary?.thumbnailUrl && (
-        <>
-          <ToneArt name={artName} fill sizes="190px" className="z-0 pointer-events-none" />
-          {/* The artwork is unfaded now, so the day number can no longer rely
-              on it staying pale — at 38% over a white card nothing could land
-              below 158/255, and at full strength anything can. This scrim
-              buys that guarantee back in the one corner that needs it: opaque
-              enough at the top-left for the numeral, gone by a third of the
-              way down so it never veils the picture. */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 z-0 pointer-events-none"
-            style={{
-              background:
-                "linear-gradient(155deg, var(--card) 0%, var(--card) 14%, color-mix(in srgb, var(--card) 78%, transparent) 27%, color-mix(in srgb, var(--card) 30%, transparent) 40%, transparent 54%)",
-            }}
-          />
-        </>
+        <ToneArt name={artName} fill sizes="190px" className="z-0 pointer-events-none" />
       )}
 
       {/* Soft radial glow background for special dates */}
@@ -169,20 +153,34 @@ export const CalendarCell = memo(function CalendarCell({
         />
       )}
 
-      {/* Background memory thumbnail. Mobile shows it almost fully (reads as a
-          real photo of the day) with a soft top scrim so the date stays legible;
-          desktop keeps the faint 25% wash behind the sticky notes. */}
+      {/* The day's own photo, at full strength on every size.
+          Desktop used to wash it to 25% so the plan chips could sit over it,
+          which meant a day someone actually photographed looked FAINTER than a
+          day with nothing on it — the stand-in illustration next to it now
+          renders unfaded. A real memory should never lose to a placeholder. */}
       {summary?.thumbnailUrl && cell.inMonth && (
-        <>
-          { }
-          <img
-            src={summary.thumbnailUrl}
-            alt=""
-            loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover opacity-90 md:opacity-25"
-          />
-          <div className="absolute inset-0 z-0 bg-gradient-to-b from-card via-card/40 to-transparent md:hidden" />
-        </>
+        <img
+          src={summary.thumbnailUrl}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 z-0 h-full w-full object-cover"
+        />
+      )}
+
+      {/* One scrim for whichever picture the cell ended up with — the day's own
+          photo or the stand-in. It used to live inside the artwork branch, so
+          a real photo got a different treatment from a placeholder for no
+          reason a reader could see. Opaque at the top-left where the numeral
+          is, gone by 40% down so it never veils the picture. */}
+      {cell.inMonth && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0"
+          style={{
+            background:
+              "linear-gradient(155deg, var(--card) 0%, var(--card) 14%, color-mix(in srgb, var(--card) 78%, transparent) 27%, color-mix(in srgb, var(--card) 30%, transparent) 40%, transparent 54%)",
+          }}
+        />
       )}
 
       {/* ── Top row: day number + count badge ── */}
