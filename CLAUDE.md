@@ -1,6 +1,12 @@
 # Vivu No Plan — quy ước khi sửa repo này
 
 ## Tài sản thương hiệu — tông, giờ, và các bẫy đã trả giá
+
+> **Đính chính đã đo (2026-08-31):** 8 file trong `common-page/` **KHÔNG trong
+> suốt** — 0% pixel có alpha, nền trắng đục. Chỉ bộ `logo-icon/` mới có alpha
+> thật. Hệ quả: spot phải đặt trên mặt trắng và dùng `object-contain`; thả lên
+> thẻ có màu là nó tự vẽ một khung trắng quanh mình.
+
 Đọc file này trước khi thêm/đổi bất cứ ảnh nào của thương hiệu (mark, ảnh minh
 hoạ, icon). Mục tiêu: người sau không phải đoán ảnh nào đi đâu, không phải dò
 lại vì sao một tấm không hiện, và không lặp lại bốn cái bẫy đã trả giá thật ở
