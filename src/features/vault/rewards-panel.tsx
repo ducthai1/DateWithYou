@@ -204,6 +204,11 @@ export function RewardsPanel() {
         {tasks.length === 0 ? (
           <EmptyState
             icon="list-checks"
+            // A little task done for each other reads closer to a note left in
+            // a mailbox than to a generic checklist glyph — this section and
+            // the voucher one below can both be empty at once, so it gets its
+            // own spot rather than sharing one with vouchers.
+            spot="mailboxOpen"
             title="Chưa có nhiệm vụ"
             subtitle="Thêm nhiệm vụ nhỏ (vd: đấm lưng 15p). Ai hoàn thành sẽ nhận điểm — tích đủ thì đổi voucher."
           />
@@ -280,6 +285,9 @@ export function RewardsPanel() {
         {vouchers.length === 0 ? (
           <EmptyState
             icon="gift"
+            // A voucher is a little indulgence, not a task — a treat flatlay
+            // reads as "reward" without borrowing the tasks section's mailbox.
+            spot="flatlayCameraMap"
             title="Chưa có phần thưởng"
             subtitle="Đặt vài voucher để đổi điểm với nhau."
           />

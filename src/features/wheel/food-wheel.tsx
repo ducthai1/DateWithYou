@@ -150,7 +150,10 @@ export function FoodWheel() {
           of width (the !-forced override wins over lg:block either way the
           two media queries happen to sort in the compiled CSS). */}
       <div className="short:!hidden relative hidden h-48 overflow-hidden rounded-2xl lg:block xl:h-56">
-        <ToneArt name="wheelFood" alt="" fill position="center 65%" sizes="352px" />
+        {/* wheelFoodAlt, not wheelFood again — the header above already shows
+            wheelFood, and this box sat directly below it showing the very same
+            picture twice on one page before this. */}
+        <ToneArt name="wheelFoodAlt" alt="" fill position="center 65%" sizes="352px" />
       </div>
 
       </div>
@@ -245,7 +248,15 @@ export function FoodWheel() {
         <ModalContent>
           {winner && (
             <div className="space-y-3 text-center">
-              <p className="text-4xl sm:text-5xl">🎉</p>
+              {/* giftReveal (a plane bursting out of a gift box) replaces the
+                  🎉 glyph: the wheel just revealed a pick, and this is
+                  literally a reveal picture instead of a generic celebration
+                  emoji. Modal is size="lg" (max-w-lg = 512px, ModalContent
+                  p-5 both sides) so even at the 360px viewport floor the
+                  content box is ~288px — 220px leaves margin on every side. */}
+              <div className="relative mx-auto w-full max-w-[220px]">
+                <ToneArt name="giftReveal" alt="" sizes="220px" />
+              </div>
               <p className="text-xl sm:text-2xl font-semibold">{winner.name}</p>
               {winner.mustTry && (
                 <p className="text-muted-foreground flex items-center justify-center gap-1 text-sm">

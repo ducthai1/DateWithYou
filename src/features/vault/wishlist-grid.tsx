@@ -223,6 +223,11 @@ export function WishlistGrid() {
       {filteredItems.length === 0 ? (
         <EmptyState
           icon="gift"
+          // This IS the whole tab when empty, so it gets the "lg" step (176px)
+          // rather than the 112px default other spots on this page use for a
+          // section nested among other content.
+          spot="mailboxOpen2"
+          spotSize="lg"
           title="Wishlist trống"
           subtitle={items.length === 0 ? "Thêm món quà muốn có — ghi giá, gắn link và lên kế hoạch mua cùng nhau." : "Không có món quà nào trong mục này."}
         />

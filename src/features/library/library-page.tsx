@@ -180,6 +180,12 @@ export function LibraryPage() {
       ) : items.length === 0 ? (
         <EmptyState
           icon="music"
+          // Whole-tab state (the search/filter narrowed the list to nothing),
+          // so "lg" like the collection's own empty state above — a wandering
+          // plane trail fits "try a different path" better than any one
+          // specific item type (music vs. video vs. recipe vs. game).
+          spot="planeTrail"
+          spotSize="lg"
           title="Không tìm thấy"
           subtitle="Thử bỏ bớt bộ lọc xem sao nhé."
           action={{ label: "Xoá lọc", onClick: () => { setTagFilter(""); setProviderFilter(""); } }}

@@ -8,7 +8,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useTone } from "@/components/theme/tone-provider";
-import { artSrc, type ArtName } from "@/lib/tone";
+import { artSrc, type ArtName, type SpotName } from "@/lib/tone";
+import { SpotArt } from "@/components/theme/tone-art";
 import { resolveIcon } from "@/lib/icon-registry";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,19 @@ interface EmptyStateProps {
    * error rather than an invitation.
    */
   artSize?: "sm" | "lg";
+  /**
+   * A spot illustration instead of the icon medallion — for the empty states
+   * `art` is too big for: a kanban column, a section nested inside a page that
+   * already has its own art. A 16:9 scene forced into that box crops to a
+   * smear; a spot is one object and reads fine that small. Ignored when `art`
+   * is set (pass one or the other, never both).
+   */
+  spot?: SpotName;
+  /** Reuses the `art` size steps: "sm" (default, 112px) for a column or a
+   *  section among other content, "lg" (176px) where this empty state is the
+   *  whole tab. Both are still far under the 352px `art` gets — a spot is one
+   *  object, not a scene, and looks like a stray sticker if blown up that big. */
+  spotSize?: "sm" | "lg";
   className?: string;
 }
 
@@ -68,7 +82,7 @@ const FADE_STYLE = `
  * project's spring tokens (--ease-spring / --dur). All colours come from CSS
  * custom properties — fully theme-aware, no hardcoded hex.
  */
-export function EmptyState({ icon, title, subtitle, action, art, artSize = "sm", className }: EmptyStateProps) {
+export function EmptyState({ icon, title, subtitle, action, art, artSize = "sm", spot, spotSize = "sm", className }: EmptyStateProps) {
   const Icon = resolveIcon(icon);
   const { tone } = useTone();
 
@@ -101,6 +115,12 @@ export function EmptyState({ icon, title, subtitle, action, art, artSize = "sm",
               artSize === "lg" ? "max-w-[min(35rem,92%)]" : "max-w-[min(22rem,80%)]",
             )}
           />
+        ) : spot ? (
+          <div
+            className={cn("relative shrink-0", spotSize === "lg" ? "h-44 w-44" : "h-28 w-28")}
+          >
+            <SpotArt name={spot} sizes={spotSize === "lg" ? "176px" : "112px"} />
+          </div>
         ) : (
           <span className="bg-accent-soft flex h-16 w-16 shrink-0 items-center justify-center rounded-full">
             <Icon className="text-accent h-7 w-7" strokeWidth={1.6} />

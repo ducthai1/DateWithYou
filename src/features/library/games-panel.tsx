@@ -93,6 +93,10 @@ export function GamesPanel() {
       {games.length === 0 ? (
         <EmptyState
           icon="sparkles"
+          // The other library tabs' own empty states carry scene art
+          // (emptyBackpack); this tab's never had one. Tone-neutral sky beats
+          // forcing a travel-desk scene onto a "no games yet" message.
+          art="skyWordmark"
           title="Chưa có trò chơi nào"
           subtitle="Thêm trò chơi cho cả hai (vd: Nối từ, 20 câu hỏi, Ai hiểu nhau hơn…)"
         />

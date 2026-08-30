@@ -21,9 +21,12 @@ import { useToast } from "@/components/ui/toast";
 type PlanStatus = "idea" | "planning" | "done";
 
 const COLUMNS = [
-  { key: "idea" as const, label: "Ý tưởng", icon: Lightbulb, bg: "bg-amber-500/10 border-amber-500/20", iconColor: "text-amber-600" },
-  { key: "planning" as const, label: "Đang lên kế hoạch", icon: Map, bg: "bg-sky-500/10 border-sky-500/20", iconColor: "text-sky-600" },
-  { key: "done" as const, label: "Đã làm", icon: CheckCircle2, bg: "bg-emerald-500/10 border-emerald-500/20", iconColor: "text-emerald-600" },
+  // spot: a wide scene here would crop to a smear at 1/3-column width (md+),
+  // so each empty column gets a spot illustration picked for what the status
+  // means instead — a daydream, a booked plan, a trip already made.
+  { key: "idea" as const, label: "Ý tưởng", icon: Lightbulb, bg: "bg-amber-500/10 border-amber-500/20", iconColor: "text-amber-600", spot: "islandCampsite" as const },
+  { key: "planning" as const, label: "Đang lên kế hoạch", icon: Map, bg: "bg-sky-500/10 border-sky-500/20", iconColor: "text-sky-600", spot: "pinTicket" as const },
+  { key: "done" as const, label: "Đã làm", icon: CheckCircle2, bg: "bg-emerald-500/10 border-emerald-500/20", iconColor: "text-emerald-600", spot: "backpackScrapbook" as const },
 ];
 
 export function RoadmapBoard() {
@@ -203,6 +206,7 @@ export function RoadmapBoard() {
               {colPlans.length === 0 ? (
                 <EmptyState
                   icon="heart"
+                  spot={col.spot}
                   title="Trống"
                   subtitle={col.key === "idea" ? "Thêm dự định mới hoặc kéo thả thẻ vào đây." : "Kéo thả thẻ vào đây để chuyển trạng thái."}
                   className="py-10"

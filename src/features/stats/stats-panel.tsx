@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SpotArt } from "@/components/theme/tone-art";
 import { cn } from "@/lib/utils";
 import { StatCard } from "./stat-card";
 
@@ -188,7 +189,16 @@ export function StatsPanel({ className }: { className?: string }) {
   return (
     <section className={cn("space-y-4", className)}>
       <div className="space-y-0.5">
-        <h2 className="text-accent text-xl font-semibold">Chúng mình</h2>
+        <div className="flex items-center gap-2">
+          {/* This panel is dropped into other screens verbatim (see file
+              banner), so the mark stays a small fixed 36px inline flourish
+              rather than a background band that would fight whatever art
+              the host screen already has above it. */}
+          <div className="relative h-9 w-9 shrink-0" aria-hidden="true">
+            <SpotArt name="starRibbon" sizes="36px" />
+          </div>
+          <h2 className="text-accent text-xl font-semibold">Chúng mình</h2>
+        </div>
         <p className="text-muted-foreground text-sm">{lead}</p>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

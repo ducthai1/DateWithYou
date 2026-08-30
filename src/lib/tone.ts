@@ -109,12 +109,18 @@ export const ART = {
  *
  * These live in their own folder because they are a different KIND of picture,
  * not a different palette. The tone sets are wide scenes that fill a band; a
- * spot is a single object on a transparent ground, for a place where a scene
- * would be cropped to a smear — a chip, a small empty state, a card corner.
+ * spot is a single object, for a place where a scene would crop to a smear —
+ * a chip, a small empty state, a card corner.
  *
- * They carry no tone because there is nothing warm or cool about a mailbox on
- * nothing: they read correctly on either palette, which is exactly why they
- * are useful in components that both tones share.
+ * They carry no tone because nothing about a mailbox is warm or cool: they
+ * read on either palette, which is why they suit components both tones share.
+ *
+ * MEASURED, and not what it looks like: every one of these files is OPAQUE
+ * with a near-white ground — 0% of their pixels carry any alpha. So they must
+ * sit on a white or near-white surface and use `object-contain`; dropped onto
+ * a tinted card they draw a white box around themselves. Only the logo files
+ * have real alpha. Re-exported with transparency, this constraint goes away
+ * and the placements can move onto any surface.
  */
 export const SPOT = {
   mailboxOpen: "mailbox-open.png",

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useTone } from "./tone-provider";
-import { artSrc, type ArtName } from "@/lib/tone";
+import { artSrc, spotSrc, type ArtName, type SpotName } from "@/lib/tone";
 import { cn } from "@/lib/utils";
 
 /**
@@ -66,6 +66,43 @@ export function ToneArt({
       width={1672}
       height={941}
       className={cn("h-auto w-full object-cover", className)}
+    />
+  );
+}
+
+/**
+ * A single spot illustration — one object, tone-neutral, for a box far
+ * smaller than a scene's own frame (a chip, a small empty state, a card
+ * corner). Always `fill` + `object-contain`, never `object-cover`: a scene can
+ * be cropped and still read as a scene, but cropping the one object a spot
+ * shows just cuts it off. The measured files aren't a single aspect ratio
+ * (some are square, some ~16:9, one ~2.3:1 — see tone.ts), so `contain` inside
+ * whatever box the parent sets is what keeps every one of them undistorted
+ * without needing a per-file width/height table here.
+ *
+ * No `useTone` here on purpose: spots carry no palette, so this needs no
+ * client-only tone read the way `ToneArt` does.
+ */
+export function SpotArt({
+  name,
+  alt = "",
+  className,
+  sizes = "112px",
+}: {
+  name: SpotName;
+  alt?: string;
+  className?: string;
+  /** Match the real rendered width of the box the parent gives this. */
+  sizes?: string;
+}) {
+  return (
+    <Image
+      src={spotSrc(name)}
+      alt={alt}
+      aria-hidden={alt === "" ? true : undefined}
+      fill
+      sizes={sizes}
+      className={cn("object-contain", className)}
     />
   );
 }
