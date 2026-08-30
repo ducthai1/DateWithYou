@@ -52,6 +52,15 @@ const SPLASH: Splash[] = [
 export function AppleSplashLinks() {
   return (
     <>
+      {/*
+        Next emits only the standardised `mobile-web-app-capable`, and iOS 15.4+
+        does honour that for standalone display — which is why the icon already
+        opened without Safari chrome. The launch-image path is older WebKit
+        code that keys off the apple-prefixed name instead, so without this the
+        links below are read and ignored: the images served fine over HTTP and
+        the device still showed nothing.
+      */}
+      <meta name="apple-mobile-web-app-capable" content="yes" />
       {SPLASH.map((s) => (
         <link
           key={s.file}
@@ -60,6 +69,16 @@ export function AppleSplashLinks() {
           media={`screen and (device-width: ${s.w}px) and (device-height: ${s.h}px) and (-webkit-device-pixel-ratio: ${s.dpr}) and (orientation: ${s.orient})`}
         />
       ))}
+      {/*
+        Catch-all, deliberately last: Safari takes the FIRST link whose media
+        matches, so every device-specific file above wins before this is
+        reached. It exists because a device that matches none of them gets no
+        launch screen at all, and "none of them" is not exotic — an iPhone with
+        Display Zoom turned on reports a different logical size than the same
+        phone without it, and every new model ships a size this table has not
+        heard of yet. A slightly scaled splash beats a white flash.
+      */}
+      <link rel="apple-touch-startup-image" href="/splash/430x932-3x-portrait.png" />
     </>
   );
 }
