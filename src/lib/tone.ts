@@ -75,25 +75,63 @@ const DIR: Record<Tone, string> = {
 };
 
 export const ART = {
+  /* ── In both tones ────────────────────────────────────────────────────── */
   heroDesk: { file: "hero-desk.png", tones: BOTH },
   appShowcase: { file: "app-showcase.png", tones: BOTH },
   mapIsland: { file: "map-island.png", tones: BOTH },
   memoriesScrapbook: { file: "memories-scrapbook.png", tones: BOTH },
   wheelFood: { file: "wheel-food.png", tones: BOTH },
+  // Ten roles that used to be afternoon-only. The morning set was drawn to
+  // match them, so the tone switch finally changes every picture on screen
+  // instead of leaving two thirds of them on the warm palette all morning.
+  mapTreasure: { file: "map-treasure.png", tones: BOTH },
+  tripPlanner: { file: "trip-planner.png", tones: BOTH },
+  vaultSafe: { file: "vault-safe.png", tones: BOTH },
+  emptyBackpack: { file: "empty-backpack.png", tones: BOTH },
+  emptyCompass: { file: "empty-compass.png", tones: BOTH },
+  emptyCanvas: { file: "empty-canvas.png", tones: BOTH },
+  emptyMap: { file: "empty-map.png", tones: BOTH },
+  bannerWide: { file: "banner-wide.png", tones: BOTH },
+  bannerOurPage: { file: "banner-our-page.png", tones: BOTH },
+  bannerSub: { file: "banner-sub.png", tones: BOTH },
 
+  /* ── One tone only, and honest about it ───────────────────────────────── */
   calendarTablet: { file: "calendar-tablet.png", tones: ONLY_MORNING },
 
-  mapTreasure: { file: "map-treasure.png", tones: ONLY_AFTERNOON },
-  tripPlanner: { file: "trip-planner.png", tones: ONLY_AFTERNOON },
-  vaultSafe: { file: "vault-safe.png", tones: ONLY_AFTERNOON },
-  emptyBackpack: { file: "empty-backpack.png", tones: ONLY_AFTERNOON },
-  emptyCompass: { file: "empty-compass.png", tones: ONLY_AFTERNOON },
-  emptyCanvas: { file: "empty-canvas.png", tones: ONLY_AFTERNOON },
-  emptyMap: { file: "empty-map.png", tones: ONLY_AFTERNOON },
-  bannerWide: { file: "banner-wide.png", tones: ONLY_AFTERNOON },
-  bannerOurPage: { file: "banner-our-page.png", tones: ONLY_AFTERNOON },
-  bannerSub: { file: "banner-sub.png", tones: ONLY_AFTERNOON },
+  /* ── Morning-only additions with no afternoon counterpart yet ─────────── */
+  heroDeskWide: { file: "hero-desk-wide.png", tones: ONLY_MORNING },
+  skyWordmark: { file: "sky-wordmark.png", tones: ONLY_MORNING },
+  giftReveal: { file: "gift-reveal.png", tones: ONLY_MORNING },
+  wheelFoodAlt: { file: "wheel-food-alt.png", tones: BOTH },
 } satisfies Record<string, ArtEntry>;
+
+/* ── Spot illustrations: one object, no scene, and tone-neutral ──────────
+ *
+ * These live in their own folder because they are a different KIND of picture,
+ * not a different palette. The tone sets are wide scenes that fill a band; a
+ * spot is a single object on a transparent ground, for a place where a scene
+ * would be cropped to a smear — a chip, a small empty state, a card corner.
+ *
+ * They carry no tone because there is nothing warm or cool about a mailbox on
+ * nothing: they read correctly on either palette, which is exactly why they
+ * are useful in components that both tones share.
+ */
+export const SPOT = {
+  mailboxOpen: "mailbox-open.png",
+  mailboxOpen2: "mailbox-open-2.png",
+  starRibbon: "star-ribbon.png",
+  pinTicket: "pin-ticket.png",
+  planeTrail: "plane-trail.png",
+  islandCampsite: "island-campsite.png",
+  backpackScrapbook: "backpack-scrapbook.png",
+  flatlayCameraMap: "flatlay-camera-map.png",
+} as const;
+
+export type SpotName = keyof typeof SPOT;
+
+export function spotSrc(name: SpotName): string {
+  return `/brand-image/common-page/${SPOT[name]}`;
+}
 
 export type ArtName = keyof typeof ART;
 
@@ -113,15 +151,44 @@ export function artIsFallback(name: ArtName, tone: Tone): boolean {
 
 /* ── The logo, which exists in both tones for every variant ─────────────── */
 
-export type LogoVariant = "wordmark" | "icon" | "icon2048";
+export type LogoVariant = "wordmark" | "icon";
 
-const LOGO_FILE: Record<LogoVariant, string> = {
-  wordmark: "wordmark",
-  icon: "icon",
-  icon2048: "icon",
+/**
+ * Which logo file to show, given the tone and the hour.
+ *
+ * The morning set arrived with two wordmarks and the afternoon set with two,
+ * so rather than pick one and waste the other, the hour decides: even hours
+ * get the first, odd hours the second. It changes at most twice while someone
+ * is looking at the app, which reads as the app being alive rather than as a
+ * glitch — and every drawing that was paid for gets used.
+ *
+ * `dual` carries a "Morning or Afternoon" badge, so it is the honest choice
+ * anywhere the tone is not yet known — it is never wrong.
+ *
+ * All files carry real alpha, so they sit on any surface without a white box.
+ */
+const WORDMARK: Record<Tone, readonly [string, string]> = {
+  morning: ["wordmark-morning", "wordmark-dual"],
+  afternoon: ["wordmark-afternoon", "wordmark-afternoon-2"],
 };
 
-export function logoSrc(variant: LogoVariant, tone: Tone): string {
-  const suffix = variant === "icon2048" ? "-2048" : "";
-  return `/brand-image/logo-icon/${LOGO_FILE[variant]}-${tone}${suffix}.png`;
+const ICON: Record<Tone, readonly [string, string]> = {
+  morning: ["icon-morning", "icon-duotone"],
+  afternoon: ["icon-afternoon", "icon-afternoon-2"],
+};
+
+/**
+ * `hour` is the reader's local hour. Pass it explicitly rather than reading a
+ * clock in here: this is called during render, and a function that returns a
+ * different answer on the server than on the client is a hydration mismatch.
+ */
+export function logoSrc(variant: LogoVariant, tone: Tone, hour?: number): string {
+  const pair = variant === "wordmark" ? WORDMARK[tone] : ICON[tone];
+  const file = hour === undefined ? pair[0] : pair[hour % 2];
+  return `/brand-image/logo-icon/${file}.png`;
+}
+
+/** The tone-agnostic wordmark, for anywhere the tone has not resolved yet. */
+export function logoDualSrc(): string {
+  return "/brand-image/logo-icon/wordmark-dual.png";
 }
