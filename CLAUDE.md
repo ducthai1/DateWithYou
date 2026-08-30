@@ -1,5 +1,61 @@
 # Vivu No Plan — quy ước khi sửa repo này
 
+## KHÔNG bịa dữ liệu của người dùng — trống thì để trống
+
+Lúc tạo space, hệ thống chèn sẵn hai dòng: **"Ngày kỷ niệm"** và **"Sinh nhật"**,
+cả hai gán bằng **ngày hôm nay**. Comment trong code gọi chúng là
+"clearly-placeholder", nhưng **không có gì trong giao diện nói thế**: chúng hiện
+trong đồng hồ đếm ngược, trên lịch, trên `/home`, đọc y như do người dùng tự
+nhập. User mở app lên thấy app khẳng định ngày kỷ niệm của họ là ngày họ bấm
+đăng ký, và sinh nhật cũng vậy — một thứ chưa ai từng nhập.
+
+**Luật:** không bao giờ tạo sẵn dữ liệu mà chỉ NGƯỜI DÙNG mới biết đúng hay sai.
+
+| Được tạo sẵn | Không được tạo sẵn |
+|---|---|
+| Sự thật hệ thống biết chắc: ngày space được tạo | Ngày kỷ niệm, sinh nhật, tên người thân |
+| Cấu trúc rỗng: cột kanban, tab | Nội dung giả trong cấu trúc đó |
+| Mặc định trung tính có thể đổi: màu chủ đề | Bất cứ thứ gì tỏ ra là lựa chọn của người dùng |
+
+**Ba câu hỏi trước khi `insertMany` lúc khởi tạo:**
+1. Giá trị này hệ thống **biết chắc** hay chỉ **đoán**? Đoán thì đừng ghi.
+2. Nếu người dùng không bao giờ sửa nó, họ có bị hiểu sai điều gì không?
+3. Giao diện có **nói rõ** đây là mẫu không? Không nói được thì nó không phải mẫu
+   — nó là dữ liệu sai.
+
+*"Để đồng hồ đếm ngược không rỗng"* không phải lý do. **Empty state là câu trả lời
+đúng cho trạng thái rỗng** — app này đã có sẵn `EmptyState` cho việc đó. Lấp chỗ
+trống bằng dữ liệu bịa là đổi một khoảng trống trung thực lấy một lời nói dối.
+
+Đã lỡ ship rồi thì **nói ra**, đừng lặng lẽ backfill: bản ghi cũ có thể đã được
+người dùng sửa thành đúng, ghi đè lên là xoá việc của họ.
+
+## Nhịp dọc phải KHỚP giữa các route
+
+`/home` rộng 760px, `/activity` 672px, `/search` 900px, các route khác 1400px —
+cả bốn đều tự viết cột riêng thay vì dùng `PageShell`. Băng ảnh đầu trang thì
+route này 192px, route kia 140px. Hệ quả: chuyển trang là **nội dung bắt đầu ở
+một độ cao khác**, đọc như trang đang tự sắp lại chứ không phải như một thiết kế.
+
+**Luật:**
+- Màn hình trong app dùng `PageShell` + `PageHeader`. Muốn cột hẹp hơn thì **giới
+  hạn phần NỘI DUNG bên trong**, không thu nhỏ cả shell — nền, băng ảnh và nhịp
+  trang phải giống nhau ở mọi route.
+- Băng ảnh có **một chiều cao duy nhất**, khai ở `PageHeader`, không route nào tự
+  đặt lại.
+- Thêm route mới thì **đo `top` của phần tử nội dung đầu tiên** và so với một
+  route đã có. Lệch quá vài px là sai.
+
+**Rộng hết cỡ ≠ tốt hơn.** Một dòng chữ kéo dài 1400px khó đọc hơn ở 700px —
+khoảng 70 ký tự một dòng là giới hạn thật của mắt, không phải sở thích. Nên:
+**shell rộng hết, nội dung tự giới hạn**, và chỗ nào có thừa bề ngang thì dùng
+làm **cột thứ hai** chứ đừng kéo dài dòng chữ.
+
+**Một dòng chữ ngắn không đáng một hàng riêng.** Đồng hồ đếm ngược từng chiếm
+trọn một hàng ngang chỉ để nói *"còn 362 ngày"*, trong khi băng ảnh ngay trên nó
+trống gần hết bề ngang. Trước khi thêm một dải mới, hỏi: **thứ này có nhét được
+vào chỗ đang trống ở trên không?**
+
 ## Thao tác không hoàn tác được thì PHẢI HỎI — và phải quét cả hệ thống
 
 `plan-item-card.tsx` xoá một việc **ngay lần chạm đầu tiên**, trong khi tám chỗ
