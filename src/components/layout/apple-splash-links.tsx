@@ -61,6 +61,7 @@ export function AppleSplashLinks() {
         the device still showed nothing.
       */}
       <meta name="apple-mobile-web-app-capable" content="yes" />
+      <meta name="apple-touch-fullscreen" content="yes" />
       {SPLASH.map((s) => (
         <link
           key={s.file}

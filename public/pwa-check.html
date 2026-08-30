@@ -1,0 +1,96 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kiểm tra splash iOS</title>
+<style>
+  body{font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:20px;background:#0E3E4A;color:#fff}
+  h1{font-size:19px;margin:0 0 4px}
+  p.sub{margin:0 0 18px;opacity:.7;font-size:13px}
+  .box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:14px;margin-bottom:12px}
+  .k{opacity:.65;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+  .v{font-size:17px;font-weight:600;margin-top:2px;word-break:break-all}
+  .ok{color:#7ee2a8}.bad{color:#ff9b9b}.warn{color:#ffd98e}
+  ol{padding-left:20px;margin:8px 0 0}li{margin:4px 0;font-size:13px}
+  code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:5px;font-size:12px}
+  button{margin-top:8px;background:#c2693f;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-size:15px}
+</style>
+<h1>Kiểm tra splash iOS</h1>
+<p class="sub">Mở trang này <b>từ icon trên màn hình chính</b>, rồi chụp màn gửi lại.</p>
+<div id="out"></div>
+<button onclick="location.reload()">Chạy lại</button>
+<script>
+const out = document.getElementById('out');
+const box = (k, v, cls) =>
+  `<div class="box"><div class="k">${k}</div><div class="v ${cls||''}">${v}</div></div>`;
+
+const dpr = window.devicePixelRatio || 1;
+const w = screen.width, h = screen.height;
+const standalone = ('standalone' in navigator) ? navigator.standalone
+  : matchMedia('(display-mode: standalone)').matches;
+
+let html = '';
+html += box('Máy báo kích thước logic', `${w} × ${h} px`);
+html += box('Tỉ lệ pixel (DPR)', String(dpr));
+html += box('Kích thước ảnh cần có', `${w*dpr} × ${h*dpr} px (dọc)`);
+html += box('Đang chạy dạng app riêng?',
+  standalone ? 'CÓ — mở từ màn hình chính' : 'KHÔNG — đang ở trong trình duyệt',
+  standalone ? 'ok' : 'bad');
+html += box('Trình duyệt', navigator.userAgent, '');
+
+out.innerHTML = html + '<div class="box"><div class="k">Đang đối chiếu với các thẻ splash…</div></div>';
+
+/*
+ * Read the real tags off the live homepage and run the device's own matchMedia
+ * against each one. This is the actual test Safari performs — anything else is
+ * a guess about what the device reports.
+ */
+fetch('/', {cache:'no-store'}).then(r => r.text()).then(txt => {
+  const re = /<link[^>]+rel="apple-touch-startup-image"[^>]*>/g;
+  const tags = txt.match(re) || [];
+  const rows = tags.map(t => {
+    const href = (t.match(/href="([^"]+)"/) || [])[1] || '';
+    const media = (t.match(/media="([^"]+)"/) || [])[1] || null;
+    const hit = media ? matchMedia(media).matches : 'không có điều kiện (dự phòng)';
+    return {href, media, hit};
+  });
+  const matched = rows.filter(r => r.hit === true);
+  const fallback = rows.filter(r => r.hit !== true && r.media === null);
+
+  let res = box('Số thẻ splash tìm thấy', String(rows.length), rows.length ? 'ok' : 'bad');
+  if (matched.length) {
+    res += box('KHỚP máy này', matched.map(m => m.href).join('<br>'), 'ok');
+  } else if (fallback.length) {
+    res += box('Không thẻ nào khớp — sẽ dùng ảnh dự phòng',
+      fallback.map(m => m.href).join('<br>'), 'warn');
+  } else {
+    res += box('KHÔNG thẻ nào khớp và KHÔNG có dự phòng', 'Đây là lý do không có splash', 'bad');
+  }
+
+  // Does the file the device would use actually load?
+  const pick = (matched[0] || fallback[0]);
+  if (pick) {
+    const img = new Image();
+    img.onload = () => {
+      const okSize = img.naturalWidth === w*dpr && img.naturalHeight === h*dpr;
+      out.insertAdjacentHTML('beforeend', box('Ảnh đó tải được',
+        `${img.naturalWidth} × ${img.naturalHeight} px — ${okSize ? 'ĐÚNG cỡ máy' : 'LỆCH cỡ máy (' + (w*dpr) + '×' + (h*dpr) + ')'}`,
+        okSize ? 'ok' : 'bad'));
+    };
+    img.onerror = () => out.insertAdjacentHTML('beforeend',
+      box('Ảnh đó tải được', 'KHÔNG — file lỗi hoặc không tồn tại', 'bad'));
+    img.src = pick.href;
+  }
+
+  const capable = /name="apple-mobile-web-app-capable"/.test(txt);
+  res += box('Thẻ apple-mobile-web-app-capable', capable ? 'CÓ' : 'THIẾU', capable ? 'ok' : 'bad');
+
+  out.innerHTML = html + res;
+  out.insertAdjacentHTML('beforeend',
+    '<div class="box"><div class="k">Gửi lại giúp</div><ol>' +
+    '<li>Chụp toàn bộ màn này</li>' +
+    '<li>Nói rõ bạn thêm icon bằng <b>Safari</b> hay <b>Chrome</b></li>' +
+    '</ol></div>');
+}).catch(e => {
+  out.innerHTML = html + box('Không đọc được trang chủ', String(e), 'bad');
+});
+</script>
