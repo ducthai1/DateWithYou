@@ -71,15 +71,21 @@ export function AppleSplashLinks() {
         />
       ))}
       {/*
-        Catch-all, deliberately last: Safari takes the FIRST link whose media
-        matches, so every device-specific file above wins before this is
-        reached. It exists because a device that matches none of them gets no
-        launch screen at all, and "none of them" is not exotic — an iPhone with
-        Display Zoom turned on reports a different logical size than the same
-        phone without it, and every new model ships a size this table has not
-        heard of yet. A slightly scaled splash beats a white flash.
+        No catch-all here on purpose, and it is worth saying why since one was
+        tried and removed.
+
+        The single thing the community consistently reports about this feature
+        is that the media query has to match the device's reported resolution
+        EXACTLY — a mismatch is discarded silently rather than scaled. A link
+        with no media query matches every device by definition, so it is never
+        an exact match for anything except the one size it happens to be. If
+        Safari picks it and then rejects it on size, the result is no splash at
+        all: strictly worse than having nothing for that device, because it can
+        shadow the correct answer.
+
+        A device this table does not list gets no splash. That is the honest
+        failure, and it is fixed by adding that device's real size here.
       */}
-      <link rel="apple-touch-startup-image" href="/splash/430x932-3x-portrait.png" />
     </>
   );
 }
