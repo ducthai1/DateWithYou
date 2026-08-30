@@ -66,7 +66,7 @@ export function msUntilNextToneChange(now: Date): number {
 type ArtEntry = { file: string; tones: readonly Tone[] };
 
 const BOTH = ["morning", "afternoon"] as const;
-const ONLY_AFTERNOON = ["afternoon"] as const;
+// const ONLY_AFTERNOON = ["afternoon"] as const;  // unused: every role now exists in both tones
 const ONLY_MORNING = ["morning"] as const;
 
 const DIR: Record<Tone, string> = {

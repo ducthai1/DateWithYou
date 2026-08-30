@@ -90,7 +90,112 @@ fetch('/', {cache:'no-store'}).then(r => r.text()).then(txt => {
     '<li>Chụp toàn bộ màn này</li>' +
     '<li>Nói rõ bạn thêm icon bằng <b>Safari</b> hay <b>Chrome</b></li>' +
     '</ol></div>');
+
+  /*
+   * Icon and ICO checks append here (after the innerHTML reassignment above,
+   * inside this same callback) rather than at top level. Their own fetches
+   * resolve later on the microtask queue, same as the splash-image onload
+   * check below; appending from a sibling callback that fires before this
+   * line's synchronous reassignment would get silently wiped by it.
+   */
+  checkIconCornerColour();
+  checkFaviconIcoSizes();
 }).catch(e => {
   out.innerHTML = html + box('Không đọc được trang chủ', String(e), 'bad');
 });
+
+/*
+ * Reads the actual bytes served for the home-screen icon and reports the
+ * corner pixel colour in plain terms. A stale CDN/service-worker cache
+ * serving the old teal tile looks identical to a correct deploy in every
+ * other check here — this is the one that catches it.
+ */
+function checkIconCornerColour() {
+  fetch('/apple-icon.png', { cache: 'no-store' })
+    .then((r) => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    })
+    .then((blob) => new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        // 5% inset, not the literal corner pixel — avoids anti-aliased edge
+        // pixels on rounded-corner renders throwing off the sample.
+        const x = Math.round(img.naturalWidth * 0.05);
+        const y = Math.round(img.naturalHeight * 0.05);
+        const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
+        resolve({ r, g, b });
+      };
+      img.onerror = () => reject(new Error('ảnh lỗi hoặc không tồn tại'));
+      img.src = URL.createObjectURL(blob);
+    }))
+    .then(({ r, g, b }) => {
+      const distNavyNew = Math.hypot(r - 30, g - 58, b - 95);
+      const distTealOld = Math.hypot(r - 14, g - 62, b - 74);
+      let cls, label;
+      if (distNavyNew < 40) {
+        cls = 'ok';
+        label = `RGB(${r}, ${g}, ${b}) — ĐÚNG, đã là màu navy mới`;
+      } else if (distTealOld < 40) {
+        cls = 'bad';
+        label = `RGB(${r}, ${g}, ${b}) — SAI, vẫn là màu xanh ngọc CŨ (nghi ngờ bị cache)`;
+      } else {
+        cls = 'warn';
+        label = `RGB(${r}, ${g}, ${b}) — không khớp màu nào đã biết, cần xem lại bằng mắt`;
+      }
+      out.insertAdjacentHTML('beforeend', box('Màu góc icon (màn hình chính)', label, cls));
+    })
+    .catch((e) => out.insertAdjacentHTML('beforeend',
+      box('Màu góc icon (màn hình chính)', 'Không đọc được: ' + e.message, 'bad')));
+}
+
+/*
+ * A .ico is a container of several images at different sizes; the browser
+ * <img> tag only ever shows one of them, so the only way to see whether all
+ * six are really inside is to parse the ICONDIR header ourselves. Format:
+ * 6-byte header (reserved, type, count) then one 16-byte ICONDIRENTRY per
+ * image, whose first two bytes are width/height (0 means 256, the one value
+ * that does not fit in a byte).
+ */
+function parseIcoSizes(buf) {
+  const dv = new DataView(buf);
+  if (dv.getUint16(2, true) !== 1) return null; // not type 1 = icon
+  const count = dv.getUint16(4, true);
+  const sizes = [];
+  for (let i = 0; i < count; i++) {
+    const off = 6 + i * 16;
+    let w = dv.getUint8(off);
+    if (w === 0) w = 256;
+    sizes.push(w);
+  }
+  return sizes;
+}
+
+function checkFaviconIcoSizes() {
+  fetch('/favicon.ico', { cache: 'no-store' })
+    .then((r) => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    })
+    .then((buf) => {
+      const expected = [16, 32, 48, 64, 128, 256];
+      const sizes = parseIcoSizes(buf);
+      if (!sizes) throw new Error('không phải file .ico hợp lệ');
+      const have = new Set(sizes);
+      const missing = expected.filter((s) => !have.has(s));
+      const found = [...have].sort((a, b) => a - b).join(', ');
+      const cls = missing.length ? 'bad' : 'ok';
+      const label = missing.length
+        ? `THIẾU cỡ ${missing.join(', ')} — đang có: ${found}`
+        : `ĐỦ cả 6 cỡ: ${found}`;
+      out.insertAdjacentHTML('beforeend', box('File favicon.ico có đủ cỡ chuẩn?', label, cls));
+    })
+    .catch((e) => out.insertAdjacentHTML('beforeend',
+      box('File favicon.ico có đủ cỡ chuẩn?', 'Không đọc được: ' + e.message, 'bad')));
+}
 </script>
