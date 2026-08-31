@@ -1045,6 +1045,36 @@ Bỏ qua: logo (là mark đặt lên bề mặt), ảnh nền trang trí `aria-h
 
 Ảnh tách nền nhận bóng theo **hình** (`drop-shadow`), ảnh đục nhận bóng theo **hộp** (`shadow` + bo góc) — hỏi `brand-cutouts.json` chứ đừng đoán.
 
+### Chrome sập vì `backdrop-filter`, không phải vì rò rỉ JS — đo cả hai
+
+Máy Mac Intel 2019 sập Chrome ở trang lịch. Đo trước, đoán sau:
+- **Rò rỉ JS: không có.** Vào/ra route 9 lần, ép GC mỗi vòng: heap phẳng 5MB, DOM nodes 853, listeners 555 — không nhích. Ảnh giải nén tổng < 4MB.
+- **Chi phí compositing: có.** 6 lớp `backdrop-filter` cùng lúc, lớn nhất blur 24px trên ~222k px², và bị lấy mẫu lại mỗi khung hình vì phía sau là **ảnh nền `fixed` phủ toàn màn**. Đây là tổ hợp giết tiến trình GPU trên card tích hợp đời cũ.
+
+Bẫy nguy hiểm nhất: **`backdrop-blur` đặt trong một item của danh sách**. Chip đếm trong `calendar-cell.tsx` khiến tháng nào nhiều kế hoạch là **tới 42 lớp compositing riêng** trên một màn. Quy tắc: `backdrop-filter` chỉ dùng cho phần tử **duy nhất trên màn** (thanh nav, modal), tuyệt đối không trong phần tử lặp.
+
+Chữa: bỏ blur ở phần tử lặp và thay bằng `bg-*/90`; giảm bán kính blur ở lớp lớn nhất và bù bằng nền đục hơn; bỏ blur nằm dưới bề mặt đã đục ≥92% (không ai thấy).
+
+Cách đo: `Performance.getMetrics` cho heap/nodes/listeners qua nhiều vòng điều hướng; duyệt DOM đếm `backdropFilter`/`filter: blur` kèm **diện tích** phần tử.
+
+### `relative` KHÔNG tạo stacking context — z-index bên trong sẽ tràn ra ngoài
+
+Số ngày trong ô lịch vẽ **đè lên header đang ghim**. Không phải lỗi sticky: ô lịch là `relative` **không có z-index**, nên nó chưa từng mở stacking context, và các `z-20` bên trong nó tranh cùng cấp với layer của trang — cells nằm sau trong DOM nên thắng.
+
+Luật: phần tử có `z-index` bên trong thì phải tự đóng gói bằng `isolate` (hoặc `relative z-0`). Và thang bậc phải rõ: nội dung < header trang (z-30) < thanh app (z-40) < modal (z-50).
+
+Kèm theo: header có ảnh **tách nền** thì phải có nền đặc bên dưới, không thì nội dung cuộn phía sau lộ xuyên qua chính header.
+
+### Dialog cần thao tác trên trang phía sau: ẨN, đừng ĐÓNG
+
+Form thêm địa điểm phải chạm bản đồ để lấy toạ độ. Đưa vào modal là bản đồ bị scrim chặn; mà đóng modal thì **mất sạch những gì đã gõ**, vì các field sống trong children của nó.
+
+Cách đúng: thêm prop `hidden` — giữ mount, chỉ tắt nhìn thấy và `pointer-events`. Kèm một thanh nhắc nổi, vì một dialog vô hình cộng bản đồ đột nhiên bấm được thì không phân biệt được với lỗi.
+
+⚠️ `framer-motion` ghi `opacity` bằng **inline style**, đè mọi class Tailwind. Lần đầu tôi để `hidden && "opacity-0"` thì dialog bấm xuyên qua được nhưng **vẫn hiện nguyên**. Phải đi qua chính `animate={{ opacity: hidden ? 0 : 1 }}`.
+
+Và: `useState(initial)` chỉ đọc đối số **một lần**. Giá trị cha đẩy xuống sau khi form đã mở (toạ độ vừa chạm) sẽ không bao giờ vào form — cần `useEffect` đồng bộ.
+
 ### Đừng để trạng thái đọc `scrollY` mà lại LÀM ĐỔI chiều cao trang
 
 Header thu gọn theo ngưỡng cuộn tự nuốt đuôi mình: thu gọn bớt ~92px chiều cao trang → trình duyệt **kẹp `scrollY`** xuống mức tối đa mới → `scrollY` nhỏ lại tụt dưới ngưỡng → giãn ra → trang dài lại. Trang chỉ cao hơn cửa sổ một chút thì **không bao giờ ổn định**; thả tay giữa lúc cuộn là giật mãi. Vùng chết (hysteresis) không cứu được, vì cú kẹp nhảy nguyên 92px.
