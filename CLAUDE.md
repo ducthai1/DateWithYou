@@ -1009,6 +1009,51 @@ npx tsc --noEmit && npm run lint && npm run build
 `npm run lint` phải ra **0 error, 0 warning**. Cảnh báo tồn tại lâu ngày sẽ dạy
 người ta bỏ qua cảnh báo, và rồi cái thật cũng bị bỏ qua.
 
+### Vành focus vẽ NGOÀI hộp — mọi khung cắt đều xén nó
+
+Khung có `overflow` khác `visible` sẽ xén vành focus của con đang được tab tới, vì ring nằm ngoài mép phần tử. Đã dính 3 chỗ cùng lúc: danh sách cuộn trong sidebar (xén ring của **cả 10 mục nav, trên mọi route**), thanh tab `scroll-strip`, và list địa điểm trong `map-sheet`.
+
+Luật: khung cuộn/cắt chứa phần tử focus được thì **phải chừa padding ≥ bề rộng ring** (`py-1`/`px-1` là đủ cho ring 4px), kèm `scroll-my-*` để bàn phím cuộn tới không dán sát mép. Canvas của thư viện ngoài (MapLibre) không chừa được thì cho ring vẽ vào trong: `outline-offset: -3px`.
+
+Gỡ `overflow-hidden` ở khung NGOÀI là chưa đủ — khung cắt thật thường là **cái cuộn ở trong**.
+
+**Cách dò, đừng đoán "nhiều nơi":** duyệt mọi phần tử focus được, leo cây tìm tổ tiên đầu tiên có overflow ≠ visible, so mép hộp + ring với mép khung. Hai cái bẫy của phép dò này:
+- **Cắt lớn (vài chục–vài trăm px) KHÔNG phải lỗi ring** — đó là phần tử đang cuộn khuất, chuyện bình thường. Chỉ tính khi hộp phần tử nằm TRỌN trong khung mà vành thì không.
+- **Style theo trạng thái thì phép dò hình học không thấy.** `:focus-visible` chỉ khớp khi focus bằng bàn phím; đọc `outline-offset` lúc chưa focus luôn ra giá trị nền. Và `.focus()` bằng script KHÔNG kích hoạt `:focus-visible` — muốn nghiệm thu phải bắn phím Tab thật.
+
+### Ảnh nào đã tách nền: ĐO, đừng nhớ
+
+Cách vẽ một ảnh phụ thuộc vào việc nó có tách nền hay không — tách nền thì để trần kèm bóng đổ theo hình, còn ảnh đục phải có khung/bo góc, nếu không mép chữ nhật cứng sẽ chọi vào nền.
+
+Sự thật đó từng nằm trong một `Set` gõ tay, và nó **sai âm thầm** ngay khi bản tách nền được ghi đè lên đúng tên file cũ: 6/8 ảnh `common-page` thành tách nền mà code vẫn bọc thẻ trắng. Không có lỗi build, không có cảnh báo — chỉ có người dùng nhìn thấy.
+
+Nay `scripts/measure-brand-cutouts.mjs` đọc pixel rồi ghi ra `src/lib/brand-cutouts.json`; `tone.ts` đọc file đó. **Thả ảnh mới vào `public/brand-image` thì chạy lại script.**
+
+Nhận diện bằng **viền ngoài trong suốt (>80%)**, không phải tổng lượng alpha: ảnh khối có vài pixel mềm ở mép không phải ảnh tách nền, còn chủ thể nổi trên nền rỗng thì viền luôn trong suốt. Đo bằng tổng alpha sẽ xếp nhầm cả hai chiều.
+
+### Một sự thật, một nguồn — giờ đã chọn thì buổi phải theo
+
+Form kế hoạch có "Buổi trong ngày" và "Giờ (tuỳ chọn)" sửa độc lập, nên lưu được việc **buổi Sáng mà giờ 19:00**. Hai ô cùng nói về một sự thật thì một ô phải **suy ra** từ ô kia, không phải cả hai cùng ghi.
+
+Nay `bucketForTime()` trong `src/lib/plan-meta.ts` là nguồn duy nhất (Sáng 05–10, Trưa 11–12, Chiều 13–17, Tối 18–04 — Tối là nhánh cuối vì nó vắt qua nửa đêm). Có giờ thì ô buổi khoá lại **và nói rõ vì sao** ("Theo giờ 19:00. Xoá giờ để tự chọn buổi") — khoá mà không giải thích thì bị đọc là hỏng. `create`/`update` ở server áp cùng hàm đó, nên gọi thẳng API cũng không lệch được.
+
+### Đổi nhóm thì phải CẤP LẠI CHỖ trong nhóm mới
+
+`update` đổi `bucket` mà giữ nguyên `order` ⇒ việc mang order 0 rơi vào buổi đã có order 0. Đo thật: sửa A sang buổi Tối cho ra `A=0, X=0, Y=1`.
+
+Trùng số không chỉ xấu — nó làm **hỏng luôn chức năng sắp xếp**, vì `move` tìm hàng xóm bằng `$lt`/`$gt` nghiêm ngặt nên bỏ qua đúng cái bằng nhau: bấm Lên/Xuống hoặc không nhúc nhích, hoặc đổi nhầm cặp rồi nhân thêm trùng (`X=0, Y=0, A=1`).
+
+Hai luật rút ra:
+- Đổi khoá-nhóm (bucket/ngày) thì tính lại vị trí — nối vào cuối nhóm đích.
+- **Sắp xếp lại thì đổi chỗ theo VỊ TRÍ rồi đánh số lại `0..n-1`**, đừng so sánh giá trị. So giá trị đòi dữ liệu phải sạch sẵn; đánh số lại thì **tự chữa** dữ liệu đã trùng từ trước ngay lần đầu chạm vào — dữ liệu trên máy người dùng đã trùng rồi, không có bản migration nào.
+- Mọi chỗ `.sort()` theo `order` phải có **tiebreak tất định** (`|| a.id.localeCompare(b.id)`), nếu không hai lần đọc cùng một dữ liệu lại ra hai thứ tự.
+
+### Dữ liệu mà màn hình đang nói về thì phải với tới được TỪ ĐÓ
+
+`calendar.dayDetail` trả về `memories` kèm ảnh **từ lâu rồi**, nhưng `DayDetail` không hề dựng ra — nên muốn xem hay xoá một tấm ảnh của ngày đó phải rời lịch, sang mục Kỷ niệm mò tay. API có sẵn mà UI bỏ quên thì người dùng vẫn coi là thiếu tính năng.
+
+Khi làm màn hình chi tiết, soát lại **payload đã trả về những gì** trước khi kết luận là thiếu. Và xoá một tấm ảnh thì ghi lại danh sách ảnh của kỷ niệm đó, **đừng xoá cả kỷ niệm** — tiêu đề và lời ghi người ta viết phải sống sót.
+
 ## `cn()` phải giữ `tailwind-merge`
 
 `cn()` từng là `classes.join(" ")` thuần. Nghĩa là `className` truyền vào một
