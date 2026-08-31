@@ -13,7 +13,7 @@ import { AlertModal } from "@/components/ui/alert-modal";
 import { Utensils, Navigation, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CATEGORIES, type Category } from "@/lib/districts-categories";
+import { type Category } from "@/lib/districts-categories";
 
 const WEDGE_COLORS = ["#c2693f", "#d4a373", "#e9c46a", "#a3b18a", "#cb997e", "#9c5f3c"];
 
@@ -31,6 +31,16 @@ export function FoodWheel() {
   const [source, setSource] = useState<(typeof SOURCE_TABS)[number]["key"]>("place");
   const [category, setCategory] = useState("");
   const [inviteError, setInviteError] = useState(false);
+  /*
+   * The same list the map files places under, not the seed defaults.
+   *
+   * This dropdown was built from the static CATEGORIES constant while every
+   * place is actually saved against the space's own editable list — so a type
+   * the couple added never appeared here, and a seeded one they had deleted
+   * still did, filtering to nothing.
+   */
+  const config = trpc.location.getConfig.useQuery();
+  const categories = config.data?.categories ?? [];
   const places = trpc.location.list.useQuery({
     status: "want_to_go",
     category: (category || undefined) as Category | undefined,
@@ -137,7 +147,7 @@ export function FoodWheel() {
             onChange={setCategory}
             options={[
               { value: "", label: "Mọi danh mục" },
-              ...CATEGORIES.map((c) => ({ value: c, label: c })),
+              ...categories.map((c) => ({ value: c, label: c })),
             ]}
           />
         </div>
