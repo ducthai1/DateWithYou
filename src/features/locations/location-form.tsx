@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,20 +57,62 @@ export function LocationForm({
   districts,
   onDone,
   onCancel,
+  onPickOnMap,
 }: {
   initial?: Partial<LocationFormValues>;
   categories: string[];
   districts: string[];
   onDone: () => void;
   onCancel: () => void;
+  /** Step aside so a point can be tapped on the map, then come back with it. */
+  onPickOnMap?: () => void;
 }) {
   const toast = useToast();
   const [v, setV] = useState<LocationFormValues>({
     ...empty,
-    district: initial?.district || districts[0] || "",
+    // Not `districts[0]`. Seeding from the space's own hand-typed list put a
+    // ward nobody chose on every new place, and it was usually wrong — the
+    // official list is searchable and a blank field asks rather than assumes.
+    district: initial?.district || "",
     category: initial?.category || categories[0] || "",
     ...initial,
   });
+  /*
+   * A point tapped on the map after this form opened has to land in it.
+   *
+   * `useState` reads its argument once, so `initial.geo` changing later did
+   * nothing at all: tapping the map moved the draft pin and updated the parent,
+   * while the form quietly kept whatever it had — usually nothing — and saved
+   * the place with no coordinates.
+   */
+  const incomingGeo = initial?.geo ?? null;
+  useEffect(() => {
+    if (!incomingGeo) return;
+    setV((p) =>
+      p.geo && p.geo.lat === incomingGeo.lat && p.geo.lng === incomingGeo.lng
+        ? p
+        : { ...p, geo: incomingGeo },
+    );
+  }, [incomingGeo]);
+
+  /*
+   * A point on the map names its own area, so stop asking for it by hand.
+   *
+   * Only fills a field that is still empty: someone who has already chosen an
+   * area meant it, and a lookup that disagrees is not grounds to overwrite
+   * them. Nothing waits on it either — the reverse lookup is best-effort and
+   * the place saves fine without it.
+   */
+  const areaAt = trpc.location.areaAt.useQuery(
+    { lat: v.geo?.lat ?? 0, lng: v.geo?.lng ?? 0 },
+    { enabled: !!v.geo && !v.district, staleTime: 60 * 60 * 1000, retry: false },
+  );
+  const suggestedArea = areaAt.data?.value ?? null;
+  useEffect(() => {
+    if (!suggestedArea) return;
+    setV((p) => (p.district ? p : { ...p, district: suggestedArea }));
+  }, [suggestedArea]);
+
   const utils = trpc.useUtils();
   const set = <K extends keyof LocationFormValues>(
     k: K,
@@ -106,7 +148,9 @@ export function LocationForm({
       && !official.some((o) => o.value === v.district)
       ? [{ value: v.district, label: v.district }]
       : [];
-    return [...current, ...own, ...official];
+    // The official list first now: it is the authority, and the space's own
+    // hand-typed entries are a convenience beside it rather than the default.
+    return [...current, ...official, ...own];
   }, [districts, areaSearch.data, v.district]);
 
   const onError = (err: { message?: string }) =>
@@ -159,11 +203,31 @@ export function LocationForm({
           options={categories.map((c) => ({ value: c, label: c }))}
         />
       </div>
-      <p className="text-muted-foreground text-xs">
-        {v.geo
-          ? `📍 ${v.geo.lat.toFixed(4)}, ${v.geo.lng.toFixed(4)} (chạm bản đồ để đổi)`
-          : "Chạm lên bản đồ để chọn vị trí"}
-      </p>
+      {onPickOnMap ? (
+        // In a dialog the map is behind the scrim, so "tap the map" is an
+        // instruction you cannot follow. The button steps the dialog aside and
+        // brings it back with the point.
+        <button
+          type="button"
+          onClick={onPickOnMap}
+          className="border-border hover:bg-muted text-muted-foreground focus-visible:ring-ring/50 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-xs transition-colors outline-none focus-visible:ring-2"
+        >
+          <span>
+            {v.geo
+              ? `📍 ${v.geo.lat.toFixed(4)}, ${v.geo.lng.toFixed(4)}`
+              : "Chưa có vị trí trên bản đồ"}
+          </span>
+          <span className="text-accent font-medium">
+            {v.geo ? "Chọn lại" : "Chọn trên bản đồ"}
+          </span>
+        </button>
+      ) : (
+        <p className="text-muted-foreground text-xs">
+          {v.geo
+            ? `📍 ${v.geo.lat.toFixed(4)}, ${v.geo.lng.toFixed(4)} (chạm bản đồ để đổi)`
+            : "Chạm lên bản đồ để chọn vị trí"}
+        </p>
+      )}
       <Input
         placeholder="Link Google Maps (https://)"
         value={v.googleMapsUrl}

@@ -173,6 +173,7 @@ export function Modal({
   children,
   className,
   size = "lg",
+  hidden = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -185,6 +186,15 @@ export function Modal({
    * Content-heavy dialogs ask for `xl` explicitly.
    */
   size?: keyof typeof MODAL_SIZE;
+  /**
+   * Step out of the way without closing.
+   *
+   * For a dialog whose next step is on the page behind it — picking a point on
+   * the map — closing would throw away everything typed so far, because the
+   * fields live in the dialog's own children. This keeps them mounted and only
+   * stops the dialog being seen or clicked.
+   */
+  hidden?: boolean;
 }) {
   const { containerRef, titleId, hasTitle, titleCtx } = useDialogA11y(open);
 
@@ -208,11 +218,17 @@ export function Modal({
       {open && (
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          // Through `animate`, not a class: framer-motion writes opacity as an
+          // inline style, which outranks any utility — the dialog went
+          // click-through while staying fully visible over the map.
+          animate={{ opacity: hidden ? 0 : 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           onClick={onClose}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4 backdrop-blur-sm cursor-pointer"
+          className={cn(
+            "fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4 backdrop-blur-sm cursor-pointer",
+            hidden && "pointer-events-none",
+          )}
         >
           <motion.div
             ref={containerRef}

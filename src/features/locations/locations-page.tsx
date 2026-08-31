@@ -17,6 +17,7 @@ import { type LegInfo } from "./use-live-navigation";
 import { useNavigation } from "./navigation-context";
 import { fmtDistance, fmtDuration } from "./format-journey";
 import { ToneArt } from "@/components/theme/tone-art";
+import { Modal, ModalHeader } from "@/components/ui/modal";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
 import type { Category } from "@/lib/districts-categories";
@@ -294,6 +295,8 @@ export function LocationsPage() {
    * submitted — the pin is there to be looked at and corrected first.
    */
   const [draftGeo, setDraftGeo] = useState<LatLng | null>(null);
+  /** The form is open but standing aside so a point can be tapped on the map. */
+  const [pickingGeo, setPickingGeo] = useState(false);
   const [draftHint, setDraftHint] = useState<null | "exact" | "approx">(null);
 
   /**
@@ -881,13 +884,14 @@ export function LocationsPage() {
   // Stable click handler for the same reason (inline arrow would bust the memo).
   const handleMapClick = useCallback(
     (geo: LatLng) => {
-      if (formOpen) {
-        setFormInitial((p) => ({ ...p, geo }));
-        // Move the draft pin with the tap. Without this the map keeps showing
-        // the looked-up point while the form already holds the corrected one,
-        // so the correction appears not to have registered.
-        setDraftGeo(geo);
-      }
+      if (!formOpen) return;
+      setFormInitial((p) => ({ ...p, geo }));
+      // Move the draft pin with the tap. Without this the map keeps showing
+      // the looked-up point while the form already holds the corrected one,
+      // so the correction appears not to have registered.
+      setDraftGeo(geo);
+      // One tap is the whole job: bring the form back with the point in it.
+      setPickingGeo(false);
     },
     [formOpen],
   );
@@ -1758,56 +1762,11 @@ export function LocationsPage() {
         <MapSheet
           count={(list.data ?? []).length}
           className={cn("order-2 lg:order-none", !listOpen && "lg:hidden")}
-          // On a phone the form renders inside the sheet's body, so opening it
-          // while the sheet sits at its collapsed stop (dimmed, pointer-events
-          // none) used to leave "+ Thêm" appearing to do nothing — the form was
-          // there, just invisible under the handle. Stop 2 rather than 1: the
-          // form runs name + two selects + two links + must-try + open/close
-          // times + rating, taller than stop 1 (55dvh) leaves free even before
-          // the keyboard takes its share. `formOpen ? 2 : undefined`, not a
-          // boolean-derived stop number kept in state — MapSheet only reacts to
-          // this value actually changing, so it raises once on open and leaves
-          // a manual drag back down alone for as long as the form stays open.
-          raiseTo={formOpen ? 2 : undefined}
+          // No `raiseTo` any more: the add/edit form is its own dialog, so the
+          // sheet no longer has to be dragged up to reveal it.
           collapseSignal={sheetCollapseTick}
         >
         <div className="space-y-4">
-          <AnimatePresence initial={false}>
-            {formOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0, overflow: "hidden" }}
-                // Hand `overflow` back once the reveal is done. Left hidden, this
-                // wrapper counts as a scroll container, and the form's sticky
-                // footer would then stick to the form's own bottom — which is
-                // the very place it was already sitting.
-                animate={{ height: "auto", opacity: 1, overflow: "visible" }}
-                exit={{ height: 0, opacity: 0, overflow: "hidden" }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-              >
-                {/* pb only. The top padding here had no counterpart in the
-                    left column, so the form sat lower than the search field it
-                    lines up with. */}
-                <div className="pb-2">
-                  <LocationForm
-                    initial={formInitial}
-                    categories={categories}
-                    districts={districts}
-                    onDone={() => {
-                      setFormOpen(false);
-                      setDraftGeo(null);
-                      setDraftHint(null);
-                    }}
-                    onCancel={() => {
-                      setFormOpen(false);
-                      setDraftGeo(null);
-                      setDraftHint(null);
-                    }}
-                  />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {list.isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-20" />
@@ -2010,6 +1969,50 @@ export function LocationsPage() {
         </MapSheet>
         </div>
       </div>
+
+      {/* Adding a place is its own dialog now.
+          It used to unfold inline above the saved-places list, which meant the
+          form and the list fought over the same scroll box, the sticky footer
+          and the sheet's stops — and on desktop it pushed the list down every
+          time it opened. `hidden` rather than closed while a point is being
+          tapped: closing would throw away everything typed so far. */}
+      <Modal
+        open={formOpen}
+        hidden={pickingGeo}
+        onClose={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
+      >
+        <ModalHeader
+          title={formInitial?.id ? "Sửa địa điểm" : "Thêm địa điểm"}
+          onClose={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
+        />
+        <div className="px-4 pb-4">
+          <LocationForm
+            initial={formInitial}
+            categories={categories}
+            districts={districts}
+            onPickOnMap={() => setPickingGeo(true)}
+            onDone={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
+            onCancel={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
+          />
+        </div>
+      </Modal>
+
+      {/* While the dialog stands aside, say so — an invisible dialog and a map
+          that suddenly accepts taps is otherwise indistinguishable from a bug. */}
+      {formOpen && pickingGeo && (
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-[55] flex justify-center px-4">
+          <div className="border-border bg-card pointer-events-auto flex items-center gap-3 rounded-full border px-4 py-2 text-sm shadow-lg">
+            <span>Chạm lên bản đồ để chọn vị trí</span>
+            <button
+              type="button"
+              onClick={() => setPickingGeo(false)}
+              className="text-accent hover:bg-accent-soft focus-visible:ring-ring/50 cursor-pointer rounded-full px-2 py-0.5 font-medium transition-colors outline-none focus-visible:ring-2"
+            >
+              Huỷ
+            </button>
+          </div>
+        </div>
+      )}
 
       {settingsOpen && (
         <LocationSettingsModal
