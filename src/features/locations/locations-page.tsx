@@ -1985,16 +1985,14 @@ export function LocationsPage() {
           title={formInitial?.id ? "Sửa địa điểm" : "Thêm địa điểm"}
           onClose={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
         />
-        <div className="px-4 pb-4">
-          <LocationForm
-            initial={formInitial}
-            categories={categories}
-            districts={districts}
-            onPickOnMap={() => setPickingGeo(true)}
-            onDone={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
-            onCancel={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
-          />
-        </div>
+        <LocationForm
+          initial={formInitial}
+          categories={categories}
+          districts={districts}
+          onPickOnMap={() => setPickingGeo(true)}
+          onDone={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
+          onCancel={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
+        />
       </Modal>
 
       {/* While the dialog stands aside, say so — an invisible dialog and a map

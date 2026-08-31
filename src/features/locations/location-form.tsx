@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 
+import { cn } from "@/lib/utils";
 import type { LatLng } from "@/lib/maps";
 import { useToast } from "@/components/ui/toast";
 
@@ -113,6 +116,41 @@ export function LocationForm({
     setV((p) => (p.district ? p : { ...p, district: suggestedArea }));
   }, [suggestedArea]);
 
+  /*
+   * Add a category without leaving the dialog.
+   *
+   * updateConfig replaces the whole config, so the districts have to be sent
+   * back untouched alongside — sending only the categories would wipe the
+   * space's saved areas.
+   */
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
+  const utilsForConfig = trpc.useUtils();
+  const saveConfig = trpc.location.updateConfig.useMutation({
+    onSuccess: (_d, vars) => {
+      utilsForConfig.location.getConfig.invalidate();
+      // Select the one just added, so the reason for adding it is carried out.
+      const added = vars.categories[vars.categories.length - 1];
+      setV((p) => ({ ...p, category: added }));
+      setNewCategory("");
+      setAddingCategory(false);
+      toast("Đã thêm loại địa điểm ✓", "success");
+    },
+    onError: (err) => toast(err.message, "error"),
+  });
+  const addCategoryPending = saveConfig.isPending;
+  function addCategory() {
+    const name = newCategory.trim();
+    if (!name) return;
+    if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) {
+      setV((p) => ({ ...p, category: name }));
+      setNewCategory("");
+      setAddingCategory(false);
+      return;
+    }
+    saveConfig.mutate({ categories: [...categories, name], districts });
+  }
+
   const utils = trpc.useUtils();
   const set = <K extends keyof LocationFormValues>(
     k: K,
@@ -178,14 +216,19 @@ export function LocationForm({
   }
 
   return (
-    <div className="border-border bg-card space-y-4 rounded-2xl border p-5 shadow-sm">
-      <Input
-        placeholder="Tên quán"
-        value={v.name}
-        onChange={(e) => set("name", e.target.value)}
-      />
-      {/* Stack on mobile (<sm) so each select gets its full width. Side-by-side on sm+. */}
-      <div className="flex flex-col gap-2 sm:flex-row">
+    // ModalContent, not a card of its own: nested inside a dialog this drew a
+    // second bordered panel, and its own sticky footer floated in the middle of
+    // the fields because the dialog — not the form — owns the scroll box.
+    <>
+      <ModalContent className="space-y-4">
+        <Input
+          placeholder="Tên quán"
+          value={v.name}
+          onChange={(e) => set("name", e.target.value)}
+        />
+        {/* Its own row. An official ward reads "Phường An Khánh, Thành phố Hồ
+            Chí Minh" — long enough that sharing a row with the category pushed
+            the pair past the panel's width the moment an area was chosen. */}
         <Select
           aria-label="Khu vực"
           value={v.district}
@@ -196,120 +239,155 @@ export function LocationForm({
           searchPlaceholder="Tìm phường, xã…"
           emptyLabel="Không tìm thấy khu vực"
         />
-        <Select
-          aria-label="Danh mục"
-          value={v.category}
-          onChange={(val) => set("category", val)}
-          options={categories.map((c) => ({ value: c, label: c }))}
-        />
-      </div>
-      {onPickOnMap ? (
-        // In a dialog the map is behind the scrim, so "tap the map" is an
-        // instruction you cannot follow. The button steps the dialog aside and
-        // brings it back with the point.
-        <button
-          type="button"
-          onClick={onPickOnMap}
-          className="border-border hover:bg-muted text-muted-foreground focus-visible:ring-ring/50 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-xs transition-colors outline-none focus-visible:ring-2"
-        >
-          <span>
-            {v.geo
-              ? `📍 ${v.geo.lat.toFixed(4)}, ${v.geo.lng.toFixed(4)}`
-              : "Chưa có vị trí trên bản đồ"}
-          </span>
-          <span className="text-accent font-medium">
-            {v.geo ? "Chọn lại" : "Chọn trên bản đồ"}
-          </span>
-        </button>
-      ) : (
-        <p className="text-muted-foreground text-xs">
-          {v.geo
-            ? `📍 ${v.geo.lat.toFixed(4)}, ${v.geo.lng.toFixed(4)} (chạm bản đồ để đổi)`
-            : "Chạm lên bản đồ để chọn vị trí"}
-        </p>
-      )}
-      <Input
-        placeholder="Link Google Maps (https://)"
-        value={v.googleMapsUrl}
-        onChange={(e) => set("googleMapsUrl", e.target.value)}
-      />
-      <div className="-mt-2 px-1 space-y-1">
-        <p className="text-xs text-muted-foreground">
-          Dán link Google Maps/Apple Maps để tự lấy toạ độ. Vị trí lấy từ link có thể{" "}
-          <span className="font-medium text-foreground">gần đúng</span> — chạm bản đồ để đặt pin chính xác.
-        </p>
-        {v.googleMapsUrl.trim().startsWith("http") && (
-          <a
-            href={v.googleMapsUrl.trim()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block text-xs font-medium text-accent underline"
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Select
+              aria-label="Danh mục"
+              className="min-w-0 flex-1"
+              value={v.category}
+              onChange={(val) => set("category", val)}
+              options={categories.map((c) => ({ value: c, label: c }))}
+            />
+            {/* Adding a category used to mean closing this dialog, opening
+                settings, saving, and starting the place over. */}
+            <button
+              type="button"
+              aria-label="Thêm loại địa điểm"
+              title="Thêm loại địa điểm"
+              onClick={() => setAddingCategory((a) => !a)}
+              className="border-border bg-card hover:bg-muted focus-visible:ring-ring/50 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border shadow-sm transition-all outline-none focus-visible:ring-2 active:scale-[.98]"
+            >
+              <Plus className={cn("h-4 w-4 transition-transform", addingCategory && "rotate-45")} />
+            </button>
+          </div>
+          {addingCategory ? (
+            <div className="flex items-center gap-2">
+              <Input
+                autoFocus
+                placeholder="Tên loại mới (vd: Lẩu nướng)"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); addCategory(); }
+                  if (e.key === "Escape") { e.preventDefault(); setAddingCategory(false); }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={addCategory}
+                disabled={!newCategory.trim() || addCategoryPending}
+                className="h-10 shrink-0 px-3"
+              >
+                {addCategoryPending ? "Đang thêm…" : "Thêm"}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+        {onPickOnMap ? (
+          // In a dialog the map is behind the scrim, so "tap the map" is an
+          // instruction you cannot follow. The button steps the dialog aside and
+          // brings it back with the point.
+          <button
+            type="button"
+            onClick={onPickOnMap}
+            className="border-border hover:bg-muted text-muted-foreground focus-visible:ring-ring/50 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-xs transition-colors outline-none focus-visible:ring-2"
           >
-            ↗ Mở link để xem đúng vị trí (rồi chạm bản đồ cho khớp)
-          </a>
+            <span>
+              {v.geo
+                ? `📍 ${v.geo.lat.toFixed(4)}, ${v.geo.lng.toFixed(4)}`
+                : "Chưa có vị trí trên bản đồ"}
+            </span>
+            <span className="text-accent font-medium">
+              {v.geo ? "Chọn lại" : "Chọn trên bản đồ"}
+            </span>
+          </button>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            {v.geo
+              ? `📍 ${v.geo.lat.toFixed(4)}, ${v.geo.lng.toFixed(4)} (chạm bản đồ để đổi)`
+              : "Chạm lên bản đồ để chọn vị trí"}
+          </p>
         )}
-      </div>
-      <Input
-        placeholder="Link TikTok/Instagram (https://)"
-        value={v.socialUrl}
-        onChange={(e) => set("socialUrl", e.target.value)}
-      />
-      <Input
-        placeholder="Món must-try"
-        value={v.mustTry}
-        onChange={(e) => set("mustTry", e.target.value)}
-      />
-      <div className="flex gap-2">
-        <div className="flex-1">
-          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Giờ mở cửa</label>
-          <Input
-            type="time"
-            value={v.openTime}
-            onChange={(e) => set("openTime", e.target.value)}
-          />
+        <Input
+          placeholder="Link Google Maps (https://)"
+          value={v.googleMapsUrl}
+          onChange={(e) => set("googleMapsUrl", e.target.value)}
+        />
+        <div className="-mt-2 px-1 space-y-1">
+          <p className="text-xs text-muted-foreground">
+            Dán link Google Maps/Apple Maps để tự lấy toạ độ. Vị trí lấy từ link có thể{" "}
+            <span className="font-medium text-foreground">gần đúng</span> — chạm bản đồ để đặt pin chính xác.
+          </p>
+          {v.googleMapsUrl.trim().startsWith("http") && (
+            <a
+              href={v.googleMapsUrl.trim()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-xs font-medium text-accent underline"
+            >
+              ↗ Mở link để xem đúng vị trí (rồi chạm bản đồ cho khớp)
+            </a>
+          )}
         </div>
-        <div className="flex-1">
-          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Giờ đóng cửa</label>
-          <Input
-            type="time"
-            value={v.closeTime}
-            onChange={(e) => set("closeTime", e.target.value)}
-          />
+        <Input
+          placeholder="Link TikTok/Instagram (https://)"
+          value={v.socialUrl}
+          onChange={(e) => set("socialUrl", e.target.value)}
+        />
+        <Input
+          placeholder="Món must-try"
+          value={v.mustTry}
+          onChange={(e) => set("mustTry", e.target.value)}
+        />
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Giờ mở cửa</label>
+            <Input
+              type="time"
+              value={v.openTime}
+              onChange={(e) => set("openTime", e.target.value)}
+            />
+          </div>
+          <div className="flex-1">
+            <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Giờ đóng cửa</label>
+            <Input
+              type="time"
+              value={v.closeTime}
+              onChange={(e) => set("closeTime", e.target.value)}
+            />
+          </div>
         </div>
-      </div>
-      <Select
-        aria-label="Đánh giá sao"
-        value={v.rating ? String(v.rating) : ""}
-        onChange={(val) => set("rating", val ? Number(val) : null)}
-        options={[
-          { value: "", label: "Đánh giá (sao)" },
-          ...[1, 2, 3, 4, 5].map((n) => ({
-            value: String(n),
-            label: "★".repeat(n),
-          })),
-        ]}
-      />
-      {(create.error || update.error) && (
-        <p className="text-destructive text-sm">
-          {saveErrorMessage(create.error ?? update.error)}
-        </p>
-      )}
-      {/* Pinned to the foot of whatever is scrolling this form.
-          The form runs name, two selects, two links, must-try, opening hours
-          and a rating, so in the desktop panel and in the phone sheet alike the
-          save button sat below the fold — you had to scroll past everything you
-          had just filled in to commit it. */}
-      {/* -mx-5/-mb-5 cancels the card's own p-5 so the bar reaches the card's
-          edges: a strip that stops short of them lets the field above show
-          through at the sides, which is what made it read as translucent. */}
-      <div className="bg-card border-border sticky bottom-0 -mx-5 -mb-5 flex gap-2 rounded-b-2xl border-t px-5 pt-3 pb-5 shadow-[0_-8px_16px_-12px_rgba(59,50,42,0.25)]">
+        <Select
+          aria-label="Đánh giá sao"
+          value={v.rating ? String(v.rating) : ""}
+          onChange={(val) => set("rating", val ? Number(val) : null)}
+          options={[
+            { value: "", label: "Đánh giá (sao)" },
+            ...[1, 2, 3, 4, 5].map((n) => ({
+              value: String(n),
+              label: "★".repeat(n),
+            })),
+          ]}
+        />
+        {(create.error || update.error) && (
+          <p className="text-destructive text-sm">
+            {saveErrorMessage(create.error ?? update.error)}
+          </p>
+        )}
+        {/* Pinned to the foot of whatever is scrolling this form.
+            The form runs name, two selects, two links, must-try, opening hours
+            and a rating, so in the desktop panel and in the phone sheet alike the
+            save button sat below the fold — you had to scroll past everything you
+            had just filled in to commit it. */}
+      </ModalContent>
+      <ModalFooter>
+        <Button variant="secondary" className="flex-1" onClick={onCancel}>
+          Huỷ
+        </Button>
         <Button onClick={submit} disabled={!v.name.trim() || pending} className="flex-1">
           {pending ? "Đang lưu…" : v.id ? "Cập nhật" : "Thêm địa điểm"}
         </Button>
-        <Button variant="ghost" onClick={onCancel} className="shrink-0">
-          Huỷ
-        </Button>
-      </div>
-    </div>
+      </ModalFooter>
+    </>
   );
 }
