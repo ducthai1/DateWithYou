@@ -134,7 +134,9 @@ export function SearchScreen() {
             type="button"
             onClick={clearQuery}
             aria-label="Xoá ô tìm kiếm"
-            className="text-muted-foreground hover:bg-muted absolute top-1/2 right-1.5 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 outline-none"
+            /* Sits where the browser's own clear button used to, hard against
+               the right edge, and keeps a 40px target around a small glyph. */
+            className="text-muted-foreground hover:bg-accent-soft hover:text-accent absolute top-1/2 right-1 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 outline-none"
           >
             <X className="h-4 w-4" />
           </button>

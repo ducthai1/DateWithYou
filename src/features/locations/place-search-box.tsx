@@ -195,7 +195,7 @@ export function PlaceSearchBox({
         />
 
         {resolving ? (
-          <Loader2 className="text-muted-foreground absolute right-9 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin" />
+          <Loader2 className="text-muted-foreground absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin" />
         ) : (
           <button
             type="button"
@@ -203,7 +203,11 @@ export function PlaceSearchBox({
             aria-expanded={filtersOpen}
             aria-label="Bộ lọc"
             className={cn(
-              "absolute right-9 top-1/2 flex h-7 -translate-y-1/2 items-center gap-1 rounded-lg px-2 text-[12px] font-medium transition-colors",
+              // Filter is the control that is ALWAYS there, so it takes the
+              // edge. Parking it inboard to reserve room for a clear button
+              // that only exists once you have typed left a visible gap at the
+              // right of an empty field.
+              "absolute right-1.5 top-1/2 flex h-7 -translate-y-1/2 items-center gap-1 rounded-lg px-2 text-[12px] font-medium transition-colors",
               filterCount > 0
                 ? "bg-[var(--accent)]/15 text-[var(--accent)]"
                 : "text-muted-foreground hover:bg-muted",
@@ -223,7 +227,7 @@ export function PlaceSearchBox({
               inputRef.current?.focus();
             }}
             aria-label="Xoá tìm kiếm"
-            className="text-muted-foreground hover:text-foreground absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-1"
+            className="text-muted-foreground hover:bg-accent-soft hover:text-accent absolute right-10 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </button>
