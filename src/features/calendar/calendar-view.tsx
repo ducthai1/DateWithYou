@@ -52,7 +52,13 @@ export function CalendarView() {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDay)) return;
     handledDay.current = requestedDay;
     const [y, m] = requestedDay.split("-").map(Number);
-    setYM({ year: y, month: m - 1 });
+    // `m` is already 1-based — it came out of a YYYY-MM-DD key, and every month
+    // in this screen is 1-based too (initialYM adds 1 to getMonth(), the grid
+    // documents "1-12", the server validates min(1).max(12)). Subtracting one
+    // here treated it as a Date month, so a link to 31/08 opened the right day
+    // and then left July behind it once the dialog closed — and a link to any
+    // January produced month 0, which the summary query rejects outright.
+    setYM({ year: y, month: m });
     setSelected(requestedDay);
   }, [requestedDay]);
   const [specialsOpen, setSpecialsOpen] = useState(false);
