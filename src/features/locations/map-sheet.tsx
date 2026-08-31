@@ -236,7 +236,7 @@ export function MapSheet({
       <div
         ref={scrollRef}
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4",
+          "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-1.5 scroll-pt-2",
           "lg:overflow-y-auto lg:px-3 lg:py-2",
           // Collapsed, the content is a hint of what is below rather than
           // something to scroll — letting it scroll at 16dvh just traps a

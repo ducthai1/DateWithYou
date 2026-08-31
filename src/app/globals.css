@@ -533,3 +533,10 @@ button:disabled,
   }
 }
 
+
+/* MapLibre's canvas fills its container edge to edge, so a focus ring drawn
+   outside the canvas box is clipped away by the map. Draw it inside instead. */
+.maplibregl-canvas:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: -3px;
+}

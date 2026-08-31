@@ -24,7 +24,7 @@ export function ScrollStrip({
     <div
       className={cn("relative -mx-[var(--page-gutter,1rem)] md:mx-0", className)}
     >
-      <div className="overflow-x-auto px-[var(--page-gutter,1rem)] pb-0.5 md:overflow-visible md:px-0">
+      <div className="overflow-x-auto px-[var(--page-gutter,1rem)] py-1 md:overflow-visible md:px-0">
         {children}
       </div>
       <div

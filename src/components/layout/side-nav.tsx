@@ -33,7 +33,7 @@ export function SideNav() {
           simply painted outside the rounded card. Nothing overflowed the page,
           which is why every sideways check missed it for so long.
         */
-        "fixed inset-y-4 left-4 z-20 hidden flex-col justify-between overflow-hidden rounded-2xl border border-white/40 bg-white/70 backdrop-blur-xl shadow-elev-2 md:flex",
+        "fixed inset-y-4 left-4 z-20 hidden flex-col justify-between rounded-2xl border border-white/40 bg-white/70 backdrop-blur-xl shadow-elev-2 md:flex",
         // Only animate width once the saved state is loaded — avoids the
         // expanded→collapsed slide on first paint.
         ready && "transition-[width] duration-300 ease-in-out",
@@ -56,7 +56,7 @@ export function SideNav() {
           )} />
         </Link>
         
-        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain">
+        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-1 py-1 [&>*]:scroll-my-2">
           {/* We explicitly define the desktop top items here because mobile bottom nav
               swapped Vault and Settings, but desktop wants Vault in the top section
               and Settings in the bottom section. */}
