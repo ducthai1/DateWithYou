@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useTone } from "@/components/theme/tone-provider";
 import { logoSrc } from "@/lib/tone";
@@ -118,13 +119,33 @@ export function LandingHero() {
           the copy column's vertical centring down with it rather than just
           growing past the fold on its own.
         */}
-        <div className="mx-auto w-full max-w-[560px] lg:mx-0 lg:max-w-none">
+        {/*
+          Height is capped by narrowing the COLUMN, not by shrinking the picture
+          inside a frame that stays wide.
+          Capping with max-height + w-auto left the image short and the frame
+          still full width, so on a short window the card showed a bare white
+          bar down each side of the picture — the same file looked right on a
+          taller one, which is why it read as a device bug rather than a rule.
+          The art is 1672x941, so a column of height x 1672/941 produces exactly
+          that height with the picture still filling its frame edge to edge, at
+          any combination of width and height.
+        */}
+        <div
+          className={cn(
+            // The cap only has to keep the hero inside the fold; below that the picture
+            // should take what the window will give it. At 44vh a 2000x620 window
+            // drew it 483px across — 24% of the screen — for a hero whose whole job
+            // is the picture.
+            "[--hero-h:200vh] short:[--hero-h:66vh] shorter:[--hero-h:60vh]",
+            "mx-auto w-full max-w-[min(560px,calc(var(--hero-h)*1672/941))]",
+            "lg:mx-0 lg:max-w-[calc(var(--hero-h)*1672/941)]",
+          )}
+        >
           <ToneArt
             name="heroDesk"
             priority
             sizes="(min-width: 1536px) 1400px, (min-width: 1024px) 68vw, (min-width: 640px) 560px, 92vw"
             framed
-            className="shorter:mx-auto shorter:max-h-[42vh] shorter:w-auto"
           />
         </div>
       </div>
