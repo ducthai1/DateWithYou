@@ -1227,6 +1227,55 @@ nhìn ra thành nút rỗng và đã bị báo lỗi đúng như vậy. **Bảy*
 Đừng gỡ `twMerge` ra khỏi `cn()`. Và khi một class ghi đè "không ăn", nghĩ tới
 nguyên nhân này trước khi thêm `!important`.
 
+## Tối ưu tốc độ tải: đo trước, và đo cho đúng thứ
+
+`/map` từng mất **6,0s** mới hiện bản đồ trên hồ sơ điện thoại bị bóp (4G chậm, CPU ×4, 390×740).
+Bốn ý tưởng "hiển nhiên" đầu tiên đều **không cải thiện gì**, mỗi cái đều đo được:
+
+| Thử | Kết quả đo |
+|---|---|
+| `preconnect` tới tile server | 6382 → 6059ms (−0,3s, gần như nhiễu) |
+| Hâm nóng style/sprite/glyph ngay trong HTML | 6262ms — asset về sớm thật, nhưng JS chậm lại đúng bằng đó |
+| Cho warm-up chạy `priority:"low"` | 6348ms — Chrome không nhường băng thông qua origin khác |
+| Đổi sang style nhẹ hơn (`positron`) | 0 byte tiết kiệm: cùng sprite, cùng font |
+
+Lý do chung: **link đã bão hòa băng thông**. Sắp xếp lại thứ tự chỉ chia lại cùng một cục bytes.
+Trên đường truyền như vậy, chỉ có hai thứ ăn tiền: **bớt bytes**, hoặc **đừng tải lại lần sau**.
+
+Phép thử tách bạch: cho service worker phục vụ **toàn bộ** 413 KB asset bản đồ từ đĩa mà vẫn xóa HTTP cache
+⇒ vẫn 6,9s. Nghĩa là asset bản đồ **không phải** nút thắt — nút thắt là **chunk JS của chính app**.
+Cache thêm `/_next/static/` thì rơi xuống **1,6s**. Đừng tối ưu phần mình *đoán* là nặng; hãy tắt từng phần đi mà đo.
+
+### Service worker `public/sw.js` — hợp đồng hẹp, đừng nới
+
+Nó chỉ trả lời **hai** thứ: `tiles.openfreemap.org`, và `/_next/static/` của chính mình.
+**Không bao giờ** đụng HTML, RSC payload, tRPC, upload — nhờ vậy không tồn tại kịch bản "deploy xong user vẫn thấy bản cũ".
+`/_next/static/` an toàn vĩnh viễn vì Next băm nội dung vào tên file và trả `immutable`: build mới **không thể** dùng lại URL cũ.
+Đã thử thật: cài SW ở build N, deploy build N+1, mở lại bằng đúng máy đó → chạy đúng, chunk đổi thì tải mới, chunk cũ lấy từ cache.
+Ai muốn thêm route vào SW: phải chứng minh URL đó bất biến, không thì đừng.
+
+### Bẫy khi đo — đã dính đủ, đừng dính lại
+
+- **Tile không xuất hiện trong Network của CDP.** MapLibre tải tile từ **Web Worker**, page target không thấy. Suýt kết luận sai về tổng payload. Muốn đếm thì đọc qua Cache API hoặc attach vào worker target.
+- **Lấy mẫu màu phải nằm TRONG canvas bản đồ.** Bản probe đầu lấy một ô cố định trên màn hình, đọc trúng hình nền trang trước và báo "map xong sau 536ms" trong khi map còn chưa bắt đầu tải.
+- **Profile Chrome rò rỉ giữa các lần đo.** `rm -rf` báo *Directory not empty* = còn tiến trình giữ thư mục ⇒ lần đo sau ăn cache của lần trước và cho số đẹp giả. Mỗi lần đo một thư mục riêng, đo xong mới xoá.
+- **Server đo phải có env.** `npx next start` trần thiếu `MONGODB_URI`/`BETTER_AUTH_SECRET` ⇒ mọi route 307 về `/sign-in`, probe báo `>60s` như thể app hỏng. Và nếu `kill` cổng không ăn, server **cũ (build cũ)** vẫn phục vụ ⇒ đang đo một bản code khác. Luôn kiểm `curl -b <jar> /map` trả **200** trước khi tin bất kỳ con số nào.
+- **Cookie jar hết hạn theo DB.** Phiên chết thì mọi thứ 307; tạo lại tài khoản test rồi đo.
+- Muốn nói "nhanh hơn X lần" thì phải **dựng lại bản gốc trên cùng server đó** rồi đo, đừng so với con số ghi từ hôm trước.
+
+### `reach.js` báo `/map` mobile mất 278px — là dương tính giả
+
+Probe đó đo cuộn **cấp trang**. Trên mobile danh sách nằm trong `MapSheet`, một bottom sheet có
+`min-h-0 flex-1 overflow-y-auto overscroll-contain` tự cuộn bên trong (`map-sheet.tsx`).
+Đã kiểm tay: 975px nội dung trong khung 664px, **cuộn tới đáy được**, phần tử cuối ở y=678.
+Bản trước khi sửa cũng y hệt ⇒ không phải hồi quy. Đừng "sửa" lại chỗ này.
+
+### `git checkout -- <file>` xoá luôn việc đang làm
+
+Sau khi thêm dòng đánh dấu để mô phỏng deploy, tôi dọn bằng `git checkout -- locations-page.tsx` —
+nó revert **cả file** về HEAD, cuốn theo thay đổi tách chunk vừa viết. Dọn sửa đổi tạm thì dùng
+`sed -i '/marker/d'`, đừng dùng lệnh revert cả file khi file đó đang có việc chưa commit.
+
 ## Vài điều khác về repo này
 
 - **Route công khai phải thêm vào `MARKETING_ROUTES`**

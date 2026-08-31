@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSidebar } from "@/components/layout/sidebar-context";
 import { cn } from "@/lib/utils";
@@ -76,7 +77,21 @@ function isTripEnded(inviteId: string): boolean {
   }
 }
 
-import { LocationMapView } from "./location-mapview";
+// Split out of this page's chunk on purpose. Measured on a throttled phone
+// profile, maplibre is a 267 KB chunk that this page had to finish downloading
+// before it could render anything at all — so the whole screen sat on "Đang tải
+// bản đồ…" even though the search box, the location list and the panel need
+// none of it. Loading the canvas separately lets that UI paint as soon as the
+// 24 KB page chunk lands; the map fills in behind it (it renders at
+// `fixed inset-0 z-0`, underneath the panel) once its own chunk arrives.
+// No ref is ever taken on this component, so the dynamic() wrapper is transparent.
+const LocationMapView = dynamic(
+  () => import("./location-mapview").then((m) => m.LocationMapView),
+  {
+    ssr: false,
+    loading: () => <div className="bg-muted/40 absolute inset-0" />,
+  },
+);
 import { useNavigationInvitesContext } from "./navigation-invites-context";
 import { acceptedTripStore, type AcceptedTrip } from "./accepted-trip-store";
 import { LocationForm, type LocationFormValues } from "./location-form";

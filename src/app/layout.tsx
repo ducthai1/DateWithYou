@@ -10,6 +10,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { MainWrapper } from "@/components/layout/main-wrapper";
 import { AppBackdrop } from "@/components/theme/app-backdrop";
 import { AppleSplashLinks } from "@/components/layout/apple-splash-links";
+import { RegisterMapCache } from "@/components/layout/register-map-cache";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
@@ -194,9 +195,22 @@ export default async function RootLayout({
         <style>{`[data-reveal]{opacity:1 !important;animation:none !important}`}</style>
       </noscript>
       <head>
+        {/*
+          Open the connection to the tile server before anything asks for it.
+          The map needs a style, a sprite, six font ranges and then tiles from
+          this host, and on a phone the first of those pays DNS, TCP and TLS
+          before a byte arrives — three round trips on a link where a round trip
+          is 150ms. Doing it here, on every page, means the handshake is already
+          done by the time someone opens the map. `crossOrigin` matters: the
+          font and sprite fetches are CORS requests, and a connection opened
+          without it is not reused for them.
+        */}
+        <link rel="preconnect" href="https://tiles.openfreemap.org" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://tiles.openfreemap.org" />
         <AppleSplashLinks />
       </head>
       <body className={`${inter.variable} ${playfair.variable} ${lora.variable} antialiased`}>
+        <RegisterMapCache />
         {/* SpaceGuard is mounted inside <Providers> — it is client-only
             (ssr: false), which a Server Component cannot declare. */}
         <Providers initialTone={initialTone}>
