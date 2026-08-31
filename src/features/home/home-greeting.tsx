@@ -37,8 +37,12 @@ export function HomeGreeting({ daysTogether, pending }: HomeGreetingProps) {
   const [greeting, setGreeting] = useState<Greeting | null>(null);
   useEffect(() => setGreeting(greetingFor(new Date().getHours())), []);
 
+  // A fragment, not a wrapper. A sticky element can only stay put for as far as
+  // its own parent reaches, so wrapping the band in a <header> that ends a few
+  // hundred pixels down meant it travelled off screen with that box. Every
+  // other route hands PageHeader straight to PageShell; this one now does too.
   return (
-    <header className="space-y-2">
+    <>
       {/*
         The shared band, not a strip of artwork above a hand-rolled heading.
         Two bands of two different heights is what made content start at a
@@ -60,7 +64,7 @@ export function HomeGreeting({ daysTogether, pending }: HomeGreetingProps) {
         }
       />
 
-      <div className="space-y-1.5">
+      <div className="mt-2 space-y-1.5">
 
         {!pending && daysTogether !== null && (
           <p className="text-foreground/80 flex items-center gap-1.5 pt-1 text-sm">
@@ -84,6 +88,6 @@ export function HomeGreeting({ daysTogether, pending }: HomeGreetingProps) {
           </p>
         )}
       </div>
-    </header>
+    </>
   );
 }

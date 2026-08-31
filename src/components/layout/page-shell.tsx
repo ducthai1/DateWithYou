@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ToneArt } from "@/components/theme/tone-art";
 import type { ArtName } from "@/lib/tone";
@@ -83,11 +86,41 @@ export function PageHeader({
   banner?: React.ReactNode;
   className?: string;
 }) {
+  /*
+   * The band stays on screen, and shrinks once the page has moved.
+   *
+   * It used to scroll away on any screen carrying artwork, so reaching a quick
+   * action on a long page meant scrolling all the way back to the top. Simply
+   * pinning it was not enough either: at 144px an artwork band would hold a
+   * fifth of a phone screen hostage for a picture nobody is looking at any
+   * more. Once you are reading, the band gives the picture back and keeps only
+   * what is useful — the title and the actions.
+   *
+   * The threshold has a dead band (56 up, 24 down) so a page that ends a few
+   * pixels either side of one number cannot flicker between the two states.
+   */
+  const [condensed, setCondensed] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      setCondensed((was) => (was ? y > 24 : y > 56));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <div
       className={cn(
         "z-20 mb-6 flex flex-col gap-y-3 rounded-2xl px-4 py-4 shadow-sm backdrop-blur-md",
-        art ? "relative" : "sticky top-2",
+        // Below the app header on mobile, which is itself sticky at the top.
+        "sticky top-[3.25rem] md:top-2",
+        "transition-[min-height,padding,box-shadow] duration-300 ease-out",
+        // No `relative` here. `sticky` is itself a positioned element, so the
+        // artwork layer and the status chip still lay out against this box —
+        // and `relative` would quietly win the position slot and put the band
+        // back to scrolling away, which is the whole thing being fixed.
         // Without artwork the band keeps the accent gradient it always had.
         // With artwork the gradient moves to the scrim below, so painting it
         // here too would double-tint the picture.
@@ -100,7 +133,10 @@ export function PageHeader({
           // subtitle at its foot, so roughly 100px of it was empty and every
           // screen's content started that much further down. 9rem still shows
           // enough picture to be a picture.
-          ? "min-h-[8rem] justify-end sm:min-h-[9rem] short:min-h-0 short:justify-between"
+          ? cn(
+              "justify-end short:min-h-0 short:justify-between",
+              condensed ? "min-h-0 py-2.5" : "min-h-[8rem] sm:min-h-[9rem]",
+            )
           : "from-gradient-from/15 to-gradient-to/15 bg-gradient-to-r",
         "sm:flex-row sm:items-center sm:justify-between sm:gap-y-0",
         // Zoomed in, the banner keeps its job — saying where you are — on
@@ -126,6 +162,15 @@ export function PageHeader({
             fill
             position={artPosition ?? "center 40%"}
             sizes="(max-width: 768px) 100vw, 960px"
+            /* Soft focus here, sharp on the page ground behind it. The band is
+               a strip a title sits directly on top of, so detail in it competes
+               with the words; the ground is the one that should be legible as a
+               picture. Scaled up because a blur samples past its own edges and
+               would otherwise leave a pale rim inside the rounded corners. */
+            className={cn(
+              "scale-110 blur-[3px] transition-opacity duration-300",
+              condensed && "opacity-40",
+            )}
           />
           <div className="from-card/95 via-card/70 to-card/15 absolute inset-0 bg-gradient-to-r" />
         </div>
@@ -135,7 +180,14 @@ export function PageHeader({
           truncates the other, and inside the scrim's thin end where the
           artwork is busiest — a chip needs its own surface there anyway. */}
       {art && banner ? (
-        <div className="absolute right-3 top-3 z-10 max-w-[min(60%,22rem)] short:static short:mb-1 short:max-w-none">
+        <div
+          className={cn(
+            "z-10 max-w-[min(60%,22rem)] short:static short:mb-1 short:max-w-none",
+            // Floated into the band's empty corner while the band is tall; once
+            // it condenses there is no corner left to float into.
+            condensed ? "static mb-1 max-w-none" : "absolute right-3 top-3",
+          )}
+        >
           {banner}
         </div>
       ) : null}
@@ -147,7 +199,14 @@ export function PageHeader({
         {subtitle ? (
           // Dropped rather than shrunk: at this height every line is a
           // trade against content, and the title already says where you are.
-          <p className="text-muted-foreground mt-0.5 text-sm short:hidden">{subtitle}</p>
+          <p
+            className={cn(
+              "text-muted-foreground mt-0.5 text-sm short:hidden",
+              condensed && "hidden",
+            )}
+          >
+            {subtitle}
+          </p>
         ) : null}
       </div>
       {/* Wraps on a narrow screen instead of crushing its contents. The

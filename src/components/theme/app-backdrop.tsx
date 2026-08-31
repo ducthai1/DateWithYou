@@ -75,12 +75,14 @@ export function AppBackdrop() {
         name={art}
         fill
         position="center"
-        // A backdrop is never read closely and is blurred on top of that, so it
-        // is served at roughly half the window rather than at full width. On a
-        // 1920 screen the full-width hint pulled the 3840 file for something
-        // nobody can resolve.
-        sizes="(max-width: 768px) 100vw, 960px"
-        className="scale-[1.02] opacity-[0.55] blur-[0.5px] saturate-[1.2]"
+        // Now that it is sharp it has to be served sharp: at half-width the
+        // upscale showed as soft blocking once the blur came off.
+        sizes="(max-width: 768px) 100vw, 1280px"
+        // Full strength. Dimming the picture AND washing over it spent the same
+        // contrast budget twice and left a ground you could not make out. The
+        // wash below is now the only thing buying readability, which means it
+        // can be tuned against measured contrast instead of guessed at.
+        className="scale-[1.02] saturate-[1.05]"
       />
       {/* Readability wash. Heaviest top-left, where every screen puts its
           heading and its first line of text, thinning toward the bottom right
@@ -92,13 +94,11 @@ export function AppBackdrop() {
           picture surviving at the top left, which is why it looked like
           nothing was there at all.
 
-          Effectively unblurred. A heavy radius was tried and rejected: it
-          turned the ground into coloured fog, and the point of using the
-          product's own illustrations rather than a gradient is that you can
-          tell what they are. Half a pixel only takes the hard edge off the
-          upscale. Readability is bought with the wash above and with opaque
-          cards, not by destroying the picture. */}
-      <div className="from-background/78 via-background/58 to-background/32 absolute inset-0 bg-gradient-to-br" />
+          The picture itself is untouched now — no dimming, no blur. Softening
+          it was doing the same job as this wash, so the two together cost twice
+          the contrast for one benefit. Readability is bought here and by opaque
+          cards, which can both be measured; destroying the picture cannot. */}
+      <div className="from-background/92 via-background/84 to-background/64 absolute inset-0 bg-gradient-to-br" />
     </div>
   );
 }
