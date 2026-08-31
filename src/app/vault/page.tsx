@@ -38,13 +38,15 @@ export default function VaultPage() {
 
   return (
     <PageShell>
+      {/* Straight under PageShell, not inside the block below: a sticky element
+          only stays put for as far as its own parent reaches, and that wrapper
+          ends after the stats grid — so the band travelled off screen with it. */}
+      <PageHeader
+        title="Góc bí mật"
+        subtitle="Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn."
+        art="bannerOurPage"
+      />
       <div className="space-y-4">
-        <PageHeader
-          title="Góc bí mật"
-          subtitle="Nơi lưu dự định, mong ước và phần thưởng riêng của hai bạn."
-          art="bannerOurPage"
-        />
-
         {/* Summary Stats — 2 cols on mobile, 4 on md+ */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button
