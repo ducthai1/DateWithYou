@@ -1009,6 +1009,41 @@ npx tsc --noEmit && npm run lint && npm run build
 `npm run lint` phải ra **0 error, 0 warning**. Cảnh báo tồn tại lâu ngày sẽ dạy
 người ta bỏ qua cảnh báo, và rồi cái thật cũng bị bỏ qua.
 
+### `sticky` chỉ dính TRONG PHẠM VI CHA — và `relative` lặng lẽ thắng nó
+
+Hai lần cùng một buổi, header có ảnh vẫn trôi mất dù đã thêm `sticky`:
+
+1. Chuỗi class còn sót `art ? "relative" : ""`. `relative` và `sticky` tranh cùng ô `position`, `tailwind-merge` giữ cái viết sau ⇒ `relative` thắng, `sticky` biến mất **không một cảnh báo**. Không cần `relative` cho lớp ảnh tuyệt đối bên trong: `sticky` tự nó đã là phần tử được định vị.
+2. Ở `/home`, band nằm trong `<header className="space-y-2">`. Phần tử `sticky` **chỉ dính hết chiều cao của CHA nó**, nên nó trôi đi cùng cái `<header>` cao vài trăm pixel đó. Bỏ khung bọc (trả về fragment) là xong — các route khác vốn đưa `PageHeader` thẳng vào `PageShell`.
+
+Nghiệm thu phải là: cuộn thật rồi đọc `getBoundingClientRect().top`. Nhìn class trong code không phát hiện được cả hai lỗi này.
+
+Band dính mà cao 144px thì chiếm 1/5 màn hình điện thoại cho bức ảnh chẳng ai còn nhìn ⇒ cuộn quá 56px thì **thu gọn** còn tiêu đề + nút (đo được 144→52px). Ngưỡng phải có vùng chết (lên 56, xuống 24), không thì trang kết thúc sát mốc sẽ nhấp nháy qua lại.
+
+### Đo tương phản thì đo PIXEL THẬT — và hộp thoại làm hỏng mọi con số
+
+Tính "nền sau chữ" từ CSS là đoán, khi đã chồng ảnh + gradient wash + thẻ trong suốt. Cách đúng: chụp trang, chụp lần hai với chữ bị làm trong suốt (`color:transparent`), rồi đọc nền thật dưới từng hộp chữ ở ảnh thứ hai.
+
+**Bẫy đã dính:** lần chạy đầu báo 207 chỗ chìm với tỉ số 1.31:1 — vô lý. Nguyên nhân: modal "Chào mừng" đang mở, làm mờ và tối cả trang phía sau. Mọi số đo qua một lớp overlay đều là rác. Nay probe tự `localStorage.setItem('dwy:welcomeSeen','1')` và **từ chối đo** nếu còn `[role="dialog"]`.
+
+Cách tự kiểm probe: tính tay 1 cặp màu đã biết. Nhãn sidebar `#c2693f` trên `#f6e6dc` phải ra 3.21:1 — probe ra đúng 3.21 thì mới tin phần còn lại.
+
+**Và phải đo BẢN CŨ để biết mình có gây ra hay không.** Nền cũ 166 chỗ, nền nét 169 ⇒ việc làm nét chỉ thêm 3, còn 166 là nợ sẵn. Không có phép đo này thì rất dễ nhận vơ hoặc chối bay một hồi quy.
+
+### Điều khiển LUÔN CÓ chiếm mép, điều khiển CÓ ĐIỀU KIỆN lùi vào trong
+
+Ô tìm kiếm bản đồ đặt nút filter ở `right-9` để chừa chỗ cho nút xoá `right-1.5`. Nút xoá chỉ xuất hiện khi đã gõ, nên ô rỗng — trạng thái thường gặp nhất — luôn hở một khoảng 36px ở mép phải.
+
+Luật: thứ luôn hiện diện đặt sát mép; thứ xuất hiện có điều kiện chèn vào trong. Đừng để bố cục lúc rỗng phải trả giá cho thứ chưa tồn tại.
+
+Cùng họ với nó: `input[type="search"]` tự vẽ **nút xoá của trình duyệt** đè lên nút xoá của app ⇒ hai dấu X làm cùng một việc, hình dạng khác nhau. Ẩn cái native (`::-webkit-search-cancel-button`), giữ cái của app vì chỉ nó mới style/label/focus được.
+
+### Một chuyển động, đừng thành hai
+
+Thu gọn panel bản đồ bị "giật sang trái rồi mới mờ dần". Nguyên nhân: `ease-out` **dồn phần lớn quãng đường vào 1/3 đầu**, nên 24px trượt xong gần như tức thì trong khi opacity còn fade hết 300ms — mắt đọc thành hai sự kiện. Thêm nữa, nút "mở lại" mount ngay lập tức ở opacity đầy đủ trong lúc cột còn đang bay ra.
+
+Chữa: quãng dài hơn, đường cong giảm tốc (`cubic-bezier(0.32,0.72,0,1)`), opacity **trễ lại phía sau** chuyển động, và giữ nút mở lại luôn mount rồi cho nó hiện dần **sau** khi cột đã đi.
+
 ### Vành focus vẽ NGOÀI hộp — mọi khung cắt đều xén nó
 
 Khung có `overflow` khác `visible` sẽ xén vành focus của con đang được tab tới, vì ring nằm ngoài mép phần tử. Đã dính 3 chỗ cùng lúc: danh sách cuộn trong sidebar (xén ring của **cả 10 mục nav, trên mọi route**), thanh tab `scroll-strip`, và list địa điểm trong `map-sheet`.
