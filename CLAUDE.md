@@ -1009,6 +1009,42 @@ npx tsc --noEmit && npm run lint && npm run build
 `npm run lint` phải ra **0 error, 0 warning**. Cảnh báo tồn tại lâu ngày sẽ dạy
 người ta bỏ qua cảnh báo, và rồi cái thật cũng bị bỏ qua.
 
+### Thao tác sắp xếp: đổi trên UI trước, gửi ĐÍCH ĐẾN chứ không gửi từng bước
+
+Nút Lên/Xuống cũ `await` mutation rồi `invalidate` cả ngày mới nhúc nhích ⇒ mỗi lần bấm tốn 2 vòng mạng đứng im, và bấm tiếp trong lúc đó thì đánh nhau với cái refetch đang bay.
+
+Ba luật:
+- **Đổi chỗ trong cache ngay khi bấm.** Nhớ cập nhật luôn field `order` cho khớp vị trí mới, không thì chỗ nào re-sort lại cache sẽ lật ngược những gì đang hiện trên màn.
+- **Gom lệnh 400ms sau lần bấm cuối, và gửi THỨ TỰ CUỐI CÙNG** (`reorder({date,bucket,ids})`), không gửi N lệnh `move`. Gửi đích đến thì: bấm liên tục thu về 1 lệnh ghi, chạy lại 2 lần vẫn ra cùng kết quả, và không có chuyện các lệnh về không đúng thứ tự.
+- **Rollback về trước CẢ LOẠT**, không phải trước lần bấm cuối — một lệnh ghi hỏng làm vô hiệu mọi swap trong loạt đó.
+
+Server phải xử lý cả id mà client **không** gửi (người kia vừa thêm thẻ giữa chừng): xếp chúng sau, giữ thứ tự tương đối, đừng đá ra khỏi buổi.
+
+Đo thật: 3 lần bấm cách nhau 90ms ⇒ UI đổi xong trong 275ms **chưa gửi gì**, server khớp sau khi lắng.
+
+### Chặn chiều cao ảnh thì chặn BỀ RỘNG CỘT, đừng bóp ảnh trong khung
+
+`max-h` + `w-auto` làm ảnh thấp lại nhưng **khung vẫn full width** ⇒ hở hai dải trắng hai bên. Máy màn cao không thấy, máy màn thấp thấy ⇒ bị đọc nhầm thành "lỗi thiết bị".
+
+Ảnh 1672×941 thì cột rộng `H × 1672/941` cho ra đúng chiều cao `H` mà ảnh vẫn lấp kín khung ở mọi tổ hợp width–height:
+
+```
+[--hero-h:200vh] short:[--hero-h:66vh] shorter:[--hero-h:60vh]
+max-w-[min(560px,calc(var(--hero-h)*1672/941))]
+```
+
+Dùng biến CSS thay vì `lg:max-w-none`, vì `lg:` sẽ đè mất `shorter:` khi cả hai cùng là media query.
+
+Và **trần đặt quá chặt cũng là lỗi**: 44vh trên cửa sổ 2000×620 vẽ hero rộng 483px — 24% màn hình — cho một hero mà toàn bộ mục đích là bức ảnh.
+
+### Ảnh thiếu bóng đổ: quét bằng máy, đừng chờ người dùng chỉ từng trang
+
+Duyệt mọi `<img>` brand trên mọi route, kiểm tra **cả `box-shadow` lẫn `filter: drop-shadow`**, leo **6 tầng cha** — ảnh tràn viền nằm trong thẻ thì bóng thuộc về cái thẻ, leo 3 tầng sẽ báo oan.
+
+Bỏ qua: logo (là mark đặt lên bề mặt), ảnh nền trang trí `aria-hidden` rộng gần hết màn, và ảnh nhỏ < 48px.
+
+Ảnh tách nền nhận bóng theo **hình** (`drop-shadow`), ảnh đục nhận bóng theo **hộp** (`shadow` + bo góc) — hỏi `brand-cutouts.json` chứ đừng đoán.
+
 ### `sticky` chỉ dính TRONG PHẠM VI CHA — và `relative` lặng lẽ thắng nó
 
 Hai lần cùng một buổi, header có ảnh vẫn trôi mất dù đã thêm `sticky`:
