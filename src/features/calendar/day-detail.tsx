@@ -12,6 +12,7 @@ import { Sparkles, CalendarHeart } from "lucide-react";
 import { BUCKETS, mergeTags, type BucketKey } from "@/lib/plan-meta";
 import { MemoryForm } from "@/features/memories/memory-form";
 import { BucketSection } from "./bucket-section";
+import { DayPhotos, type DayMemory } from "./day-photos";
 import { PlanItemForm, type EditableItem } from "./plan-item-form";
 import type { DayItem } from "./plan-item-card";
 import { PhotoView } from "react-photo-view";
@@ -44,6 +45,9 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
   const [editing, setEditing] = useState<EditableItem | undefined>();
   const [addBucket, setAddBucket] = useState<BucketKey>("morning");
   const [memoryFor, setMemoryFor] = useState<DayItem | null>(null);
+  /** A memory of this day opened for editing — the form loads its photos. */
+  const [editMemory, setEditMemory] = useState<DayMemory | null>(null);
+  const [addPhoto, setAddPhoto] = useState(false);
 
   const palette = tags.data ?? mergeTags(undefined);
   const locationNames: Record<string, string> = Object.fromEntries(
@@ -133,7 +137,18 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
                 </div>
               </div>
 
-
+              <DayPhotos
+                date={date}
+                memories={(detail.data?.memories ?? []) as DayMemory[]}
+                onEdit={setEditMemory}
+                onAdd={() => {
+                  // Adding to the day's existing memory keeps one entry per day
+                  // instead of spawning a second, near-empty one beside it.
+                  const existing = (detail.data?.memories ?? []) as DayMemory[];
+                  if (existing.length > 0) setEditMemory(existing[0]);
+                  else setAddPhoto(true);
+                }}
+              />
             </>
           )}
         </ModalContent>
@@ -148,6 +163,25 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
             defaultBucket={addBucket}
             onDone={() => setFormOpen(false)}
             onCancel={() => setFormOpen(false)}
+          />
+        </Modal>
+      )}
+
+      {(editMemory || addPhoto) && (
+        <Modal
+          open
+          onClose={() => { setEditMemory(null); setAddPhoto(false); }}
+          className="max-w-lg"
+        >
+          <ModalHeader
+            title={editMemory ? "Sửa kỷ niệm" : "Thêm ảnh cho ngày này"}
+            onClose={() => { setEditMemory(null); setAddPhoto(false); }}
+          />
+          <MemoryForm
+            initialDate={date}
+            initialMemory={editMemory ?? undefined}
+            onDone={() => { setEditMemory(null); setAddPhoto(false); }}
+            onCancel={() => { setEditMemory(null); setAddPhoto(false); }}
           />
         </Modal>
       )}
