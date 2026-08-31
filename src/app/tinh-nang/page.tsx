@@ -125,8 +125,9 @@ export default function Page() {
                     describes it. The hero was a headline in one column and a
                     paragraph in the other, which on a wide screen is two blocks
                     of text pretending to be a layout. */}
-                <div className="mt-7 overflow-hidden rounded-[22px] border border-[#d8cfc1]/70 shadow-[0_10px_30px_rgba(59,50,42,0.09)]">
-                  <ToneArt name="heroDesk" sizes="(max-width: 1024px) 100vw, 560px" />
+                <div className="mt-7">
+                  <ToneArt name="heroDesk" sizes="(max-width: 1024px) 100vw, 560px"   framed
+            />
                 </div>
               </div>
             </div>

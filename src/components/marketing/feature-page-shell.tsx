@@ -107,8 +107,9 @@ export function FeaturePageShell({ page }: { page: FeaturePage }) {
             before the argument for it. These pages had no imagery at all. */}
         {page.art ? (
           <Reveal delay={140}>
-            <div className="mt-10 overflow-hidden rounded-[20px] border border-[#d8cfc1]/70 bg-white/60 shadow-sm">
-              <ToneArt name={page.art} priority sizes="(max-width: 768px) 100vw, 768px" />
+            <div className="mt-10">
+              <ToneArt name={page.art} priority sizes="(max-width: 768px) 100vw, 768px"   framed
+            />
             </div>
           </Reveal>
         ) : null}
@@ -137,12 +138,11 @@ export function FeaturePageShell({ page }: { page: FeaturePage }) {
                   <div className={i % 2 === 1 ? "sm:order-last" : undefined}>
                     <SectionBody section={section} />
                   </div>
-                  <div className="overflow-hidden rounded-[20px] border border-[#d8cfc1]/70 bg-white/60 shadow-sm">
-                    <ToneArt
+                  <ToneArt
                       name={section.art}
                       sizes="(max-width: 640px) 100vw, 330px"
-                    />
-                  </div>
+                framed
+              />
                 </div>
               ) : (
                 <SectionBody section={section} />

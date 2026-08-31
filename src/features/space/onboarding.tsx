@@ -79,8 +79,9 @@ export function Onboarding() {
             below 760px of height in favour of a heart motif, for the same
             reason — a laptop in landscape has no room to spare for a picture
             this tall without pushing the form off-screen. */}
-        <div className="w-full overflow-hidden rounded-[28px] border border-border/60 shadow-sm short:hidden">
-          <ToneArt name="mapTreasure" sizes="480px" />
+        <div className="w-full short:hidden">
+          <ToneArt name="mapTreasure" sizes="480px"   framed
+            />
         </div>
         <div
           className="hidden h-16 w-16 items-center justify-center rounded-2xl short:flex"

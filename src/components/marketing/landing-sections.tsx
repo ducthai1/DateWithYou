@@ -83,12 +83,11 @@ export function LandingSections() {
             </Reveal>
           </div>
           <Reveal delay={120}>
-            <div className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 bg-white/50 shadow-[0_12px_40px_rgba(59,50,42,0.08)]">
-              <ToneArt
+            <ToneArt
                 name="memoriesScrapbook"
                 sizes="(max-width: 1024px) 100vw, 480px"
+                framed
               />
-            </div>
           </Reveal>
         </div>
       </section>
@@ -108,12 +107,11 @@ export function LandingSections() {
       */}
       <section className="px-6 pb-4 sm:pb-8">
         <Reveal>
-          <div className="mx-auto max-w-4xl overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 bg-white/50 shadow-[0_12px_40px_rgba(59,50,42,0.08)]">
-            <ToneArt
+          <ToneArt
               name="appShowcase"
               sizes="(max-width: 1024px) 100vw, 900px"
-            />
-          </div>
+                framed
+              />
         </Reveal>
       </section>
 
@@ -205,12 +203,11 @@ export function LandingSections() {
             </ol>
           </div>
           <Reveal delay={120} className="lg:order-first">
-            <div className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 bg-white/50 shadow-[0_12px_40px_rgba(59,50,42,0.08)]">
-              <ToneArt
+            <ToneArt
                 name="tripPlanner"
                 sizes="(max-width: 1024px) 100vw, 480px"
+                framed
               />
-            </div>
           </Reveal>
         </div>
       </section>

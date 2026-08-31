@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useTone } from "./tone-provider";
-import { artSrc, spotSrc, type ArtName, type SpotName } from "@/lib/tone";
+import { artIsTransparent, artSrc, spotIsTransparent, spotSrc, type ArtName, type SpotName } from "@/lib/tone";
 import { cn } from "@/lib/utils";
 
 /**
@@ -23,6 +23,7 @@ export function ToneArt({
   className,
   priority = false,
   fill = false,
+  framed = false,
   position,
   sizes = "(max-width: 768px) 100vw, 720px",
 }: {
@@ -32,6 +33,20 @@ export function ToneArt({
   priority?: boolean;
   /** Sit BEHIND content — the parent sets the box. Parent needs `relative`. */
   fill?: boolean;
+  /**
+   * Wrap the picture in the card treatment the marketing surfaces use.
+   *
+   * It exists so the CALLER stops deciding. Nine places hand-rolled the same
+   * rounded border and white fill, which is right for an opaque picture and
+   * exactly wrong for a cut-out: the frame hands back the very box the
+   * background removal took away, so a transparent piece reads as though
+   * nothing had been removed.
+   *
+   * Opaque file: rounded card, hairline border, soft shadow.
+   * Cut-out file: no card, and the shadow moves onto the artwork's own
+   * silhouette so it still sits ON the page rather than flat against it.
+   */
+  framed?: boolean;
   /** CSS object-position, e.g. "center 30%" — which part survives the crop. */
   position?: string;
   sizes?: string;
@@ -59,14 +74,28 @@ export function ToneArt({
   if (fill) {
     return <Image {...common} alt={alt} fill className={cn("object-cover", className)} />;
   }
-  return (
+  const cut = artIsTransparent(name, tone);
+  const img = (
     <Image
       {...common}
       alt={alt}
       width={1672}
       height={941}
-      className={cn("h-auto w-full object-cover", className)}
+      className={cn(
+        "h-auto w-full object-cover",
+        // A cut-out has no card edge to cast a shadow, so it casts its own.
+        framed && cut && "drop-shadow-[0_14px_28px_rgba(59,50,42,0.22)]",
+        className,
+      )}
     />
+  );
+
+  if (!framed || cut) return img;
+
+  return (
+    <div className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 bg-white/50 shadow-[0_12px_40px_rgba(59,50,42,0.08)]">
+      {img}
+    </div>
   );
 }
 
@@ -95,6 +124,11 @@ export function SpotArt({
   /** Match the real rendered width of the box the parent gives this. */
   sizes?: string;
 }) {
+  // Six of these spots are cut out and two are not, and the mix showed: a
+  // floating subject beside a hard-edged rectangle reads as a mistake. A cut-out
+  // gets the shadow on its own silhouette; an opaque one gets rounded corners so
+  // its edge is a deliberate shape rather than a stray crop.
+  const cut = spotIsTransparent(name);
   return (
     <Image
       src={spotSrc(name)}
@@ -102,7 +136,13 @@ export function SpotArt({
       aria-hidden={alt === "" ? true : undefined}
       fill
       sizes={sizes}
-      className={cn("object-contain", className)}
+      className={cn(
+        "object-contain",
+        cut
+          ? "drop-shadow-[0_8px_16px_rgba(59,50,42,0.18)]"
+          : "rounded-2xl shadow-[0_8px_20px_rgba(59,50,42,0.12)]",
+        className,
+      )}
     />
   );
 }

@@ -10,6 +10,8 @@
  * imagery, so it is a per-device choice and stays in a cookie.
  */
 
+import CUTOUTS from "./brand-cutouts.json";
+
 export type Tone = "morning" | "afternoon";
 
 /** What the person picked. "auto" means "follow the clock". */
@@ -148,6 +150,39 @@ export function artSrc(name: ArtName, tone: Tone): string {
     ? tone
     : (entry.tones[0] as Tone);
   return `${DIR[use]}/${entry.file}`;
+}
+
+/**
+ * Which files were exported with a real alpha channel.
+ *
+ * Measured, not assumed — the list is the output of scanning every file for
+ * pixels with alpha < 250, and it is a property of the FILE, not of the role:
+ * map-island is cut out in morning and opaque in afternoon.
+ *
+ * It matters because a cut-out picture must be drawn bare. Wrapped in the
+ * rounded card + border the opaque ones need, it reads as if the background
+ * was never removed at all — the frame supplies exactly the box the cut-out
+ * was made to escape.
+ *
+ * Re-export another file with alpha and add it here, or it keeps its frame.
+ */
+// Measured, not remembered: `scripts/measure-brand-cutouts.mjs` rewrites this
+// list from the pixels. A hand-kept list silently went wrong the moment
+// background-removed exports replaced the old opaque files under the same
+// names — the art was cut out and still drawn inside a white card. Re-run the
+// script after touching anything in public/brand-image.
+const TRANSPARENT: ReadonlySet<string> = new Set(CUTOUTS);
+
+/** True when this piece is cut out, so it must be drawn without a card. */
+export function artIsTransparent(name: ArtName, tone: Tone): boolean {
+  const entry = ART[name] as ArtEntry;
+  const use = entry.tones.includes(tone) ? tone : (entry.tones[0] as Tone);
+  return TRANSPARENT.has(`${use}-tone/${entry.file}`);
+}
+
+/** True when a common-page spot is cut out. */
+export function spotIsTransparent(name: SpotName): boolean {
+  return TRANSPARENT.has(`common-page/${SPOT[name]}`);
 }
 
 /** True when this piece only exists in the other tone. */

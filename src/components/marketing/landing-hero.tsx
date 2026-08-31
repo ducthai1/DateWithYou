@@ -123,7 +123,8 @@ export function LandingHero() {
             name="heroDesk"
             priority
             sizes="(min-width: 1536px) 1400px, (min-width: 1024px) 68vw, (min-width: 640px) 560px, 92vw"
-            className="overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 shadow-[0_20px_50px_rgba(59,50,42,0.12)] shorter:mx-auto shorter:max-h-[42vh] shorter:w-auto"
+            framed
+            className="shorter:mx-auto shorter:max-h-[42vh] shorter:w-auto"
           />
         </div>
       </div>
