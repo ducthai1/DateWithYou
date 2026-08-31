@@ -19,7 +19,7 @@ import {
   suggestPlaces,
 } from "@/server/lib/geocode-address";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
-import { searchAreas } from "@/lib/vn-admin";
+import { matchArea, searchAreas } from "@/lib/vn-admin";
 import { buildPattern } from "@/lib/vietnamese-text";
 
 const districtSchema = z.string().trim().min(1);
@@ -311,6 +311,46 @@ export const locationRouter = router({
   searchAreas: protectedProcedure
     .input(z.object({ query: z.string().max(80).default("") }))
     .query(({ input }) => searchAreas(input.query)),
+
+  /**
+   * Which administrative area a point on the map falls in.
+   *
+   * So that placing a pin fills the area in, rather than leaving someone to
+   * work out which ward they just tapped and type it. The geocoder's answer is
+   * only a hint: it is matched against the official list before being returned,
+   * because OpenStreetMap still carries plenty of pre-2025 district names that
+   * are no longer units at all.
+   *
+   * Best-effort by design — no key, a short timeout, and null on any failure.
+   * The field it fills is editable and the save does not depend on it.
+   */
+  areaAt: protectedProcedure
+    .input(geo)
+    .query(async ({ input }) => {
+      try {
+        const url =
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14` +
+          `&lat=${input.lat}&lon=${input.lng}`;
+        const res = await fetch(url, {
+          signal: AbortSignal.timeout(4000),
+          headers: {
+            "User-Agent": "DateWithYou/1.0 (couple-space app; area lookup)",
+            "Accept-Language": "vi",
+          },
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as {
+          address?: Record<string, string | undefined>;
+        };
+        const a = data.address ?? {};
+        const ward = a.suburb ?? a.quarter ?? a.village ?? a.town ?? a.city_district;
+        const province = a.city ?? a.state ?? a.province;
+        return matchArea(ward, province);
+      } catch (err) {
+        console.error("location.areaAt: reverse lookup failed", err);
+        return null;
+      }
+    }),
 
   getRoute: protectedProcedure
     .input(z.object({

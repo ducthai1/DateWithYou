@@ -111,3 +111,53 @@ function toOption(entry: IndexedWard): AreaOption {
     provinceCode: entry.ward.provinceCode,
   };
 }
+
+/**
+ * Best match for a free-text area name coming back from a geocoder.
+ *
+ * A reverse geocode answers with whatever OpenStreetMap holds — often a ward
+ * name alone ("Phường Bến Nghé"), sometimes with a stale district, sometimes
+ * with the province spelled differently. The official list is the authority, so
+ * the answer is matched against it rather than stored raw: a ward name that
+ * exists in more than one province is disambiguated by the province the same
+ * response gave, and anything with no match at all returns null so the field
+ * stays empty and asks, instead of saving a name that is not a real unit.
+ */
+export function matchArea(wardName?: string, provinceName?: string): AreaOption | null {
+  const ward = foldForSearch(wardName ?? "");
+  const province = foldForSearch(provinceName ?? "");
+  if (!ward && !province) return null;
+
+  const all = getIndex();
+
+  if (ward) {
+    const candidates = all.filter((entry) => {
+      const name = foldForSearch(entry.ward.name);
+      return name === ward || foldForSearch(entry.ward.fullName).startsWith(ward);
+    });
+    if (candidates.length === 1) return toOption(candidates[0]);
+    if (candidates.length > 1 && province) {
+      const inProvince = candidates.find((entry) => {
+        const p = PROVINCE_BY_CODE.get(entry.ward.provinceCode);
+        if (!p) return false;
+        const full = foldForSearch(p.fullName);
+        const bare = foldForSearch(p.name);
+        return full.includes(province) || province.includes(bare);
+      });
+      if (inProvince) return toOption(inProvince);
+    }
+    if (candidates.length > 0) return toOption(candidates[0]);
+  }
+
+  // No usable ward: fall back to naming the province, which is still better
+  // than nothing and is a real unit in the list.
+  if (province) {
+    const p = PROVINCES.find((x) => {
+      const full = foldForSearch(x.fullName);
+      const bare = foldForSearch(x.name);
+      return full.includes(province) || province.includes(bare);
+    });
+    if (p) return { value: p.fullName, label: p.fullName, provinceCode: p.code };
+  }
+  return null;
+}
