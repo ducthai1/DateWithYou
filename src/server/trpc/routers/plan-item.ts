@@ -201,6 +201,57 @@ export const planItemRouter = router({
       return { ok: true };
     }),
 
+  /*
+   * Commit a whole bucket's order in one call.
+   *
+   * The up/down buttons move the list on screen immediately and send nothing
+   * until the tapping stops, so what finally has to reach the server is the
+   * order the person ended on — not the six swaps they passed through. Sending
+   * the destination instead of the steps also makes a retry harmless: run it
+   * twice and the bucket lands in the same place.
+   */
+  reorder: protectedProcedure
+    .input(
+      z.object({
+        date: dateKey,
+        bucket: bucketEnum,
+        ids: z.array(z.string()).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const docs = await PlanItemModel.find({
+        spaceId: ctx.spaceId,
+        date: input.date,
+        bucket: input.bucket,
+      })
+        .select("_id order")
+        .lean<{ _id: unknown; order?: number }[]>();
+
+      // Anything the client did not name keeps its relative place after the
+      // ones it did — a card added by the other partner mid-drag must not be
+      // dropped out of the bucket just because this client never saw it.
+      const wanted = new Map(input.ids.map((id, i) => [id, i]));
+      const ordered = docs
+        .map((d) => ({ id: String(d._id), was: d.order ?? 0 }))
+        .sort(
+          (a, b) =>
+            (wanted.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+              (wanted.get(b.id) ?? Number.MAX_SAFE_INTEGER) ||
+            a.was - b.was ||
+            a.id.localeCompare(b.id),
+        );
+
+      const writes = ordered
+        .map((o, i) => ({ o, i }))
+        .filter(({ o, i }) => o.was !== i)
+        .map(({ o, i }) =>
+          PlanItemModel.updateOne({ _id: o.id, spaceId: ctx.spaceId }, { $set: { order: i } }),
+        );
+      await Promise.all(writes);
+      return { ok: true, changed: writes.length };
+    }),
+
   remove: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

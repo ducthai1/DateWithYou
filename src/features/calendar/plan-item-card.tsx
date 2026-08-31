@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Check, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, MapPin, Users, Plane } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -8,10 +8,11 @@ import { cn } from "@/lib/utils";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { useCelebrate } from "@/components/ui/celebrate";
 import { useToast } from "@/components/ui/toast";
-import type { Tag } from "@/lib/plan-meta";
+import type { Tag, BucketKey } from "@/lib/plan-meta";
 import { colorsForTags } from "@/lib/plan-meta";
 
 export type DayItem = {
+  bucket?: BucketKey;
   id: string;
   title: string;
   note: string | null;
@@ -104,12 +105,76 @@ export function PlanItemCard({
     onSettled: () => utils.calendar.monthSummary.invalidate(),
   });
 
-  // Reordering is rarer and order-sensitive; let the server be source of truth
-  // but only refetch the open day (not the whole month) on success.
-  const move = trpc.planItem.move.useMutation({
-    onSuccess: () => utils.calendar.dayDetail.invalidate({ date }),
-    onError: (err) => toast(err.message, "error")
+  /*
+   * Reordering moves the list NOW and tells the server afterwards.
+   *
+   * It used to await the mutation and then refetch the whole day before the
+   * card budged, so every tap on an arrow cost two round trips of nothing
+   * happening — and tapping again during that window fought the refetch.
+   *
+   * So: swap in the cache on the tap, and send the bucket's finished order once
+   * the tapping stops. Sending the destination rather than each step is what
+   * makes holding the button down safe; the flurry collapses into one write,
+   * and the write says where the list ended up rather than replaying how it
+   * got there.
+   */
+  const reorder = trpc.planItem.reorder.useMutation({
+    onError: (err, _v, ctx) => {
+      const c = ctx as { prev?: ReturnType<typeof utils.calendar.dayDetail.getData> } | undefined;
+      if (c?.prev) utils.calendar.dayDetail.setData({ date }, c.prev);
+      toast(err.message, "error");
+    },
+    onSettled: () => utils.calendar.monthSummary.invalidate(),
   });
+
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const beforeFlurry = useRef<ReturnType<typeof utils.calendar.dayDetail.getData>>(undefined);
+  // A pending order must not die with the card — an unmount mid-flurry (the day
+  // sheet closing right after the last tap) would otherwise drop the write.
+  useEffect(() => () => { if (flushTimer.current) clearTimeout(flushTimer.current); }, []);
+
+  const SETTLE_MS = 400;
+
+  function nudge(direction: "up" | "down") {
+    const prev = utils.calendar.dayDetail.getData({ date });
+    if (!prev) return;
+    if (!beforeFlurry.current) beforeFlurry.current = prev;
+
+    const items = [...prev.items];
+    const i = items.findIndex((it) => it.id === item.id);
+    if (i === -1) return;
+    const bucket = items[i].bucket;
+    const j = direction === "up" ? i - 1 : i + 1;
+    // Only within the bucket: the neighbour across a boundary belongs to a
+    // different heading, and an arrow must never move an item under one.
+    if (j < 0 || j >= items.length || items[j].bucket !== bucket) return;
+
+    [items[i], items[j]] = [items[j], items[i]];
+    // Keep `order` honest with the new positions, so anything that re-sorts
+    // this cache agrees with what is on screen.
+    let n = 0;
+    for (const it of items) if (it.bucket === bucket) it.order = n++;
+    utils.calendar.dayDetail.setData({ date }, { ...prev, items });
+
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+    flushTimer.current = setTimeout(() => {
+      flushTimer.current = null;
+      const now = utils.calendar.dayDetail.getData({ date });
+      const rollback = beforeFlurry.current;
+      beforeFlurry.current = undefined;
+      if (!now) return;
+      reorder.mutate(
+        {
+          date,
+          bucket,
+          ids: now.items.filter((it) => it.bucket === bucket).map((it) => it.id),
+        },
+        // Roll back to where the list stood BEFORE the flurry, not before the
+        // last tap — a rejected write invalidates every swap in the burst.
+        { onError: () => rollback && utils.calendar.dayDetail.setData({ date }, rollback) },
+      );
+    }, SETTLE_MS);
+  }
 
   const done = item.status === "done";
   const assignee = members.find((m) => m.id === item.assigneeId);
@@ -179,8 +244,8 @@ export function PlanItemCard({
             </span>
           )}
           <div className="flex items-center gap-0.5 sm:ml-auto">
-            <IconBtn label="Lên" onClick={() => move.mutate({ id: item.id, direction: "up" })}><ChevronUp className="h-4 w-4" /></IconBtn>
-            <IconBtn label="Xuống" onClick={() => move.mutate({ id: item.id, direction: "down" })}><ChevronDown className="h-4 w-4" /></IconBtn>
+            <IconBtn label="Lên" onClick={() => nudge("up")}><ChevronUp className="h-4 w-4" /></IconBtn>
+            <IconBtn label="Xuống" onClick={() => nudge("down")}><ChevronDown className="h-4 w-4" /></IconBtn>
             <IconBtn label="Lưu thành kỷ niệm" onClick={onSaveAsMemory}><ImagePlus className="h-4 w-4" /></IconBtn>
             <IconBtn label="Sửa" onClick={onEdit}><Pencil className="h-4 w-4" /></IconBtn>
             <ConfirmButton
