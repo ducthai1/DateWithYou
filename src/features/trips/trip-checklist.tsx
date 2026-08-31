@@ -36,19 +36,27 @@ export function TripChecklist({ trip }: { trip: any }) {
   });
 
   const SETTLE_MS = 400;
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  /*
+   * The wanted value is recorded on the TAP, not read back when the request
+   * finally goes out.
+   *
+   * Reading the cache at flush time looked equivalent and was not: any other
+   * write on this screen invalidates `trip.get`, the refetch replaces the cache
+   * with the server's copy, and the flush then reads back the value it was
+   * about to change and sends it unchanged. Measured — deleting one item and
+   * ticking the rest left every tick on screen and none of them saved.
+   */
+  const timers = useRef(new Map<string, { timer: ReturnType<typeof setTimeout>; desired: boolean }>());
   const beforeBurst = useRef<ReturnType<typeof ctx.trip.get.getData> | undefined>(undefined);
 
   function flush(checklistId: string) {
+    const slot = timers.current.get(checklistId);
     timers.current.delete(checklistId);
-    const now = ctx.trip.get.getData({ id: trip.id });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const item = (now as any)?.checklists?.find((c: any) => c.id === checklistId);
-    if (!item) return;
+    if (!slot) return;
     const rollback = beforeBurst.current;
     if (timers.current.size === 0) beforeBurst.current = undefined;
     toggleMut.mutate(
-      { tripId: trip.id, checklistId, isDone: item.isDone },
+      { tripId: trip.id, checklistId, isDone: slot.desired },
       {
         // Back to where the list stood before the whole burst, not before the
         // last tap: one rejected write invalidates every tick in it.
@@ -63,7 +71,7 @@ export function TripChecklist({ trip }: { trip: any }) {
   useEffect(() => {
     const pending = timers.current;
     return () => {
-      for (const [id, t] of pending) { clearTimeout(t); flush(id); }
+      for (const [id, slot] of [...pending]) { clearTimeout(slot.timer); flush(id); }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -82,13 +90,34 @@ export function TripChecklist({ trip }: { trip: any }) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
     const running = timers.current.get(item.id);
-    if (running) clearTimeout(running);
-    timers.current.set(item.id, setTimeout(() => flush(item.id), SETTLE_MS));
+    if (running) clearTimeout(running.timer);
+    timers.current.set(item.id, {
+      timer: setTimeout(() => flush(item.id), SETTLE_MS),
+      desired: !item.isDone,
+    });
   }
 
   const removeMut = trpc.trip.removeChecklist.useMutation({
-    onSuccess: () => ctx.trip.get.invalidate({ id: trip.id }),
-    onError: () => toast("Chưa xoá được, thử lại nhé", "error"),
+    // The row goes now; the server hears about it after. Waiting a round
+    // trip before a confirmed delete takes effect reads as a dead button.
+    onMutate: async ({ checklistId }) => {
+      await ctx.trip.get.cancel({ id: trip.id });
+      const prev = ctx.trip.get.getData({ id: trip.id });
+      if (prev) {
+        ctx.trip.get.setData({ id: trip.id }, {
+          ...prev,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          checklists: (prev as any).checklists.filter((c: any) => c.id !== checklistId),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+      }
+      return { prev };
+    },
+    onError: (_e, _v, c) => {
+      if (c?.prev) ctx.trip.get.setData({ id: trip.id }, c.prev);
+      toast("Chưa xoá được, thử lại nhé", "error");
+    },
+    onSettled: () => ctx.trip.get.invalidate({ id: trip.id }),
   });
 
   const handleAdd = (e: React.FormEvent) => {

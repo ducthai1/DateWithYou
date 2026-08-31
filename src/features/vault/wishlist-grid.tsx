@@ -46,16 +46,43 @@ export function WishlistGrid() {
     onSuccess: () => { closeForm(); invalidate(); toast("Đã cập nhật wishlist ✓", "success"); },
     onError: (err) => toast(err.message, "error"),
   });
-  const toggle = trpc.wishlist.toggleBought.useMutation({ 
-    onSuccess: () => { 
-      invalidate(); 
-      toast("Đã cập nhật trạng thái mua", "success"); 
+  /*
+   * The tick moves first; the server hears about it afterwards.
+   *
+   * This awaited the mutation and then refetched the list before the checkbox
+   * changed — two round trips of nothing happening on every tap. Same shape as
+   * the trip packing list.
+   */
+  const toggle = trpc.wishlist.toggleBought.useMutation({
+    onMutate: async ({ id }) => {
+      await utils.wishlist.list.cancel();
+      const prev = utils.wishlist.list.getData();
+      utils.wishlist.list.setData(undefined, (old) =>
+        old?.map((w) => (w.id === id ? { ...w, bought: !w.bought } : w)),
+      );
+      return { prev };
     },
-    onError: (err) => toast(err.message, "error")
+    onError: (err, _v, ctx) => {
+      if (ctx?.prev) utils.wishlist.list.setData(undefined, ctx.prev);
+      toast(err.message, "error");
+    },
+    onSettled: () => invalidate(),
   });
   const remove = trpc.wishlist.remove.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã xoá món quà khỏi danh sách", "success"); },
-    onError: (err) => toast(err.message, "error")
+    // The row goes now. Waiting for a round trip before a confirmed delete
+    // takes effect reads as the button not having worked.
+    onMutate: async ({ id }) => {
+      await utils.wishlist.list.cancel();
+      const prev = utils.wishlist.list.getData();
+      utils.wishlist.list.setData(undefined, (old) => old?.filter((w) => w.id !== id));
+      return { prev };
+    },
+    onError: (err, _v, ctx) => {
+      if (ctx?.prev) utils.wishlist.list.setData(undefined, ctx.prev);
+      toast(err.message, "error");
+    },
+    onSuccess: () => toast("Đã xoá món quà khỏi danh sách", "success"),
+    onSettled: () => invalidate(),
   });
   const redeem = trpc.wishlist.redeem.useMutation({
     onSuccess: () => {

@@ -128,6 +128,15 @@ export function PlanItemCard({
   });
 
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /*
+   * The order to send is recorded on the TAP, not read back when the request
+   * goes out. Reading the cache at flush time looks equivalent and is not: any
+   * other write that invalidates this day — deleting a photo, say — replaces
+   * the cache with the server's copy first, and the flush then sends back the
+   * order it was about to change. The packing list had exactly this bug and it
+   * cost every tick in the burst.
+   */
+  const pendingOrder = useRef<{ bucket: BucketKey; ids: string[] } | null>(null);
   const beforeFlurry = useRef<ReturnType<typeof utils.calendar.dayDetail.getData>>(undefined);
   // A pending order must not die with the card — an unmount mid-flurry (the day
   // sheet closing right after the last tap) would otherwise drop the write.
@@ -155,20 +164,21 @@ export function PlanItemCard({
     let n = 0;
     for (const it of items) if (it.bucket === bucket) it.order = n++;
     utils.calendar.dayDetail.setData({ date }, { ...prev, items });
+    pendingOrder.current = {
+      bucket: bucket as BucketKey,
+      ids: items.filter((it) => it.bucket === bucket).map((it) => it.id),
+    };
 
     if (flushTimer.current) clearTimeout(flushTimer.current);
     flushTimer.current = setTimeout(() => {
       flushTimer.current = null;
-      const now = utils.calendar.dayDetail.getData({ date });
+      const wanted = pendingOrder.current;
+      pendingOrder.current = null;
       const rollback = beforeFlurry.current;
       beforeFlurry.current = undefined;
-      if (!now) return;
+      if (!wanted) return;
       reorder.mutate(
-        {
-          date,
-          bucket,
-          ids: now.items.filter((it) => it.bucket === bucket).map((it) => it.id),
-        },
+        { date, bucket: wanted.bucket, ids: wanted.ids },
         // Roll back to where the list stood BEFORE the flurry, not before the
         // last tap — a rejected write invalidates every swap in the burst.
         { onError: () => rollback && utils.calendar.dayDetail.setData({ date }, rollback) },

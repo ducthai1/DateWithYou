@@ -41,8 +41,21 @@ export function GamesPanel() {
   const list = trpc.media.list.useQuery({ kind: "game" });
   const utils = trpc.useUtils();
   const remove = trpc.media.remove.useMutation({
-    onSuccess: () => { utils.media.list.invalidate(); toast("Đã xoá trò chơi", "success"); },
-    onError: (err) => toast(err.message, "error")
+    // The row goes now; the server hears about it after. Waiting a round
+    // trip before a confirmed delete takes effect reads as a dead button.
+    onMutate: async ({ id }) => {
+      const key = { kind: "game" } as const;
+      await utils.media.list.cancel(key);
+      const prev = utils.media.list.getData(key);
+      utils.media.list.setData(key, (old) => old?.filter((m) => m.id !== id));
+      return { prev, key };
+    },
+    onError: (err, _v, ctx) => {
+      if (ctx?.prev) utils.media.list.setData(ctx.key, ctx.prev);
+      toast(err.message, "error");
+    },
+    onSuccess: () => toast("Đã xoá trò chơi", "success"),
+    onSettled: () => utils.media.list.invalidate(),
   });
 
   const [selected, setSelected] = useState<GameItem | null>(null);

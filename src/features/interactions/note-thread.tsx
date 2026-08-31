@@ -83,8 +83,26 @@ export function NoteThread({
   });
 
   const removeNote = trpc.interaction.removeNote.useMutation({
-    onSuccess: () => utils.interaction.forTargets.invalidate(queryInput),
-    onError: (err) => toast(err.message || "Chưa xoá được ghi chú", "error"),
+    // The row goes now; the server hears about it after. Waiting a round
+    // trip before a confirmed delete takes effect reads as a dead button.
+    onMutate: async ({ id }) => {
+      await utils.interaction.forTargets.cancel(queryInput);
+      const prev = utils.interaction.forTargets.getData(queryInput);
+      utils.interaction.forTargets.setData(queryInput, (old) => {
+        if (!old) return old;
+        const next: typeof old = {};
+        for (const [target, v] of Object.entries(old)) {
+          next[target] = { ...v, notes: v.notes.filter((n) => n.id !== id) };
+        }
+        return next;
+      });
+      return { prev };
+    },
+    onError: (err, _v, ctx) => {
+      if (ctx?.prev) utils.interaction.forTargets.setData(queryInput, ctx.prev);
+      toast(err.message || "Chưa xoá được ghi chú", "error");
+    },
+    onSettled: () => utils.interaction.forTargets.invalidate(queryInput),
   });
 
   if (state === "loading") {

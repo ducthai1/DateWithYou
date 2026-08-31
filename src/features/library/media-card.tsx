@@ -39,15 +39,27 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
   const { stop } = useNowPlaying();
 
   const remove = trpc.media.remove.useMutation({
+    // The card goes now; the server hears about it after. Waiting a round trip
+    // before a confirmed delete takes effect reads as a dead button.
+    onMutate: async ({ id }) => {
+      const key = { kind: item.kind } as const;
+      await utils.media.list.cancel(key);
+      const prev = utils.media.list.getData(key);
+      utils.media.list.setData(key, (old) => old?.filter((m) => m.id !== id));
+      return { prev, key };
+    },
+    onError: (err, _v, ctx) => {
+      if (ctx?.prev) utils.media.list.setData(ctx.key, ctx.prev);
+      toast(err.message, "error");
+    },
     onSuccess: () => {
-      utils.media.list.invalidate();
       toast("Đã xoá mục khỏi bộ sưu tập", "success");
       // No-ops unless this item was the one tracked as "now playing" — deleting
       // it must not leave the mini dock pointing at something that no longer
       // exists.
       stop(item.id);
     },
-    onError: (err) => toast(err.message, "error")
+    onSettled: () => utils.media.list.invalidate(),
   });
 
   return (

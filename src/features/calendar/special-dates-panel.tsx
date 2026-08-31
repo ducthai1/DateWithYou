@@ -54,8 +54,20 @@ export function SpecialDatesPanel() {
     onError: (err) => toast(err.message, "error"),
   });
   const remove = trpc.specialDate.remove.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã xoá ngày đặc biệt", "success"); },
-    onError: (err) => toast(err.message, "error"),
+    // The row goes now; the server hears about it after. Waiting a round
+    // trip before a confirmed delete takes effect reads as a dead button.
+    onMutate: async ({ id }) => {
+      await utils.specialDate.list.cancel();
+      const prev = utils.specialDate.list.getData();
+      utils.specialDate.list.setData(undefined, (old) => old?.filter((d) => d.id !== id));
+      return { prev };
+    },
+    onError: (err, _v, ctx) => {
+      if (ctx?.prev) utils.specialDate.list.setData(undefined, ctx.prev);
+      toast(err.message, "error");
+    },
+    onSuccess: () => toast("Đã xoá ngày đặc biệt", "success"),
+    onSettled: () => invalidate(),
   });
 
   const [title, setTitle] = useState("");

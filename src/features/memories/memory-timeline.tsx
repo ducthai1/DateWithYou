@@ -69,8 +69,26 @@ export function MemoryTimeline() {
   );
   const utils = trpc.useUtils();
   const remove = trpc.memory.remove.useMutation({
-    onSuccess: () => { utils.memory.list.invalidate(); toast("Đã xoá kỷ niệm", "success"); },
-    onError: (err) => toast(err.message, "error")
+    // The row goes now; the server hears about it after. Waiting a round
+    // trip before a confirmed delete takes effect reads as a dead button.
+    // An infinite query keeps its rows in pages, so the filter runs per page.
+    onMutate: async ({ id }) => {
+      const key = { tag: filter || undefined };
+      await utils.memory.list.cancel(key);
+      const prev = utils.memory.list.getInfiniteData(key);
+      utils.memory.list.setInfiniteData(key, (old) =>
+        old
+          ? { ...old, pages: old.pages.map((p) => ({ ...p, items: p.items.filter((m) => m.id !== id) })) }
+          : old,
+      );
+      return { prev, key };
+    },
+    onError: (err, _v, ctx) => {
+      if (ctx?.prev) utils.memory.list.setInfiniteData(ctx.key, ctx.prev);
+      toast(err.message, "error");
+    },
+    onSuccess: () => toast("Đã xoá kỷ niệm", "success"),
+    onSettled: () => utils.memory.list.invalidate(),
   });
 
   // Member profiles power the reaction rings and note bylines. One query for
