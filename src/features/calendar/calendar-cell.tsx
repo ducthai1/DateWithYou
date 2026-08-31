@@ -114,7 +114,11 @@ export const CalendarCell = memo(function CalendarCell({
         // taller page. A six-week month of square cells doesn't fit under
         // ~1100px of viewport height and the page scrolls; square cells are
         // what was asked for twice, so scrolling is the accepted trade-off.
-        "relative flex aspect-square flex-col items-start justify-start overflow-hidden p-1 md:p-3 text-sm transition-all touch-manipulation",
+        // `isolate`: this cell stacks its own z-0..z-30 internally. Without it a
+        // `relative` box opens no stacking context, so the numeral and the dots
+        //compete with the page's sticky header at the same z-20 — and being later in
+        // the DOM, they won, painting day numbers over the pinned band.
+        "relative isolate flex aspect-square flex-col items-start justify-start overflow-hidden p-1 md:p-3 text-sm transition-all touch-manipulation",
         "rounded-2xl md:rounded-xl md:transition-colors",
         // #E5E7EB against a near-white page was a border you had to look for.
         // A tint of the space's own accent separates the card from the ground
@@ -294,7 +298,7 @@ export const CalendarCell = memo(function CalendarCell({
 
       {/* Extra count indicator (desktop sticky-note overflow) */}
       {hasPlans && summary.planCount > 2 && (
-        <div className="absolute bottom-1 right-1 z-20 hidden text-[8px] sm:text-[9px] font-bold text-muted-foreground/80 bg-card/70 rounded-full px-1.5 py-0.5 backdrop-blur-sm shadow-sm border border-border/50 md:block">
+        <div className="absolute bottom-1 right-1 z-20 hidden text-[8px] sm:text-[9px] font-bold text-muted-foreground/80 bg-card/90 rounded-full px-1.5 py-0.5 shadow-sm border border-border/50 md:block">
           +{summary.planCount - 2}
         </div>
       )}

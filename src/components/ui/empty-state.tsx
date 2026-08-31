@@ -99,7 +99,7 @@ export function EmptyState({ icon, title, subtitle, action, art, artSize = "sm",
           // between 3.4 and 4.4:1, under the 4.5 body copy needs. A card also
           // reads better: the picture belongs AROUND the message, not through
           // the middle of it.
-          "border-border/60 bg-card/92 mx-auto max-w-3xl rounded-3xl border px-6 shadow-sm backdrop-blur-sm",
+          "border-border/60 bg-card/95 mx-auto max-w-3xl rounded-3xl border px-6 shadow-sm",
           className,
         )}
       >

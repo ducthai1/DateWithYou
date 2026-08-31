@@ -33,7 +33,12 @@ export function SideNav() {
           simply painted outside the rounded card. Nothing overflowed the page,
           which is why every sideways check missed it for so long.
         */
-        "fixed inset-y-4 left-4 z-20 hidden flex-col justify-between rounded-2xl border border-white/40 bg-white/70 backdrop-blur-xl shadow-elev-2 md:flex",
+        // blur-md, not blur-xl, and a more opaque fill to make up the difference.
+        // A 24px backdrop-filter over this area is the costliest layer the app
+        // paints, and it is re-sampled every frame against a fixed full-window
+        // picture — the combination that takes out the GPU process on older
+        // integrated graphics.
+        "fixed inset-y-4 left-4 z-20 hidden flex-col justify-between rounded-2xl border border-white/40 bg-white/85 backdrop-blur-md shadow-elev-2 md:flex",
         // Only animate width once the saved state is loaded — avoids the
         // expanded→collapsed slide on first paint.
         ready && "transition-[width] duration-300 ease-in-out",
