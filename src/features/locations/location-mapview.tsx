@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
+import { VietnamSovereigntyMarkers } from "./vietnam-sovereignty-markers";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { geodesicCircle, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
@@ -515,6 +516,11 @@ function LocationMapViewImpl({
             </div>
           </Marker>
         )}
+
+        {/* Vietnam's sovereignty over Hoàng Sa and Trường Sa, stated by the
+            product rather than left to whoever drew the base tiles. Not saved
+            places — they belong to no space and no list. */}
+        <VietnamSovereigntyMarkers />
 
         {/* CROW FLIES LINE (DASHED) BETWEEN PARTNERS WHEN NO ROUTE IS SELECTED */}
         {!routeGeometry && userGeo && partnerLocation && (
