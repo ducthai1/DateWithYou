@@ -13,6 +13,20 @@ export default function Template({ children }: { children: React.ReactNode }) {
 
   return (
     <motion.div
+      /*
+       * A flex passthrough, not a plain box.
+       *
+       * This wrapper exists only for the route transition, but App Router puts
+       * it between the app frame and every page — so as a `display:block` div
+       * it broke the chain: the frame is a 100dvh flex column, and a page
+       * asking for `flex-1` inside this got nothing and grew to its content
+       * instead. The page header then had no fixed row to sit in and the
+       * overflow was simply clipped away.
+       *
+       * Outside a flex parent (marketing and auth routes, where the frame is
+       * not applied) these declarations are inert.
+       */
+      className="flex min-h-0 flex-1 flex-col"
       initial={reduced ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       // Duration uses --dur-fast (150ms) token value so it stays in sync with

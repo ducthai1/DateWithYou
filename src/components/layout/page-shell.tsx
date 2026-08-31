@@ -9,11 +9,10 @@ import type { ArtName } from "@/lib/tone";
  * `max-w-[1400px]` column and the gradient banner — so a spacing change
  * meant four edits and they had already drifted apart.
  *
- * The header is kept outside the scrollable area. The page is a flex column
- * that fills the viewport (minus the app chrome above and below): header
- * stays at the top as a non-scrolling shrink-0 block, and everything below
- * it scrolls inside its own overflow container. No sticky tricks, no
- * pseudo-element masks, no content leaking above the header.
+ * The header is outside the scrollable area, not pinned over it. MainWrapper
+ * gives the app a window-height frame; this splits its share of that frame
+ * into a header row that does not move and a scroll box beneath it. Nothing
+ * is sticky, nothing is masked, and nothing passes behind the header.
  */
 
 export function PageShell({
@@ -32,31 +31,38 @@ export function PageShell({
     "[--page-gutter:1rem] shorter:[--page-gutter:0.75rem] md:[--page-gutter:30px]";
 
   if (header) {
+    /*
+     * Two rows: a header that does not scroll, and a box below it that does.
+     *
+     * The previous attempt pinned the header over the content with `sticky`
+     * plus a translucent full-bleed strip. That strip was the bug: a pale bar
+     * across the top with the page sliding blurrily under it, and its edges
+     * visible past the column. Nothing overlaps here — the header simply is
+     * not inside the thing that scrolls.
+     *
+     * The frame comes from MainWrapper (a 100dvh flex column), so `flex-1`
+     * plus `min-h-0` is what lets the scroll box take the space that is left.
+     * `min-h-0` is not optional: a flex child defaults to min-height:auto and
+     * would grow to fit its content instead of scrolling.
+     */
     return (
-      <div className={cn(gutterCls, "px-[var(--page-gutter)]", className)}>
-        {/* Header wrapper: sticky to stay on screen, solid background to mask 
-            content scrolling underneath without the old pseudo-element line artifact. 
-            On mobile it sits under the AppHeader (3.25rem), on desktop it floats near top. */}
-        <div
-          className={cn(
-            "sticky z-30 -mx-[var(--page-gutter)] bg-background/95 px-[var(--page-gutter)] pt-6 pb-4 backdrop-blur-md",
-            "top-[3.25rem] md:top-0",
-            "short:pt-3 short:pb-2",
-          )}
-        >
-          <div className="mx-auto w-full max-w-[1400px]">
-            {header}
-          </div>
+      <div className={cn(gutterCls, "flex min-h-0 flex-1 flex-col", className)}>
+        <div className="shrink-0 px-[var(--page-gutter)] pt-6 short:pt-3">
+          <div className="mx-auto w-full max-w-[1400px]">{header}</div>
         </div>
 
-        {/* Scrollable content area */}
-        <div
-          className={cn(
-            "mx-auto w-full max-w-[1400px] space-y-6 pb-6 pt-2",
-            "short:space-y-4 shorter:space-y-3",
-          )}
-        >
-          {children}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[var(--page-gutter)]">
+          <div
+            className={cn(
+              "mx-auto w-full max-w-[1400px] space-y-6 pt-2",
+              // The bottom nav is fixed over this box on a phone, so the space
+              // it needs is reserved here, where the scrolling actually happens.
+              "pb-[calc(1.5rem+4rem+env(safe-area-inset-bottom))] md:pb-6",
+              "short:space-y-4 shorter:space-y-3",
+            )}
+          >
+            {children}
+          </div>
         </div>
       </div>
     );
@@ -67,12 +73,20 @@ export function PageShell({
     <div
       className={cn(
         gutterCls,
-        "mx-auto w-full max-w-[1400px] space-y-6 px-[var(--page-gutter)] pt-6 pb-6",
-        "short:space-y-4 short:pt-3 shorter:space-y-3",
+        // Also inside MainWrapper's frame, so this one scrolls itself.
+        "min-h-0 flex-1 overflow-y-auto overscroll-contain px-[var(--page-gutter)]",
         className,
       )}
     >
-      {children}
+      <div
+        className={cn(
+          "mx-auto w-full max-w-[1400px] space-y-6 pt-6",
+          "pb-[calc(1.5rem+4rem+env(safe-area-inset-bottom))] md:pb-6",
+          "short:space-y-4 short:pt-3 shorter:space-y-3",
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -122,9 +136,18 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        // z-30, above page content: a header that content can paint over is not
-        // pinned, it is merely in the way.
-        "z-30 flex flex-col gap-y-3 rounded-2xl px-4 py-4 shadow-sm",
+        /*
+         * `relative` is load-bearing, not decoration.
+         *
+         * The artwork layer inside is `absolute inset-0`, so it is sized by the
+         * nearest POSITIONED ancestor. This box used to be `sticky`, which is
+         * positioned, so it worked by accident; when the sticky came off,
+         * nothing here was positioned any more and the picture resolved against
+         * something much further up — it stopped being a band behind a title
+         * and became a full-page image with the band's border drawn on top of
+         * it. `z-30` was inert for the same reason.
+         */
+        "relative z-30 flex flex-col gap-y-3 rounded-2xl px-4 py-4 shadow-sm",
         // The blur only earns its cost where there is no artwork; with a
         // picture behind the title the band is opaque already, and a
         // backdrop-filter over that area is one of the most expensive layers
