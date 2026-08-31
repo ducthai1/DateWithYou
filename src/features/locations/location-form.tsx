@@ -230,7 +230,12 @@ export function LocationForm({
           {saveErrorMessage(create.error ?? update.error)}
         </p>
       )}
-      <div className="flex gap-2">
+      {/* Pinned to the foot of whatever is scrolling this form.
+          The form runs name, two selects, two links, must-try, opening hours
+          and a rating, so in the desktop panel and in the phone sheet alike the
+          save button sat below the fold — you had to scroll past everything you
+          had just filled in to commit it. */}
+      <div className="bg-card border-border sticky bottom-0 -mx-1 flex gap-2 border-t px-1 pt-3 pb-1">
         <Button onClick={submit} disabled={!v.name.trim() || pending} className="flex-1">
           {pending ? "Đang lưu…" : v.id ? "Cập nhật" : "Thêm địa điểm"}
         </Button>

@@ -1331,19 +1331,28 @@ export function LocationsPage() {
             </div>
       )}
 
-      {/* The way back to the tools once the column has been folded away. */}
-      {!panelOpen && !nav.isNavigating && (
+      {/* The way back to the tools once the column has been folded away.
+          Kept mounted and faded in behind the column's exit — appearing at full
+          opacity the instant the button was pressed put two things on screen at
+          once and read as the flicker that starts the whole collapse. */}
+      {!nav.isNavigating && (
         <button
           type="button"
           onClick={() => setPanelOpen(true)}
           aria-label="Mở bảng điều khiển"
           title="Mở bảng điều khiển"
+          tabIndex={panelOpen ? -1 : undefined}
+          aria-hidden={panelOpen || undefined}
           className={cn(
             // Clears the sidebar, which is 7rem collapsed and 18rem open —
             // the same measure MainWrapper pads by. This used to offset by
             // var(--map-panel-left), a variable defined nowhere, so it always
             // took the 7rem fallback and sat on top of an open sidebar.
-            "border-border bg-card/90 hover:bg-card fixed top-6 z-40 hidden h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium shadow-lg backdrop-blur-xl transition-colors lg:inline-flex",
+            "border-border bg-card/90 hover:bg-card fixed top-6 z-40 hidden h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium shadow-lg backdrop-blur-xl lg:inline-flex",
+            "transition-[opacity,transform,background-color] duration-[380ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
+            panelOpen
+              ? "pointer-events-none -translate-x-3 opacity-0"
+              : "translate-x-0 opacity-100 [transition-delay:120ms]",
             sidebarCollapsed ? "left-[8rem]" : "left-[19rem]",
           )}
         >
@@ -1385,8 +1394,19 @@ export function LocationsPage() {
            * this column has no background of its own — once the tools are
            * transparent and out of the way, the map is all there is.
            */
-          "lg:transition-[opacity,transform] lg:duration-300 lg:ease-out motion-reduce:lg:transition-none",
-          !panelOpen && "lg:pointer-events-none lg:-translate-x-6 lg:opacity-0",
+          /*
+           * One motion, not two.
+           *
+           * `ease-out` front-loads: nearly all of a 24px slide is spent in the
+           * first third of the duration, so the column appeared to jump left
+           * and then sit there fading. A decelerating curve over a longer
+           * travel makes the move readable, and holding opacity back until the
+           * column is already moving keeps the fade from finishing first and
+           * leaving an invisible thing still sliding.
+           */
+          "lg:transition-[opacity,transform] lg:duration-[380ms] lg:[transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
+          "lg:[transition-delay:0ms,60ms] lg:will-change-[opacity,transform] motion-reduce:lg:transition-none",
+          !panelOpen && "lg:pointer-events-none lg:-translate-x-10 lg:opacity-0",
         )}
       >
       {/* Action bar stays pinned; only the cards below scroll under it. */}
@@ -1398,7 +1418,7 @@ export function LocationsPage() {
           // title was shrink-0 and so is every button — so once the contents
           // needed more than the card had, they simply escaped it: measured at
           // 40px past the edge on a 1440 screen and 72px on a 1152 one.
-          "sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2 sm:px-4 sm:py-3 lg:static lg:mb-2 lg:py-2",
+          "sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2 sm:px-4 sm:py-3 lg:static lg:mb-2 lg:flex-col lg:items-stretch lg:py-2",
         )}
       >
         {/* Hidden on phones, not deleted: the app header directly above already
@@ -1407,20 +1427,50 @@ export function LocationsPage() {
         {/* truncate, not wrap. In the narrow column this broke onto three
             lines, which stretched the row and left the buttons beside it
             looking like they were different sizes. */}
-        <h1 className="text-accent sr-only min-w-0 flex-shrink truncate text-2xl font-semibold sm:not-sr-only lg:text-base">
-          Bản đồ ăn chơi
-        </h1>
+        {/* On the 336px desktop panel this is a row of its own: title, the one
+            action people came for, and the collapse control on the edge. Below
+            lg the panel is full width, so `contents` dissolves this wrapper and
+            everything sits on a single line as before. */}
+        <div className="contents lg:flex lg:items-center lg:gap-2">
+          <h1 className="text-accent sr-only min-w-0 flex-shrink truncate text-2xl font-semibold sm:not-sr-only lg:text-base lg:flex-1">
+            Bản đồ ăn chơi
+          </h1>
+          <Button
+            className="h-9 shrink-0 px-3 lg:order-2"
+            onClick={() => {
+              setFormInitial({});
+              setFormOpen((o) => !o);
+            }}
+          >
+            {formOpen ? "Đóng" : "+ Thêm"}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="-mr-1 hidden h-9 w-9 shrink-0 lg:order-3 lg:inline-flex"
+            aria-label="Thu gọn bảng điều khiển"
+            title="Thu gọn để xem bản đồ"
+            onClick={() => setPanelOpen(false)}
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </Button>
+        </div>
         {/* Wraps internally. As one unwrappable flex item this group was wider
             than the toolbar card at every desktop width, so it hung over the
             card's right edge and past its rounded corner — 48px at 1440, 80px
             at 1152. Letting the toolbar wrap did not help: it could only move
             the whole group, not break it. */}
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 lg:justify-start">
           {hasTwoMembers && (
             <Button
               variant="outline"
               className={cn(
-                "border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all gap-1.5 h-9 shrink-0 px-0 w-9 sm:w-auto sm:px-3",
+                // Label on phones and tablets, icon only in the narrow desktop
+                // panel. With the label there, a two-member space needed one
+                // button more than the row could hold, so "+ Thêm" wrapped to a
+                // line of its own — and a one-member space did not, which is
+                // why the same screen looked different for the two of them.
+                "border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all gap-1.5 h-9 shrink-0 px-0 w-9 sm:w-auto sm:px-3 lg:w-9 lg:px-0",
                 isFindingMidpoint && "opacity-50 pointer-events-none"
               )}
               onClick={handleFindMidpoint}
@@ -1431,38 +1481,22 @@ export function LocationsPage() {
               ) : (
                 <MapPinned className="h-4 w-4" />
               )}
-              <span className="hidden text-sm font-medium sm:inline">Gặp ở giữa</span>
+              <span className="hidden text-sm font-medium sm:inline lg:hidden">Gặp ở giữa</span>
             </Button>
           )}
           <a
             href="/wheel"
             aria-label="Hôm nay ăn gì?"
             title="Hôm nay ăn gì?"
-            className="border-border bg-card hover:bg-muted inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
+            // Same recipe as the outline Button beside it — it had been built
+            // by hand and was missing the shadow, the press response and the
+            // focus ring, so two identical-looking controls behaved differently.
+            className="border-border bg-card hover:bg-muted focus-visible:ring-ring/50 inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border shadow-sm transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[.98]"
           >
             <Utensils className="h-4 w-4" />
           </a>
           <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setSettingsOpen(true)}>
             <Settings className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="hidden h-9 w-9 shrink-0 lg:inline-flex"
-            aria-label="Thu gọn bảng điều khiển"
-            title="Thu gọn để xem bản đồ"
-            onClick={() => setPanelOpen(false)}
-          >
-            <PanelLeftClose className="h-4 w-4" />
-          </Button>
-          <Button
-            className="ml-auto h-9 shrink-0 px-3"
-            onClick={() => {
-              setFormInitial({});
-              setFormOpen((o) => !o);
-            }}
-          >
-            {formOpen ? "Đóng" : "+ Thêm"}
           </Button>
         </div>
       </div>
@@ -1742,7 +1776,11 @@ export function LocationsPage() {
             {formOpen && (
               <motion.div
                 initial={{ height: 0, opacity: 0, overflow: "hidden" }}
-                animate={{ height: "auto", opacity: 1 }}
+                // Hand `overflow` back once the reveal is done. Left hidden, this
+                // wrapper counts as a scroll container, and the form's sticky
+                // footer would then stick to the form's own bottom — which is
+                // the very place it was already sitting.
+                animate={{ height: "auto", opacity: 1, overflow: "visible" }}
                 exit={{ height: 0, opacity: 0, overflow: "hidden" }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
               >
