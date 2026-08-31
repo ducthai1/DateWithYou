@@ -98,7 +98,7 @@ export function AppBackdrop() {
           it was doing the same job as this wash, so the two together cost twice
           the contrast for one benefit. Readability is bought here and by opaque
           cards, which can both be measured; destroying the picture cannot. */}
-      <div className="from-background/92 via-background/84 to-background/64 absolute inset-0 bg-gradient-to-br" />
+      <div className="from-background/86 via-background/76 to-background/52 absolute inset-0 bg-gradient-to-br" />
     </div>
   );
 }
