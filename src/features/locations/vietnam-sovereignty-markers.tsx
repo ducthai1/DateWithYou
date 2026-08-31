@@ -42,6 +42,7 @@ const VN_YELLOW = "#FFCD00";
 export function VietnamSovereigntyMarkers() {
   return (
     <>
+
       {VN_ARCHIPELAGOS.map((a) => (
         <Marker key={a.id} longitude={a.lng} latitude={a.lat} anchor="bottom">
           {/* pointer-events-none: this is a statement on the map, not a control.

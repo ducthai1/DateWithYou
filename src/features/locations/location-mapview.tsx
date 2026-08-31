@@ -3,6 +3,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
 import { VietnamSovereigntyMarkers } from "./vietnam-sovereignty-markers";
+import { applyEastSeaLabel } from "./east-sea-label";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { geodesicCircle, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
@@ -275,6 +276,9 @@ function LocationMapViewImpl({
         onLoad={(e) => {
           const c = e.target.getCenter();
           onCenterChange?.({ lat: c.lat, lng: c.lng });
+          // The sea carries its Vietnamese name, in the position the base map
+          // chose for that label rather than a plate guessing at it.
+          applyEastSeaLabel(e.target as unknown as Parameters<typeof applyEastSeaLabel>[0]);
         }}
         onMoveEnd={(e) => {
           const c = e.target.getCenter();
