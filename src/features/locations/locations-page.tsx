@@ -10,14 +10,15 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, List as ListIcon, Loader2, LocateOff, MapPin, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
+import { List as ListIcon, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, Loader2, LocateOff, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { type LegInfo } from "./use-live-navigation";
 import { useNavigation } from "./navigation-context";
 import { fmtDistance, fmtDuration } from "./format-journey";
 import { ToneArt } from "@/components/theme/tone-art";
-import { Modal, ModalHeader } from "@/components/ui/modal";
+import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
+import { TripStopPlanner, type PlannedStop } from "./trip-stop-planner";
 import { LocationSettingsModal } from "./location-settings-modal";
 import { CATEGORY_META } from "@/lib/category-meta";
 import type { Category } from "@/lib/districts-categories";
@@ -29,9 +30,6 @@ const ACTION_CLS =
   "inline-flex min-h-9 items-center gap-1 rounded-lg px-2.5 py-2 transition-colors touch-manipulation active:scale-95";
 
 // An intermediate stop in a companion trip plan (pickup + extra stops).
-type PlannedStop =
-  | { kind: "partner" }
-  | { kind: "saved"; id: string; name: string; lat: number; lng: number };
 import {
   appleMapsDirectionsUrl,
   googleMapsDirectionsUrl,
@@ -159,6 +157,30 @@ export function LocationsPage() {
   // chosen saved place. Drives the numbered list in the companion modal and the
   // waypoints[] sent to the backend (which already splits the route into legs).
   const [plannedStops, setPlannedStops] = useState<PlannedStop[]>([]);
+  /** The route request is in flight, so the trip sheet can open before it lands. */
+  const [routePending, setRoutePending] = useState(false);
+  /** Planning a route for one person — same stops, no invite. */
+  const [soloPlanOpen, setSoloPlanOpen] = useState(false);
+  /**
+   * Open the solo planner for whatever is selected.
+   *
+   * Shared, because the choice lives in two places — a dialog on a phone and a
+   * pair of buttons in the desktop panel — and only the phone one was ever
+   * wired to anything but an immediate start.
+   */
+  // A declaration, not a useCallback: it reads `list` which is defined further
+  // down, and only ever runs from an event handler, by which time it is bound.
+  function openSoloPlanner() {
+    if (!selectedId) return false;
+    const loc = list.data?.find((l) => l.id === selectedId);
+    if (!loc) return false;
+    setCompanionLocationId(loc.id);
+    setCompanionLocationName(loc.name);
+    setPlannedStops([]);
+    setStopPickerOpen(false);
+    setSoloPlanOpen(true);
+    return true;
+  }
   const [stopPickerOpen, setStopPickerOpen] = useState(false);
   const [pendingSentInviteId, setPendingSentInviteId] = useState<string | null>(null);
   const [rejectedMessage, setRejectedMessage] = useState<string | null>(null);
@@ -649,6 +671,21 @@ export function LocationsPage() {
 
     setRouteError(null);
     setRouteGeometry(null);
+    /*
+     * Ask now, while the route is still being fetched.
+     *
+     * This dialog used to wait for the drawn route, on the reasoning that
+     * offering to start a trip that failed to draw is worse than no dialog.
+     * True, but the cost was that pressing "Chỉ đường" did nothing visible for
+     * as long as geolocation plus the routing service took — seconds on a slow
+     * connection, which reads as a dead button. The dialog appears at once and
+     * its actions stay disabled until there is something to start.
+     */
+    if (isManualTrip && typeof window !== "undefined" && window.innerWidth < 1024) {
+      setRoutePending(true);
+      setSheetCollapseTick((t) => t + 1);
+      setTripChoiceOpen(true);
+    }
     // Reset any prior multi-leg trip before drawing the new one.
     setLegGeometries(null);
     setCurrentLegIndex(0);
@@ -660,6 +697,7 @@ export function LocationsPage() {
     setCurrentTripInviteId(null);
     if (!navigator.geolocation) {
       setRouteError("Trình duyệt không hỗ trợ định vị.");
+      setRoutePending(false);
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -708,18 +746,9 @@ export function LocationsPage() {
             }
           }
 
-          /*
-           * Ask now, not when the button was pressed: until this point there
-           * may be no route to start, and a dialog offering to begin a trip
-           * that failed to draw is worse than no dialog.
-           *
-           * Only for a hand-pressed "Chỉ đường". A trip opened from an accepted
-           * companion invite arrives with waypoints and the question has
-           * already been answered by both people.
-           */
-          if (isManualTrip && typeof window !== "undefined" && window.innerWidth < 1024) {
-            setSheetCollapseTick((t) => t + 1);
-            setTripChoiceOpen(true);
+          // The sheet is already up (see above); this only releases its buttons.
+          if (isManualTrip) {
+            setRoutePending(false);
           }
 
           if (partnerR) {
@@ -733,6 +762,7 @@ export function LocationsPage() {
           }
         } catch {
           setRouteError("Không vẽ được đường đi (kiểm tra STADIA_API_KEY).");
+          setRoutePending(false);
         }
       },
       (err) => {
@@ -745,6 +775,7 @@ export function LocationsPage() {
               ? "Máy chưa trả được vị trí — bật Location Services (macOS: Cài đặt › Quyền riêng tư › Dịch vụ vị trí) cho trình duyệt rồi thử lại."
               : "Lấy vị trí quá lâu, thử lại nhé.",
         );
+        setRoutePending(false);
       },
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
     );
@@ -1414,94 +1445,79 @@ export function LocationsPage() {
         )}
       >
       {/* Action bar stays pinned; only the cards below scroll under it. */}
-      {/* Mobile: title row + actions row stacked. Desktop: single flex row. */}
+      {/* Mobile: single row — utility buttons left, + Thêm right.
+          Desktop: title row, then utility row with Thu gọn right-aligned. */}
       <div
         className={cn(
-          // flex-wrap so the actions drop to a second line rather than hanging
-          // over the card's right edge. Nothing in this row could shrink — the
-          // title was shrink-0 and so is every button — so once the contents
-          // needed more than the card had, they simply escaped it: measured at
-          // 40px past the edge on a 1440 screen and 72px on a 1152 one.
-          "sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2 sm:px-4 sm:py-3 lg:static lg:mb-2 lg:flex-col lg:items-stretch lg:py-2",
+          "sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:px-4 sm:py-3 lg:static lg:mb-2 lg:py-2",
         )}
       >
-        {/* Hidden on phones, not deleted: the app header directly above already
-            names this screen, so on a 844px viewport this line and its gap were
-            44px of duplicate label taken from the map. */}
-        {/* truncate, not wrap. In the narrow column this broke onto three
-            lines, which stretched the row and left the buttons beside it
-            looking like they were different sizes. */}
-        {/* On the 336px desktop panel this is a row of its own: title, the one
-            action people came for, and the collapse control on the edge. Below
-            lg the panel is full width, so `contents` dissolves this wrapper and
-            everything sits on a single line as before. */}
-        <div className="contents lg:flex lg:items-center lg:gap-2">
-          <h1 className="text-accent sr-only min-w-0 flex-shrink truncate text-2xl font-semibold sm:not-sr-only lg:text-base lg:flex-1">
+        {/* Desktop: title + Thu gọn on the first row */}
+        <div className="hidden lg:flex lg:items-center lg:gap-2">
+          <h1 className="text-accent min-w-0 flex-shrink truncate text-base font-semibold lg:flex-1">
             Bản đồ ăn chơi
           </h1>
-          <Button
-            className="h-9 shrink-0 px-3 lg:order-2"
-            onClick={() => {
-              setFormInitial({});
-              setFormOpen((o) => !o);
-            }}
-          >
-            {formOpen ? "Đóng" : "+ Thêm"}
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="-mr-1 hidden h-9 w-9 shrink-0 lg:order-3 lg:inline-flex"
-            aria-label="Thu gọn bảng điều khiển"
-            title="Thu gọn để xem bản đồ"
-            onClick={() => setPanelOpen(false)}
-          >
-            <PanelLeftClose className="h-4 w-4" />
-          </Button>
         </div>
-        {/* Wraps internally. As one unwrappable flex item this group was wider
-            than the toolbar card at every desktop width, so it hung over the
-            card's right edge and past its rounded corner — 48px at 1440, 80px
-            at 1152. Letting the toolbar wrap did not help: it could only move
-            the whole group, not break it. */}
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 lg:justify-start">
-          {hasTwoMembers && (
+        {/* All action buttons on one row.
+            Mobile: utility buttons left, + Thêm right.
+            Desktop: utility buttons left, + Thêm & Thu gọn right. */}
+        <div className="flex min-w-0 items-center gap-2">
+          {/* Left group: filter/utility buttons */}
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {hasTwoMembers && (
+              <Button
+                variant="outline"
+                className={cn(
+                  "border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all gap-1.5 h-9 shrink-0 px-0 w-9 sm:w-auto sm:px-3 lg:w-9 lg:px-0",
+                  isFindingMidpoint && "opacity-50 pointer-events-none"
+                )}
+                onClick={handleFindMidpoint}
+                title={nav.partnerLocation ? "Tìm điểm hẹn ở giữa" : "Cần vị trí của người kia trước"}
+              >
+                {isFindingMidpoint ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MapPinned className="h-4 w-4" />
+                )}
+                <span className="hidden text-sm font-medium sm:inline lg:hidden">Gặp ở giữa</span>
+              </Button>
+            )}
+            <a
+              href="/wheel"
+              aria-label="Hôm nay ăn gì?"
+              title="Hôm nay ăn gì?"
+              className="border-border bg-card hover:bg-muted focus-visible:ring-ring/50 inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border shadow-sm transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[.98]"
+            >
+              <Utensils className="h-4 w-4" />
+            </a>
+            <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setSettingsOpen(true)}>
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+          {/* Spacer pushes right group to the edge */}
+          <div className="flex-1" />
+          {/* Right group: + Thêm and Thu gọn */}
+          <div className="flex items-center gap-2">
+            <Button
+              className="h-9 shrink-0 px-3"
+              onClick={() => {
+                setFormInitial({});
+                setFormOpen((o) => !o);
+              }}
+            >
+              {formOpen ? "Đóng" : "+ Thêm"}
+            </Button>
             <Button
               variant="outline"
-              className={cn(
-                // Label on phones and tablets, icon only in the narrow desktop
-                // panel. With the label there, a two-member space needed one
-                // button more than the row could hold, so "+ Thêm" wrapped to a
-                // line of its own — and a one-member space did not, which is
-                // why the same screen looked different for the two of them.
-                "border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all gap-1.5 h-9 shrink-0 px-0 w-9 sm:w-auto sm:px-3 lg:w-9 lg:px-0",
-                isFindingMidpoint && "opacity-50 pointer-events-none"
-              )}
-              onClick={handleFindMidpoint}
-              title={nav.partnerLocation ? "Tìm điểm hẹn ở giữa" : "Cần vị trí của người kia trước"}
+              size="icon"
+              className="hidden h-9 w-9 shrink-0 lg:inline-flex"
+              aria-label="Thu gọn bảng điều khiển"
+              title="Thu gọn để xem bản đồ"
+              onClick={() => setPanelOpen(false)}
             >
-              {isFindingMidpoint ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <MapPinned className="h-4 w-4" />
-              )}
-              <span className="hidden text-sm font-medium sm:inline lg:hidden">Gặp ở giữa</span>
+              <PanelLeftClose className="h-4 w-4" />
             </Button>
-          )}
-          <a
-            href="/wheel"
-            aria-label="Hôm nay ăn gì?"
-            title="Hôm nay ăn gì?"
-            // Same recipe as the outline Button beside it — it had been built
-            // by hand and was missing the shadow, the press response and the
-            // focus ring, so two identical-looking controls behaved differently.
-            className="border-border bg-card hover:bg-muted focus-visible:ring-ring/50 inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border shadow-sm transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[.98]"
-          >
-            <Utensils className="h-4 w-4" />
-          </a>
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setSettingsOpen(true)}>
-            <Settings className="h-4 w-4" />
-          </Button>
+          </div>
         </div>
       </div>
 
@@ -1716,8 +1732,7 @@ export function LocationsPage() {
                   variant="outline"
                   className="flex-1 gap-2"
                   onClick={() => {
-                    setFocusGeo(null);
-                    nav.start();
+                    if (!openSoloPlanner()) { setFocusGeo(null); nav.start(); }
                   }}
                 >
                   <UserRound className="h-4 w-4" /> Đi 1 mình
@@ -1741,11 +1756,10 @@ export function LocationsPage() {
               <Button
                 className="hidden w-full gap-2 lg:flex"
                 onClick={() => {
-                  setFocusGeo(null);
-                  nav.start();
+                  if (!openSoloPlanner()) { setFocusGeo(null); nav.start(); }
                 }}
               >
-                <Play className="h-4 w-4" /> Bắt đầu đi
+                <Play className="h-4 w-4" /> Lên lộ trình
               </Button>
             )) : null}
           </div>
@@ -2315,16 +2329,26 @@ export function LocationsPage() {
                 <p id="trip-choice-title" className="font-serif text-lg font-semibold leading-snug">
                   {selectedName ? `Đi tới ${selectedName}` : "Bắt đầu đi thôi"}
                 </p>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  {routeDistanceMeters != null
-                    ? `Đường đã vẽ xong — ${fmtDistance(routeDistanceMeters)}${routeDurationSeconds != null ? ` · ${fmtDuration(routeDurationSeconds)}` : ""}.`
-                    : "Đường đã vẽ xong trên bản đồ."}
+                <p className="text-muted-foreground mt-1 flex items-center gap-1.5 text-sm">
+                  {routePending ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang vẽ đường đi…
+                    </>
+                  ) : routeError ? (
+                    <span className="text-destructive">{routeError}</span>
+                  ) : routeDistanceMeters != null ? (
+                    `Đường đã vẽ xong — ${fmtDistance(routeDistanceMeters)}${routeDurationSeconds != null ? ` · ${fmtDuration(routeDurationSeconds)}` : ""}.`
+                  ) : (
+                    "Đường đã vẽ xong trên bản đồ."
+                  )}
                 </p>
 
                 <div className="mt-4 flex flex-col gap-2.5">
                   {hasTwoMembers && (
                     <Button
                       className="h-12 w-full gap-2"
+                      // Nothing to plan a trip around until the route exists.
+                      disabled={routePending || !!routeError}
                       onClick={() => {
                         setTripChoiceOpen(false);
                         if (!selectedId) return;
@@ -2338,18 +2362,36 @@ export function LocationsPage() {
                       <Users className="h-4 w-4" /> Đồng hành cùng nhau
                     </Button>
                   )}
+                  {/* Planning stops was only ever offered when inviting someone,
+                      but a detour on the way is no less useful alone — and a
+                      one-member space had no way to plan one at all. */}
                   <Button
                     variant={hasTwoMembers ? "outline" : undefined}
                     className="h-12 w-full gap-2"
+                    disabled={routePending || !!routeError}
                     onClick={() => {
                       setTripChoiceOpen(false);
-                      setFocusGeo(null);
-                      nav.start();
+                      if (!openSoloPlanner()) { setFocusGeo(null); nav.start(); }
                     }}
                   >
                     {hasTwoMembers ? <UserRound className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    {hasTwoMembers ? " Đi một mình" : " Bắt đầu đi"}
+                    {hasTwoMembers ? " Đi một mình" : " Lên lộ trình"}
                   </Button>
+                  {/* A failed route leaves both actions disabled, so without
+                      this the only way forward is to close and start over. */}
+                  {routeError && !routePending && (
+                    <Button
+                      variant="outline"
+                      className="h-11 w-full gap-2"
+                      onClick={() => {
+                        if (!selectedId) return;
+                        const loc = list.data?.find((l) => l.id === selectedId);
+                        if (loc?.geo) goToLocation(loc.id, loc.geo);
+                      }}
+                    >
+                      <Route className="h-4 w-4" /> Thử vẽ lại đường
+                    </Button>
+                  )}
                   <button
                     type="button"
                     className="text-muted-foreground hover:text-foreground h-10 text-sm"
@@ -2363,6 +2405,66 @@ export function LocationsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Solo trip planner ──
+          The same numbered route as the go-together dialog, minus the invite:
+          you, any stops, the destination. Offered in a one-member space too,
+          which previously had no way to plan a stop at all. */}
+      <Modal
+        open={soloPlanOpen}
+        onClose={() => { setSoloPlanOpen(false); setPlannedStops([]); setStopPickerOpen(false); }}
+      >
+        <ModalHeader
+          title="Lên lộ trình cho chuyến đi"
+          onClose={() => { setSoloPlanOpen(false); setPlannedStops([]); setStopPickerOpen(false); }}
+        />
+        <ModalContent className="space-y-4">
+          <p className="text-muted-foreground border-border/60 bg-muted/40 rounded-lg border px-3 py-2 text-xs leading-snug">
+            Thêm điểm dừng dọc đường nếu muốn — đổ xăng, mua đồ, ghé qua chỗ nào đó. Bỏ trống thì đi thẳng tới đích.
+          </p>
+          <TripStopPlanner
+            stops={plannedStops}
+            onChange={setPlannedStops}
+            pickerOpen={stopPickerOpen}
+            onPickerOpenChange={setStopPickerOpen}
+            savedPlaces={list.data ?? []}
+            destinationId={companionLocationId}
+            destinationName={companionLocationName}
+          />
+        </ModalContent>
+        <ModalFooter>
+          <Button
+            variant="secondary"
+            className="flex-1"
+            onClick={() => { setSoloPlanOpen(false); setPlannedStops([]); setStopPickerOpen(false); }}
+          >
+            Huỷ
+          </Button>
+          <Button
+            className="flex-1 gap-2"
+            onClick={() => {
+              const destId = companionLocationId;
+              const loc = destId ? list.data?.find((l) => l.id === destId) : null;
+              setSoloPlanOpen(false);
+              setStopPickerOpen(false);
+              if (!loc?.geo) return;
+              // Only saved stops here: "pick up the other person" belongs to a
+              // trip that person has agreed to, which this one is not.
+              const waypointGeos = plannedStops
+                .filter((st): st is Extract<PlannedStop, { kind: "saved" }> => st.kind === "saved")
+                .map((st) => ({ lat: st.lat, lng: st.lng }));
+              // Re-draw through the stops, then start — the same two steps an
+              // accepted companion trip takes.
+              goToLocation(loc.id, loc.geo, waypointGeos.length ? waypointGeos : undefined);
+              setPlannedStops([]);
+              setTimeout(() => { setFocusGeo(null); nav.start(); }, 1200);
+            }}
+          >
+            <Play className="h-4 w-4" />
+            {plannedStops.length > 0 ? `Đi qua ${plannedStops.length} điểm dừng` : "Bắt đầu đi"}
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* ── Companion choice confirmation modal ── */}
       <AnimatePresence>
@@ -2397,94 +2499,17 @@ export function LocationsPage() {
                   Lên lộ trình chung: Bạn → (đón người kia / điểm dừng) → Đích. Người kia sẽ nhận lời mời và cùng được chỉ đường.
                 </p>
                 
-                <div className="space-y-3 bg-muted/30 p-4 rounded-xl border border-border/50">
-                  <div className="flex items-center gap-3">
-                    <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">1</div>
-                    <span className="text-sm font-medium">Bạn xuất phát từ đây</span>
-                  </div>
-                  
-                  {/* Intermediate stops (pickup + extra stops), numbered 2..N. */}
-                  {plannedStops.map((s, i) => {
-                    const isPartner = s.kind === "partner";
-                    return (
-                      <div key={isPartner ? "partner" : s.id} className="pl-3 border-l-2 border-rose-200 ml-3 py-1">
-                        <div className="flex items-center justify-between p-3 bg-rose-50 text-rose-700 rounded-lg shadow-sm border border-rose-100 relative overflow-hidden">
-                          <div className="absolute top-0 left-0 w-1 h-full bg-[var(--accent)]" />
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-6 w-6 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">{i + 2}</div>
-                            <div className="min-w-0">
-                              <span className="text-sm font-medium block truncate">{isPartner ? "Ghé đón người kia" : s.name}</span>
-                              <span className="text-[11px] text-[var(--accent)]/80 block">{isPartner ? "Vị trí trực tiếp" : "Điểm dừng"}</span>
-                            </div>
-                          </div>
-                          <button onClick={() => setPlannedStops((arr) => arr.filter((_, j) => j !== i))} className="p-1 hover:bg-rose-200 rounded-full transition-colors shrink-0"><X className="h-4 w-4" /></button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <TripStopPlanner
+                  stops={plannedStops}
+                  onChange={setPlannedStops}
+                  pickerOpen={stopPickerOpen}
+                  onPickerOpenChange={setStopPickerOpen}
+                  savedPlaces={list.data ?? []}
+                  destinationId={companionLocationId}
+                  destinationName={companionLocationName}
+                  partnerLocation={nav.partnerLocation}
+                />
 
-                  {/* Add-stop control with an inline saved-place / partner picker. */}
-                  {(() => {
-                    const hasPartnerStop = plannedStops.some((s) => s.kind === "partner");
-                    const usedSavedIds = new Set(
-                      plannedStops.filter((s): s is Extract<PlannedStop, { kind: "saved" }> => s.kind === "saved").map((s) => s.id),
-                    );
-                    const savedOptions = (list.data ?? []).filter(
-                      (l) => l.geo && l.id !== companionLocationId && !usedSavedIds.has(l.id),
-                    );
-                    const canAddPartner = !!nav.partnerLocation && !hasPartnerStop;
-                    if (!stopPickerOpen) {
-                      return (
-                        <div className="pl-3 border-l-2 border-dashed border-muted-foreground/30 ml-3 py-1">
-                          <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground border border-dashed bg-background/50" onClick={() => setStopPickerOpen(true)}>
-                            <Plus className="h-4 w-4 mr-2" /> {plannedStops.length === 0 ? "Ghé đón người kia / thêm điểm dừng" : "Thêm điểm dừng"}
-                          </Button>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="pl-3 border-l-2 border-rose-200 ml-3 py-1 space-y-1.5">
-                        <div className="rounded-lg border border-border bg-background p-2 space-y-1 max-h-44 overflow-y-auto">
-                          {canAddPartner && (
-                            <button
-                              onClick={() => { setPlannedStops((a) => [...a, { kind: "partner" }]); setStopPickerOpen(false); }}
-                              className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-[var(--accent)]/10 transition-colors"
-                            >
-                              <UserRound className="h-4 w-4 text-[var(--accent)] shrink-0" />
-                              <span className="font-medium">Vị trí trực tiếp của người kia</span>
-                            </button>
-                          )}
-                          {savedOptions.map((l) => (
-                            <button
-                              key={l.id}
-                              onClick={() => { setPlannedStops((a) => [...a, { kind: "saved", id: l.id, name: l.name, lat: l.geo!.lat, lng: l.geo!.lng }]); setStopPickerOpen(false); }}
-                              className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-muted transition-colors"
-                            >
-                              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="truncate">{l.name}</span>
-                            </button>
-                          ))}
-                          {!canAddPartner && savedOptions.length === 0 && (
-                            <p className="text-muted-foreground text-xs p-2">Không còn địa điểm nào để thêm.</p>
-                          )}
-                        </div>
-                        <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setStopPickerOpen(false)}>Đóng</Button>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Final destination, numbered after all stops. */}
-                  <div className="flex items-center gap-3">
-                    <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold shrink-0">
-                      {plannedStops.length + 2}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm text-muted-foreground block text-xs">Đích đến cuối cùng</span>
-                      <span className="text-sm font-semibold truncate block">{companionLocationName}</span>
-                    </div>
-                  </div>
-                </div>
-                
                 <p className="text-xs text-muted-foreground text-center">
                   Người kia sẽ nhận được thông báo lộ trình. Khi đồng ý, cả 2 sẽ cùng thấy nhau trên bản đồ.
                 </p>
