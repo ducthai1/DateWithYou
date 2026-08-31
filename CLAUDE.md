@@ -1075,6 +1075,18 @@ Cách đúng: thêm prop `hidden` — giữ mount, chỉ tắt nhìn thấy và 
 
 Và: `useState(initial)` chỉ đọc đối số **một lần**. Giá trị cha đẩy xuống sau khi form đã mở (toạ độ vừa chạm) sẽ không bao giờ vào form — cần `useEffect` đồng bộ.
 
+### Tháng trong app này là 1-BASED — `Date` mới là 0-based
+
+`/calendar?d=2026-08-31` mở đúng ngày rồi **để lại tháng 7** phía sau khi đóng modal. Nguyên nhân: tách khoá ngày ra rồi lưu `month: m - 1`, tức coi một giá trị **vốn đã 1-based** như tham số `Date`.
+
+Quy ước trong màn lịch, kiểm hết rồi mới sửa: `initialYM` cộng 1 vào `getMonth()`, `calendar-grid` ghi rõ `month: number; // 1-12`, `prev/next` cuộn vòng ở 1 và 12, và server validate `min(1).max(12)`.
+
+**Tháng 1 hỏng nặng hơn lệch tháng**: `m - 1` ra 0, query từ chối, header không render nổi. Ca biên này không lộ ra nếu chỉ thử tháng 8.
+
+Các chỗ `m - 1` còn lại trong lịch đều ĐÚNG — chúng nạp vào `new Date(y, m-1, d)` hoặc `MONTHS[m-1]`, cả hai đều 0-based. Đừng "sửa" bừa: chỉ chỗ nào **lưu** tháng vào state 1-based mới sai.
+
+Nghiệm thu phải chạy lại trên **bản lỗi** trước: nếu test không đỏ với `m - 1` thì nó không chứng minh được gì. Và phải thử tháng 1 lẫn tháng 12.
+
 ### Đừng để trạng thái đọc `scrollY` mà lại LÀM ĐỔI chiều cao trang
 
 Header thu gọn theo ngưỡng cuộn tự nuốt đuôi mình: thu gọn bớt ~92px chiều cao trang → trình duyệt **kẹp `scrollY`** xuống mức tối đa mới → `scrollY` nhỏ lại tụt dưới ngưỡng → giãn ra → trang dài lại. Trang chỉ cao hơn cửa sổ một chút thì **không bao giờ ổn định**; thả tay giữa lúc cuộn là giật mãi. Vùng chết (hysteresis) không cứu được, vì cú kẹp nhảy nguyên 92px.
