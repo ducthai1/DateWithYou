@@ -94,6 +94,12 @@ export function EmptyState({ icon, title, subtitle, action, art, artSize = "sm",
       <div
         className={cn(
           "es-fade-in flex flex-col items-center justify-center gap-4 py-14 text-center",
+          // Its own surface. The empty state used to be text laid straight onto
+          // the page, which meant straight onto the artwork ground — measured
+          // between 3.4 and 4.4:1, under the 4.5 body copy needs. A card also
+          // reads better: the picture belongs AROUND the message, not through
+          // the middle of it.
+          "border-border/60 bg-card/92 mx-auto max-w-3xl rounded-3xl border px-6 shadow-sm backdrop-blur-sm",
           className,
         )}
       >

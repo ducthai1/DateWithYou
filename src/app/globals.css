@@ -101,7 +101,12 @@ body:has([data-chromeless]) [data-app-main] {
   --background: #F8F9FA;       /* crisp modern off-white  */
   --foreground: #1c1917;
   --muted: #F1F3F5;
-  --muted-foreground: #6c757d;
+  /* Measured, not chosen by eye: #6c757d reached 4.69:1 on an opaque white card
+     but only 4.45:1 on --background, and the app's surfaces are mostly neither —
+     they are translucent cards over the artwork ground, which landed real body
+     copy between 3.7 and 4.4. This value keeps the same grey-blue cast with
+     enough headroom that a surface does not have to be opaque to be readable. */
+  --muted-foreground: #616a73;
   --border: #E5E7EB;
   --card: #ffffff;
   --accent-foreground: #ffffff;
@@ -539,4 +544,14 @@ button:disabled,
 .maplibregl-canvas:focus-visible {
   outline: 3px solid var(--ring);
   outline-offset: -3px;
+}
+
+/* A `type="search"` field draws the browser's own clear button on top of the
+   one the app already renders, so the field ends with two X's that do the same
+   thing and look nothing alike. The app's own is the one that can be styled,
+   focused and labelled, so the native one goes. */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
 }
