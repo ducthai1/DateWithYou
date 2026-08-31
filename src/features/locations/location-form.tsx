@@ -235,7 +235,10 @@ export function LocationForm({
           and a rating, so in the desktop panel and in the phone sheet alike the
           save button sat below the fold — you had to scroll past everything you
           had just filled in to commit it. */}
-      <div className="bg-card border-border sticky bottom-0 -mx-1 flex gap-2 border-t px-1 pt-3 pb-1">
+      {/* -mx-5/-mb-5 cancels the card's own p-5 so the bar reaches the card's
+          edges: a strip that stops short of them lets the field above show
+          through at the sides, which is what made it read as translucent. */}
+      <div className="bg-card border-border sticky bottom-0 -mx-5 -mb-5 flex gap-2 rounded-b-2xl border-t px-5 pt-3 pb-5 shadow-[0_-8px_16px_-12px_rgba(59,50,42,0.25)]">
         <Button onClick={submit} disabled={!v.name.trim() || pending} className="flex-1">
           {pending ? "Đang lưu…" : v.id ? "Cập nhật" : "Thêm địa điểm"}
         </Button>
