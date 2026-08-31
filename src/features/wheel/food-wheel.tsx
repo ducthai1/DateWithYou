@@ -114,11 +114,11 @@ export function FoodWheel() {
         the window got short. Side by side spends the width that exists and
         halves the height the page needs.
       */}
-      <div className="grid w-full items-center gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10 short:gap-4">
+      <div className="grid w-full items-center gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start lg:gap-10 short:gap-4">
       <div className="flex w-full flex-col gap-4 justify-self-center lg:justify-self-end">
 
       {/* Source tabs + helper */}
-      <div className="flex w-full max-w-xs sm:max-w-md flex-col items-center gap-2 text-center lg:mx-0 lg:max-w-none lg:items-stretch lg:text-left">
+      <div className="flex w-full max-w-xs sm:max-w-md flex-col items-center gap-2 text-center lg:mx-0 lg:max-w-none lg:items-stretch lg:text-left lg:self-start">
         <Tabs tabs={SOURCE_TABS} value={source} onChange={setSource} className="w-full" />
         <p className="text-muted-foreground text-xs sm:text-sm short:hidden">
           Chọn nguồn để quay: quán đã lưu hoặc công thức tự nấu.

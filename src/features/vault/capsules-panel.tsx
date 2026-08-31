@@ -75,7 +75,7 @@ export function CapsulesPanel() {
           <h2 className="text-xl font-bold font-serif flex items-center gap-2">
             <Hourglass className="h-5 w-5 text-accent shrink-0" /> Hộp Thời Gian
           </h2>
-          <Button onClick={() => setFormOpen(true)} className="gap-2 rounded-full shadow-md bg-accent hover:bg-accent/90 text-white w-full sm:w-auto shrink-0">
+          <Button onClick={() => setFormOpen(true)} className="btn-sheen gap-2 rounded-full shadow-md bg-accent hover:bg-accent/90 text-white w-full sm:w-auto shrink-0">
             <Plus className="h-4 w-4" /> Giấu kỷ niệm
           </Button>
         </div>
@@ -119,7 +119,7 @@ export function CapsulesPanel() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Hủy</Button>
-                <Button type="submit" disabled={create.isPending} className="bg-accent hover:bg-accent/90 text-white">
+                <Button type="submit" disabled={create.isPending} className="btn-sheen bg-accent hover:bg-accent/90 text-white">
                   {create.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4 mr-2" />}
                   Khóa Lại
                 </Button>
