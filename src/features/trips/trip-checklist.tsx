@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToast } from "@/components/ui/toast";
 import { Check, Plus, Trash2 } from "lucide-react";
@@ -19,10 +19,72 @@ export function TripChecklist({ trip }: { trip: any }) {
     onError: () => toast("Chưa thêm được, thử lại nhé", "error"),
   });
 
+  /*
+   * Ticking an item moves the tick NOW and tells the server afterwards.
+   *
+   * It used to await the mutation and then refetch the whole trip before the
+   * circle filled in, so every tap cost two round trips of nothing happening —
+   * and tapping several things in a row queued that up again for each one.
+   *
+   * So: patch the cached trip on the tap, and send the item's settled state
+   * 400ms after the tapping stops. Sending the state rather than a toggle is
+   * what makes a double tap safe — the request says what the item should BE,
+   * so arriving twice or out of order lands in the same place.
+   */
   const toggleMut = trpc.trip.toggleChecklist.useMutation({
-    onSuccess: () => ctx.trip.get.invalidate({ id: trip.id }),
     onError: () => toast("Chưa lưu được, thử lại nhé", "error"),
   });
+
+  const SETTLE_MS = 400;
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const beforeBurst = useRef<ReturnType<typeof ctx.trip.get.getData> | undefined>(undefined);
+
+  function flush(checklistId: string) {
+    timers.current.delete(checklistId);
+    const now = ctx.trip.get.getData({ id: trip.id });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const item = (now as any)?.checklists?.find((c: any) => c.id === checklistId);
+    if (!item) return;
+    const rollback = beforeBurst.current;
+    if (timers.current.size === 0) beforeBurst.current = undefined;
+    toggleMut.mutate(
+      { tripId: trip.id, checklistId, isDone: item.isDone },
+      {
+        // Back to where the list stood before the whole burst, not before the
+        // last tap: one rejected write invalidates every tick in it.
+        onError: () => rollback && ctx.trip.get.setData({ id: trip.id }, rollback),
+        onSettled: () => { if (timers.current.size === 0) ctx.trip.get.invalidate({ id: trip.id }); },
+      },
+    );
+  }
+
+  // Leaving the page right after a tap must not drop it — send what is pending
+  // rather than clearing the timers and losing the change.
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const [id, t] of pending) { clearTimeout(t); flush(id); }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function toggleItem(item: any) {
+    const prev = ctx.trip.get.getData({ id: trip.id });
+    if (!prev) return;
+    if (!beforeBurst.current) beforeBurst.current = prev;
+    ctx.trip.get.setData({ id: trip.id }, {
+      ...prev,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      checklists: (prev as any).checklists.map((c: any) =>
+        c.id === item.id ? { ...c, isDone: !c.isDone } : c,
+      ),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    const running = timers.current.get(item.id);
+    if (running) clearTimeout(running);
+    timers.current.set(item.id, setTimeout(() => flush(item.id), SETTLE_MS));
+  }
 
   const removeMut = trpc.trip.removeChecklist.useMutation({
     onSuccess: () => ctx.trip.get.invalidate({ id: trip.id }),
@@ -70,7 +132,7 @@ export function TripChecklist({ trip }: { trip: any }) {
             }`}
           >
             <button
-              onClick={() => toggleMut.mutate({ tripId: trip.id, checklistId: item.id, isDone: !item.isDone })}
+              onClick={() => toggleItem(item)}
               className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors ${
                 item.isDone ? "border-accent bg-accent text-accent-foreground" : "border-muted-foreground/30 bg-background"
               }`}
