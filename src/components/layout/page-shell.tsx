@@ -59,10 +59,7 @@ export function PageShell({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[var(--page-gutter)]">
           <div
             className={cn(
-              "mx-auto w-full max-w-[1400px] space-y-6 pt-2",
-              // The bottom nav is fixed over this box on a phone, so the space
-              // it needs is reserved here, where the scrolling actually happens.
-              "pb-[calc(1.5rem+4rem+env(safe-area-inset-bottom))] md:pb-6",
+              "mx-auto w-full max-w-[1400px] space-y-6 pb-6 pt-2",
               "short:space-y-4 shorter:space-y-3",
               className,
             )}
@@ -86,8 +83,7 @@ export function PageShell({
     >
       <div
         className={cn(
-          "mx-auto w-full max-w-[1400px] space-y-6 pt-6",
-          "pb-[calc(1.5rem+4rem+env(safe-area-inset-bottom))] md:pb-6",
+          "mx-auto w-full max-w-[1400px] space-y-6 pb-6 pt-6",
           "short:space-y-4 short:pt-3 shorter:space-y-3",
         )}
       >

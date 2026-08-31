@@ -29,9 +29,21 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
        * Marketing and auth routes keep the ordinary document scroll: they are
        * long pages with no app chrome and nothing to pin.
        */
-      !hidden && "flex h-[100dvh] flex-col overflow-hidden",
-      // The bottom nav is fixed and outside this box, so the space it needs is
-      // reserved by whatever scrolls, not by padding out here.
+      /*
+       * `overflow-y-auto`, not `hidden`. The frame is a safety net, not a lid.
+       *
+       * With `hidden`, any page that did not happen to build its own scroll box
+       * was simply cut off — /settings and /onboarding lost 1736px of content
+       * with no way to reach it. A page that manages its own scrolling still
+       * fits this box exactly and never scrolls it; a page that does not gets
+       * scrolled here instead of being clipped away.
+       *
+       * The bottom-nav allowance is padding on the frame, so it is inside the
+       * 100dvh (border-box) — a page filling the frame ends above the nav, and
+       * a page scrolling the frame gets the same clearance at the end of it.
+       */
+      !hidden && "flex h-[100dvh] flex-col overflow-y-auto",
+      !hidden && "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0",
       !hidden && (isCollapsed ? "md:pl-28" : "md:pl-72")
     )}>
       {children}
