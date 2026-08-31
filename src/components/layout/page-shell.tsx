@@ -86,7 +86,14 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "z-20 mb-6 flex flex-col gap-y-3 rounded-2xl px-4 py-4 shadow-sm backdrop-blur-md",
+        // z-30, above page content: a header that content can paint over is not
+        // pinned, it is merely in the way.
+        "z-30 mb-6 flex flex-col gap-y-3 rounded-2xl px-4 py-4 shadow-sm",
+        // The blur only earns its cost where there is no artwork; with a
+        // picture behind the title the band is opaque already, and a
+        // backdrop-filter over that area is one of the most expensive layers
+        // the app paints.
+        !art && "backdrop-blur-md",
         /*
          * Pinned at full height. It does not shrink, and that is the point.
          *
@@ -108,6 +115,12 @@ export function PageHeader({
          */
         "[--pin:3.25rem] md:[--pin:0.5rem]",
         "sticky top-[var(--pin)]",
+        // A cap filling the gap between the window's top edge and the pinned
+        // band. Without it that strip is a letterbox showing whatever is
+        // scrolling underneath — day numbers sliding past above the header,
+        // which reads as the header being broken rather than as a gap.
+        "before:bg-background before:absolute before:inset-x-0 before:bottom-full",
+        "before:h-[var(--pin)] before:content-['']",
         // No `relative` here. `sticky` is itself a positioned element, so the
         // artwork layer and the status chip still lay out against this box —
         // and `relative` would quietly win the position slot and put the band
@@ -147,7 +160,11 @@ export function PageHeader({
       {art ? (
         // Its own clipping box, so the artwork is rounded off at the band's
         // corners without the band clipping the actions row on top of it.
-        <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden rounded-2xl">
+        //
+        // bg-card sits under the picture because three of the illustrations are
+        // cut out, and a band you can see through lets whatever is scrolling
+        // beneath it show up inside the header.
+        <div aria-hidden="true" className="bg-card absolute inset-0 -z-10 overflow-hidden rounded-2xl">
           <ToneArt
             name={art}
             fill
