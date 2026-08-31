@@ -168,7 +168,7 @@ export default function Page() {
               <div className="mt-9 flex flex-col items-center justify-center gap-3.5 sm:flex-row">
                 <Link
                   href="/sign-up"
-                  className="flex h-14 w-full max-w-xs items-center justify-center rounded-full bg-[#c2693f] text-[17px] font-medium tracking-wide text-white shadow-[0_8px_20px_rgba(0,0,0,0.35)] transition-all hover:-translate-y-0.5 hover:bg-[#a8542f] active:translate-y-0 active:scale-[0.98]"
+                  className="btn-sheen flex h-14 w-full max-w-xs items-center justify-center rounded-full bg-[#c2693f] text-[17px] font-medium tracking-wide text-white shadow-[0_8px_20px_rgba(0,0,0,0.35)] transition-all hover:-translate-y-0.5 hover:bg-[#a8542f] active:translate-y-0 active:scale-[0.98]"
                 >
                   Tạo tài khoản
                 </Link>

@@ -98,7 +98,9 @@ export function LandingHero() {
 
             <Link
               href="/sign-up"
-              className="flex h-14 w-full items-center justify-center rounded-full border border-[#d8cfc1]/80 bg-white/40 text-[#6f675d] backdrop-blur-md transition-all hover:border-[#d8cfc1] hover:bg-white/70 active:scale-[0.98]"
+              // Warm tint rather than the default white sweep: on a near-white
+              // button a white sheen travels across and shows nothing.
+              className="btn-sheen [--sheen:rgba(194,105,63,0.2)] flex h-14 w-full items-center justify-center rounded-full border border-[#d8cfc1]/80 bg-white/40 text-[#6f675d] backdrop-blur-md transition-all hover:border-[#d8cfc1] hover:bg-white/70 active:scale-[0.98]"
             >
               <span className="text-[17px] font-medium tracking-wide">
                 Tạo tài khoản

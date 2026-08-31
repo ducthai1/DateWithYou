@@ -70,7 +70,13 @@ body:has([data-chromeless]) [data-app-main] {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgb(255 255 255 / 0.22) 50%,
+    /* Default lives in the fallback, NOT as `--sheen` on this rule. This block
+       is unlayered CSS, which outranks Tailwind's utilities layer, so declaring
+       it here silently beat every `[--sheen:…]` a button tried to set — the
+       class was on the element and the sweep stayed white regardless.
+       White is invisible on a near-white button, which is exactly why the pale
+       secondary action looked as though it had no sheen at all. */
+    var(--sheen, rgb(255 255 255 / 0.22)) 50%,
     transparent 100%
   );
   transform: translateX(-100%);
@@ -104,9 +110,10 @@ body:has([data-chromeless]) [data-app-main] {
   /* Measured, not chosen by eye: #6c757d reached 4.69:1 on an opaque white card
      but only 4.45:1 on --background, and the app's surfaces are mostly neither —
      they are translucent cards over the artwork ground, which landed real body
-     copy between 3.7 and 4.4. This value keeps the same grey-blue cast with
-     enough headroom that a surface does not have to be opaque to be readable. */
-  --muted-foreground: #616a73;
+     copy between 3.7 and 4.4. Darkened once more when the ground was allowed to
+     show through more strongly: same grey-blue cast, enough headroom that a
+     surface does not have to be opaque for the words on it to be readable. */
+  --muted-foreground: #586169;
   --border: #E5E7EB;
   --card: #ffffff;
   --accent-foreground: #ffffff;
