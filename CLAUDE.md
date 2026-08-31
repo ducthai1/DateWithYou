@@ -1057,6 +1057,27 @@ Chữa: bỏ blur ở phần tử lặp và thay bằng `bg-*/90`; giảm bán k
 
 Cách đo: `Performance.getMetrics` cho heap/nodes/listeners qua nhiều vòng điều hướng; duyệt DOM đếm `backdropFilter`/`filter: blur` kèm **diện tích** phần tử.
 
+### Bỏ `sticky` khỏi một khối có lớp `absolute inset-0` bên trong = ảnh tràn cả trang
+
+Ảnh của band header phủ kín vùng content, viền band chỉ vẽ đè lên trên. Không phải lỗi clip: lớp ảnh là `absolute inset-0`, nên nó được **định cỡ bởi tổ tiên ĐƯỢC ĐỊNH VỊ gần nhất**. Trước đây band là `sticky` — mà `sticky` là positioned — nên nó "chạy đúng nhờ may". Gỡ `sticky` đi thì không còn gì positioned, ảnh neo lên tận đâu và nở ra cả trang. `z-30` cũng vô tác dụng vì cùng lý do.
+
+Luật: khối nào chứa con `absolute inset-0` thì **phải tự khai `relative`**, đừng dựa vào `sticky`/`fixed` đang có sẵn. Khi gỡ một class định vị, soát ngay các con `absolute` bên trong.
+
+**Đo bằng kích thước, đừng đo bằng "có tràn không":** `getBoundingClientRect` KHÔNG tính clip, nên "ảnh lòi ra ngoài band bao nhiêu px" luôn ra số dương ngay cả khi clip vẫn tốt. Phép đo đúng là **so chiều cao ảnh với chiều cao band** — 158 vs 144 là đúng (dư 10% do `scale-110`), 1100 vs 144 là hỏng.
+
+### Header đứng yên thì phải NẰM NGOÀI vùng cuộn, không phải đè lên
+
+Ghim header bằng `sticky` + một dải nền full-bleed mờ = đúng cái "thanh ngang" bị lộ, vì nội dung trượt **phía sau** nó.
+
+Cách đúng: khung app cao `100dvh` (`flex flex-col overflow-hidden`), header là hàng `shrink-0`, content là `min-h-0 flex-1 overflow-y-auto`. Không sticky, không mask.
+
+Ba thứ phải xử cùng lúc, thiếu một là hỏng:
+- **`min-h-0` bắt buộc** — flex item mặc định `min-height:auto` nên sẽ nở theo nội dung thay vì cuộn.
+- **Mọi phần tử trung gian phải truyền tiếp flex.** `src/app/template.tsx` (hiệu ứng chuyển trang của App Router) bọc mọi page trong một `motion.div` **không class**; là `display:block` nó cắt đứt chuỗi ⇒ page xin `flex-1` không được gì, nở ra 1242px trong cửa sổ 560px, và `overflow-hidden` của khung **nuốt mất** phần dư (không cuộn tới được).
+- **Chỗ dành cho bottom-nav chuyển vào chính hộp cuộn**, không để ở khung ngoài — khung đã cao đúng viewport rồi.
+
+Route marketing/auth giữ nguyên cuộn document: chúng là trang dài, không có app chrome, không có gì để ghim.
+
 ### `relative` KHÔNG tạo stacking context — z-index bên trong sẽ tràn ra ngoài
 
 Số ngày trong ô lịch vẽ **đè lên header đang ghim**. Không phải lỗi sticky: ô lịch là `relative` **không có z-index**, nên nó chưa từng mở stacking context, và các `z-20` bên trong nó tranh cùng cấp với layer của trang — cells nằm sau trong DOM nên thắng.
