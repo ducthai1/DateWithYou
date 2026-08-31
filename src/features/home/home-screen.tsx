@@ -45,8 +45,10 @@ export function HomeScreen() {
      * had. The extra width buys a second column from lg instead, which is what
      * the space is actually good for.
      */
-    <PageShell className="space-y-5">
-      <HomeGreeting daysTogether={data?.daysTogether ?? null} pending={!data} />
+    <PageShell
+      className="space-y-5"
+      header={<HomeGreeting daysTogether={data?.daysTogether ?? null} pending={!data} />}
+    >
       <HomeSearchLink />
 
       {today.isPending ? (

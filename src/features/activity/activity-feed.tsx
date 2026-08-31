@@ -209,16 +209,18 @@ export function ActivityFeed() {
      * connect them. The band and the page rhythm match every other route; the
      * list stays at a reading width and centres inside it.
      */
-    <PageShell className="space-y-6">
+    <PageShell
+      className="space-y-6"
+      header={
+        <PageHeader
+          title="Hoạt động"
+          subtitle="Những gì tụi mình đã thêm vào không gian chung."
+          art="bannerWide"
+          artPosition="center 45%"
+        />
+      }
+    >
       <div className="mx-auto w-full max-w-3xl space-y-6">
-
-      {/* The same band component every other screen uses, rather than a
-          hand-rolled strip above a hand-rolled heading — two bands of two
-          different heights is what made the content start at a different
-          place on every route. */}
-      <PageHeader title="Hoạt động" subtitle="
-          Những gì tụi mình đã thêm vào không gian chung.
-        " art="bannerWide" artPosition="center 45%" />
 
       {list.isPending && <FeedSkeleton />}
 

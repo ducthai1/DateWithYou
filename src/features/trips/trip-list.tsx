@@ -9,7 +9,7 @@ import { Modal, ModalHeader } from "@/components/ui/modal";
 import { TripForm } from "./trip-form";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/layout/page-shell";
+import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { ToneArt } from "@/components/theme/tone-art";
 
 export function TripList() {
@@ -17,21 +17,24 @@ export function TripList() {
   const [formOpen, setFormOpen] = useState(false);
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-[30px] md:py-8 short:py-4">
-      <PageHeader
-        title="Chuyến đi"
-        subtitle="Lên lịch, tính ngân sách và chuẩn bị hành trang cho từng chuyến đi."
-        art="tripPlanner"
-        actions={
-          <button
-            onClick={() => setFormOpen(true)}
-            aria-label="Tạo chuyến đi mới"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md transition-transform hover:scale-105 active:scale-95"
-          >
-            <Plus className="h-6 w-6" />
-          </button>
-        }
-      />
+    <PageShell
+      header={
+        <PageHeader
+          title="Chuyến đi"
+          subtitle="Lên lịch, tính ngân sách và chuẩn bị hành trang cho từng chuyến đi."
+          art="tripPlanner"
+          actions={
+            <button
+              onClick={() => setFormOpen(true)}
+              aria-label="Tạo chuyến đi mới"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md transition-transform hover:scale-105 active:scale-95"
+            >
+              <Plus className="h-6 w-6" />
+            </button>
+          }
+        />
+      }
+    >
 
       <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
         {isLoading ? (
@@ -185,6 +188,6 @@ export function TripList() {
           <TripForm onSuccess={() => setFormOpen(false)} />
         </Modal>
       )}
-    </div>
+    </PageShell>
   );
 }

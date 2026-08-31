@@ -104,13 +104,17 @@ export function SearchScreen() {
      * and a snippet dragged to 1400px is unreadable in exactly the way a feed
      * row is.
      */
-    <PageShell className="space-y-5">
+    <PageShell
+      className="space-y-5"
+      header={
+        <PageHeader
+          title="Tìm kiếm"
+          subtitle="Gõ vài chữ là tụi mình lục lại kỷ niệm, quán xá, công thức, lịch trình và chuyến đi."
+          art="heroDesk"
+        />
+      }
+    >
       <div className="mx-auto w-full max-w-3xl space-y-5">
-      <PageHeader
-        title="Tìm kiếm"
-        subtitle="Gõ vài chữ là tụi mình lục lại kỷ niệm, quán xá, công thức, lịch trình và chuyến đi."
-        art="heroDesk"
-      />
 
       <div className="relative">
         <Search

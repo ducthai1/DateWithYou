@@ -3,34 +3,70 @@ import { ToneArt } from "@/components/theme/tone-art";
 import type { ArtName } from "@/lib/tone";
 
 /**
- * The page container and its sticky title banner, in one place.
+ * The page container and its title banner, in one place.
  *
  * Four screens had grown their own copy of the same two blocks — the
- * `max-w-[1400px]` column and the `sticky top-2 … rounded-2xl` gradient banner
- * — so a spacing change meant four edits and they had already drifted apart.
+ * `max-w-[1400px]` column and the gradient banner — so a spacing change
+ * meant four edits and they had already drifted apart.
  *
- * More importantly they were all tuned against a ~900px-tall window. At 600px,
- * which is exactly what 150% browser zoom gives on a 13" MacBook, the top
- * padding, the banner and its bottom margin spent ~180px before a single row of
- * content appeared. The `short:` and `shorter:` variants pull that back, so the
- * same screen stays usable zoomed in instead of turning into a scroll tube.
+ * The header is kept outside the scrollable area. The page is a flex column
+ * that fills the viewport (minus the app chrome above and below): header
+ * stays at the top as a non-scrolling shrink-0 block, and everything below
+ * it scrolls inside its own overflow container. No sticky tricks, no
+ * pseudo-element masks, no content leaking above the header.
  */
 
 export function PageShell({
+  header,
   children,
   className,
 }: {
+  /** PageHeader rendered above the scrollable content area. */
+  header?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
+  // Common gutter and width tokens shared between the header wrapper and the
+  // scrollable body so both align on the same grid.
+  const gutterCls =
+    "[--page-gutter:1rem] shorter:[--page-gutter:0.75rem] md:[--page-gutter:30px]";
+
+  if (header) {
+    return (
+      <div className={cn(gutterCls, "px-[var(--page-gutter)]", className)}>
+        {/* Header wrapper: sticky to stay on screen, solid background to mask 
+            content scrolling underneath without the old pseudo-element line artifact. 
+            On mobile it sits under the AppHeader (3.25rem), on desktop it floats near top. */}
+        <div
+          className={cn(
+            "sticky z-30 -mx-[var(--page-gutter)] bg-background/95 px-[var(--page-gutter)] pt-6 pb-4 backdrop-blur-md",
+            "top-[3.25rem] md:top-0",
+            "short:pt-3 short:pb-2",
+          )}
+        >
+          <div className="mx-auto w-full max-w-[1400px]">
+            {header}
+          </div>
+        </div>
+
+        {/* Scrollable content area */}
+        <div
+          className={cn(
+            "mx-auto w-full max-w-[1400px] space-y-6 pb-6 pt-2",
+            "short:space-y-4 shorter:space-y-3",
+          )}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  }
+
+  // No header — plain scrolling container (same as before).
   return (
     <div
       className={cn(
-        // The gutter is published as a variable so a full-bleed row can cancel
-        // exactly this padding instead of assuming it. ScrollStrip used to
-        // hard-code -mx-4; the moment `shorter` narrowed the gutter to 12px
-        // that bled 4px past the screen and the page scrolled sideways.
-        "[--page-gutter:1rem] shorter:[--page-gutter:0.75rem] md:[--page-gutter:30px]",
+        gutterCls,
         "mx-auto w-full max-w-[1400px] space-y-6 px-[var(--page-gutter)] pt-6 pb-6",
         "short:space-y-4 short:pt-3 shorter:space-y-3",
         className,
@@ -88,65 +124,23 @@ export function PageHeader({
       className={cn(
         // z-30, above page content: a header that content can paint over is not
         // pinned, it is merely in the way.
-        "z-30 mb-6 flex flex-col gap-y-3 rounded-2xl px-4 py-4 shadow-sm",
+        "z-30 flex flex-col gap-y-3 rounded-2xl px-4 py-4 shadow-sm",
         // The blur only earns its cost where there is no artwork; with a
         // picture behind the title the band is opaque already, and a
         // backdrop-filter over that area is one of the most expensive layers
         // the app paints.
         !art && "backdrop-blur-md",
-        /*
-         * Pinned at full height. It does not shrink, and that is the point.
-         *
-         * A first attempt collapsed it on a scroll threshold, and the threshold
-         * fed back into itself: collapsing removed ~92px of page, the browser
-         * clamped scrollY to the new maximum, the smaller scrollY fell under
-         * the threshold, the band expanded and the page grew again. On a page
-         * only a little taller than the window it never settled — let go
-         * mid-scroll and it juddered indefinitely.
-         *
-         * A second attempt did it in pure CSS, sticking at a negative offset so
-         * the band's top slid out of view and a fixed strip stayed. No feedback
-         * loop, but no fixed strip fits: the title block is one line on one
-         * route and three on another once a subtitle wraps on a phone, so any
-         * constant cut the heading off the top of the window somewhere.
-         *
-         * What was asked for was that the header stop scrolling away so a quick
-         * action stays in reach. That is this, and nothing more.
-         */
-        "[--pin:3.25rem] md:[--pin:0.5rem]",
-        "sticky top-[var(--pin)]",
-        // A cap filling the gap between the window's top edge and the pinned
-        // band. Without it that strip is a letterbox showing whatever is
-        // scrolling underneath — day numbers sliding past above the header,
-        // which reads as the header being broken rather than as a gap.
-        "before:bg-background before:absolute before:inset-x-0 before:bottom-full",
-        "before:h-[var(--pin)] before:content-['']",
-        // No `relative` here. `sticky` is itself a positioned element, so the
-        // artwork layer and the status chip still lay out against this box —
-        // and `relative` would quietly win the position slot and put the band
-        // back to scrolling away, which is the whole thing being fixed.
         // Without artwork the band keeps the accent gradient it always had.
         // With artwork the gradient moves to the scrim below, so painting it
         // here too would double-tint the picture.
         art
-          // One height for every screen that carries artwork. They were drifting
-          // — a band that is 192px on one route and 140px on the next makes the
-          // content below start at a different place each time you navigate,
-          // which reads as the page settling rather than as a design.
-          // Measured: at 11rem the band was 176px holding one title and one
-          // subtitle at its foot, so roughly 100px of it was empty and every
-          // screen's content started that much further down. 9rem still shows
-          // enough picture to be a picture.
           ? cn(
               "min-h-[8rem] justify-end sm:min-h-[9rem]",
               "short:min-h-0 short:justify-between",
             )
           : "from-gradient-from/15 to-gradient-to/15 bg-gradient-to-r",
         "sm:flex-row sm:items-center sm:justify-between sm:gap-y-0",
-        // Zoomed in, the banner keeps its job — saying where you are — on
-        // roughly half the height.
         "short:mb-3 short:rounded-xl short:py-2.5 shorter:py-2",
-        !art && "shorter:top-1",
         className,
       )}
     >

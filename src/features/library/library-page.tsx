@@ -79,36 +79,39 @@ export function LibraryPage() {
     // (route navigation), so the dock has nothing left to represent past that
     // point anyway — there is no real playback state to carry across routes.
     <NowPlayingProvider>
-    <PageShell className="space-y-4">
-      <PageHeader
-        title="Bộ sưu tập"
-        subtitle="Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau."
-        art="appShowcase"
-        actions={
-          <>
-            <div className="relative w-full sm:max-w-xs">
-              <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Tìm công thức, video, trò chơi…"
-                aria-label="Tìm trong bộ sưu tập"
-                className="border-border bg-card focus:border-accent focus:ring-ring/30 h-10 w-full rounded-xl border pl-9 pr-3 text-sm outline-none focus:ring-2 short:h-9"
-              />
-            </div>
-            <a
-              href="/wheel"
-              aria-label="Vòng quay chọn món"
-              title="Vòng quay chọn món"
-              className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm short:h-9 short:w-9"
-            >
-              <Disc3 className="h-5 w-5 text-accent" />
-            </a>
-            <Button onClick={() => setAdding(true)}>+ Thêm</Button>
-          </>
+      <PageShell
+        className="space-y-4"
+        header={
+          <PageHeader
+            title="Bộ sưu tập"
+            subtitle="Lưu những thứ hai bạn thích: công thức nấu ăn, video món ngon, trò chơi để chơi cùng nhau."
+            art="appShowcase"
+            actions={
+              <>
+                <div className="relative w-full sm:max-w-xs">
+                  <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Tìm công thức, video, trò chơi…"
+                    aria-label="Tìm trong bộ sưu tập"
+                    className="border-border bg-card focus:border-accent focus:ring-ring/30 h-10 w-full rounded-xl border pl-9 pr-3 text-sm outline-none focus:ring-2 short:h-9"
+                  />
+                </div>
+                <a
+                  href="/wheel"
+                  aria-label="Vòng quay chọn món"
+                  title="Vòng quay chọn món"
+                  className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm short:h-9 short:w-9"
+                >
+                  <Disc3 className="h-5 w-5 text-accent" />
+                </a>
+                <Button onClick={() => setAdding(true)}>+ Thêm</Button>
+              </>
+            }
+          />
         }
-      />
-
+      >
       <ScrollStrip>
         <Tabs tabs={TABS} value={kind} onChange={handleKindChange} className="w-max" />
       </ScrollStrip>

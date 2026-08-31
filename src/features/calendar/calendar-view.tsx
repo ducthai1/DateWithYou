@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Tabs } from "@/components/ui/tabs";
-import { PageHeader } from "@/components/layout/page-shell";
+import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { CalendarGrid } from "./calendar-grid";
 import { CalendarHeader } from "./calendar-header";
 import { CalendarWeekView } from "./calendar-week-view";
@@ -71,17 +71,17 @@ export function CalendarView() {
   const goToday = () => setYM(initialYM());
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-5 pb-5 md:px-[30px] short:space-y-2 short:pt-2">
-      {/* This route never had a page title — every other section says what it
-          is, this one only said "Tháng"/"Nhật ký" on the tabs. The artwork
-          also doubles as the one spot in the app where this piece is seen by
-          a couple who already has plans on the calendar, not just an empty one. */}
-      <PageHeader
-        title="Lịch"
-        subtitle="Lịch tháng, nhật ký việc và ngày đặc biệt của tụi mình."
-        art="calendarTablet"
-        banner={<CountdownBanner />}
-      />
+    <PageShell
+      className="space-y-4"
+      header={
+        <PageHeader
+          title="Lịch"
+          subtitle="Lịch tháng, nhật ký việc và ngày đặc biệt của tụi mình."
+          art="calendarTablet"
+          banner={<CountdownBanner />}
+        />
+      }
+    >
 
       <div className="flex items-center gap-2">
         <Tabs tabs={VIEW_TABS} value={view} onChange={setView} className="w-max max-w-full" />
@@ -126,6 +126,6 @@ export function CalendarView() {
           <SpecialDatesPanel />
         </Modal>
       )}
-    </div>
+    </PageShell>
   );
 }

@@ -147,17 +147,21 @@ export function MemoryTimeline() {
   };
 
   return (
-    <PageShell className="space-y-4">
-      <PageHeader
-        title="Dòng kỷ niệm"
-        subtitle="Lưu lại khoảnh khắc đã qua: ảnh, cảm xúc, nhạc/video kỷ niệm."
-        art="memoriesScrapbook"
-        actions={
-          <Button className="w-full sm:w-auto sm:shrink-0" onClick={() => setAdding(true)}>
-            + Thêm
-          </Button>
-        }
-      />
+    <PageShell
+      className="space-y-4"
+      header={
+        <PageHeader
+          title="Dòng kỷ niệm"
+          subtitle="Lưu lại khoảnh khắc đã qua: ảnh, cảm xúc, nhạc/video kỷ niệm."
+          art="memoriesScrapbook"
+          actions={
+            <Button className="w-full sm:w-auto sm:shrink-0" onClick={() => setAdding(true)}>
+              + Thêm
+            </Button>
+          }
+        />
+      }
+    >
 
       {allTags.length > 0 && (
         <div className="space-y-1.5">

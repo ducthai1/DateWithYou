@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PageHeader } from "@/components/layout/page-shell";
+import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { ToneArt } from "@/components/theme/tone-art";
 import { motion, useAnimationControls } from "framer-motion";
 import { trpc } from "@/lib/trpc";
@@ -112,8 +112,10 @@ export function FoodWheel() {
       : "var(--muted)";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center gap-6 px-4 pt-6 pb-8 md:px-[30px] short:gap-3 short:pt-3">
-      <PageHeader title="Hôm nay ăn gì?" art="wheelFood" className="w-full" />
+    <PageShell
+      header={<PageHeader title="Hôm nay ăn gì?" art="wheelFood" className="w-full" />}
+      className="flex flex-col items-center gap-6 short:gap-3"
+    >
 
       {/*
         Controls beside the wheel once there is room, stacked below that.
@@ -314,6 +316,6 @@ export function FoodWheel() {
         message="Lời mời chưa gửi được — thử lại nha 😢"
         actionLabel="Thử lại"
       />
-    </div>
+    </PageShell>
   );
 }
