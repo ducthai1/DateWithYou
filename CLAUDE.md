@@ -1045,6 +1045,30 @@ Bỏ qua: logo (là mark đặt lên bề mặt), ảnh nền trang trí `aria-h
 
 Ảnh tách nền nhận bóng theo **hình** (`drop-shadow`), ảnh đục nhận bóng theo **hộp** (`shadow` + bo góc) — hỏi `brand-cutouts.json` chứ đừng đoán.
 
+### Đừng để trạng thái đọc `scrollY` mà lại LÀM ĐỔI chiều cao trang
+
+Header thu gọn theo ngưỡng cuộn tự nuốt đuôi mình: thu gọn bớt ~92px chiều cao trang → trình duyệt **kẹp `scrollY`** xuống mức tối đa mới → `scrollY` nhỏ lại tụt dưới ngưỡng → giãn ra → trang dài lại. Trang chỉ cao hơn cửa sổ một chút thì **không bao giờ ổn định**; thả tay giữa lúc cuộn là giật mãi. Vùng chết (hysteresis) không cứu được, vì cú kẹp nhảy nguyên 92px.
+
+Luật: **thứ điều khiển bởi vị trí cuộn thì không được đổi chiều cao layout.** Đổi opacity/màu/độ mờ thì được.
+
+Hai cách chữa và vì sao chỉ 1 cách sống:
+- ~~Dính ở offset ÂM~~ (`top = pin + peek - height`) — hết vòng lặp thật, nhưng **không có `peek` cố định nào vừa**: khối tiêu đề 1 dòng ở route này, 3 dòng ở route kia khi phụ đề xuống dòng trên điện thoại ⇒ luôn có chỗ tiêu đề bị cắt trên đỉnh màn.
+- **Dính nguyên chiều cao.** Đúng cái người dùng xin (đừng trôi mất để với tới quick action), và không có gì để hỏng.
+
+Nghiệm thu phải là: cuộn tới nhiều mốc, **buông ra**, rồi lấy mẫu ~70 khung hình xem chiều cao/`scrollY` có đổi không. Đo trong lúc đang cuộn sẽ giấu mất lỗi.
+
+⚠️ Route không có dữ liệu thì **không cuộn được**, và trang không cuộn được thì chẳng chứng minh gì về sticky. Chèn spacer cao 1500px **vào đúng cha của band** — chèn chỗ khác là tự tạo ra đúng lỗi đang đi tìm.
+
+### Ba lý do một class không có tác dụng — kiểm tra bằng computed style, đừng tin mắt
+
+Cùng một buổi dính cả ba, cái sau che cái trước:
+
+1. **Class ghép bằng template literal** (`` `top-[...${VAR}...]` ``) — chuỗi đúng vào tới DOM, nhưng Tailwind **quét văn bản nguồn** nên không sinh luật nào. Kết quả: `top: auto`, sticky chỉ còn cái tên.
+2. **Tailwind từ chối phát class**: `top-[min(var(--pin),calc(...))]` không được sinh ra; `[--sheen:rgb(194_105_63/0.20)]` cũng vậy vì dấu `/` bị hiểu là cú pháp opacity. Tránh `min()` lồng và dấu `/`; dùng `rgba(a,b,c,d)` hoặc chọn nhánh bằng **variant** thay vì nhét điều kiện vào trong giá trị.
+3. **CSS không nằm trong `@layer` thắng utilities của Tailwind.** `.btn-sheen { --sheen: white }` viết trần đè mọi `[--sheen:…]` đặt trên nút. Mặc định phải nằm ở **fallback của `var()`** (`var(--sheen, …)`), đừng khai trên chính rule đó.
+
+Cả ba đều **không có lỗi build, không cảnh báo**. Cách duy nhất phát hiện: đọc `getComputedStyle` của phần tử thật (kể cả `::after`) ở trình duyệt.
+
 ### `sticky` chỉ dính TRONG PHẠM VI CHA — và `relative` lặng lẽ thắng nó
 
 Hai lần cùng một buổi, header có ảnh vẫn trôi mất dù đã thêm `sticky`:
