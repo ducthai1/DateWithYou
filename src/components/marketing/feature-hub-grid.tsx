@@ -40,7 +40,7 @@ export function FeatureHubGrid() {
             delay={Math.min(i, 3) * 90}
             className={wide ? "lg:col-span-2" : ""}
           >
-            <div className="group relative flex h-full flex-col overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 bg-white/60 transition-colors hover:border-[#c2693f]/40 hover:bg-white/90">
+            <div className="group relative flex h-full flex-col overflow-hidden rounded-[28px] border border-[#d8cfc1]/70 bg-white/60 shadow-[0_12px_28px_rgba(59,50,42,0.14)] transition-all hover:border-[#c2693f]/40 hover:bg-white/90 hover:shadow-[0_18px_36px_rgba(59,50,42,0.2)]">
               {/* A strip of the page's own artwork above the tint band. The
                   tiles were colour and text only; this is what the page is
                   actually about, and it is the same picture the page leads

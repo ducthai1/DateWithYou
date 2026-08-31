@@ -8,7 +8,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useTone } from "@/components/theme/tone-provider";
-import { artSrc, type ArtName, type SpotName } from "@/lib/tone";
+import { artIsTransparent, artSrc, type ArtName, type SpotName } from "@/lib/tone";
 import { SpotArt } from "@/components/theme/tone-art";
 import { resolveIcon } from "@/lib/icon-registry";
 import { Button } from "@/components/ui/button";
@@ -117,7 +117,13 @@ export function EmptyState({ icon, title, subtitle, action, art, artSize = "sm",
             // so and let the 384/768 variants do the work.
             sizes={artSize === "lg" ? "(max-width: 640px) 92vw, 560px" : "352px"}
             className={cn(
-              "h-auto w-full rounded-2xl object-contain",
+              "h-auto w-full object-contain",
+              // Every picture in the app carries a shadow; these were the ones
+              // still sitting flat on the page. A cut-out gets it on its own
+              // silhouette, an opaque one on its rounded box.
+              artIsTransparent(art, tone)
+                ? "drop-shadow-[0_14px_28px_rgba(59,50,42,0.22)]"
+                : "rounded-2xl shadow-[0_12px_28px_rgba(59,50,42,0.16)]",
               artSize === "lg" ? "max-w-[min(35rem,92%)]" : "max-w-[min(22rem,80%)]",
             )}
           />

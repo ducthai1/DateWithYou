@@ -149,7 +149,7 @@ export function FoodWheel() {
           there is no room to spare, and dropped again when short regardless
           of width (the !-forced override wins over lg:block either way the
           two media queries happen to sort in the compiled CSS). */}
-      <div className="short:!hidden relative hidden h-48 overflow-hidden rounded-2xl lg:block xl:h-56">
+      <div className="short:!hidden relative hidden h-48 overflow-hidden rounded-2xl shadow-[0_12px_28px_rgba(59,50,42,0.16)] lg:block xl:h-56">
         {/* wheelFoodAlt, not wheelFood again — the header above already shows
             wheelFood, and this box sat directly below it showing the very same
             picture twice on one page before this. */}
