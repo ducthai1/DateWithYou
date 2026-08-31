@@ -114,7 +114,9 @@ export function FoodWheel() {
   return (
     <PageShell
       header={<PageHeader title="Hôm nay ăn gì?" art="wheelFood" className="w-full" />}
-      className="flex flex-col items-center gap-6 short:gap-3"
+      // No `items-center`: this screen is a two-column grid that should use the
+      // width it is given, and centring made every row shrink to its content.
+      className="flex flex-col gap-6 short:gap-3"
     >
 
       {/*

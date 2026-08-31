@@ -46,7 +46,12 @@ export function PageShell({
      * would grow to fit its content instead of scrolling.
      */
     return (
-      <div className={cn(gutterCls, "flex min-h-0 flex-1 flex-col", className)}>
+      // `className` describes the CONTENT area, which is what every caller has
+      // always passed — `space-y-*`, a flex column, a gap. On the frame itself
+      // it did damage: the wheel's `items-center` centred the two structural
+      // rows, so the header shrank to its text and stopped matching the width
+      // of every other screen.
+      <div className={cn(gutterCls, "flex min-h-0 flex-1 flex-col")}>
         <div className="shrink-0 px-[var(--page-gutter)] pt-6 short:pt-3">
           <div className="mx-auto w-full max-w-[1400px]">{header}</div>
         </div>
@@ -59,6 +64,7 @@ export function PageShell({
               // it needs is reserved here, where the scrolling actually happens.
               "pb-[calc(1.5rem+4rem+env(safe-area-inset-bottom))] md:pb-6",
               "short:space-y-4 shorter:space-y-3",
+              className,
             )}
           >
             {children}
