@@ -134,7 +134,9 @@ export const calendarRouter = router({
       const [plans, memories, visited, specials, recent] = await Promise.all([
         PlanItemModel.find({ spaceId: ctx.spaceId, date: key }).lean(),
         MemoryModel.find({ spaceId: ctx.spaceId, date: { $gte: from, $lt: to } })
-          .select("title caption photos")
+          // date/tags/embeds ride along so the day view can open a memory for
+          // editing without a second round-trip just to fill the form.
+          .select("title caption photos date tags embeds")
           .lean(),
         LocationModel.find({
           spaceId: ctx.spaceId,
@@ -165,7 +167,7 @@ export const calendarRouter = router({
           locationId: (d.locationId as string) ?? null,
           mediaId: (d.mediaId as string) ?? null,
         }))
-        .sort((a, b) => BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket] || a.order - b.order);
+        .sort((a, b) => BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket] || a.order - b.order || a.id.localeCompare(b.id));
 
       const onThisDay = recent
         .filter((m) => monthDayOf(dateKeyFromDate(m.date as Date)) === md)
@@ -183,6 +185,9 @@ export const calendarRouter = router({
           id: String(m._id),
           title: m.title as string,
           caption: (m.caption as string) ?? null,
+          date: dateKeyFromDate(m.date as Date),
+          tags: (m.tags as string[]) ?? [],
+          embeds: ((m.embeds as { url: string }[]) ?? []).map((e) => ({ url: e.url })),
           photos: ((m.photos as { url: string; publicId: string }[]) ?? []).map((p) => ({
             url: p.url,
             publicId: p.publicId,

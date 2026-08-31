@@ -5,7 +5,7 @@ import { connectToDatabase } from "@/server/db/connect";
 import { PlanItemModel } from "@/server/db/models/plan-item";
 import { LocationModel } from "@/server/db/models/location";
 import { SpaceModel } from "@/server/db/models/space";
-import { BUCKET_KEYS, PLAN_STATUSES, BUCKET_ORDER, type BucketKey } from "@/lib/plan-meta";
+import { BUCKET_KEYS, PLAN_STATUSES, BUCKET_ORDER, bucketForTime, type BucketKey } from "@/lib/plan-meta";
 
 const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const bucketEnum = z.enum(BUCKET_KEYS as [BucketKey, ...BucketKey[]]);
@@ -42,6 +42,16 @@ const itemInput = z.object({
   cost: z.number().min(0).default(0),
 });
 
+
+/** Next free slot at the tail of one day+bucket. */
+async function tailOrder(spaceId: string, date: string, bucket: string) {
+  const last = await PlanItemModel.findOne({ spaceId, date, bucket })
+    .sort({ order: -1 })
+    .select("order")
+    .lean<{ order?: number }>();
+  return (last?.order ?? -1) + 1;
+}
+
 function serialize(d: Record<string, unknown>) {
   return {
     id: String(d._id),
@@ -76,7 +86,8 @@ export const planItemRouter = router({
           (a, b) =>
             a.date.localeCompare(b.date) ||
             BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket] ||
-            a.order - b.order,
+            a.order - b.order ||
+            a.id.localeCompare(b.id),
         );
     }),
   // Items across a day range (inclusive of fromKey, exclusive of toKey), sorted
@@ -95,7 +106,8 @@ export const planItemRouter = router({
           (a, b) =>
             a.date.localeCompare(b.date) ||
             BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket] ||
-            a.order - b.order,
+            a.order - b.order ||
+            a.id.localeCompare(b.id),
         );
     }),
 
@@ -103,18 +115,12 @@ export const planItemRouter = router({
     await connectToDatabase();
     await assertLocationInSpace(input.locationId, ctx.spaceId);
     await assertAssigneeInSpace(input.assigneeId, ctx.spaceId);
-    // Append to the end of its bucket for the day.
-    const last = await PlanItemModel.findOne({
-      spaceId: ctx.spaceId,
-      date: input.date,
-      bucket: input.bucket,
-    })
-      .sort({ order: -1 })
-      .select("order")
-      .lean<{ order?: number }>();
+    // A picked time decides the bucket, so the two can never contradict.
+    const bucket = input.time ? bucketForTime(input.time) : input.bucket;
     const doc = await PlanItemModel.create({
       ...input,
-      order: (last?.order ?? -1) + 1,
+      bucket,
+      order: await tailOrder(ctx.spaceId, input.date, bucket),
       spaceId: ctx.spaceId,
       createdBy: ctx.userId,
     });
@@ -128,9 +134,22 @@ export const planItemRouter = router({
       const { id, ...patch } = input;
       await assertLocationInSpace(patch.locationId, ctx.spaceId);
       await assertAssigneeInSpace(patch.assigneeId, ctx.spaceId);
+      const current = await PlanItemModel.findOne({ _id: id, spaceId: ctx.spaceId })
+        .select("date bucket time order")
+        .lean<{ date: string; bucket: string; time?: string; order?: number }>();
+      if (!current) throw new TRPCError({ code: "NOT_FOUND" });
+      // A picked time decides the bucket here too — including a time cleared to
+      // empty, which hands the choice back to whatever bucket was submitted.
+      const time = patch.time !== undefined ? patch.time : current.time;
+      if (time) patch.bucket = bucketForTime(time);
+      // Moving between buckets must re-slot: keeping the old index collides with
+      // an item already holding it, and two equal orders can never be reordered.
+      const date = patch.date ?? current.date;
+      const bucket = patch.bucket ?? current.bucket;
+      const moved = bucket !== current.bucket || date !== current.date;
       const res = await PlanItemModel.findOneAndUpdate(
         { _id: id, spaceId: ctx.spaceId },
-        { $set: patch },
+        { $set: moved ? { ...patch, order: await tailOrder(ctx.spaceId, date, bucket) } : patch },
         { new: true },
       )
         .select("_id")
@@ -160,21 +179,25 @@ export const planItemRouter = router({
       await connectToDatabase();
       const item = await PlanItemModel.findOne({ _id: input.id, spaceId: ctx.spaceId });
       if (!item) throw new TRPCError({ code: "NOT_FOUND" });
-      const dir = input.direction === "up" ? -1 : 1;
-      const neighbour = await PlanItemModel.find({
+      // Swap by POSITION, then renumber the bucket 0..n-1.
+      //
+      // Comparing order values instead ($lt / $gt against a neighbour) breaks
+      // the moment two items share a number: the strict comparison skips the
+      // tie, so the button silently does nothing — or swaps the wrong pair and
+      // spreads the duplicate. Ties are reachable from older data, so renumber
+      // on every move and the bucket heals itself the first time it is touched.
+      const siblings = await PlanItemModel.find({
         spaceId: ctx.spaceId,
         date: item.get("date"),
         bucket: item.get("bucket"),
-        order: dir === -1 ? { $lt: item.get("order") } : { $gt: item.get("order") },
-      })
-        .sort({ order: dir === -1 ? -1 : 1 })
-        .limit(1);
-      const other = neighbour[0];
-      if (!other) return { ok: true }; // already at the edge
-      const a = item.get("order");
-      item.set("order", other.get("order"));
-      other.set("order", a);
-      await Promise.all([item.save(), other.save()]);
+      }).sort({ order: 1, _id: 1 }); // _id breaks ties the same way every read does
+      const i = siblings.findIndex((d) => String(d._id) === String(item._id));
+      const j = input.direction === "up" ? i - 1 : i + 1;
+      if (i === -1 || j < 0 || j >= siblings.length) return { ok: true }; // at the edge
+      [siblings[i], siblings[j]] = [siblings[j], siblings[i]];
+      await Promise.all(
+        siblings.map((d, k) => (d.get("order") === k ? null : d.set("order", k).save())),
+      );
       return { ok: true };
     }),
 

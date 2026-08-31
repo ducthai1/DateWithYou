@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TimePicker } from "@/components/ui/time-picker";
-import { BUCKETS, type BucketKey } from "@/lib/plan-meta";
+import { BUCKETS, bucketForTime, type BucketKey } from "@/lib/plan-meta";
 import { TagPicker } from "./tag-picker";
 import { useToast } from "@/components/ui/toast";
 
@@ -42,8 +42,14 @@ export function PlanItemForm({
 }) {
   const [title, setTitle] = useState(item?.title ?? "");
   const [note, setNote] = useState(item?.note ?? "");
-  const [bucket, setBucket] = useState<BucketKey>(item?.bucket ?? defaultBucket ?? "morning");
+  const [pickedBucket, setPickedBucket] = useState<BucketKey>(
+    item?.bucket ?? defaultBucket ?? "morning",
+  );
   const [time, setTime] = useState(item?.time ?? "");
+  // A time settles the bucket: 19:00 is "Tối", never "Sáng". The server applies
+  // the same rule, so letting the two be edited apart would only show a value
+  // that is about to be overwritten. Clearing the time hands the choice back.
+  const bucket = time ? bucketForTime(time) : pickedBucket;
   const [tags, setTags] = useState<string[]>(item?.tags ?? []);
   const [assigneeId, setAssigneeId] = useState(item?.assigneeId ?? "");
   const [locationId, setLocationId] = useState(item?.locationId ?? "");
@@ -106,9 +112,15 @@ export function PlanItemForm({
             <Select
               aria-label="Buổi"
               value={bucket}
-              onChange={(v) => setBucket(v as BucketKey)}
+              disabled={Boolean(time)}
+              onChange={(v) => setPickedBucket(v as BucketKey)}
               options={BUCKETS.map((b) => ({ value: b.key, label: b.label }))}
             />
+            {time && (
+              <p className="text-muted-foreground ml-1 text-xs">
+                Theo giờ {time}. Xoá giờ để tự chọn buổi.
+              </p>
+            )}
           </div>
           <div className="space-y-2.5">
             <label className="text-xs font-medium text-muted-foreground ml-1">Giờ (tuỳ chọn)</label>

@@ -18,6 +18,21 @@ export const BUCKET_ORDER: Record<BucketKey, number> = {
   evening: 3,
 };
 
+/**
+ * Which bucket an "HH:mm" belongs to, so a picked time and the labelled bucket
+ * can never disagree (19:00 must not sit under "Sáng"). Boundaries follow the
+ * everyday Vietnamese split; evening wraps past midnight, which is why it is
+ * the fallback rather than a range.
+ */
+export function bucketForTime(time: string): BucketKey {
+  const h = Number(time.slice(0, 2));
+  if (!Number.isFinite(h)) return "morning";
+  if (h >= 5 && h < 11) return "morning";   // Sáng  05:00–10:59
+  if (h >= 11 && h < 13) return "noon";     // Trưa  11:00–12:59
+  if (h >= 13 && h < 18) return "afternoon"; // Chiều 13:00–17:59
+  return "evening";                          // Tối   18:00–04:59
+}
+
 export const PLAN_STATUSES = ["planned", "done", "skipped"] as const;
 export type PlanStatus = (typeof PLAN_STATUSES)[number];
 
