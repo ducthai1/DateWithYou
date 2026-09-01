@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { readableFormError } from "@/lib/form-error";
 import { Button } from "@/components/ui/button";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
@@ -226,12 +227,24 @@ export function LocationForm({
   }, [districts, areaSearch.data, v.district]);
 
   const onError = (err: { message?: string }) =>
-    toast("Lưu thất bại: " + (err?.message || "Thử lại nhé"), "error");
+    toast("Lưu thất bại: " + readableFormError(err?.message), "error");
   const create = trpc.location.create.useMutation({ onSuccess, onError });
   const update = trpc.location.update.useMutation({ onSuccess, onError });
   const pending = create.isPending || update.isPending;
 
   function submit() {
+    /*
+     * Checked here so the answer names the box, not the schema.
+     *
+     * The area is filled in by the server from the place's own coordinates, so
+     * it is never the person's job. The category is: nothing can derive it, and
+     * letting an empty one reach the server only bought the same unreadable
+     * validation dump the area used to produce.
+     */
+    if (!v.category.trim()) {
+      toast("Chọn loại địa điểm giúp mình nhé", "error");
+      return;
+    }
     const payload = {
       name: v.name.trim(),
       district: v.district,
