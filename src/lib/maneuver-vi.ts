@@ -18,6 +18,8 @@ export type Maneuver = {
   streetNames: string[];
   /** Length of the step that begins at this maneuver. */
   distanceMeters: number;
+  /** Posted limit on the road this step begins on, km/h, when the data has one. */
+  speedLimitKmh?: number | null;
   lat: number;
   lng: number;
 };

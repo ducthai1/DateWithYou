@@ -1488,6 +1488,55 @@ vừa thả tay là camera nhảy về chấm của mình. 2 giây ngắn hơn c
 Nay dừng bám là **dừng hẳn**, và có nút **"Về vị trí của tôi"** để quay lại — đúng cách mọi app bản đồ
 làm. Người dùng quyết định khi nào bám tiếp, không phải cái timer.
 
+## Giọng chỉ đường: mô phỏng cả chuyến đi mới lòi ra 2 bug chết người
+
+Phần voice viết xong, build xanh, `tsc` xanh, mắt đọc thấy hợp lý — và **hỏng nặng**. Chỉ khi tách
+logic ra hàm thuần (`src/lib/turn-announcer.ts`) rồi cho một chuyến 3 km chạy qua nó mới thấy:
+
+**Bug 1 — cả chuyến chỉ đọc 1 câu cho mỗi khúc rẽ, ở mốc 500 m, rồi im bặt.**
+```ts
+const STAGES = [500, 200, 80, 40];
+const stage = STAGES.find((s) => metres <= s);   // ← ở 180m trả về 500, không phải 200
+```
+`find` trên mảng **giảm dần** luôn trả về phần tử **xa nhất** khớp. Khoá `idx:500` bị đánh dấu đã đọc
+ngay lần đầu, nên 200/80/40 **không bao giờ chạy** — im lặng đúng lúc cần chỉ dẫn nhất. Sửa:
+`STAGES.filter(s => metres <= s).at(-1)` lấy mốc **gần nhất**.
+
+**Bug 2 — lướt qua khúc rẽ mà không vào trong 25 m thì bộ đếm kẹt vĩnh viễn.** Ngã tư rộng, GPS lệch,
+làn ngoài cùng — đều đủ để không bao giờ chạm ngưỡng, và app đếm ngược tới một góc đã ở sau lưng cho
+hết chuyến. Sửa: **khúc kế tiếp gần hơn khúc hiện tại ⇒ khúc hiện tại đã ở sau lưng**. Và giải quyết
+trọn trong một nhịp GPS chứ không một khúc mỗi nhịp.
+
+Bộ test mô phỏng 6 tình huống, giữ lại mà chạy khi đụng vào phần này: chạy đều cả chuyến · **dừng đèn
+đỏ nhích 40 lần** (không được lặp câu) · nhịp GPS thưa nhảy qua nhiều mốc (phải đọc mốc **gần** nhất) ·
+qua khúc rẽ · tới đích · mỗi nhịp tối đa 1 câu.
+
+⚠️ Bài test cũng có bug: khoá chống lặp của nó thay mọi chữ số bằng `#`, nên 4 mốc hợp lệ của cùng một
+khúc rẽ bị gộp thành "lặp". **Đọc output rồi mới tin dòng ✗/✓** — một bài test sai làm bạn đi sửa thứ
+không hỏng.
+
+### `getVoices()` KHÔNG đồng bộ — và đó là lý do giọng đọc sai ngữ âm
+
+`speechSynthesis.getVoices()` trả **mảng rỗng** cho tới khi engine nạp xong và bắn `voiceschanged`.
+Hỏi nó ngay lúc câu chỉ dẫn đầu tiên thì nhận "không có giọng Việt", và app đọc tiếng Việt bằng **giọng
+Anh** — không phải giọng lơ lớ, mà là **không nghe ra chữ gì**. Nay danh sách được cache và làm mới
+theo sự kiện.
+
+Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
+câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
+
+## Thêm tham số vào một request đang chạy được là việc CÓ RỦI RO
+
+Xin `alternates` từ Valhalla để có đường đi thay thế. Nếu nhà cung cấp từ chối tham số đó thì **mọi
+route trong app chết** và dẫn đường ngừng hoạt động — tệ hơn hẳn việc không có lựa chọn. Mà máy dev
+không có `STADIA_API_KEY` nên **không thử được**.
+
+Nên: gọi kèm `alternates`, gặp 4xx thì **gọi lại lần nữa không kèm**. Hành vi hôm nay là sàn, tính năng
+mới là trần. Luật chung cho mọi lần thêm option vào một API đang chạy tốt mà không tự thử được.
+
+Đường thay thế mang theo **cả maneuvers** (dùng chung `parseLeg`): một tuyến nhìn được mà không có
+giọng chỉ đường thì chọn nó là bước lùi.
+
 ## Chỉ dẫn từng khúc rẽ: dữ liệu đã có sẵn, chỉ là bị bỏ đi
 
 `getRoute` gọi Valhalla nhưng chỉ đọc `legs[].shape/length/time` và **bỏ luôn `legs[].maneuvers`** —

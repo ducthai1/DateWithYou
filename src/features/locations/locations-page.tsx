@@ -210,6 +210,10 @@ export function LocationsPage() {
    * destination case — which is most trips — had nowhere to keep a turn list.
    */
   const [routeLegs, setRouteLegs] = useState<LegInfo[] | null>(null);
+  /** Other ways of getting there, offered before setting off. */
+  const [routeAlternatives, setRouteAlternatives] = useState<
+    Array<{ distanceMeters: number; durationSeconds: number; geometry: unknown; legs: LegInfo[] }>
+  >([]);
   // Mirrors the module's own flag so the button re-renders when it changes.
   const [voiceOn, setVoiceOn] = useState(true);
   useEffect(() => setVoiceOn(isVoiceEnabled()), []);
@@ -870,6 +874,7 @@ export function LocationsPage() {
            * being ridden rather than the whole trip's turns at once.
            */
           setRouteLegs(r.legs);
+          setRouteAlternatives(r.alternatives ?? []);
           const isMultiLeg = !!waypoints && waypoints.length > 0 && r.legs.length > 1;
           if (isMultiLeg) {
             setLegGeometries(r.legs);
@@ -1084,6 +1089,29 @@ export function LocationsPage() {
       durationSeconds,
       companion: !!currentTripInviteId,
     });
+  };
+
+  /*
+   * Take one of the other routes.
+   *
+   * Everything needed is already in hand — the line, the totals and the turn
+   * list came back with it — so this is a swap rather than a fresh request. The
+   * turn list moving with the line is the part that matters: a route you can see
+   * but cannot be guided along would make choosing it a downgrade.
+   */
+  const chooseAlternative = (i: number) => {
+    const alt = routeAlternatives[i];
+    if (!alt) return;
+    const coords = (alt.geometry as { coordinates?: Array<[number, number]> }).coordinates ?? [];
+    if (!coords.length) return;
+    setLegGeometries(null);
+    setRouteGeometry(alt.geometry);
+    setRouteLegs(alt.legs);
+    setRouteDistanceMeters(alt.distanceMeters);
+    setRouteDurationSeconds(alt.durationSeconds);
+    nav.setRouteInfo(coords, alt.distanceMeters, alt.durationSeconds);
+    // The one just taken is no longer an alternative to itself.
+    setRouteAlternatives((prev) => prev.filter((_, k) => k !== i));
   };
 
   const endTrip = () => {
@@ -1377,6 +1405,17 @@ export function LocationsPage() {
                         {turn.metres <= 40 ? "Ngay bây giờ" : `còn ${fmtMetresVi(turn.metres)}`}
                       </p>
                     </div>
+                    {/* Informational, not an instruction: the posted limit is
+                        missing from a lot of Vietnamese side streets and wrong
+                        on some, so it is shown where it exists and nothing is
+                        claimed where it does not. */}
+                    {turn.next.speedLimitKmh ? (
+                      <div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full border-[3px] border-red-500 bg-white">
+                        <span className="text-[13px] font-bold leading-none text-slate-900 tabular-nums">
+                          {turn.next.speedLimitKmh}
+                        </span>
+                      </div>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => {
@@ -2635,6 +2674,27 @@ export function LocationsPage() {
                     "Đường đã vẽ xong trên bản đồ."
                   )}
                 </p>
+
+                {routeAlternatives.length > 0 && !routePending && !routeError && (
+                  <div className="mt-3">
+                    <p className="text-muted-foreground mb-1.5 text-xs font-medium">
+                      Đường khác:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {routeAlternatives.map((alt, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => chooseAlternative(i)}
+                          className="border-border bg-card hover:bg-muted flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                        >
+                          <Route className="text-accent h-3.5 w-3.5" />
+                          {fmtDuration(alt.durationSeconds)} · {fmtDistance(alt.distanceMeters)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-4 flex flex-col gap-2.5">
                   {hasTwoMembers && (

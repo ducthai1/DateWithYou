@@ -124,6 +124,68 @@ async function withArea(district: string | undefined, geo?: { lat: number; lng: 
   return "Chưa rõ khu vực";
 }
 
+/** A leg as this API returns it, with the turn list resolved to coordinates. */
+type ParsedLeg = {
+  distanceMeters: number;
+  durationSeconds: number;
+  geometry: { type: string; coordinates: Array<[number, number]> };
+  maneuvers: Array<{
+    type: number;
+    streetNames: string[];
+    distanceMeters: number;
+    speedLimitKmh: number | null;
+    lng: number;
+    lat: number;
+  }>;
+};
+
+type RawLeg = {
+  shape?: string;
+  length?: number;
+  time?: number;
+  maneuvers?: Array<{
+    type?: number;
+    street_names?: string[];
+    length?: number;
+    time?: number;
+    begin_shape_index?: number;
+    speed_limit?: number;
+  }>;
+};
+
+/**
+ * Decode one routing leg, turns included.
+ *
+ * Shared by the chosen route and by every alternate: an alternate without its
+ * turn list is a line you can look at but cannot be guided along, which would
+ * make choosing one a downgrade.
+ */
+function parseLeg(leg: RawLeg): ParsedLeg {
+  const coordinates = leg.shape ? decodePolyline(leg.shape, 6) : [];
+  return {
+    distanceMeters: Math.round((leg.length ?? 0) * 1000),
+    durationSeconds: Math.round(leg.time ?? 0),
+    geometry: { type: "LineString", coordinates },
+    // A turn with no resolvable position cannot be announced against a live
+    // location, so it is dropped rather than carried as a hole.
+    maneuvers: (leg.maneuvers ?? []).flatMap((m) => {
+      const i = m.begin_shape_index;
+      const at = typeof i === "number" ? coordinates[i] : undefined;
+      if (!at || typeof m.type !== "number") return [];
+      return [
+        {
+          type: m.type,
+          streetNames: m.street_names ?? [],
+          distanceMeters: Math.round((m.length ?? 0) * 1000),
+          speedLimitKmh: typeof m.speed_limit === "number" ? Math.round(m.speed_limit) : null,
+          lng: at[0],
+          lat: at[1],
+        },
+      ];
+    }),
+  };
+}
+
 export const locationRouter = router({
   list: protectedProcedure
     .input(
@@ -414,25 +476,48 @@ export const locationRouter = router({
       // use the smaller roads a scooter is allowed on — the realistic Vietnam
       // motorbike route, which no ORS profile offers.
       const key = requireEnv("STADIA_API_KEY");
-      const res = await fetch(
-        `https://api.stadiamaps.com/route/v1?api_key=${key}`,
-        {
+      const locations = [
+        { lat: input.origin.lat, lon: input.origin.lng },
+        ...(input.waypoints?.map((w) => ({ lat: w.lat, lon: w.lng })) || []),
+        { lat: destGeo.lat, lon: destGeo.lng },
+      ];
+      const ask = (withAlternates: boolean) =>
+        fetch(`https://api.stadiamaps.com/route/v1?api_key=${key}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            locations: [
-              { lat: input.origin.lat, lon: input.origin.lng },
-              ...(input.waypoints?.map(w => ({ lat: w.lat, lon: w.lng })) || []),
-              { lat: destGeo.lat, lon: destGeo.lng },
-            ],
+            locations,
             costing: "motor_scooter",
             directions_options: { units: "kilometers" },
+            // Two extras beyond the fastest line. In city traffic the quickest
+            // route on paper is often the one that meets roadworks or standing
+            // water, and a rider who knows a back street should be able to pick
+            // it without arguing with the app.
+            ...(withAlternates ? { alternates: 2 } : {}),
           }),
-        },
-      );
+        });
+
+      /*
+       * Asked for alternates, then asked again without them if that was
+       * refused.
+       *
+       * Adding an option to a working request is not free: if this provider
+       * rejects `alternates` outright, every route in the app fails and
+       * navigation stops working — a worse outcome than not offering a choice.
+       * Falling back keeps today's behaviour as the floor.
+       */
+      let res = await ask(true);
+      if (!res.ok && res.status >= 400 && res.status < 500) {
+        console.error("getRoute: provider refused alternates, retrying without", res.status);
+        res = await ask(false);
+      }
       if (!res.ok)
         throw new TRPCError({ code: "BAD_GATEWAY", message: "DIRECTIONS_FAILED" });
       const data = (await res.json()) as {
+        /* Each alternate arrives as a whole trip of its own. */
+        alternates?: Array<{
+          trip?: { summary?: { length?: number; time?: number }; legs?: RawLeg[] };
+        }>;
         trip?: {
           summary?: { length?: number; time?: number };
           legs?: Array<{
@@ -452,6 +537,10 @@ export const locationRouter = router({
               length?: number;
               time?: number;
               begin_shape_index?: number;
+              /* Posted limit for the road this step begins on, km/h, when the
+               * underlying map data has one — often it does not, so every
+               * consumer has to treat it as optional. */
+              speed_limit?: number;
             }>;
           }>;
         };
@@ -459,38 +548,36 @@ export const locationRouter = router({
       const trip = data.trip;
       if (!trip?.legs?.length)
         throw new TRPCError({ code: "NOT_FOUND", message: "NO_ROUTE" });
-      const legs = trip.legs.map((leg) => {
-        const coordinates = leg.shape ? decodePolyline(leg.shape, 6) : [];
-        return {
-          distanceMeters: Math.round((leg.length ?? 0) * 1000),
-          durationSeconds: Math.round(leg.time ?? 0),
-          geometry: { type: "LineString", coordinates },
-          // A turn with no resolvable position cannot be announced against a
-          // live location, so it is dropped rather than carried as a hole.
-          maneuvers: (leg.maneuvers ?? []).flatMap((m) => {
-            const i = m.begin_shape_index;
-            const at = typeof i === "number" ? coordinates[i] : undefined;
-            if (!at || typeof m.type !== "number") return [];
-            return [
-              {
-                type: m.type,
-                streetNames: m.street_names ?? [],
-                // Length of the step that STARTS here, in metres.
-                distanceMeters: Math.round((m.length ?? 0) * 1000),
-                lng: at[0],
-                lat: at[1],
-              },
-            ];
-          }),
-        };
-      });
+      const legs = trip.legs.map(parseLeg);
       const allCoordinates = legs.flatMap((l) => l.geometry.coordinates);
+
+      /*
+       * The other ways of getting there, summarised.
+       *
+       * Only what a chooser needs — how long, how far, and the line to draw —
+       * because switching to one re-requests it properly rather than promoting
+       * a summary into the active route.
+       */
+      const alternatives = (data.alternates ?? []).flatMap((alt) => {
+        const altLegs = (alt.trip?.legs ?? []).map(parseLeg);
+        const coords = altLegs.flatMap((l) => l.geometry.coordinates);
+        if (!coords.length) return [];
+        return [
+          {
+            distanceMeters: Math.round((alt.trip?.summary?.length ?? 0) * 1000),
+            durationSeconds: Math.round(alt.trip?.summary?.time ?? 0),
+            geometry: { type: "LineString", coordinates: coords },
+            legs: altLegs,
+          },
+        ];
+      });
 
       return {
         distanceMeters: Math.round((trip.summary?.length ?? 0) * 1000),
         durationSeconds: Math.round(trip.summary?.time ?? 0),
         geometry: { type: "LineString", coordinates: allCoordinates },
         legs,
+        alternatives,
       };
     }),
 
