@@ -213,13 +213,21 @@ export default async function RootLayout({
         <AppleSplashLinks />
       </head>
       <body className={`${inter.variable} ${playfair.variable} ${lora.variable} antialiased`}>
+        {/* These three touch only browser APIs — no tRPC, no query cache — so
+            they can sit outside the providers. Anything that calls a tRPC hook
+            cannot: see PushSetup below. */}
         <RegisterMapCache />
         <WarmMapAssets />
         <PrimeHaptics />
-        <PushSetup />
         {/* SpaceGuard is mounted inside <Providers> — it is client-only
             (ssr: false), which a Server Component cannot declare. */}
         <Providers initialTone={initialTone}>
+          {/* Inside the providers, because it registers the push subscription
+              through a tRPC mutation. Mounted beside the three above at first,
+              which threw "Unable to find tRPC Context" on the server for every
+              page in the app — the tRPC provider lives in <Providers>, and a
+              hook outside it has nothing to read. */}
+          <PushSetup />
           <AppBackdrop />
           <SideNav />
           {/* Offset for the bottom nav on mobile, for the sidebar on desktop. */}
