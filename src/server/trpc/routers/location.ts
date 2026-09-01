@@ -18,6 +18,7 @@ import { placeCoords, placeDetail, suggestPlaces } from "@/server/lib/geocode-ad
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
 import { searchAreas } from "@/lib/vn-admin";
 import { areaAtPoint } from "@/server/lib/area-at-point";
+import { sendPushToUser } from "@/server/lib/push";
 import { buildPattern } from "@/lib/vietnamese-text";
 
 /*
@@ -434,20 +435,55 @@ export const locationRouter = router({
       const data = (await res.json()) as {
         trip?: {
           summary?: { length?: number; time?: number };
-          legs?: Array<{ shape?: string; length?: number; time?: number }>;
+          legs?: Array<{
+            shape?: string;
+            length?: number;
+            time?: number;
+            /*
+             * Valhalla returns a turn list alongside the shape and it was being
+             * thrown away, which is why the app could draw a route but never say
+             * "rẽ phải sau 50 mét". `begin_shape_index` points into the decoded
+             * shape, so the coordinate of each turn is resolved here and the
+             * client never has to know about shape indices.
+             */
+            maneuvers?: Array<{
+              type?: number;
+              street_names?: string[];
+              length?: number;
+              time?: number;
+              begin_shape_index?: number;
+            }>;
+          }>;
         };
       };
       const trip = data.trip;
       if (!trip?.legs?.length)
         throw new TRPCError({ code: "NOT_FOUND", message: "NO_ROUTE" });
-      const legs = trip.legs.map((leg) => ({
-        distanceMeters: Math.round((leg.length ?? 0) * 1000),
-        durationSeconds: Math.round(leg.time ?? 0),
-        geometry: {
-          type: "LineString",
-          coordinates: leg.shape ? decodePolyline(leg.shape, 6) : [],
-        },
-      }));
+      const legs = trip.legs.map((leg) => {
+        const coordinates = leg.shape ? decodePolyline(leg.shape, 6) : [];
+        return {
+          distanceMeters: Math.round((leg.length ?? 0) * 1000),
+          durationSeconds: Math.round(leg.time ?? 0),
+          geometry: { type: "LineString", coordinates },
+          // A turn with no resolvable position cannot be announced against a
+          // live location, so it is dropped rather than carried as a hole.
+          maneuvers: (leg.maneuvers ?? []).flatMap((m) => {
+            const i = m.begin_shape_index;
+            const at = typeof i === "number" ? coordinates[i] : undefined;
+            if (!at || typeof m.type !== "number") return [];
+            return [
+              {
+                type: m.type,
+                streetNames: m.street_names ?? [],
+                // Length of the step that STARTS here, in metres.
+                distanceMeters: Math.round((m.length ?? 0) * 1000),
+                lng: at[0],
+                lat: at[1],
+              },
+            ];
+          }),
+        };
+      });
       const allCoordinates = legs.flatMap((l) => l.geometry.coordinates);
 
       return {
@@ -590,6 +626,24 @@ export const locationRouter = router({
         waypoints: input.waypoints || [],
       });
 
+
+      /*
+       * Reach the phone even when the app is not open.
+       *
+       * The in-app listener only fires for a page that is running, so an invite
+       * sent while the other person had the screen locked or was in another app
+       * arrived nowhere until they happened to come back. Awaited but never
+       * allowed to throw: the invite exists either way, and failing the mutation
+       * because a push service was slow would lose the invite over the
+       * notification.
+       */
+      await sendPushToUser(partnerId, {
+        title: "Lời mời đi chung 🛵",
+        body: `Rủ bạn đi ${input.locationName}. Mở app để trả lời nhé!`,
+        url: "/map",
+        // One pending invite at a time, so a new one replaces the old on screen.
+        tag: "nav-invite",
+      }).catch((err) => console.error("sendNavInvite: push failed", err));
       return { id: String(invite._id) };
     }),
 

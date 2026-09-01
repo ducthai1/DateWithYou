@@ -13,6 +13,7 @@ import { AppleSplashLinks } from "@/components/layout/apple-splash-links";
 import { RegisterMapCache } from "@/components/layout/register-map-cache";
 import { WarmMapAssets } from "@/components/layout/warm-map-assets";
 import { PrimeHaptics } from "@/components/layout/prime-haptics";
+import { PushSetup } from "@/components/layout/push-setup";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
@@ -215,6 +216,7 @@ export default async function RootLayout({
         <RegisterMapCache />
         <WarmMapAssets />
         <PrimeHaptics />
+        <PushSetup />
         {/* SpaceGuard is mounted inside <Providers> — it is client-only
             (ssr: false), which a Server Component cannot declare. */}
         <Providers initialTone={initialTone}>

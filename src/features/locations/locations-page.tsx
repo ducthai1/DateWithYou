@@ -11,10 +11,14 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { List as ListIcon, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, Loader2, LocateOff, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
+import { List as ListIcon, Volume2, VolumeX, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, Loader2, LocateOff, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { type LegInfo } from "./use-live-navigation";
+import { useTurnByTurn } from "./use-turn-by-turn";
+import { ManeuverArrowIcon } from "./maneuver-arrow-icon";
+import { maneuverArrow, maneuverLabel, fmtMetresVi } from "@/lib/maneuver-vi";
+import { isVoiceEnabled, setVoiceEnabled } from "@/lib/speak";
 import { useNavigation } from "./navigation-context";
 import { fmtDistance, fmtDuration } from "./format-journey";
 import { ToneArt } from "@/components/theme/tone-art";
@@ -199,6 +203,16 @@ export function LocationsPage() {
   const [plannedStops, setPlannedStops] = useState<PlannedStop[]>([]);
   /** The route request is in flight, so the trip sheet can open before it lands. */
   const [routePending, setRoutePending] = useState(false);
+  /*
+   * Every leg of the drawn route, including its turns.
+   *
+   * `legGeometries` is only populated for multi-stop trips, so the single
+   * destination case — which is most trips — had nowhere to keep a turn list.
+   */
+  const [routeLegs, setRouteLegs] = useState<LegInfo[] | null>(null);
+  // Mirrors the module's own flag so the button re-renders when it changes.
+  const [voiceOn, setVoiceOn] = useState(true);
+  useEffect(() => setVoiceOn(isVoiceEnabled()), []);
   /** Planning a route for one person — same stops, no invite. */
   const [soloPlanOpen, setSoloPlanOpen] = useState(false);
   /**
@@ -322,6 +336,25 @@ export function LocationsPage() {
 
 
   const liveUser = nav.userGeo ?? userGeo;
+
+  /*
+   * Turn-by-turn for the leg currently being ridden.
+   *
+   * Only while actually navigating: the turns exist as soon as the route is
+   * drawn, but announcing them to someone still looking at the map deciding
+   * whether to go is noise.
+   */
+  const activeManeuvers = useMemo(() => {
+    const legs = routeLegs;
+    if (!legs?.length) return null;
+    const leg = legs[Math.min(currentLegIndex, legs.length - 1)];
+    return leg?.maneuvers ?? null;
+  }, [routeLegs, currentLegIndex]);
+  const turn = useTurnByTurn({
+    maneuvers: activeManeuvers,
+    userGeo: nav.userGeo,
+    active: nav.isNavigating,
+  });
 
   const utils = trpc.useUtils();
   const configQuery = trpc.location.getConfig.useQuery();
@@ -799,6 +832,11 @@ export function LocationsPage() {
 
           // Multi-stop trip: split into coloured legs and navigate the first one.
           // Otherwise keep the single merged polyline (the common case).
+          /*
+           * The turn list, kept per leg so a multi-stop trip announces the leg
+           * being ridden rather than the whole trip's turns at once.
+           */
+          setRouteLegs(r.legs);
           const isMultiLeg = !!waypoints && waypoints.length > 0 && r.legs.length > 1;
           if (isMultiLeg) {
             setLegGeometries(r.legs);
@@ -1251,7 +1289,46 @@ export function LocationsPage() {
               className="absolute inset-x-0 top-0 flex items-center justify-center p-3"
               style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
             >
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex w-full max-w-md flex-col items-center gap-2">
+                {/*
+                  The next turn, above everything else on the screen.
+
+                  Deliberately the largest thing in the HUD: while riding, "which
+                  way at the next junction" is the only question, and the trip
+                  totals underneath are reference. The distance sits in its own
+                  column so it can be read without reading the sentence, and the
+                  arrow is readable without reading either.
+                */}
+                {turn.next && turn.metres != null && (
+                  <div className="flex w-full items-center gap-3 rounded-2xl bg-white/95 px-4 py-3 shadow-xl backdrop-blur-sm">
+                    <ManeuverArrowIcon
+                      arrow={maneuverArrow(turn.next.type)}
+                      className={cn(
+                        "h-9 w-9 shrink-0",
+                        turn.metres <= 40 ? "text-accent" : "text-slate-700",
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-semibold leading-tight text-slate-900">
+                        {maneuverLabel(turn.next)}
+                      </p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {turn.metres <= 40 ? "Ngay bây giờ" : `còn ${fmtMetresVi(turn.metres)}`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVoiceEnabled(!voiceOn);
+                        setVoiceOn(!voiceOn);
+                      }}
+                      aria-label={voiceOn ? "Tắt giọng chỉ đường" : "Bật giọng chỉ đường"}
+                      className="text-muted-foreground hover:bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors"
+                    >
+                      {voiceOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+                    </button>
+                  </div>
+                )}
                 <div className="flex rounded-2xl bg-white/90 shadow-lg backdrop-blur-sm overflow-hidden divide-x divide-border">
                   {/* YOU */}
                   <div className="flex flex-col px-2.5 py-2 sm:px-4 bg-blue-50/50 relative flex-1 min-w-0">

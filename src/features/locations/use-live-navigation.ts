@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LatLng } from "@/lib/maps";
 import { trpc } from "@/lib/trpc";
+import type { Maneuver } from "@/lib/maneuver-vi";
 
 /** How long the emotion buttons stay refused after one is sent. */
 const PING_COOLDOWN_MS = 2500;
@@ -44,6 +45,8 @@ type NavigatorWithWakeLock = Navigator & {
 export type LegInfo = {
   distanceMeters: number;
   durationSeconds: number;
+  /** The turn list for this leg, when the router supplied one. */
+  maneuvers?: Maneuver[];
   // `type` is a plain string (not the "LineString" literal) so a leg returned
   // straight from the tRPC route query assigns without a cast.
   geometry: { type: string; coordinates: Array<[number, number]> };

@@ -1403,6 +1403,68 @@ site data đều làm `event.respondWith` bị reject ⇒ **request thất bại
 thì vẫn phải để trang tải bình thường. Nay cả `caches.open` lẫn `cache.put` đều bọc, lỗi thì rơi về
 `fetch` thẳng.
 
+## Chỉ dẫn từng khúc rẽ: dữ liệu đã có sẵn, chỉ là bị bỏ đi
+
+`getRoute` gọi Valhalla nhưng chỉ đọc `legs[].shape/length/time` và **bỏ luôn `legs[].maneuvers`** —
+đó chính là danh sách rẽ. Nay trả về `{ type, streetNames, distanceMeters, lat, lng }`, với toạ độ
+điểm rẽ **giải sẵn ở server** từ `begin_shape_index` để client không phải biết gì về shape index.
+
+**Câu tiếng Việt tự dựng, không dịch.** Valhalla trả `instruction` bằng tiếng Anh và locale của nó
+không có tiếng Việt. `src/lib/maneuver-vi.ts` dựng câu từ ba dữ kiện: loại rẽ + tên đường + khoảng
+cách **còn lại lúc này** (không phải độ dài bước — hai cái khác nhau suốt cả bước, và cái dùng được là
+cái khoảng cách còn phải đi).
+
+Bốn cái bẫy câu chữ đã sửa sau khi tự chạy bảng thử:
+- `1000m` → `"1,0 ki lô mét"`: không ai nói vậy. Ngưỡng chuyển sang km là **975**, không phải 1000 —
+  nếu để 1000 thì nhánh mét làm tròn `975 → "1000 mét"`, chỏi ngay với nhánh km bên cạnh.
+- `"quay đầu vào Hai Bà Trưng"`: quay đầu **không** "vào" đường nào. Tên đường bị chặn cho type
+  12/13 (quay đầu) và 26 (vòng xuyến — tên thuộc về nhánh ra, không thuộc vòng).
+- Dưới `IMMINENT_M = 40` thì **bỏ số**: ở khoảng đó câu lệnh là "rẽ phải ngay", con số là nhiễu.
+- Lọc maneuver: Valhalla phát một maneuver cho **mọi** thay đổi hình dạng, kể cả "continue" và
+  "start". Thông báo hết thì nói liên tục mà không nói gì. Chỉ giữ rẽ thật + điểm đến.
+
+**Thông báo 4 mốc** (500 / 200 / 80 / 40 m), mỗi mốc **một lần cho mỗi khúc rẽ** — `said` là Set khoá
+theo `${index}:${stage}`, vì dừng đèn đỏ rồi nhích qua nhích lại không được làm nó đọc lại.
+
+Khoảng cách đo **đường chim bay** tới toạ độ khúc rẽ, không đo dọc theo route: trong phố, trên một
+route vốn đã bám đường, hai cách chênh nhau ít hơn mức tai nghe ra, còn cách đo dọc route phải đi hết
+polyline **mỗi nhịp GPS**.
+
+**Giọng nói dùng `speechSynthesis`, không dùng file audio thu trước.** Nửa quan trọng của một câu chỉ
+dẫn là nửa **không thể thu sẵn**: tên đường và khoảng cách lúc này. Thư viện clip nói được "rẽ phải"
+nhưng không bao giờ nói được "rẽ phải vào Nguyễn Thị Minh Khai", còn ghép số từ các mẩu rời là cách
+các máy dẫn đường 20 năm trước phát ra tiếng. `speechSynthesis` lại miễn phí, chạy offline, có sẵn trên
+cả hai nền tảng. Chỉ đọc **một** câu tại một thời điểm (`cancel()` trước mỗi câu): chỉ dẫn hết giá trị
+trong vài giây, một hàng đợi đọc câu của khúc rẽ trước trong khi ngã tư đã lùi lại phía sau còn tệ hơn
+im lặng.
+
+## Web Push: thứ duy nhất tới được máy đang khoá — và cách duy nhất iPhone rung
+
+Mọi cách gây chú ý khác trong app (rung, bíp, banner) đều cần **trang đang mở và đang chạy**. Push thì
+do hệ điều hành giao, nên dùng đúng cài đặt chuông/haptic của người dùng — và vì WebKit không có
+Vibration API, đây cũng là cách duy nhất làm iPhone rung thật.
+
+⚠️ **Trên iOS chỉ hoạt động khi app đã được thêm vào Màn hình chính** (Safari cấp push cho web app đã
+cài, không cấp cho tab). Không có đường nào lách từ phía trang, nên UI phải **nói ra điều đó** thay vì
+để một cái switch thất bại im lặng.
+
+Kiến trúc:
+- `push-subscription` model — **một hàng mỗi thiết bị**, không phải mỗi người: ai có cả điện thoại lẫn
+  laptop thì có 2 endpoint và mong cả hai đều báo. `endpoint` là danh tính (unique) nên đăng ký lại
+  trên cùng máy là **update**, không sinh hàng mới.
+- `sendPushToUser()` — best-effort, **không bao giờ** làm hỏng việc đã gọi nó. Endpoint trả **404/410**
+  bị xoá ngay tại đó: đó là cách duy nhất biết trình duyệt đã quên subscription.
+- Zod chặn khoá sai kích thước (`p256dh` 65 byte → 87–88 ký tự base64url, `auth` 16 byte → 22). Hàng
+  sai kích thước **không bao giờ** gửi được — `web-push` chặn trước khi có request — nên nó sẽ nằm đó
+  lỗi mãi mà không bao giờ nhận được cái 410 để bị dọn.
+- `PushSetup` (root layout) **không bao giờ xin quyền**, chỉ đăng ký lại khi quyền đã có. Prompt bật
+  lúc tải trang bị trả lời "không" theo phản xạ, và một cái "không" gần như là vĩnh viễn. Việc xin
+  quyền nằm ở `PushPermissionRow` trong cài đặt bản đồ, **sau một cú bấm**, có câu giải thích trước khi
+  hộp thoại hệ thống hiện ra.
+
+Cần 2 biến môi trường (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`) — thiếu thì tính năng
+**tự tắt**: `push.available` trả false và switch tự ẩn, không có switch chết.
+
 ## iOS KHÔNG có Vibration API — `navigator.vibrate` là no-op trên mọi trình duyệt iPhone
 
 Ping từ Android → Android rung đúng; Android → iOS chỉ hiện banner. Vì WebKit chưa bao giờ ship

@@ -40,8 +40,16 @@ function iosSwitch(): HTMLInputElement | null {
   if (switchEl?.isConnected) return switchEl;
   const label = document.createElement("label");
   label.setAttribute("aria-hidden", "true");
+  /*
+   * Pushed off-screen rather than made transparent.
+   *
+   * WebKit produces the haptic as part of the switch's own activation
+   * behaviour, and a control it has decided not to paint is the likeliest thing
+   * to be skipped. `opacity:0` still occupies the corner of the viewport, so
+   * this moves it out of sight while leaving it a real, laid-out control.
+   */
   label.style.cssText =
-    "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden";
+    "position:fixed;left:-9999px;top:0;width:24px;height:24px;pointer-events:none";
   const input = document.createElement("input");
   input.type = "checkbox";
   // Not a React prop and not in the HTML types — the attribute is what iOS reads.
@@ -117,7 +125,7 @@ function tone(): boolean {
 export function buzz(
   pattern: BuzzPattern,
   { urgent = false }: { urgent?: boolean } = {},
-): "vibrate" | "haptic" | "sound" | "none" {
+): "vibrate" | "haptic" | "haptic+sound" | "sound" | "none" {
   if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
     // Reports false when the page is hidden or the platform refuses.
     if (navigator.vibrate(pattern)) return "vibrate";
@@ -133,12 +141,36 @@ export function buzz(
         if (i % 2 === 0) {
           const delay = at;
           setTimeout(() => {
-            input.checked = !input.checked;
+            /*
+             * `.click()` and nothing else.
+             *
+             * The first version set `checked` by hand first, which cancelled
+             * the change the click was about to make — the switch ended the
+             * call in the state it started in, and the haptic is produced by
+             * the state change, not by the call. That is why an iPhone stayed
+             * silent while every layer above reported success.
+             */
             input.click();
           }, delay);
         }
         at += ms;
       });
+
+      /*
+       * Sound as well, not instead.
+       *
+       * There is no way to ask iOS whether the haptic actually fired, and this
+       * function previously returned "haptic" here and so never reached the
+       * audible fallback — meaning on an iPhone where the switch trick does
+       * nothing (an older iOS, or a ping arriving with no gesture behind it)
+       * an urgent signal produced nothing at all. For something meant to reach
+       * someone who is not looking at the screen, doing both is the only honest
+       * answer.
+       */
+      if (urgent) {
+        const sounded = tone();
+        return sounded ? "haptic+sound" : "haptic";
+      }
       return "haptic";
     }
   }

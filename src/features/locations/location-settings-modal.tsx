@@ -5,6 +5,7 @@ import { Plus, Save, SlidersHorizontal, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/modal";
+import { PushPermissionRow } from "./push-permission-row";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 
 import { useToast } from "@/components/ui/toast";
@@ -150,6 +151,10 @@ export function LocationSettingsModal({
               </ul>
             </div>
           </div>
+
+        {/* Notifications live here because the invite they carry is a map
+            feature — this is the screen someone is on when they care. */}
+        <PushPermissionRow />
       </ModalContent>
       <ModalFooter>
         <Button variant="secondary" className="flex-1" onClick={onClose}>Huỷ</Button>

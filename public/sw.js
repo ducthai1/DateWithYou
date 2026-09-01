@@ -120,3 +120,60 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(staleWhileRevalidate(request));
   }
 });
+
+/* ── Notifications ────────────────────────────────────────────────────────
+ * The only way this app reaches a phone that is locked, in another app, or has
+ * the browser closed. Also the only way to make an iPhone buzz at all: WebKit
+ * ships no Vibration API, but a notification is delivered by iOS itself and so
+ * uses the person's own ringer and haptic settings.
+ *
+ * On iOS this works only for a web app added to the Home Screen — Safari grants
+ * push to installed apps, not to tabs.
+ */
+
+self.addEventListener("push", (event) => {
+  // A push with no readable body still deserves to arrive: showing a generic
+  // notification beats swallowing it, and a push event that shows nothing at
+  // all can cost the origin its permission on some browsers.
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = data.title || "Vivu No Plan";
+  const body = data.body || "Bạn có thông báo mới.";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      // `tag` collapses a repeat instead of stacking; renotify makes the phone
+      // buzz again for the replacement rather than updating it silently.
+      tag: data.tag || "vivu",
+      renotify: true,
+      data: { url: data.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      // Reuse a window that is already open — opening a second copy of the app
+      // loses whatever the person had on screen, and on iOS the new one starts
+      // from a cold boot.
+      for (const client of all) {
+        if ("focus" in client) {
+          await client.focus();
+          if ("navigate" in client) await client.navigate(target).catch(() => {});
+          return;
+        }
+      }
+      await self.clients.openWindow(target);
+    })(),
+  );
+});
