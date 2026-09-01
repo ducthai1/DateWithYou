@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { LatLng } from "@/lib/maps";
 import { trpc } from "@/lib/trpc";
 import type { Maneuver } from "@/lib/maneuver-vi";
+/* Geometry lives in its own module so it can be checked without React — see
+ * route-geometry.ts. The windowed match there is 9x cheaper than the full scan
+ * this hook used to run on every GPS fix, and returns identical numbers. */
+import { cumulativeMetres, remainingAlongRoute } from "@/lib/route-geometry";
 
 /** How long the emotion buttons stay refused after one is sent. */
 const PING_COOLDOWN_MS = 2500;
@@ -105,72 +109,6 @@ export type LiveNavigation = {
 // ── Geo helpers ──────────────────────────────────────────────────────────────
 
 /** Haversine distance in metres between two points. */
-function haversineM(a: LatLng, b: LatLng): number {
-  const R = 6_371_000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
-}
-
-/**
- * Distance from point P to segment AB on an equirectangular approximation.
- */
-function distanceToSegment(p: LatLng, a: LatLng, b: LatLng): { distance: number, projection: LatLng } {
-  const cosLat = Math.cos((p.lat * Math.PI) / 180);
-  const px = p.lng * cosLat; const py = p.lat;
-  const ax = a.lng * cosLat; const ay = a.lat;
-  const bx = b.lng * cosLat; const by = b.lat;
-  
-  const l2 = (bx - ax)**2 + (by - ay)**2;
-  if (l2 === 0) return { distance: haversineM(p, a), projection: a };
-  
-  let t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2;
-  t = Math.max(0, Math.min(1, t));
-  
-  const proj = { lat: a.lat + t * (b.lat - a.lat), lng: a.lng + t * (b.lng - a.lng) };
-  return { distance: haversineM(p, proj), projection: proj };
-}
-
-/**
- * Given the user's current position and the full route polyline ([lng,lat]),
- * find the closest segment on the route, compute cross-track deviation,
- * and sum the remaining segment lengths.
- */
-function remainingAlongRoute(
-  user: LatLng,
-  coords: Array<[number, number]>,
-): { remaining: number; deviation: number } {
-  if (coords.length < 2) return { remaining: 0, deviation: 0 };
-  let bestIdx = 0;
-  let bestDist = Infinity;
-  let bestProj = { lat: coords[0][1], lng: coords[0][0] };
-
-  for (let i = 0; i < coords.length - 1; i++) {
-    const a = { lat: coords[i][1], lng: coords[i][0] };
-    const b = { lat: coords[i + 1][1], lng: coords[i + 1][0] };
-    const { distance, projection } = distanceToSegment(user, a, b);
-    if (distance < bestDist) {
-      bestDist = distance;
-      bestIdx = i;
-      bestProj = projection;
-    }
-  }
-
-  // Sum from the snapped projection point to the end of the route.
-  let total = haversineM(bestProj, { lat: coords[bestIdx + 1][1], lng: coords[bestIdx + 1][0] });
-  for (let i = bestIdx + 1; i < coords.length - 1; i++) {
-    total += haversineM(
-      { lat: coords[i][1], lng: coords[i][0] },
-      { lat: coords[i + 1][1], lng: coords[i + 1][0] },
-    );
-  }
-  return { remaining: total, deviation: bestDist };
-}
-
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -328,6 +266,9 @@ export function useLiveNavigation(options?: {
 
   // Route data set externally so the hook can compute remaining distance.
   const routeCoordsRef = useRef<Array<[number, number]> | null>(null);
+  /* Prefix distances for the current route, and where the last fix matched it. */
+  const routeCumRef = useRef<number[] | null>(null);
+  const matchIdxRef = useRef(0);
   const routeTotalMetersRef = useRef<number>(0);
   const routeTotalSecondsRef = useRef<number>(0);
 
@@ -335,6 +276,11 @@ export function useLiveNavigation(options?: {
   const setRouteInfo = useCallback(
     (coords: Array<[number, number]>, totalMeters: number, totalSeconds: number, routeLegs?: LegInfo[]) => {
       routeCoordsRef.current = coords;
+      // Rebuilt here, not per fix. The match position resets with it: a new
+      // line means the old index points nowhere in particular, and a reroute is
+      // exactly when a stale hint would send the window looking the wrong way.
+      routeCumRef.current = coords.length > 1 ? cumulativeMetres(coords) : null;
+      matchIdxRef.current = 0;
       routeTotalMetersRef.current = totalMeters;
       routeTotalSecondsRef.current = totalSeconds;
       if (routeLegs) setLegs(routeLegs);
@@ -414,7 +360,10 @@ export function useLiveNavigation(options?: {
         // Remaining distance along route.
         const rc = routeCoordsRef.current;
         if (rc && rc.length >= 2) {
-          const { remaining, deviation } = remainingAlongRoute(g, rc);
+          const cum = routeCumRef.current ?? cumulativeMetres(rc);
+          if (!routeCumRef.current) routeCumRef.current = cum;
+          const { remaining, deviation, idx } = remainingAlongRoute(g, rc, cum, matchIdxRef.current);
+          matchIdxRef.current = idx;
           setRemainingMeters(Math.round(remaining));
 
           if (optionsRef.current?.onOffRoute && deviation > (optionsRef.current.offRouteThresholdMeters ?? 50)) {

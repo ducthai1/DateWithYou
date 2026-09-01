@@ -1403,6 +1403,55 @@ site data đều làm `event.respondWith` bị reject ⇒ **request thất bại
 thì vẫn phải để trang tải bình thường. Nay cả `caches.open` lẫn `cache.put` đều bọc, lỗi thì rơi về
 `fetch` thẳng.
 
+## Vẽ lại đường mà không đổi danh sách rẽ = chỉ sai đường
+
+Bug tôi tự tạo ra ngay ở lượt thêm chỉ dẫn từng khúc rẽ: `setRouteLegs` chỉ được gọi **một chỗ** —
+lúc vẽ đường lần đầu. Cả hai nhánh vẽ lại đường (lệch tuyến) đều không cập nhật, mà một chuyến
+nhiều chặng còn ghi đè `legGeometries` chứ không đụng tới `routeLegs`.
+
+Hậu quả: đi lệch → bản đồ vẽ lại đúng đường vòng → **giọng nói vẫn đọc các khúc rẽ của tuyến đã bỏ**.
+Tệ hơn cả im lặng, vì nó sai một cách tự tin.
+
+**Luật:** hai state cùng mô tả một sự thật thì phải có **một nguồn**. Nay `activeManeuvers` đọc
+`legGeometries ?? routeLegs` (bản mà reroute giữ mới nhất đứng trước), và nhánh một-điểm-đến cũng
+gọi `setRouteLegs`. Khi thêm state phái sinh từ một API, hãy **grep tất cả chỗ gọi API đó**, đừng chỉ
+chỗ đầu tiên.
+
+## Bám tuyến: đừng quét cả polyline mỗi nhịp GPS
+
+`remainingAlongRoute` quét **toàn bộ** polyline để tìm điểm bám, rồi cộng dồn **toàn bộ** phần còn lại
+— hai vòng O(n), chạy mỗi nhịp GPS, trong lúc màn hình sáng và GPS đang stream. Tuyến 19 km trong phố
+có ~3.000 điểm.
+
+Hai thay đổi, đo trên tuyến giả lập 3.000 điểm với 748 nhịp GPS:
+- **Cửa sổ trượt**: tìm từ chỗ bám lần trước (`hintIdx − 20 … +200`) thay vì từ đầu — người ta đi tiến,
+  không nhảy cóc. Nếu điểm bám tốt nhất trong cửa sổ vẫn xa hơn 120 m thì **quét lại toàn bộ**: đó đúng
+  là lúc đã lệch tuyến thật, và lúc đó đúng quan trọng hơn rẻ.
+- **Mảng cộng dồn** dựng một lần cho mỗi tuyến ⇒ quãng còn lại thành **một phép trừ**.
+
+| | thời gian |
+|---|---|
+| quét toàn bộ (cũ) | 133 ms |
+| cửa sổ trượt (mới) | **15 ms** → nhanh **9×** |
+
+Kết quả **giống hệt** bản cũ (lệch 0,00 m ở cả quãng còn lại lẫn độ lệch tuyến), và ca nhảy lệch xa với
+hint sai vẫn ra đúng 142 m nhờ nhánh quét lại.
+
+⚠️ Hình học nay ở `src/lib/route-geometry.ts`, **tách khỏi hook**, để test được bằng Node thuần. Đó
+chính là cách bắt được cả tốc độ lẫn tính đúng đắn — không có React thì không cần trình duyệt.
+
+⚠️ Bài học lúc tách: đừng dùng regex để "bốc" hàm ra khỏi file. Kịch bản của tôi lấy nhầm cả
+`PING_COOLDOWN_MS`, `PingResult`, `PartnerLocation` — xoá 166 dòng. Cách an toàn: **viết module mới,
+test nó, rồi mới sửa file cũ để import**, không cắt-dán tự động.
+
+## Kéo bản đồ ra xem thì đừng giật về sau 2 giây
+
+`isUserInteracting` tự tắt sau **2.000 ms**, nên đang dẫn đường mà kéo map ra xem ngã tư phía trước thì
+vừa thả tay là camera nhảy về chấm của mình. 2 giây ngắn hơn chính hành động nó cắt ngang.
+
+Nay dừng bám là **dừng hẳn**, và có nút **"Về vị trí của tôi"** để quay lại — đúng cách mọi app bản đồ
+làm. Người dùng quyết định khi nào bám tiếp, không phải cái timer.
+
 ## Chỉ dẫn từng khúc rẽ: dữ liệu đã có sẵn, chỉ là bị bỏ đi
 
 `getRoute` gọi Valhalla nhưng chỉ đọc `legs[].shape/length/time` và **bỏ luôn `legs[].maneuvers`** —

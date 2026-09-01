@@ -315,6 +315,10 @@ export function LocationsPage() {
       try {
         const r = await utils.location.getRoute.fetch({ destinationId: selectedId, origin: currentGeo });
         setRouteGeometry(r.geometry);
+        // The turns belong to the line. Without this the map redrew around the
+        // detour while the voice carried on down the road that was abandoned —
+        // worse than saying nothing, because it is confidently wrong.
+        setRouteLegs(r.legs);
         setRouteDistanceMeters(r.distanceMeters);
         setRouteDurationSeconds(r.durationSeconds);
         const coords = (r.geometry as { coordinates?: Array<[number, number]> }).coordinates;
@@ -345,11 +349,19 @@ export function LocationsPage() {
    * whether to go is noise.
    */
   const activeManeuvers = useMemo(() => {
-    const legs = routeLegs;
+    /*
+     * `legGeometries` first, because it is the one a reroute keeps current.
+     *
+     * A multi-stop trip that goes off course replaces the active leg in
+     * `legGeometries` and leaves `routeLegs` holding the original — so reading
+     * the latter meant the banner announced turns from a route nobody was on
+     * any more. Preferring the live one removes the choice.
+     */
+    const legs = legGeometries ?? routeLegs;
     if (!legs?.length) return null;
     const leg = legs[Math.min(currentLegIndex, legs.length - 1)];
     return leg?.maneuvers ?? null;
-  }, [routeLegs, currentLegIndex]);
+  }, [legGeometries, routeLegs, currentLegIndex]);
   const turn = useTurnByTurn({
     maneuvers: activeManeuvers,
     userGeo: nav.userGeo,

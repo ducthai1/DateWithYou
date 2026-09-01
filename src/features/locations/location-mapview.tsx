@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useRef, useState } from "react";
+import { LocateFixed } from "lucide-react";
 import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
 import { VietnamSovereigntyMarkers } from "./vietnam-sovereignty-markers";
 import { applyEastSeaLabel } from "./east-sea-label";
@@ -107,7 +108,6 @@ function LocationMapViewImpl({
 
   // Track manual map interactions to suspend auto-tracking
   const [isUserInteracting, setIsUserInteracting] = useState(false);
-  const interactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /*
    * The meeting celebration used to live here. It was moved to MeetingFlare,
@@ -159,12 +159,31 @@ function LocationMapViewImpl({
     setTimeout(() => setGlobalPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
   }, [userPingAction]);
 
+  /*
+   * Panning stops the camera following, and it stays stopped.
+   *
+   * It used to resume by itself after 2 seconds, which made looking ahead on
+   * the map impossible: the moment you let go to read the next junction, the
+   * camera snapped back to your own dot. Two seconds is shorter than the act it
+   * was interrupting. Every map application handles this the same way instead —
+   * stop, and offer the way back explicitly — so there is a button, and the
+   * person decides when following resumes.
+   */
   const handleInteraction = () => {
     setIsUserInteracting(true);
-    if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
-    interactionTimeoutRef.current = setTimeout(() => {
-      setIsUserInteracting(false);
-    }, 2000);
+  };
+  const recentre = () => {
+    setIsUserInteracting(false);
+    const target = followGeo ?? userGeo;
+    if (target) {
+      mapRef.current?.easeTo({
+        center: [target.lng, target.lat],
+        zoom: 18.5,
+        bearing: heading ?? 0,
+        pitch: 60,
+        duration: 500,
+      });
+    }
   };
 
   /*
@@ -324,6 +343,17 @@ function LocationMapViewImpl({
       onWheelCapture={handleInteraction}
       onTouchStartCapture={handleInteraction}
     >
+      {followGeo && isUserInteracting && (
+        <button
+          type="button"
+          onClick={recentre}
+          className="border-border bg-card/95 text-foreground absolute bottom-4 left-1/2 z-[3] flex -translate-x-1/2 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold shadow-xl backdrop-blur-sm"
+        >
+          <LocateFixed className="text-accent h-4 w-4" />
+          Về vị trí của tôi
+        </button>
+      )}
+
       <div
         aria-hidden="true"
         className={cn(
