@@ -12,12 +12,9 @@ import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
 import { SpaceModel } from "@/server/db/models/space";
 import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 import { requireEnv } from "@/lib/env";
-import { resolveGeoFromMapsUrl, extractFirstUrl } from "@/server/lib/resolve-maps-geo";
-import {
-  geocodeAddress,
-  placeDetail,
-  suggestPlaces,
-} from "@/server/lib/geocode-address";
+import { extractFirstUrl } from "@/server/lib/resolve-maps-geo";
+import { resolvePastedMapLink } from "@/server/lib/resolve-pasted-map-link";
+import { placeDetail, suggestPlaces } from "@/server/lib/geocode-address";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
 import { searchAreas } from "@/lib/vn-admin";
 import { areaAtPoint } from "@/server/lib/area-at-point";
@@ -189,7 +186,7 @@ export const locationRouter = router({
       // Auto-drop a pin from the pasted Google Maps link when no coords were set.
       let geoVal = input.geo;
       if (!geoVal && input.googleMapsUrl) {
-        geoVal = (await resolveGeoFromMapsUrl(input.googleMapsUrl, geocodeAddress)) ?? undefined;
+        geoVal = (await resolvePastedMapLink(input.googleMapsUrl)) ?? undefined;
       }
       const doc = await LocationModel.create({
         ...input,
@@ -210,7 +207,7 @@ export const locationRouter = router({
       const { id, ...patch } = input;
       // Re-resolve a pin when the maps link changed and no coords were provided.
       if (!patch.geo && patch.googleMapsUrl) {
-        const g = await resolveGeoFromMapsUrl(patch.googleMapsUrl, geocodeAddress);
+        const g = await resolvePastedMapLink(patch.googleMapsUrl);
         if (g) patch.geo = g;
       }
       // Only when the field was actually sent and came back blank — an edit that
@@ -373,7 +370,7 @@ export const locationRouter = router({
    */
   geoFromUrl: protectedProcedure
     .input(z.object({ url: z.string().trim().min(1).max(2000) }))
-    .query(({ input }) => resolveGeoFromMapsUrl(input.url, geocodeAddress)),
+    .query(({ input }) => resolvePastedMapLink(input.url)),
 
   getRoute: protectedProcedure
     .input(z.object({

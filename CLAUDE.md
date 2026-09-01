@@ -1351,18 +1351,56 @@ Hai luật đi kèm:
   xuống server rồi trả về lỗi validate. Nút lưu trước đây chỉ chặn khi thiếu tên ⇒ thiếu loại địa điểm
   là lọt xuống và vỡ đúng kiểu cũ.
 
-### Link Maps: ưu tiên pin thật, không phải tâm camera
+### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
-Một link Google Maps thường chứa **hai** toạ độ khác nhau. Đo trên link thật của user
-(`maps.app.goo.gl/ozY1ZQ9C4ccowo3F9`, chỗ "Biển Hồ"):
+User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân
+riêng biệt — tất cả đều nằm ở chỗ **link điện thoại không chứa marker `!3d!4d`** như link desktop.
 
-| Nguồn trong URL | Toạ độ | |
-|---|---|---|
-| `!3d!4d` — pin thật | 14.0522624, 108.002075 | ✅ resolver dùng cái này |
-| `@lat,lng` — tâm camera | 14.0671335, 107.9786836 | lệch **3,02 km** |
+**1. Tâm camera được thử TRƯỚC tên chỗ.** `PATTERNS` xếp "chính xác nhất trước" trong **một** danh
+sách, và `@lat,lng` (tâm camera) nằm cuối danh sách đó. Nghe như phương án dự phòng an toàn — không
+phải: link thiếu marker sẽ khớp camera, **trả về non-null**, nên tên chỗ nằm ngay trong cùng URL
+**không bao giờ được tra**. Đo trên link thật: camera cách pin **3,02 km**.
 
-Thứ tự `PATTERNS` trong `resolve-maps-geo.ts` đặt `!3d!4d` **đầu** và `@lat,lng` **cuối** chính vì vậy.
-Đừng sắp lại thứ tự này cho "gọn".
+Nay tách thành `EXACT_PATTERNS` và `VIEWPORT_PATTERNS`, thứ tự giải là:
+marker → **tên chỗ (bias bằng camera)** → camera. Ca data-only: 3,02 km → **0,80 km**.
+
+Tên chỗ được tra bằng chính `autocomplete` của ô tìm kiếm (endpoint duy nhất tôn trọng bias), và kết
+quả bị **bác bỏ nếu lệch camera > 30 km** — vì geocoder tự cảnh báo trong comment của nó: một tên POI
+trần được trả "ROOFTOP" tự tin ở **sai tỉnh**. Hai tín hiệu canh nhau: tên cho ra venue, camera cho
+biết venue **nào**.
+
+**2. Toạ độ trong đoạn `/place/` không được đọc.** Ghim pin (nhấn giữ bản đồ → Share) — cách chia sẻ
+một chỗ *không phải* hàng quán có sẵn — cho ra `/maps/place/10.762622,106.660172/@10.77,106.67,17z`.
+Toạ độ chính xác **nằm ngay trong đường dẫn**, mà không pattern nào khớp ⇒ lấy camera, lệch ~1,3 km.
+`PLACE_DECIMAL` phải **neo vào `/place/`** và có mốc kết thúc `[/?#]|$`: cặp số thập phân xuất hiện
+khắp URL loại này (mức zoom, chỉ số data), khớp lỏng còn tệ hơn không khớp. Đã test 2 bẫy:
+`/place/123+Nguyen+Trai` và `/place/12,5+Le+Loi` đều **không** được nhận.
+
+**3. Pin dạng độ-phút-giây.** Google còn viết pin thành `/place/10°45'45.4"N+106°39'36.6"E`.
+`PLACE_DMS` chuyển sang thập phân, sai số ~1 m.
+
+**4. `extractFirstUrl` cắt URL tại dấu nháy đơn — lỗi nặng nhất.** Regex loại `'` cùng các ký tự
+delimiter của markup, mà link DMS ở trên có dấu phút `'` **không mã hoá**. URL bị cắt còn
+`…/maps/place/10%C2%B045`, đoạn cụt đó **vẫn được fetch**, và Google trả về một chỗ ở **Newfoundland,
+Canada** cho cái pin ở Sài Gòn. Hàm này chỉ đọc text người dùng dán, **không bao giờ đọc HTML**, nên
+không có attribute delimiter nào cần đề phòng.
+
+⚠️ Bài học đo: 3 lỗi đầu lộ ra khi test **hàm thuần**, còn lỗi thứ 4 **chỉ lộ khi chạy qua endpoint
+thật** — vì `extractFirstUrl` nằm ở đầu chuỗi xử lý mà test hàm thuần đã bỏ qua. Test dạng link phải
+chạy **cả hai tầng**.
+
+Kết quả sau khi sửa, đo qua `location.geoFromUrl` thật:
+
+| dạng link | lệch pin thật |
+|---|---|
+| link ngắn có marker (desktop) | **0 m** |
+| ghim pin — decimal | **0 m** |
+| ghim pin — độ phút giây | **1 m** |
+| dán kèm chữ + link DMS | **1 m** |
+| chỉ có tên + camera (data-only) | 800 m (trước: 3.020 m) |
+
+Một link Google Maps thường chứa **hai** toạ độ; `!3d!4d` là pin thật, `@lat,lng` là tâm camera.
+Đừng bao giờ sắp `@lat,lng` lên trước "cho gọn".
 
 ⚠️ Khi đọc link từ ảnh chụp màn hình: ô input **cắt chữ ở mép**. Một link tôi lấy từ ảnh bị thiếu
 ký tự, trả HTTP 404, và suýt bị kết luận là "resolver hỏng". Đếm độ dài id (`maps.app.goo.gl` thường

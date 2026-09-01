@@ -49,9 +49,23 @@ const SEP = "(?:,|%2C|%2c)";
 // global so extractGeoFromText can scan every occurrence (see below).
 type CoordPattern = { re: RegExp; lat: 1 | 2; lng: 1 | 2 };
 
-// Most accurate first. The viewport (`@lat,lng`) is the camera centre and can
-// sit far from the real pin, so it is the last resort.
-const PATTERNS: CoordPattern[] = [
+/*
+ * Two tiers, and the difference between them is the whole bug this file exists
+ * to avoid.
+ *
+ * EXACT patterns are the place's own marker: whatever they say IS the pin.
+ * VIEWPORT patterns are where the camera happened to be pointing, which is
+ * near the pin but not it — measured 3.02km away on a real shared link.
+ *
+ * They used to sit in one list, "most accurate first", and be searched as one.
+ * That reads as a safe fallback and is not: a link WITHOUT a marker — the shape
+ * a phone's Share button produces — matched the camera instead, returned a
+ * non-null answer, and so the place's own name, sitting right there in the same
+ * URL, was never looked up. Desktop links carry a marker and were exact; phone
+ * links quietly landed kilometres out. Keeping the tiers apart is what lets the
+ * name be tried in between.
+ */
+const EXACT_PATTERNS: CoordPattern[] = [
   { re: new RegExp(`!3d${LAT}!4d${LNG}`, "g"), lat: 1, lng: 2 }, // exact place marker
   // Rendered pin — unambiguously the page's subject. Ordered above the camera
   // triple so a page's *nearby* places (each with their own camera triple)
@@ -65,8 +79,12 @@ const PATTERNS: CoordPattern[] = [
   // Desktop place array `[null,null,lat,lng]` — distinct from the mobile bare
   // `[lng,lat]` array we deliberately don't parse (too ambiguous).
   { re: new RegExp(`\\[null,null,${LAT},${LNG}\\]`, "g"), lat: 1, lng: 2 },
-  { re: new RegExp(`[?&]center=${LAT}${SEP}${LNG}`, "gi"), lat: 1, lng: 2 }, // viewport-ish, acceptable fallback
-  { re: new RegExp(`@${LAT},${LNG}`, "g"), lat: 1, lng: 2 }, // viewport — last resort
+];
+
+/** Where the camera was, not where the place is. Last resort, never first. */
+const VIEWPORT_PATTERNS: CoordPattern[] = [
+  { re: new RegExp(`[?&]center=${LAT}${SEP}${LNG}`, "gi"), lat: 1, lng: 2 },
+  { re: new RegExp(`@${LAT},${LNG}`, "g"), lat: 1, lng: 2 },
 ];
 
 function inRange(lat: number, lng: number): boolean {
@@ -88,13 +106,9 @@ function safeDecode(s: string): string {
   }
 }
 
-/**
- * Pure: pull the best coordinate pair out of a blob of URL(s) + HTML.
- * Scans both the raw and percent-decoded text so encoded links also match.
- */
-export function extractGeoFromText(haystack: string): LatLng | null {
+function scan(haystack: string, patterns: CoordPattern[]): LatLng | null {
   const text = `${haystack}\n${safeDecode(haystack)}`;
-  for (const { re, lat: latIdx, lng: lngIdx } of PATTERNS) {
+  for (const { re, lat: latIdx, lng: lngIdx } of patterns) {
     // Scan every occurrence and take the first in-range one, so a leading
     // junk/out-of-range hit (or a nearby-place coordinate) doesn't shadow a
     // valid later match of the same pattern. matchAll needs the global flag
@@ -108,9 +122,94 @@ export function extractGeoFromText(haystack: string): LatLng | null {
   return null;
 }
 
-/** Pull the first http(s) URL out of pasted text (mobile clipboards often wrap it). */
+/*
+ * A dropped pin's coordinate lives in the /place/ path segment, not in a data
+ * blob, and in one of two spellings.
+ *
+ * This is how a phone shares somewhere that is not a listed business: long-press
+ * the map, Share. Google names the "place" by its coordinate — either decimal
+ * (`/place/10.762622,106.660172`) or degrees-minutes-seconds
+ * (`/place/10°45'45.4"N 106°39'36.6"E`) — and then points the camera at a round
+ * number nearby. Neither spelling matched anything, so the exact position sat
+ * in the URL unread while the camera answered instead, about a kilometre out.
+ *
+ * Anchored to /place/ on purpose: a bare pair of decimals appears all over these
+ * URLs (zoom levels, data indices, nearby places) and matching them loosely
+ * would be worse than matching nothing.
+ */
+const PLACE_DECIMAL = new RegExp(`/place/${LAT}${SEP}${LNG}(?:[/?#]|$)`, "i");
+const PLACE_DMS =
+  /\/place\/(\d{1,2})[°\s](\d{1,2})['′](\d{1,2}(?:\.\d+)?)["″]?([NS])[+\s]+(\d{1,3})[°\s](\d{1,2})['′](\d{1,2}(?:\.\d+)?)["″]?([EW])/i;
+
+function dms(deg: string, min: string, sec: string, hemi: string): number {
+  const value = Number(deg) + Number(min) / 60 + Number(sec) / 3600;
+  return /[SW]/i.test(hemi) ? -value : value;
+}
+
+function extractPlaceSegmentGeo(haystack: string): LatLng | null {
+  const text = `${haystack}\n${safeDecode(haystack).replace(/\+/g, " ")}`;
+  const dec = text.match(PLACE_DECIMAL);
+  if (dec) {
+    const lat = Number(dec[1]);
+    const lng = Number(dec[2]);
+    if (inRange(lat, lng)) return { lat, lng };
+  }
+  const m = text.match(PLACE_DMS);
+  if (m) {
+    const lat = dms(m[1], m[2], m[3], m[4]);
+    const lng = dms(m[5], m[6], m[7], m[8]);
+    if (inRange(lat, lng)) return { lat, lng };
+  }
+  return null;
+}
+
+/** The place's own marker, if the text carries one. Trustworthy as the pin. */
+export function extractExactGeo(haystack: string): LatLng | null {
+  return scan(haystack, EXACT_PATTERNS) ?? extractPlaceSegmentGeo(haystack);
+}
+
+/** The camera centre. Near the place, not the place. */
+export function extractViewportGeo(haystack: string): LatLng | null {
+  return scan(haystack, VIEWPORT_PATTERNS);
+}
+
+/**
+ * Best coordinate pair in a blob of URL(s) + HTML, marker before camera.
+ *
+ * Callers that can do better than a camera centre should use the two tiers
+ * directly — see resolveGeoFromMapsUrl.
+ */
+export function extractGeoFromText(haystack: string): LatLng | null {
+  return extractExactGeo(haystack) ?? extractViewportGeo(haystack);
+}
+
+/** Straight-line metres between two points. */
+function metresBetween(a: LatLng, b: LatLng): number {
+  const R = 6371000;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.lat * Math.PI) / 180) *
+      Math.cos((b.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+/**
+ * Pull the first http(s) URL out of pasted text (mobile clipboards often wrap it).
+ *
+ * The apostrophe is allowed on purpose. It used to be excluded along with the
+ * other characters that delimit markup, and that silently cut a dropped-pin
+ * link in half: Google writes those coordinates as degrees-minutes-seconds and
+ * leaves the minute mark unencoded — `/place/10°45'45.4"N+106°39'36.6"E`. The
+ * URL was truncated at the apostrophe, the stub was fetched anyway, and Google
+ * answered with a place in Newfoundland for a pin in Saigon. This function only
+ * ever reads text a person pasted, never HTML, so there is no attribute
+ * delimiter here for it to protect against.
+ */
 export function extractFirstUrl(input: string): string | null {
-  const m = input.trim().match(/https?:\/\/[^\s<>"'()]+/i);
+  const m = input.trim().match(/https?:\/\/[^\s<>"()]+/i);
   if (!m) return null;
   let url = m[0].replace(/[.,)\]]+$/, ""); // trailing punctuation from prose
   // Unwrap Google's `…/url?q=<real-url>` and search redirect wrappers (one level).
@@ -177,7 +276,7 @@ export function extractPlaceQuery(url: string): string | null {
 async function resolveFinalUrl(
   start: string,
   deadline: number,
-): Promise<{ geo: LatLng | null; finalUrl: string }> {
+): Promise<{ exact: LatLng | null; viewport: LatLng | null; finalUrl: string }> {
   let current = start;
   for (let i = 0; i < MAX_HOPS; i++) {
     const remaining = deadline - Date.now();
@@ -226,43 +325,97 @@ async function resolveFinalUrl(
       } catch {
         break;
       }
-      const hopGeo = extractGeoFromText(next); // full links 302 straight to coords
-      if (hopGeo) return { geo: hopGeo, finalUrl: next };
+      // Only a real marker short-circuits here. Accepting a camera centre at
+      // this point is what used to end resolution kilometres from the place.
+      const hopGeo = extractExactGeo(next);
+      if (hopGeo) return { exact: hopGeo, viewport: extractViewportGeo(next), finalUrl: next };
       if (!isFetchableMapsUrl(next)) break; // SSRF guard on every hop
       current = next;
       continue;
     }
     break; // terminal 2xx — `current` is the resolved place URL
   }
-  return { geo: extractGeoFromText(current), finalUrl: current };
+  return {
+    exact: extractExactGeo(current),
+    viewport: extractViewportGeo(current),
+    finalUrl: current,
+  };
 }
+
+/**
+ * How far a name lookup may land from the camera before it is disbelieved.
+ *
+ * The camera in a shared place link sits within a few kilometres of the place —
+ * 3km on the link this was measured against. A name lookup that comes back
+ * further than this has found a different place with the same name, which the
+ * geocoder warns about itself: a bare POI name earns a confident ROOFTOP answer
+ * in the wrong province. The camera is then the honest answer, because it is at
+ * least near where the person was looking.
+ */
+const NAME_DRIFT_LIMIT_M = 30_000;
+
+/** Resolves a place name to a venue coordinate, biased toward a point. */
+export type FindPlaceNear = (name: string, near: LatLng) => Promise<LatLng | null>;
 
 /**
  * Resolve coordinates from any pasted Google/Apple Maps link (short or full),
  * on any device. Returns null when nothing usable can be recovered.
  *
- * `geocode` (address → coords) is injected so this module carries no network
- * dependency: callers pass the real geocoder; tests can omit it. Without one,
- * only links with inline/redirect coordinates resolve.
+ * Order matters, and it is not the order the patterns are listed in:
+ *
+ *   1. The place's own marker, from the pasted URL or any redirect hop. Exact.
+ *   2. The place's NAME, resolved against a search biased to the camera centre
+ *      from the same URL. This is the step a phone's Share link depends on:
+ *      those resolve to a page carrying a name and a camera but no marker.
+ *      The two signals check each other — the name gives the venue, the camera
+ *      says which one of that name — and a result that drifts too far from the
+ *      camera is rejected rather than believed.
+ *   3. The camera centre. Kilometres out, but near, and the form says the
+ *      position may be approximate and invites a tap on the map.
+ *
+ * `geocode` and `findPlaceNear` are injected so this module carries no network
+ * dependency: callers pass the real resolvers; tests can omit them. Without
+ * them, only links with inline/redirect coordinates resolve exactly.
  */
 export async function resolveGeoFromMapsUrl(
   input: string,
   geocode: (query: string, deadline?: number) => Promise<LatLng | null> = async () => null,
+  findPlaceNear?: FindPlaceNear,
 ): Promise<LatLng | null> {
   const url = extractFirstUrl(input);
   if (!url) return null;
 
-  // 1. Coords inline in the pasted URL (full/desktop/Apple links) — exact.
-  const direct = extractGeoFromText(url);
+  // 1a. A marker already in the pasted URL (full/desktop/Apple links).
+  const direct = extractExactGeo(url);
   if (direct) return direct;
-  if (!isFetchableMapsUrl(url)) return null;
+  // Nothing else can be done for a host we will not fetch; the camera in the
+  // pasted link is better than refusing outright.
+  if (!isFetchableMapsUrl(url)) return extractViewportGeo(url);
 
-  // 2. Resolve the short link to its place URL (redirects only, no body).
-  const { geo, finalUrl } = await resolveFinalUrl(url, Date.now() + REDIRECT_DEADLINE_MS);
-  if (geo) return geo;
+  // 1b. Resolve the short link to its place URL (redirects only, no body).
+  const { exact, viewport, finalUrl } = await resolveFinalUrl(
+    url,
+    Date.now() + REDIRECT_DEADLINE_MS,
+  );
+  if (exact) return exact;
 
-  // 3. Data-only place URL: geocode the place's name+address (region-independent,
-  // unlike the region-biased page body Google serves to datacenter IPs).
+  const camera = viewport ?? extractViewportGeo(url);
+
+  // 2. The place's own name, decided against the camera.
   const query = extractPlaceQuery(finalUrl);
-  return query ? geocode(query, Date.now() + GEOCODE_DEADLINE_MS) : null;
+  if (query) {
+    const deadline = Date.now() + GEOCODE_DEADLINE_MS;
+    const believable = (hit: LatLng | null) =>
+      hit && (!camera || metresBetween(camera, hit) <= NAME_DRIFT_LIMIT_M) ? hit : null;
+
+    if (findPlaceNear && camera) {
+      const hit = believable(await findPlaceNear(query, camera).catch(() => null));
+      if (hit) return hit;
+    }
+    const hit = believable(await geocode(query, deadline).catch(() => null));
+    if (hit) return hit;
+  }
+
+  // 3. Near, and honest about it.
+  return camera;
 }
