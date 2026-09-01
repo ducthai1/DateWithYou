@@ -1332,6 +1332,62 @@ Cách chữa, cả ba tầng — đừng bỏ tầng nào:
 trả thẳng đơn vị hành chính 2025: `administrative_area_level_2` = phường, `_1` = tỉnh), Nominatim chỉ
 là dự phòng vì bị giới hạn tần suất.
 
+## Toạ độ bị VỨT ĐI lúc tạo — vì so sánh tham chiếu object
+
+Triệu chứng user báo: chọn điểm trên bản đồ, lưu thành công, nhưng **không có nút Chỉ đường**, và
+mở Sửa thì ghi **"chưa có vị trí trên bản đồ"**. Tức bản ghi thật sự không có `geo`.
+
+Thủ phạm là đúng một dòng ở `location-form.tsx`:
+
+```ts
+geo: (initial && v.googleMapsUrl !== initial.googleMapsUrl && v.geo === initial.geo)
+  ? undefined : (v.geo ?? undefined)
+```
+
+Ý định ban đầu đúng: **sửa** một chỗ đã có, đổi link mà không đụng pin ⇒ gửi `undefined` để server
+suy lại pin từ link mới. Nhưng ba vế đều đúng **trong lúc TẠO**:
+
+- `initial` là `{}` — **object rỗng vẫn truthy**, nên vế 1 luôn đúng kể cả khi tạo mới.
+- `v.googleMapsUrl !== initial.googleMapsUrl` → `"link" !== undefined` → đúng.
+- `v.geo === initial.geo` → **cùng MỘT object**: chạm bản đồ gọi `setFormInitial(p => ({...p, geo}))`,
+  rồi effect đồng bộ gán chính tham chiếu đó vào `v.geo`. So sánh "người dùng có đụng pin không"
+  bằng `===` giữa hai biến vốn trỏ cùng chỗ thì **luôn ra "không đụng"**.
+
+⇒ Người dán link (link hỏng) → chạm bản đồ để tự đặt pin → form gửi `geo: undefined` → server đi
+giải lại đúng cái link vừa hỏng → **mất sạch toạ độ duy nhất đang có**.
+
+**Luật:** "người dùng có đụng vào field này không" phải **ghi lại bằng cờ** (`geoTouched` ref), đừng
+suy ra bằng cách so sánh giá trị — nhất là so sánh tham chiếu với chính cái biến đã copy sang.
+Và điều kiện chỉ dành cho edit thì phải kiểm `v.id`, đừng dựa vào `initial` truthy.
+
+Đã chứng minh test biết fail: hoàn nguyên đúng dòng đó, build lại, chạy cùng một probe →
+`geo = None`; áp lại bản sửa → `geo = {10.7839825, 106.7009}`.
+
+Bản ghi cũ lỡ mất toạ độ nay hiện nhãn **"Chưa có vị trí"** trên thẻ, để tìm ra mà đặt lại pin —
+vì thẻ không có `geo` thì cũng không có nút Chỉ đường, và nếu không nói gì thì trông y như lỗi.
+
+### Sheet thu gọn giấu mất hàng nút
+
+Đo trên 390×844: ở mức thu gọn (`STOPS[0] = 0.16`), khung cuộn của sheet chỉ cao **87px** (681→768),
+còn hàng nút của thẻ nằm ở **y=822** — dưới cả mép màn hình. Kéo lên 1 mức là thấy. Nên "lưu xong mà
+không thấy Chỉ đường" còn có một nửa nguyên nhân là **không nhìn thấy**, không phải không tồn tại.
+`expandSignal` nâng sheet lên mức giữa sau khi lưu, và cuộn body về đầu (danh sách sắp mới-nhất-trước
+nên chỗ vừa thêm nằm trên cùng).
+
+## Class Tailwind trỏ vào token KHÔNG TỒN TẠI thì im lặng, không lỗi
+
+`text-destructive-foreground` được dùng ở 2 nơi, mà `--destructive-foreground` **chưa bao giờ được
+khai báo** trong `globals.css`. Class vẫn sinh ra `color: var(--destructive-foreground)` — biến rỗng
+⇒ chữ **kế thừa màu của nền xung quanh**. Hậu quả: badge số thông báo ra **chữ đen trên nền đỏ**, và
+nút xoá ảnh trong `memory-form` thì icon **tàng hình khi hover**.
+
+Không có cảnh báo nào từ build, lint hay tsc. Cách kiểm: `grep -- "--<tên>:" globals.css` trước khi
+dùng một class `text-*-foreground`, hoặc grep trong CSS đã build.
+
+Badge số dùng cặp token **riêng** (`--badge: #ef4444` / `--badge-foreground: #fff`), không dùng chung
+`--destructive`: badge cần độ bão hoà cao để đọc được ở 18px trên nav, còn `--destructive` được chọn
+cho chữ cảnh báo dễ đọc — chỉnh sáng nó lên sẽ âm thầm hạ tương phản của mọi thông báo lỗi.
+
 ## Không bao giờ dội JSON của Zod vào mặt người dùng
 
 Toast người dùng chụp lại được:

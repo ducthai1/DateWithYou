@@ -177,6 +177,17 @@ export function LocationsPage() {
   const [tripChoiceOpen, setTripChoiceOpen] = useState(false);
   /** Bumped to drop the sheet so the freshly drawn route is visible behind the dialog. */
   const [sheetCollapseTick, setSheetCollapseTick] = useState(0);
+  /*
+   * Bumped after a place is saved, to lift the sheet off its lowest stop.
+   *
+   * Collapsed, the sheet shows a card's name and status and then runs out of
+   * room — measured on a 390x844 screen, the row of actions underneath
+   * ("Chỉ đường" among them) lands at y=822 inside a box that ends at 768. So
+   * saving a place and then finding no way to navigate to it was the honest
+   * reading of what was on screen. The list is newest-first, so lifting the
+   * sheet puts the place just added, whole, at the top.
+   */
+  const [sheetExpandTick, setSheetExpandTick] = useState(0);
   const [showCompanionChoice, setShowCompanionChoice] = useState(false);
   const [companionLocationId, setCompanionLocationId] = useState<string | null>(null);
   const [companionLocationName, setCompanionLocationName] = useState("");
@@ -1854,6 +1865,7 @@ export function LocationsPage() {
           // No `raiseTo` any more: the add/edit form is its own dialog, so the
           // sheet no longer has to be dragged up to reveal it.
           collapseSignal={sheetCollapseTick}
+          expandSignal={sheetExpandTick}
         >
         <div className="space-y-4">
           {list.isLoading ? (
@@ -1974,6 +1986,19 @@ export function LocationsPage() {
                           <span>
                             {l.district} · {l.category}
                           </span>
+                          {/* A place with no coordinate has no "Chỉ đường", and
+                              without saying so the card just looks like one
+                              where the option is missing. Naming it also makes
+                              the ones saved before the pin-dropping bug was
+                              fixed findable, since they are the only records
+                              this can be true of. */}
+                          {!l.geo && (
+                            <span className="text-amber-600 flex items-center gap-0.5 font-medium">
+                              <span aria-hidden>·</span>
+                              <LocateOff className="h-3 w-3" />
+                              Chưa có vị trí
+                            </span>
+                          )}
                           {l.mustTry && (
                             <span className="flex items-center gap-0.5">
                               <span aria-hidden>·</span>
@@ -2079,7 +2104,7 @@ export function LocationsPage() {
           categories={categories}
           districts={districts}
           onPickOnMap={() => setPickingGeo(true)}
-          onDone={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
+          onDone={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); setSheetExpandTick((n) => n + 1); }}
           onCancel={() => { setFormOpen(false); setPickingGeo(false); setDraftGeo(null); setDraftHint(null); }}
         />
       </Modal>

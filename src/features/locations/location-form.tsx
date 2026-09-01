@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { readableFormError } from "@/lib/form-error";
@@ -90,8 +90,23 @@ export function LocationForm({
    * the place with no coordinates.
    */
   const incomingGeo = initial?.geo ?? null;
+  /*
+   * Whether the point was set during this editing session — by a tap on the
+   * map, a pick from search, or a link that resolved.
+   *
+   * This has to be recorded rather than inferred. The submit below used to
+   * decide "the person left the pin alone" by comparing `v.geo === initial.geo`,
+   * and those two are the SAME OBJECT once the effect below copies one into the
+   * other. So a tap on the map read as "untouched", and on a create with a
+   * pasted link the form sent `geo: undefined` — asking the server to derive the
+   * pin from the link instead. For anyone who tapped the map precisely BECAUSE
+   * the link would not resolve, that threw away the only coordinate there was,
+   * and the place saved with no position at all.
+   */
+  const geoTouched = useRef(false);
   useEffect(() => {
     if (!incomingGeo) return;
+    geoTouched.current = true;
     setV((p) =>
       p.geo && p.geo.lat === incomingGeo.lat && p.geo.lng === incomingGeo.lng
         ? p
@@ -136,6 +151,7 @@ export function LocationForm({
   const resolvedGeo = linkGeo.data ?? null;
   useEffect(() => {
     if (!resolvedGeo) return;
+    geoTouched.current = true;
     setV((p) => (p.geo ? p : { ...p, geo: resolvedGeo }));
   }, [resolvedGeo]);
   const resolvingLink = linkGeo.isFetching;
@@ -249,7 +265,18 @@ export function LocationForm({
       name: v.name.trim(),
       district: v.district,
       category: v.category,
-      geo: (initial && v.googleMapsUrl !== initial.googleMapsUrl && v.geo === initial.geo) ? undefined : (v.geo ?? undefined),
+      /*
+       * Withholding the point means "server, work it out from the link", and
+       * only one situation wants that: editing a place that already exists,
+       * where the link was changed and the pin was deliberately left alone.
+       *
+       * `v.id` is what makes it an edit. Without that check a create went down
+       * this path too, and a create is exactly when there is no stored pin to
+       * fall back on.
+       */
+      geo: (v.id && !geoTouched.current && v.googleMapsUrl.trim() !== (initial?.googleMapsUrl ?? "").trim())
+        ? undefined
+        : (v.geo ?? undefined),
       googleMapsUrl: v.googleMapsUrl.trim() || undefined,
       socialUrl: v.socialUrl.trim() || undefined,
       mustTry: v.mustTry.trim() || undefined,

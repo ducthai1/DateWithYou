@@ -119,6 +119,18 @@ body:has([data-chromeless]) [data-app-main] {
   --accent-foreground: #ffffff;
   --destructive: #dc2626;
   --destructive-soft: #fbe8e8;
+  /* Was never defined, while `text-destructive-foreground` was already being
+     used in two places — so that class resolved to nothing and the text simply
+     inherited whatever colour it sat on. On the activity badge that meant black
+     digits on red; on the memory form's delete button it meant the icon
+     vanished on hover. */
+  --destructive-foreground: #ffffff;
+  /* A notification count is not the same red as destructive text. It has to
+     read as a badge at 18px against a busy nav, which wants more saturation
+     than a colour chosen for legible warning copy. Kept separate so brightening
+     it here cannot quietly lower the contrast of every error message. */
+  --badge: #ef4444;
+  --badge-foreground: #ffffff;
   --success: #059669;
 
   /* --- Colour: accent triplet (terracotta default; overridden per preset) - */
@@ -211,6 +223,9 @@ body:has([data-chromeless]) [data-app-main] {
   --color-ring:              var(--ring);
   --color-destructive:       var(--destructive);
   --color-destructive-soft:  var(--destructive-soft);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-badge:             var(--badge);
+  --color-badge-foreground:  var(--badge-foreground);
   --color-success:           var(--success);
   --color-gradient-from:     var(--gradient-from);
   --color-gradient-to:       var(--gradient-to);

@@ -60,6 +60,7 @@ export function MapSheet({
   className,
   raiseTo,
   collapseSignal,
+  expandSignal,
 }: {
   /** How many places are in the list, shown while collapsed. */
   count: number;
@@ -80,6 +81,21 @@ export function MapSheet({
    * lower the sheet again even though it asked last time too.
    */
   collapseSignal?: number;
+  /**
+   * Bump this number to lift the sheet to at least its middle stop and show the
+   * top of the list.
+   *
+   * Exists because of what the collapsed stop can and cannot show. At 16% of the
+   * viewport it fits a card's name and its status pill and then runs out — the
+   * row of actions underneath, "Chỉ đường" included, sits below the fold with
+   * no sign that it is there. Measured on a 390x844 screen: the button's box
+   * lands at y=822 inside a scroll box that ends at 768. Saving a place and
+   * finding no way to navigate to it is the same bug seen from the person's
+   * side, so a save lifts the sheet to where the place they just added is
+   * whole. A counter, like collapseSignal, because two saves in a row must both
+   * be honoured.
+   */
+  expandSignal?: number;
 }) {
   /*
    * Opens at the lowest stop. Half height on arrival meant the map — the whole
@@ -122,6 +138,18 @@ export function MapSheet({
     collapseSeen.current = collapseSignal;
     setStop(0);
   }, [collapseSignal]);
+
+  // Raise-on-signal, the mirror of the lowering above. Also returns the body to
+  // the top: the list is newest-first, so the place that prompted this is the
+  // one at the top, and a body left scrolled halfway would hide it.
+  const expandSeen = useRef<number | undefined>(expandSignal);
+  useEffect(() => {
+    if (expandSignal === undefined) return;
+    if (expandSeen.current === expandSignal) return;
+    expandSeen.current = expandSignal;
+    setStop((s) => (s < 1 ? 1 : s));
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [expandSignal]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     startY.current = e.clientY;

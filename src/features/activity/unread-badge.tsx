@@ -33,7 +33,7 @@ export function UnreadBadge({ count, className }: { count: number; className?: s
     <span
       aria-hidden="true"
       className={cn(
-        "bg-destructive text-destructive-foreground pointer-events-none flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-semibold leading-none tabular-nums shadow-sm",
+        "bg-badge text-badge-foreground pointer-events-none flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-semibold leading-none tabular-nums shadow-sm",
         className,
       )}
     >
