@@ -1438,6 +1438,40 @@ cả hai nền tảng. Chỉ đọc **một** câu tại một thời điểm (`
 trong vài giây, một hàng đợi đọc câu của khúc rẽ trước trong khi ngã tư đã lùi lại phía sau còn tệ hơn
 im lặng.
 
+## `npm run build` XANH không có nghĩa là trang render được
+
+Prod chết toàn bộ — **mọi** route trả 500, kể cả `/sign-in` — sau một commit mà `tsc`, `lint` và
+`next build` đều sạch.
+
+Nguyên nhân: `PushSetup` đăng ký subscription qua một **mutation tRPC**, mà tôi mount nó cạnh
+`RegisterMapCache` / `WarmMapAssets` / `PrimeHaptics` — ba cái này chỉ đụng API trình duyệt nên nằm
+ngoài `<Providers>` là được. tRPC provider thì nằm **trong** `<Providers>`, nên `useMutation` không có
+context để đọc và **throw ngay trong lúc server render mọi trang**.
+
+```
+Error: Unable to find tRPC Context. Did you forget to wrap your App inside `withTRPC` HoC?
+  at Object.useMutation
+```
+
+**Vì sao build vẫn xanh:** những trang này render **theo từng request** (có kiểm đăng nhập), không
+prerender lúc build. Lỗi runtime khi render thì build không bao giờ chạm tới. `tsc` cũng không thấy —
+context React không phải chuyện của kiểu dữ liệu.
+
+**Luật:** sau lần sửa cuối cùng, **khởi động lại server và gọi thật một trang**. Build xanh chỉ chứng
+minh code biên dịch được. Câu lệnh tối thiểu:
+```bash
+npm run build && <restart> && curl -o /dev/null -w '%{http_code}\n' localhost:3987/sign-in
+```
+
+**Cách chẩn đoán nhanh khi prod 500:** phân biệt **API** với **trang**.
+- API tRPC trả `401` (không phải 500) ⇒ router nạp được, backend sống ⇒ lỗi nằm ở tầng render.
+- Trang trả 500 mà **body vẫn có `<title>` đúng** ⇒ shell đã render rồi mới throw ⇒ lỗi trong cây
+  React, không phải ở middleware hay khâu dựng route.
+Hai dấu hiệu đó khoanh vùng ngay, trước khi đọc một dòng code nào.
+
+**Ranh giới cần nhớ khi thêm component vào root layout:** chỉ đụng API trình duyệt → ngoài
+`<Providers>` cũng được; **gọi bất kỳ hook tRPC / react-query nào → bắt buộc nằm trong**.
+
 ## Web Push: thứ duy nhất tới được máy đang khoá — và cách duy nhất iPhone rung
 
 Mọi cách gây chú ý khác trong app (rung, bíp, banner) đều cần **trang đang mở và đang chạy**. Push thì
