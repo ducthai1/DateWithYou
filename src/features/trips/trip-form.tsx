@@ -8,6 +8,7 @@ import { Trash2 } from "lucide-react";
 
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 export function TripForm({
   trip,
@@ -56,12 +57,15 @@ export function TripForm({
     },
   });
 
-  const handleDelete = () => {
-    if (!trip) return;
-    if (window.confirm("Bạn có chắc muốn xóa chuyến đi này không? Mọi dữ liệu lịch trình sẽ bị mất.")) {
-      removeMut.mutate({ id: trip.id });
-    }
-  };
+  /*
+   * Asked in a dialog, not through window.confirm().
+   *
+   * The native box is system chrome: it ignores the app's type and colour, has
+   * no way to mark which of its two answers destroys something, and on iOS puts
+   * the site's hostname above the question. Every other destructive action here
+   * already asks in the app's own voice; this was the one that did not.
+   */
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,7 +184,7 @@ export function TripForm({
             type="button"
             variant="destructive"
             size="icon"
-            onClick={handleDelete}
+            onClick={() => setConfirmDelete(true)}
             disabled={isPending}
             className="mr-2 shrink-0"
             title="Xóa chuyến đi"
@@ -195,6 +199,21 @@ export function TripForm({
           {trip ? "Lưu thay đổi" : "Tạo chuyến đi"}
         </Button>
       </ModalFooter>
+
+      {/* Sits above the edit dialog it was opened from — the shared shell
+          stacks, so the form stays visible and untouched behind it. */}
+      {trip && (
+        <ConfirmModal
+          open={confirmDelete}
+          onClose={() => setConfirmDelete(false)}
+          onConfirm={() => removeMut.mutate({ id: trip.id })}
+          pending={removeMut.isPending}
+          tone="danger"
+          title="Xoá chuyến đi này?"
+          message={`"${trip.title}" và toàn bộ lịch trình, hành trang, chi phí của nó sẽ bị xoá. Không thể hoàn lại.`}
+          confirmLabel="Xoá chuyến đi"
+        />
+      )}
     </form>
   );
 }

@@ -1332,6 +1332,32 @@ Cách chữa, cả ba tầng — đừng bỏ tầng nào:
 trả thẳng đơn vị hành chính 2025: `administrative_area_level_2` = phường, `_1` = tỉnh), Nominatim chỉ
 là dự phòng vì bị giới hạn tần suất.
 
+## Hỏi trước khi phá: dùng `ConfirmModal`, không dùng `window.confirm`
+
+Xoá chuyến đi là chỗ cuối cùng còn dùng `window.confirm()`. Hộp thoại hệ thống bỏ qua toàn bộ chữ và
+màu của app, **không có cách nào** đánh dấu đâu là câu trả lời phá huỷ, và trên iOS còn in tên host
+lên trên câu hỏi. Mọi hành động phá huỷ khác trong app đều đã hỏi bằng giọng của app.
+
+`src/components/ui/confirm-modal.tsx` là em sinh đôi của `AlertModal`: cùng `<Modal>` shell, cùng vòng
+tròn tone, cùng tỉ lệ — một cái **hỏi**, một cái **báo**. Có `tone: danger | warning | question` và
+`pending` (nút giữ nguyên trong lúc request bay, để bấm lần hai không kích thêm một lần xoá).
+
+Dùng nó thay vì dựng tay cái thứ N. Trong repo vẫn còn 2 dialog xác nhận dựng tay ở `locations-page`
+("Kết thúc chuyến đi?" và "người kia đã kết thúc") — chưa chuyển vì chúng nằm trong luồng dẫn đường
+vừa sửa, nhưng đó là việc nên làm khi có dịp.
+
+### Escape chỉ được đóng dialog TRÊN CÙNG
+
+Mỗi shell nghe `keydown` trên `document`, nên trước đây một confirm xếp trên form sẽ bị Escape đóng
+**cả hai** — đóng luôn cái mà câu hỏi đang nói về. Nay dùng đúng quy tắc mà trap của Tab đã dùng:
+portal append theo thứ tự mở, nên shell **cuối cùng trong document order** là cái trên cùng
+(`[data-dialog-shell="true"]`). Modal lồng nhau vốn đã được thiết kế cho — chỉ Escape là bị bỏ sót.
+
+⚠️ Bẫy đo: `Input.dispatchKeyEvent` của CDP **không tới được** listener trên `document` cho phím
+Escape — thử cả `keyDown` và `rawKeyDown` đều không đóng nổi một modal đơn lẻ. Cách phân biệt là
+**thử với 1 modal trước**: nếu 1 modal cũng không đóng thì lỗi ở probe, không ở code. Kiểm bằng
+`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))` phát ngay trong trang.
+
 ## `?.` trên một ref chưa sẵn sàng = im lặng đốt mất cơ hội duy nhất
 
 Map luôn mở ở Sài Gòn dù user đã bật định vị và không ở Sài Gòn. Effect "bay về vị trí lần đầu" **có

@@ -200,7 +200,23 @@ export function Modal({
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      /*
+       * Only the dialog on top answers Escape.
+       *
+       * Every open shell listens on `document`, so before this a confirm
+       * stacked over a form closed both at once — the question and the thing it
+       * was about. Portals append in open order, so the last shell in document
+       * order is the top one, which is the same rule the Tab trap above uses.
+       */
+      const node = containerRef.current;
+      const stack = Array.from(
+        document.querySelectorAll<HTMLElement>(`[${DIALOG_SHELL_ATTR}="true"]`),
+      );
+      if (node && stack.length > 0 && stack[stack.length - 1] !== node) return;
+      onClose();
+    };
     document.addEventListener("keydown", onKey);
     // The lock is counted and shared — see body-scroll-lock. Owning it here
     // per-dialog is what left the page unscrollable after two overlapped.
@@ -209,7 +225,9 @@ export function Modal({
       document.removeEventListener("keydown", onKey);
       releaseBodyScroll();
     };
-  }, [open, onClose]);
+    // `containerRef` is a stable ref object, so listing it costs nothing and
+    // keeps the dependency check honest rather than silenced.
+  }, [open, onClose, containerRef]);
 
   if (typeof document === "undefined") return null;
 
