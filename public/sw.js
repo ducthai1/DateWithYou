@@ -55,15 +55,31 @@ async function trim(cache, limit) {
 }
 
 async function cacheFirst(request, cacheName, limit) {
-  const cache = await caches.open(cacheName);
-  const hit = await cache.match(request);
-  if (hit) return hit;
+  let cache = null;
+  try {
+    cache = await caches.open(cacheName);
+    const hit = await cache.match(request);
+    if (hit) return hit;
+  } catch (err) {
+    // No cache available at all — fall through to the network.
+    console.warn("sw: cache unavailable", err);
+    return fetch(request);
+  }
   const res = await fetch(request);
   // Only 200s are worth keeping. An opaque response would poison the cache with
   // something we can never read the status of, so those are passed through.
+  //
+  // Storing is wrapped because storing is the optional half of this. A quota
+  // error, a private window, or a browser with site data disabled would
+  // otherwise reject the whole fetch event and the request would fail — a cache
+  // that cannot save must still let the page load.
   if (res.ok && res.type !== "opaque") {
-    await cache.put(request, res.clone());
-    if (limit) await trim(cache, limit);
+    try {
+      await cache.put(request, res.clone());
+      if (limit) await trim(cache, limit);
+    } catch (err) {
+      console.warn("sw: could not cache", request.url, err);
+    }
   }
   return res;
 }

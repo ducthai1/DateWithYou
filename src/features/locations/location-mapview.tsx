@@ -176,37 +176,50 @@ function LocationMapViewImpl({
    * it happens exactly once: after that the view belongs to whoever is panning
    * it, and a later fix must not yank it back.
    */
-  /** MapLibre has handed over an instance; before this `mapRef` is still null. */
-  const [mapReady, setMapReady] = useState(false);
-
   /*
-   * Centre on the person's own position, once, as soon as BOTH the fix and the
-   * map exist.
+   * Centre on the person's own position, once, as soon as the map object exists.
    *
-   * Waiting on `mapReady` is the whole fix. This used to fire on the fix alone
-   * and call `mapRef.current?.easeTo(...)` — and the position almost always
-   * wins that race, because the on-arrival lookup accepts a fix up to five
-   * minutes old and so returns from cache immediately, while MapLibre still has
-   * a bundle, a style, a sprite and six font files to fetch. So `mapRef.current`
-   * was null, the optional chaining swallowed the call, and the flag had
-   * already been set — one silent no-op and the map stayed on its default
-   * centre for the rest of the session. Anyone not in Saigon opened the app
-   * looking at Saigon with their location switched on.
+   * Two earlier versions of this both failed, in opposite directions:
    *
-   * The flag is now set only after the camera has actually been told to move.
+   * 1. `mapRef.current?.easeTo(...)` with the once-only flag set BEFORE the
+   *    call. The position almost always wins that race — the on-arrival lookup
+   *    accepts a fix up to five minutes old, so it answers from cache
+   *    immediately while MapLibre still has a bundle, a style, a sprite and six
+   *    font files to fetch — so the ref was null, the optional chaining
+   *    swallowed the call, the flag was spent, and the map stayed on its
+   *    default centre for the session. Anyone not in Saigon opened the app
+   *    looking at Saigon with their location switched on.
+   *
+   * 2. Gating on MapLibre's `load` event. That fires only once the STYLE has
+   *    loaded, so a slow or failed tile server meant the camera never moved at
+   *    all — trading a race for a dependency on the network.
+   *
+   * What it actually needs is the map object, which react-map-gl hands over on
+   * mount, long before any style work. Camera moves do not need a loaded style.
+   * So this waits for the ref and nothing else, and marks itself done only
+   * after the camera has been told to move.
    */
   const centredOnFirstFix = useRef(false);
   useEffect(() => {
-    if (centredOnFirstFix.current || !mapReady || !userGeo || followGeo || focusGeo) return;
-    const map = mapRef.current;
-    if (!map) return;
-    centredOnFirstFix.current = true;
-    map.easeTo({
-      center: [userGeo.lng, userGeo.lat],
-      zoom: 14,
-      duration: 700,
-    });
-  }, [mapReady, userGeo, followGeo, focusGeo]);
+    if (centredOnFirstFix.current || !userGeo || followGeo || focusGeo) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const centre = () => {
+      if (cancelled || centredOnFirstFix.current) return;
+      const map = mapRef.current;
+      if (!map) {
+        timer = setTimeout(centre, 200);
+        return;
+      }
+      centredOnFirstFix.current = true;
+      map.easeTo({ center: [userGeo.lng, userGeo.lat], zoom: 14, duration: 700 });
+    };
+    centre();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [userGeo, followGeo, focusGeo]);
 
   // Follow mode: keep the live position centred as the user moves.
   // When heading is available, rotate the map so "up" = direction of travel.
@@ -322,7 +335,6 @@ function LocationMapViewImpl({
         ref={mapRef}
         initialViewState={DEFAULT_CENTER}
         onLoad={(e) => {
-          setMapReady(true);
           // Deliberately does NOT report a centre. The map opens on a fixed
           // default (Saigon), and reporting that as "where the person is
           // looking" made it the search bias for everyone — so anyone opening

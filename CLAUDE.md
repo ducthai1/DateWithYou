@@ -1347,9 +1347,35 @@ trả về từ cache **tức thì**, còn MapLibre còn phải tải bundle 267
 Nên `mapRef.current` là `null`, `?.` nuốt luôn lệnh, mà cờ thì đã bật ⇒ **một no-op im lặng và map
 nằm ở toạ độ mặc định suốt phiên**. (Việc tách chunk maplibre làm cửa sổ đua này rộng thêm.)
 
-**Luật:** cờ "chỉ làm một lần" chỉ được bật **sau khi việc đã thực sự xảy ra**. Và một ref do thư viện
-cấp phải có cờ readiness riêng (`mapReady` set trong `onLoad`) nằm trong deps — đừng tin vào việc
-effect chạy đúng lúc ref đã có.
+**Luật:** cờ "chỉ làm một lần" chỉ được bật **sau khi việc đã thực sự xảy ra**.
+
+Bản sửa đầu của tôi gác bằng `mapReady` set trong `onLoad` của MapLibre — và **cũng sai**, theo hướng
+ngược lại: `load` chỉ phát khi **style đã nạp**, nên tile server chậm hoặc lỗi là camera **không bao
+giờ** di chuyển. Đổi một cuộc đua thành một phụ thuộc vào mạng.
+
+Thứ nó thật sự cần là **object map**, mà react-map-gl trao ngay khi mount, rất lâu trước mọi việc liên
+quan tới style — lệnh camera không cần style đã nạp. Nên bản cuối **chỉ chờ cái ref** (poll 200ms) và
+không phụ thuộc gì khác.
+
+Cách kiểm không phụ thuộc việc tile có render hay không: **đếm số pin đã lưu còn nằm trong khung**. Mọi
+pin test đều ở Sài Gòn, nên GPS giả lập ở Đà Nẵng mà camera đúng thì phải là **0**:
+
+| GPS giả lập | pin Sài Gòn trong khung |
+|---|---|
+| Đà Nẵng, **trước** khi sửa | 22 |
+| Đà Nẵng, **sau** khi sửa | **0** |
+| Sài Gòn (đối chứng) | 23 |
+
+⚠️ Bẫy đo đã dính: so ảnh chụp 2 lần (Đà Nẵng vs Sài Gòn) cho ra "khác biệt 0,4/255 ⇒ map không đổi"
+— **vô nghĩa**, vì trong lần chạy đó nền bản đồ không render (chỉ có marker), nên hai ảnh đều gần như
+trắng. Luôn kiểm xem phép đo có thật sự nhìn thấy thứ mình tưởng không.
+
+### Service worker không được làm hỏng request khi cache lỗi
+
+`cacheFirst` gọi `cache.put` mà không bọc try/catch: hết quota, cửa sổ riêng tư, hoặc trình duyệt tắt
+site data đều làm `event.respondWith` bị reject ⇒ **request thất bại hẳn**. Một cache không lưu được
+thì vẫn phải để trang tải bình thường. Nay cả `caches.open` lẫn `cache.put` đều bọc, lỗi thì rơi về
+`fetch` thẳng.
 
 ## iOS KHÔNG có Vibration API — `navigator.vibrate` là no-op trên mọi trình duyệt iPhone
 
