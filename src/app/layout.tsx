@@ -11,6 +11,7 @@ import { MainWrapper } from "@/components/layout/main-wrapper";
 import { AppBackdrop } from "@/components/theme/app-backdrop";
 import { AppleSplashLinks } from "@/components/layout/apple-splash-links";
 import { RegisterMapCache } from "@/components/layout/register-map-cache";
+import { WarmMapAssets } from "@/components/layout/warm-map-assets";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
@@ -211,6 +212,7 @@ export default async function RootLayout({
       </head>
       <body className={`${inter.variable} ${playfair.variable} ${lora.variable} antialiased`}>
         <RegisterMapCache />
+        <WarmMapAssets />
         {/* SpaceGuard is mounted inside <Providers> — it is client-only
             (ssr: false), which a Server Component cannot declare. */}
         <Providers initialTone={initialTone}>

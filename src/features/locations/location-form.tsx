@@ -106,6 +106,40 @@ export function LocationForm({
    * them. Nothing waits on it either — the reverse lookup is best-effort and
    * the place saves fine without it.
    */
+  /*
+   * A pasted link is resolved here, not left for the save to discover.
+   *
+   * The coordinates inside a Maps link can only be read on the server (short
+   * links need redirects followed, and a mobile "Share" link carries no coords
+   * at all — its place name has to be geocoded). That used to happen during
+   * the save, which meant the browser held no `geo`, the area lookup below
+   * never ran, the area stayed blank, and the save was rejected for it. So the
+   * paste is resolved up front: the pin drops, the area fills itself, and the
+   * save has everything it needs before it is pressed.
+   */
+  const [linkToResolve, setLinkToResolve] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setLinkToResolve(v.googleMapsUrl.trim()), 400);
+    return () => clearTimeout(t);
+  }, [v.googleMapsUrl]);
+  const linkGeo = trpc.location.geoFromUrl.useQuery(
+    { url: linkToResolve },
+    {
+      enabled: /^https?:\/\//i.test(linkToResolve) && !v.geo,
+      // A link resolves to one place forever; re-asking on every re-render of
+      // the dialog would be pure latency.
+      staleTime: Infinity,
+      retry: false,
+    },
+  );
+  const resolvedGeo = linkGeo.data ?? null;
+  useEffect(() => {
+    if (!resolvedGeo) return;
+    setV((p) => (p.geo ? p : { ...p, geo: resolvedGeo }));
+  }, [resolvedGeo]);
+  const resolvingLink = linkGeo.isFetching;
+  const linkHadNoGeo = !!linkToResolve && linkGeo.isFetched && !linkGeo.isFetching && !resolvedGeo && !v.geo;
+
   const areaAt = trpc.location.areaAt.useQuery(
     { lat: v.geo?.lat ?? 0, lng: v.geo?.lng ?? 0 },
     { enabled: !!v.geo && !v.district, staleTime: 60 * 60 * 1000, retry: false },
@@ -318,6 +352,14 @@ export function LocationForm({
             Dán link Google Maps/Apple Maps để tự lấy toạ độ. Vị trí lấy từ link có thể{" "}
             <span className="font-medium text-foreground">gần đúng</span> — chạm bản đồ để đặt pin chính xác.
           </p>
+          {resolvingLink && (
+            <p className="text-accent text-xs font-medium">Đang lấy vị trí từ link…</p>
+          )}
+          {linkHadNoGeo && (
+            <p className="text-xs font-medium text-amber-600">
+              Link này không đọc được vị trí — chạm lên bản đồ để đặt pin, hoặc chọn khu vực ở trên.
+            </p>
+          )}
           {v.googleMapsUrl.trim().startsWith("http") && (
             <a
               href={v.googleMapsUrl.trim()}

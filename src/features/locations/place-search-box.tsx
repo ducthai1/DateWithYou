@@ -34,13 +34,6 @@ const DEBOUNCE_MS = 300;
 /** Bias point is rounded to this, in degrees (~5km) — see biasKey below. */
 const BIAS_GRID = 0.05;
 
-/** Metres → the short form people read on a result row. */
-function fmtAway(m: number): string {
-  if (m < 950) return `${Math.round(m / 10) * 10} m`;
-  if (m < 10000) return `${(m / 1000).toFixed(1)} km`;
-  return `${Math.round(m / 1000)} km`;
-}
-
 export function PlaceSearchBox({
   value,
   onValueChange,
@@ -67,6 +60,7 @@ export function PlaceSearchBox({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [resolving, setResolving] = useState(false);
+  const [pickError, setPickError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
@@ -120,19 +114,29 @@ export function PlaceSearchBox({
     const item = items[index];
     if (!item || resolving) return;
     setResolving(true);
+    setPickError(false);
     setOpen(false);
     try {
-      // The coordinate came with the suggestion — text search returns geometry
-      // inline — so this no longer needs a details round trip at all. It still
-      // asks for one thing details has and search does not: the place's own
-      // link, which is worth a call for the single result actually chosen.
-      onPickPlace({ lat: item.lat, lng: item.lng, name: item.main, url: null });
+      /*
+       * Autocomplete carries no coordinates, so this call is what turns a row
+       * into a pin. It is one request, for the one place actually chosen —
+       * cheaper than the geometry-inline search it replaced, which paid for
+       * coordinates on all eight rows and then answered with places hundreds
+       * of kilometres away.
+       */
       const detail = await utils.location.placeDetail
         .fetch({ placeId: item.placeId })
         .catch(() => null);
-      if (detail?.url) {
-        onPickPlace({ lat: detail.lat, lng: detail.lng, name: detail.name || item.main, url: detail.url });
+      if (!detail) {
+        setPickError(true);
+        return;
       }
+      onPickPlace({
+        lat: detail.lat,
+        lng: detail.lng,
+        name: detail.name || item.main,
+        url: detail.url,
+      });
     } finally {
       setResolving(false);
     }
@@ -282,23 +286,28 @@ export function PlaceSearchBox({
                   <MapPin className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{item.main}</span>
+                    {/* Two lines, not one truncated one. The ward and the city
+                        sit at the END of the address, and they are the part that
+                        answers "is this near me" now that the row no longer
+                        carries a distance — truncating cut exactly them off and
+                        left a street number on its own. */}
                     {item.secondary ? (
-                      <span className="text-muted-foreground block truncate text-xs">
+                      <span className="text-muted-foreground block line-clamp-2 text-xs leading-snug">
                         {item.secondary}
                       </span>
                     ) : null}
-                  </span>
-                  {/* How far, because a list of names cannot answer "which of
-                      these is near me" — which is the whole question. Results
-                      arrive nearest-first for the same reason. */}
-                  <span className="text-muted-foreground mt-0.5 shrink-0 text-xs tabular-nums">
-                    {fmtAway(item.distanceM)}
                   </span>
                 </button>
               </li>
             ))
           )}
         </ul>
+      ) : null}
+
+      {pickError ? (
+        <p className="text-destructive mt-1.5 text-xs font-medium">
+          Không lấy được vị trí của chỗ này — thử chọn lại hoặc chạm lên bản đồ nhé.
+        </p>
       ) : null}
     </div>
   );

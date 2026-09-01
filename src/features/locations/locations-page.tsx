@@ -102,6 +102,19 @@ import { useEscapeKey } from "@/hooks/use-escape-key";
 import { PlaceSearchBox } from "./place-search-box";
 
 
+/**
+ * The four emotions that can be sent mid-journey.
+ *
+ * A table rather than four near-identical elements: they only ever differed by
+ * glyph and label, and the copies had already drifted apart in their classes.
+ */
+const PING_BUTTONS: Array<{ action: string; emoji: string; label: string; urgent?: boolean }> = [
+  { action: "HOT", emoji: "🥵", label: "Nóng quá!" },
+  { action: "JAM", emoji: "🐌", label: "Kẹt xe!" },
+  { action: "WAIT", emoji: "🥺", label: "Đợi xíu nha" },
+  { action: "HURRY", emoji: "🚨", label: "Nhanh lên!", urgent: true },
+];
+
 export function LocationsPage() {
   const toast = useToast();
   const [district, setDistrict] = useState("");
@@ -345,6 +358,27 @@ export function LocationsPage() {
    * showing is, by definition, the area the person is looking at.
    */
   const [mapCenter, setMapCenter] = useState<LatLng | null>(null);
+  /*
+   * Emotion pings, and why a tap might not send one.
+   *
+   * The send refuses in two ordinary situations — no GPS fix yet, and inside
+   * the 2.5s spam guard — and both used to be a bare `return`. Four buttons
+   * that answer nothing at all read as broken, so the refusal is now spoken:
+   * the missing-fix case says why, and the guard is drawn on the buttons.
+   */
+  const [pingCooling, setPingCooling] = useState(false);
+  async function sendPing(action: string) {
+    const result = await nav.sendPingAction?.(action);
+    if (result === "no-location")
+      toast("Chưa bắt được vị trí của bạn nên chưa gửi được — bật định vị rồi thử lại nhé", "error");
+  }
+  useEffect(() => {
+    const wait = nav.pingReadyAt - Date.now();
+    if (wait <= 0) { setPingCooling(false); return; }
+    setPingCooling(true);
+    const t = setTimeout(() => setPingCooling(false), wait);
+    return () => clearTimeout(t);
+  }, [nav.pingReadyAt]);
 
   /**
    * Whether the floating tool column is showing on desktop.
@@ -1116,6 +1150,11 @@ export function LocationsPage() {
         <div className="fixed inset-0 z-50 flex flex-col bg-black">
           {/* Map fills the entire viewport */}
           <div className="relative flex-1">
+            {/* The emotion buttons sit on THIS overlay, and the overlay covers the
+                map that used to be the only one given the ping props — so every
+                tap during a journey drew its bubble on a map nobody could see.
+                Both directions were silent: your own tap showed nothing, and the
+                partner's ping arrived over SSE with nowhere to land. */}
             <LocationMapView
               pins={pins}
               routeGeometry={routeGeometry}
@@ -1129,6 +1168,8 @@ export function LocationsPage() {
               userAccuracyM={nav.accuracyM}
               userGeo={liveUser}
               partnerLocation={nav.partnerLocation}
+              partnerPingAction={navInvites.partnerPingAction}
+              userPingAction={nav.userPingAction}
               followGeo={nav.userGeo}
               heading={nav.heading}
               userAvatar={userAvatar}
@@ -1262,10 +1303,25 @@ export function LocationsPage() {
             {/* Quick Pings */}
             <div className="absolute right-4 top-[60%] flex flex-col items-center gap-2">
                <p className="text-[9px] font-semibold text-white/80 bg-black/30 rounded-full px-2 py-0.5 text-center leading-tight backdrop-blur-sm">Gửi cảm xúc<br/>cho người kia:</p>
-               <button onClick={() => nav.sendPingAction?.("HOT")} title="Nóng quá!" aria-label="Nóng quá!" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🥵</button>
-               <button onClick={() => nav.sendPingAction?.("JAM")} title="Kẹt xe!" aria-label="Kẹt xe!" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🐌</button>
-               <button onClick={() => nav.sendPingAction?.("WAIT")} title="Đợi xíu nha" aria-label="Đợi xíu nha" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90">🥺</button>
-               <button onClick={() => nav.sendPingAction?.("HURRY")} title="Nhanh lên!" aria-label="Nhanh lên!" className="h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-transform active:scale-90 border-2 border-rose-400">🚨</button>
+               {PING_BUTTONS.map((p) => (
+                 <button
+                   key={p.action}
+                   onClick={() => void sendPing(p.action)}
+                   disabled={pingCooling}
+                   title={p.label}
+                   aria-label={p.label}
+                   className={cn(
+                     "h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-all active:scale-90",
+                     p.urgent && "border-2 border-rose-400",
+                     // The guard refuses a second ping for 2.5s. Showing that
+                     // refusal beats the old behaviour, where the button looked
+                     // live and simply did nothing.
+                     pingCooling && "opacity-40 scale-95",
+                   )}
+                 >
+                   {p.emoji}
+                 </button>
+               ))}
             </div>
 
             {/* Floating stop button — always visible over the map */}
@@ -1567,7 +1623,10 @@ export function LocationsPage() {
             <PlaceSearchBox
               value={queryText}
               onValueChange={setQueryText}
-              near={mapCenter ?? liveUser}
+              // GPS first. `mapCenter` is only set once the person actually
+              // pans, so a deliberate look at another city still biases there,
+              // but the default view no longer speaks for where they are.
+              near={liveUser ?? mapCenter}
               filterCount={activeFilterCount}
               filtersOpen={filtersOpen}
               onToggleFilters={() => setFiltersOpen((v) => !v)}

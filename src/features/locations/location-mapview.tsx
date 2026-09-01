@@ -263,24 +263,60 @@ function LocationMapViewImpl({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [legCount]);
 
+  /*
+   * Nothing is shown until the first frame is complete.
+   *
+   * MapLibre paints tiles the moment each one arrives, so the map used to
+   * assemble itself in front of the person — grey, then a patch of streets,
+   * then another, then labels. Waiting for `idle`, which is the map saying it
+   * has finished everything the current view needs, turns that into one clean
+   * appearance.
+   *
+   * The timer is the safety net: a tile that never arrives must not leave the
+   * screen blank forever, so after 6s it is shown in whatever state it reached.
+   */
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setDrawn(true), 6000);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div 
-      className={cn("h-full min-h-[280px] overflow-hidden rounded-xl border border-border bg-card shadow-sm", className)}
+      className={cn("relative h-full min-h-[280px] overflow-hidden rounded-xl border border-border bg-card shadow-sm", className)}
       onPointerDownCapture={handleInteraction}
       onWheelCapture={handleInteraction}
       onTouchStartCapture={handleInteraction}
     >
+      <div
+        aria-hidden="true"
+        className={cn(
+          "bg-muted pointer-events-none absolute inset-0 z-[1] transition-opacity duration-500",
+          drawn ? "opacity-0" : "opacity-100",
+        )}
+      />
       <Map
         ref={mapRef}
         initialViewState={DEFAULT_CENTER}
         onLoad={(e) => {
-          const c = e.target.getCenter();
-          onCenterChange?.({ lat: c.lat, lng: c.lng });
+          // Deliberately does NOT report a centre. The map opens on a fixed
+          // default (Saigon), and reporting that as "where the person is
+          // looking" made it the search bias for everyone — so anyone opening
+          // the app from another city searched Saigon by default and got
+          // results hundreds of kilometres away while the same chain stood
+          // around the corner. Until the map is actually moved, the live GPS
+          // fix is the better answer, and the page falls back to it.
+
           // The sea carries its Vietnamese name, in the position the base map
           // chose for that label rather than a plate guessing at it.
           applyEastSeaLabel(e.target as unknown as Parameters<typeof applyEastSeaLabel>[0]);
         }}
+        onIdle={() => setDrawn(true)}
         onMoveEnd={(e) => {
+          // Only a move the person made. Programmatic camera work — flying to
+          // a pin, following a live position, fitting a route — also ends here,
+          // and letting those set the bias would put it back where it was.
+          if (!e.originalEvent) return;
           const c = e.target.getCenter();
           onCenterChange?.({ lat: c.lat, lng: c.lng });
         }}

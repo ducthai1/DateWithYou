@@ -406,25 +406,7 @@ export type PlaceSuggestion = {
   main: string;
   /** Address line under it. */
   secondary: string;
-  /** Where it is. Present because text search returns geometry inline. */
-  lat: number;
-  lng: number;
-  /** Straight-line metres from the point the search was biased to. */
-  distanceM: number;
 };
-
-/** Straight-line metres between two points. */
-function metresBetween(a: LatLng, b: LatLng): number {
-  const R = 6371000;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((a.lat * Math.PI) / 180) *
-      Math.cos((b.lat * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-}
 
 /**
  * Where to search from when the caller has nothing better yet.
@@ -450,49 +432,53 @@ export async function suggestPlaces(
     // because every test supplied a location by hand.
     const at = near ?? FALLBACK_BIAS;
     /*
-     * Text search rather than autocomplete, for the coordinates.
+     * Autocomplete, not text search — measured, not assumed.
      *
-     * Autocomplete returns a name and an address and nothing else, so "how far
-     * is this?" would have cost a place/details call per suggestion — eight
-     * extra requests for every search. Text search carries geometry inline, in
-     * the same single call, which also means picking a result no longer needs
-     * a details round trip either.
+     * Text search takes the same `location` and `radius` and very nearly
+     * ignores them. Asked for "Jollibee" biased to Đà Nẵng it answered with
+     * twenty branches of which exactly one was in the city; the rest sat 550 to
+     * 800km away. Sorting that by distance still only reorders what came back,
+     * so the nine nearby branches it never returned stayed invisible, and
+     * anyone in a city the bias missed got a list of somewhere else entirely.
      *
-     * It has to be sorted here: the API's own order ignores the bias almost
-     * entirely — searching "trà sữa" from Saigon put a result 1,068km away
-     * first. Nearest-first is the order the question implies.
+     * Autocomplete honours the same two parameters properly: the same query
+     * returned ten results, all of them in Đà Nẵng.
+     *
+     * The cost is geometry. Text search carried coordinates inline, which paid
+     * for the "x km away" on each row; autocomplete carries none, so the row
+     * shows the address instead — which names the ward and the city, and
+     * answers "is this near me" better than a distance measured from a bias
+     * point the person never chose. Coordinates are fetched once, for the one
+     * result actually picked, through placeDetail.
      */
     const url =
-      `https://maps.track-asia.com/api/v2/place/textsearch/json` +
-      `?query=${encodeURIComponent(query)}&new_admin=true` +
+      `https://maps.track-asia.com/api/v2/place/autocomplete/json` +
+      `?input=${encodeURIComponent(query)}&new_admin=true` +
       `&location=${at.lat},${at.lng}&radius=25000&key=${key}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) return [];
     const data = (await res.json()) as {
       status?: string;
-      results?: Array<{
+      predictions?: Array<{
         place_id?: string;
-        name?: string;
-        formatted_address?: string;
-        geometry?: { location?: { lat?: number; lng?: number } };
+        description?: string;
+        structured_formatting?: { main_text?: string; secondary_text?: string };
       }>;
     };
     if (data.status !== "OK") return [];
-    return (data.results ?? [])
-      .flatMap((r) => {
-        const lat = r.geometry?.location?.lat;
-        const lng = r.geometry?.location?.lng;
-        if (!r.place_id || typeof lat !== "number" || typeof lng !== "number") return [];
-        return [{
-          placeId: r.place_id,
-          main: r.name ?? r.formatted_address ?? "",
-          secondary: r.formatted_address ?? "",
-          lat,
-          lng,
-          distanceM: Math.round(metresBetween(at, { lat, lng })),
-        }];
+    return (data.predictions ?? [])
+      .flatMap((p) => {
+        if (!p.place_id) return [];
+        const sf = p.structured_formatting;
+        // Fall back to splitting the description on its first comma: the name
+        // is the head and the address the tail, which is exactly what the two
+        // structured fields hold when the provider supplies them.
+        const [head, ...rest] = (p.description ?? "").split(",");
+        const main = sf?.main_text ?? head?.trim() ?? "";
+        const secondary = sf?.secondary_text ?? rest.join(",").trim();
+        if (!main) return [];
+        return [{ placeId: p.place_id, main, secondary }];
       })
-      .sort((a, b) => a.distanceM - b.distanceM)
       .slice(0, 8);
   } catch {
     return [];

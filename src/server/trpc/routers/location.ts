@@ -19,10 +19,22 @@ import {
   suggestPlaces,
 } from "@/server/lib/geocode-address";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
-import { matchArea, searchAreas } from "@/lib/vn-admin";
+import { searchAreas } from "@/lib/vn-admin";
+import { areaAtPoint } from "@/server/lib/area-at-point";
 import { buildPattern } from "@/lib/vietnamese-text";
 
-const districtSchema = z.string().trim().min(1);
+/*
+ * Deliberately allows empty.
+ *
+ * It used to be `min(1)`, which turned the nicest way to add a place into the
+ * one that could not work: paste a Maps link and save. The link's coordinates
+ * are resolved HERE, on the server, so the browser had no `geo` to reverse-look
+ * the area from, left the field blank, and Zod rejected the whole save with a
+ * validation error. The handler fills it in from the resolved point instead —
+ * see `withArea` — so a blank arriving from the client is a question to answer,
+ * not a reason to refuse.
+ */
+const districtSchema = z.string().trim().max(120);
 const categorySchema = z.string().trim().min(1);
 const statusEnum = z.enum(["want_to_go", "visited"]);
 // Only allow https links (anti stored-XSS / open-redirect on rendered hrefs).
@@ -96,6 +108,24 @@ async function travelSeconds(
   }
 }
 
+/**
+ * Make sure a place ends up with an area, deriving it from its own coordinates
+ * when the client could not.
+ *
+ * The last resort is a real, readable string rather than an empty one: the
+ * stored schema requires the field, and a place the person can see and correct
+ * beats a save that failed.
+ */
+async function withArea(district: string | undefined, geo?: { lat: number; lng: number }) {
+  const given = district?.trim();
+  if (given) return given;
+  if (geo) {
+    const area = await areaAtPoint(geo.lat, geo.lng);
+    if (area?.value) return area.value;
+  }
+  return "Chưa rõ khu vực";
+}
+
 export const locationRouter = router({
   list: protectedProcedure
     .input(
@@ -163,6 +193,7 @@ export const locationRouter = router({
       }
       const doc = await LocationModel.create({
         ...input,
+        district: await withArea(input.district, geoVal),
         geo: geoVal,
         // Stamp the visit day up-front when a place is added already "visited".
         visitedAt: input.status === "visited" ? new Date() : undefined,
@@ -181,6 +212,11 @@ export const locationRouter = router({
       if (!patch.geo && patch.googleMapsUrl) {
         const g = await resolveGeoFromMapsUrl(patch.googleMapsUrl, geocodeAddress);
         if (g) patch.geo = g;
+      }
+      // Only when the field was actually sent and came back blank — an edit that
+      // never touches the area must not have one invented for it.
+      if (patch.district !== undefined) {
+        patch.district = await withArea(patch.district, patch.geo);
       }
       const update: Record<string, unknown> = { $set: patch };
       // Only (re)stamp visitedAt on an actual transition, so editing an
@@ -326,31 +362,18 @@ export const locationRouter = router({
    */
   areaAt: protectedProcedure
     .input(geo)
-    .query(async ({ input }) => {
-      try {
-        const url =
-          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14` +
-          `&lat=${input.lat}&lon=${input.lng}`;
-        const res = await fetch(url, {
-          signal: AbortSignal.timeout(4000),
-          headers: {
-            "User-Agent": "DateWithYou/1.0 (couple-space app; area lookup)",
-            "Accept-Language": "vi",
-          },
-        });
-        if (!res.ok) return null;
-        const data = (await res.json()) as {
-          address?: Record<string, string | undefined>;
-        };
-        const a = data.address ?? {};
-        const ward = a.suburb ?? a.quarter ?? a.village ?? a.town ?? a.city_district;
-        const province = a.city ?? a.state ?? a.province;
-        return matchArea(ward, province);
-      } catch (err) {
-        console.error("location.areaAt: reverse lookup failed", err);
-        return null;
-      }
-    }),
+    .query(({ input }) => areaAtPoint(input.lat, input.lng)),
+
+  /**
+   * Coordinates behind a pasted Maps link, so the browser can drop the pin and
+   * fill the area in before the save rather than discovering both afterwards.
+   *
+   * The same resolver the save uses, exposed as a read: one source of truth for
+   * what a link means, and the form no longer has to guess.
+   */
+  geoFromUrl: protectedProcedure
+    .input(z.object({ url: z.string().trim().min(1).max(2000) }))
+    .query(({ input }) => resolveGeoFromMapsUrl(input.url, geocodeAddress)),
 
   getRoute: protectedProcedure
     .input(z.object({

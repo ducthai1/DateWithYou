@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { LatLng } from "@/lib/maps";
 import { trpc } from "@/lib/trpc";
 
+/** How long the emotion buttons stay refused after one is sent. */
+const PING_COOLDOWN_MS = 2500;
+
+/** Why a ping did or did not go out — the UI needs the distinction. */
+export type PingResult = "sent" | "too-soon" | "no-location";
+
 export type PartnerLocation = {
   userId: string;
   lat: number;
@@ -81,7 +87,15 @@ export type LiveNavigation = {
   setRouteInfo: (coords: Array<[number, number]>, totalMeters: number, totalSeconds: number, legs?: LegInfo[]) => void;
   legs: LegInfo[];
   /** Send a quick ping emotion to the partner */
-  sendPingAction: (action: string) => void;
+  /**
+   * Returns why nothing was sent, so the caller can say so. It used to return
+   * void and `return` early on both a missing fix and the spam guard, which is
+   * how four emotion buttons could be tapped all day with no reaction of any
+   * kind — the two most likely outcomes were the two silent ones.
+   */
+  sendPingAction: (action: string) => Promise<PingResult>;
+  /** Epoch ms until which another ping is refused; lets the UI show the wait. */
+  pingReadyAt: number;
   /** User's own latest ping action to show their own emotion locally */
   userPingAction: string | null;
 };
@@ -183,6 +197,7 @@ export function useLiveNavigation(options?: {
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [legs, setLegs] = useState<LegInfo[]>([]);
   const [userPingAction, setUserPingAction] = useState<string | null>(null);
+  const [pingReadyAt, setPingReadyAt] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(
     typeof navigator !== "undefined" ? !navigator.onLine : false,
@@ -214,15 +229,17 @@ export function useLiveNavigation(options?: {
   const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
   const lastPingTime = useRef<number>(0);
 
-  const sendPingAction = useCallback(async (action: string) => {
+  const sendPingAction = useCallback(async (action: string): Promise<PingResult> => {
     const now = Date.now();
-    // Chặn bấm spam (chờ ít nhất 2.5 giây)
-    if (now - lastPingTime.current < 2500) return;
-    
+    if (now - lastPingTime.current < PING_COOLDOWN_MS) return "too-soon";
+
     const p = pingPayloadRef.current;
-    if (!p.userGeo) return;
+    // A ping rides along with a location update, so without a fix there is
+    // nothing to attach it to. Say so rather than doing nothing.
+    if (!p.userGeo) return "no-location";
 
     lastPingTime.current = now;
+    setPingReadyAt(now + PING_COOLDOWN_MS);
 
     // Optimistic: show the user's own emotion the instant they tap, instead of
     // after the network round-trip. The mutation still runs to deliver it to the
@@ -261,6 +278,7 @@ export function useLiveNavigation(options?: {
         // derivation (PARTNER_STALE_MS) downgrades it to "stale" if it stays gone.
       }
     });
+    return "sent";
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -527,6 +545,7 @@ export function useLiveNavigation(options?: {
     stop,
     setRouteInfo,
     sendPingAction,
+    pingReadyAt,
     legs,
   };
 }

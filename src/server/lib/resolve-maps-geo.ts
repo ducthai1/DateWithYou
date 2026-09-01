@@ -182,17 +182,41 @@ async function resolveFinalUrl(
   for (let i = 0; i < MAX_HOPS; i++) {
     const remaining = deadline - Date.now();
     if (remaining <= 0) break;
-    let res: Response;
-    try {
-      res = await fetch(current, {
-        redirect: "manual",
-        signal: AbortSignal.timeout(Math.min(REQUEST_TIMEOUT_MS, remaining)),
-        headers: HEADERS,
-      });
-    } catch (err) {
-      console.error("resolve-maps-geo: fetch failed", current, err);
-      break;
+    /*
+     * One retry, because the first attempt fails for reasons that have nothing
+     * to do with the link.
+     *
+     * A bare `TypeError: fetch failed` — DNS not yet warm, a connection reset,
+     * a cold serverless container reaching out for the first time — used to end
+     * the whole resolution: the loop broke, the short link had no place name to
+     * fall back to, and the answer was "no coordinates". The person saw a paste
+     * that worked yesterday and refuses today, which is exactly how it was
+     * reported. The identical request a moment later succeeds, so it is worth
+     * asking twice before giving up.
+     *
+     * Timeouts are not retried — the deadline is there to be respected, and a
+     * second wait would spend the caller's remaining budget on the same stall.
+     */
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 2 && !res; attempt++) {
+      const left = deadline - Date.now();
+      if (left <= 0) break;
+      try {
+        res = await fetch(current, {
+          redirect: "manual",
+          signal: AbortSignal.timeout(Math.min(REQUEST_TIMEOUT_MS, left)),
+          headers: HEADERS,
+        });
+      } catch (err) {
+        const timedOut = err instanceof Error && err.name === "TimeoutError";
+        if (timedOut || attempt === 1) {
+          console.error("resolve-maps-geo: fetch failed", current, err);
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 150));
+      }
     }
+    if (!res) break;
     void res.body?.cancel(); // never need the body
     const loc = res.headers.get("location");
     if (res.status >= 300 && res.status < 400 && loc) {
