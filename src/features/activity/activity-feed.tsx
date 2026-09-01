@@ -220,26 +220,6 @@ export function ActivityFeed() {
     seenBefore !== undefined &&
     !isSelf(actorId) &&
     (seenBefore === null || at > seenBefore);
-  const burstUnread = (burst: { actorId: string; createdAt: Date }) =>
-    newSince(burst.actorId, burst.createdAt);
-
-  /*
-   * The boundary gets a label of its own, above the newest unread entry.
-   *
-   * Per-row marks say which entries are new; only a line says where "new" stops
-   * — which is the thing a reader scans for. The feed is newest-first, so the
-   * first unread in render order is the top of the new block.
-   */
-  const firstUnreadKey = useMemo(() => {
-    for (const day of days) {
-      for (const burst of day.bursts) {
-        if (burstUnread(burst)) return burst.key;
-      }
-    }
-    return null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [days, seenBefore, memberById]);
-
   function actorName(actorId: string): string {
     const m = memberById.get(actorId);
     if (m?.isSelf) return "Bạn";
@@ -315,43 +295,38 @@ export function ActivityFeed() {
                 const count = burst.items.length;
                 const quantity = count > 1 ? String(count) : "một";
 
-                const unread = burstUnread(burst);
+                const newCount = burst.items.filter((it) =>
+                  newSince(burst.actorId, it.createdAt),
+                ).length;
 
                 return (
-                  <div key={burst.key} className="space-y-3">
-                    {burst.key === firstUnreadKey && (
-                      <div className="flex items-center gap-2" aria-hidden="true">
-                        <span className="bg-accent/50 h-px flex-1" />
-                        <span className="text-accent text-[11px] font-semibold tracking-wide uppercase">
-                          Mới
-                        </span>
-                        <span className="bg-accent/50 h-px flex-1" />
-                      </div>
-                    )}
-                  <Card
-                    className={cn(
-                      "flex gap-3",
-                      // Three signals rather than one, because any single one is
-                      // easy to miss: an edge down the side to catch the eye
-                      // while scrolling, a tint so the block reads as a group,
-                      // and a dot on the line that names who did it.
-                      unread && "border-l-accent bg-accent-soft/40 border-l-[3px]",
-                    )}
-                  >
+                  <div key={burst.key}>
+                  {/*
+                    The card itself stays the same as every other card.
+                    Tinting the whole thing was the first attempt and it was
+                    wrong twice over: a burst of six entries with two new ones
+                    turned the entire block peach, which over-states what is new,
+                    and against the white read cards the highlight read as
+                    grubby rather than important. The marks now sit exactly on
+                    what they describe — a count on the header, a tint on the
+                    rows.
+                  */}
+                  <Card className="flex gap-3">
                     <ActorAvatar member={memberById.get(burst.actorId)} />
 
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <p className={cn("text-sm", unread ? "font-semibold" : "font-medium")}>
-                          {unread && (
-                            <span
-                              className="bg-accent mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full align-middle"
-                              aria-hidden="true"
-                            />
-                          )}
+                        <p className="text-sm font-medium">
                           {actorName(burst.actorId)} {meta.verb} {quantity} {meta.noun}
-                          <span className="sr-only">{unread ? " — chưa xem" : ""}</span>
                         </p>
+                        {/* How many, not just "some". A burst can hold entries
+                            from three different sittings, and the number is the
+                            part that tells you whether it is worth opening. */}
+                        {newCount > 0 && (
+                          <span className="bg-accent text-accent-foreground rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none">
+                            {newCount} mới
+                          </span>
+                        )}
                         <time
                           dateTime={burst.createdAt.toISOString()}
                           className="text-muted-foreground text-xs"
@@ -380,8 +355,12 @@ export function ActivityFeed() {
                             <Link
                               href={item.href}
                               className={cn(
-                                "hover:bg-muted flex min-h-10 items-center gap-2 rounded-lg px-2 py-1.5 transition-colors",
+                                "flex min-h-10 items-center gap-2 rounded-lg px-2 py-1.5 transition-colors",
                                 "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
+                                // Small enough to be a highlight rather than a
+                                // background, and it lands on the one row it is
+                                // true of.
+                                itemNew ? "bg-accent-soft/70 hover:bg-accent-soft" : "hover:bg-muted",
                               )}
                             >
                               <KindIcon
@@ -395,6 +374,7 @@ export function ActivityFeed() {
                                 )}
                               >
                                 {item.title}
+                                <span className="sr-only">{itemNew ? " — chưa xem" : ""}</span>
                               </span>
                               {/* Allowed to shrink and truncate. As shrink-0 a
                                   full date range ("06/09/2026 - 16/09/2026")

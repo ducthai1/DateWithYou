@@ -1388,13 +1388,19 @@ Cách làm (giống GitHub/Slack): `markSeen` trả về **mốc cũ** (`previou
 trị đó cho cả lượt xem. `undefined` = chưa biết (chưa đánh dấu gì, để tránh loé "tất cả đều mới");
 `null` = chưa từng mở feed ⇒ mọi thứ của người kia là mới.
 
-Ba tín hiệu chứ không phải một, vì tín hiệu đơn lẻ rất dễ bị bỏ qua:
-- **vạch "MỚI"** ở ranh giới — chỉ có một đường kẻ mới trả lời được câu "mới **tới đâu**", mà đó đúng
-  là thứ mắt người quét tìm;
-- **cấp thẻ**: viền accent bên trái 3px + nền `accent-soft/40` + chấm tròn + chữ đậm;
-- **cấp từng dòng**: một cụm là cả một loạt cùng loại cùng người, nên "người kia đã lưu 4 địa điểm"
-  có thể chứa 3 dòng đọc hôm qua và 1 dòng mới một phút trước. Thẻ nói "cụm này có cái mới", dòng nói
-  **dòng nào**.
+### Đánh dấu phải nằm ĐÚNG trên thứ nó nói về
+
+Bản đầu tô cả thẻ (`bg-accent-soft/40` + viền trái 3px + chấm + chữ đậm + vạch "MỚI"). Tự chụp lại thì
+thấy sai hai lần: một cụm 8 dòng mà chỉ 2 dòng mới bị tô **peach toàn bộ** — nói quá về lượng cái mới;
+và đặt cạnh các thẻ trắng thì khối peach đó đọc ra **đục** chứ không ra quan trọng. Viền 3px còn cắt
+ngang góc bo của thẻ. Bốn tín hiệu xếp chồng là ồn, GitHub/Slack chỉ dùng 1–2.
+
+Bản sau: **thẻ để trắng như mọi thẻ**, và dấu đặt đúng chỗ:
+- **pill `N mới`** cạnh tiêu đề — cho biết *bao nhiêu*, đó mới là thứ quyết định có mở ra xem hay không;
+- **tô đúng dòng mới** (`bg-accent-soft/70`) + in đậm. Một cụm là cả một loạt cùng loại cùng người, nên
+  "người kia đã lưu 8 địa điểm" có thể chứa 6 dòng đọc hôm qua và 2 dòng mới một phút trước.
+
+Bỏ: nền cả thẻ, viền trái, vạch "MỚI". Đã nghiệm thu bằng hình ở cả 390px và 1440px.
 
 **Không đánh dấu hoạt động của chính mình** — việc mình vừa làm 30 giây trước không phải tin mới, và
 `unreadCount` ở server cũng đếm theo đúng nguyên tắc đó.
