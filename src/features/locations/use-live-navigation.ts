@@ -5,7 +5,7 @@ import type { Maneuver } from "@/lib/maneuver-vi";
 /* Geometry lives in its own module so it can be checked without React — see
  * route-geometry.ts. The windowed match there is 9x cheaper than the full scan
  * this hook used to run on every GPS fix, and returns identical numbers. */
-import { cumulativeMetres, remainingAlongRoute } from "@/lib/route-geometry";
+import { cumulativeMetres, remainingAlongRoute, SNAP_MAX_M } from "@/lib/route-geometry";
 
 /** How long the emotion buttons stay refused after one is sent. */
 const PING_COOLDOWN_MS = 2500;
@@ -104,6 +104,10 @@ export type LiveNavigation = {
   pingReadyAt: number;
   /** User's own latest ping action to show their own emotion locally */
   userPingAction: string | null;
+  /** Position pinned to the route being followed, or null when not applicable. */
+  snappedGeo: LatLng | null;
+  /** Direction the road runs at that point, in degrees from north. */
+  snappedHeading: number | null;
 };
 
 // ── Geo helpers ──────────────────────────────────────────────────────────────
@@ -135,6 +139,17 @@ export function useLiveNavigation(options?: {
   const [remainingMeters, setRemainingMeters] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [legs, setLegs] = useState<LegInfo[]>([]);
+  /*
+   * The position as it should be DRAWN, once a route is being followed.
+   *
+   * A raw fix wanders off the tarmac by 15-25m in a street canyon, so the dot
+   * crosses buildings and the river while the rider is on the road. Pinned to
+   * the route it stays where they actually are. Null whenever there is no route
+   * or the fix is too far off one to pin honestly — see SNAP_MAX_M.
+   */
+  const [snappedGeo, setSnappedGeo] = useState<LatLng | null>(null);
+  /* Which way the road runs here, which is steadier than any compass. */
+  const [snappedHeading, setSnappedHeading] = useState<number | null>(null);
   const [userPingAction, setUserPingAction] = useState<string | null>(null);
   const [pingReadyAt, setPingReadyAt] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -327,6 +342,8 @@ export function useLiveNavigation(options?: {
     setError(null);
     setRemainingMeters(null);
     setRemainingSeconds(null);
+    setSnappedGeo(null);
+    setSnappedHeading(null);
     setEverHadPartner(false);
     setLastFixTs(Date.now()); // count "lost GPS" from when tracking begins
     setIsNavigating(true);
@@ -362,8 +379,23 @@ export function useLiveNavigation(options?: {
         if (rc && rc.length >= 2) {
           const cum = routeCumRef.current ?? cumulativeMetres(rc);
           if (!routeCumRef.current) routeCumRef.current = cum;
-          const { remaining, deviation, idx } = remainingAlongRoute(g, rc, cum, matchIdxRef.current);
+          const { remaining, deviation, idx, projection, bearing } = remainingAlongRoute(
+            g,
+            rc,
+            cum,
+            matchIdxRef.current,
+          );
           matchIdxRef.current = idx;
+          if (deviation <= SNAP_MAX_M) {
+            setSnappedGeo(projection);
+            setSnappedHeading(bearing);
+          } else {
+            // Genuinely elsewhere. Showing the truth is the point of the
+            // threshold — a dot pinned to a road nobody is on is worse than a
+            // dot that admits it is off it.
+            setSnappedGeo(null);
+            setSnappedHeading(null);
+          }
           setRemainingMeters(Math.round(remaining));
 
           if (optionsRef.current?.onOffRoute && deviation > (optionsRef.current.offRouteThresholdMeters ?? 50)) {
@@ -485,6 +517,8 @@ export function useLiveNavigation(options?: {
     accuracyM,
     partnerConnection,
     userPingAction,
+    snappedGeo,
+    snappedHeading,
     remainingMeters,
     remainingSeconds,
     error,

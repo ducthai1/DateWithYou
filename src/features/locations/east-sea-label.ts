@@ -12,8 +12,16 @@
  * so this keeps working if the upstream style changes how it builds labels.
  */
 
-/** Layers in the Liberty style that draw water names. */
-const WATER_LABEL_LAYERS = ["water_name_point_label", "water_name_line_label"];
+/*
+ * Layers that draw water names, across the styles this app uses.
+ *
+ * The names differ between them: Liberty splits point and line labels, while
+ * the dark style has a single `water_name`. Listing all three and skipping the
+ * ones a style does not have is what keeps the sea named correctly after a
+ * switch to night mode — checked against both styles, because the first version
+ * of night mode silently handed the sea back to "South China Sea".
+ */
+const WATER_LABEL_LAYERS = ["water_name_point_label", "water_name_line_label", "water_name"];
 
 /** Names the sea is published under, latin and local. */
 const SOUTH_CHINA_SEA = ["South China Sea", "Biển Đông", "南海"];
@@ -31,6 +39,9 @@ export function applyEastSeaLabel(map: StyleMap): number {
       if (!map.getLayer(id)) continue;
       const original = map.getLayoutProperty(id, "text-field");
       if (original == null) continue;
+      // Already ours. Re-wrapping still works but nests a copy of the same
+      // test on every style event, and this runs on each one.
+      if (Array.isArray(original) && original[0] === "case" && original[2] === "Biển Đông") continue;
       // Match on any of the published names, and on the untranslated `name`
       // too — which field carries it depends on the tile build.
       const matches = SOUTH_CHINA_SEA.flatMap((n) => [

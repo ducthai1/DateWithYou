@@ -12,6 +12,7 @@ import { calendarRouter } from "@/server/trpc/routers/calendar";
 import { mediaRouter } from "@/server/trpc/routers/media";
 import { capsuleRouter } from "@/server/trpc/routers/capsule";
 import { tripRouter } from "@/server/trpc/routers/trip";
+import { rideRouter } from "@/server/trpc/routers/ride";
 import { interactionRouter } from "@/server/trpc/routers/interaction";
 import { activityRouter } from "@/server/trpc/routers/activity";
 import { dashboardRouter } from "@/server/trpc/routers/dashboard";
@@ -34,6 +35,7 @@ export const appRouter = router({
   media: mediaRouter,
   capsule: capsuleRouter,
   trip: tripRouter,
+  ride: rideRouter,
   interaction: interactionRouter,
   activity: activityRouter,
   dashboard: dashboardRouter,

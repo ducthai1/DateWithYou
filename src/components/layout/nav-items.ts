@@ -4,6 +4,7 @@ import {
   Images,
   Settings,
   Library,
+  Bike,
   Plane,
   Sun,
   Bell,
@@ -36,6 +37,9 @@ export const NAV_ITEMS: {
   // come back, and a count is only useful where the thumb already is.
   { href: "/activity", label: "Hoạt động", Icon: Bell },
   { href: "/library", label: "Bộ sưu tập", Icon: Library },
+  // Rides already taken. Desktop sidebar only: the bottom bar is full, and this
+  // is a screen people visit to look back rather than one they reach for mid-trip.
+  { href: "/rides", label: "Đã đi", Icon: Bike, mobileHidden: true },
   // Still reachable on mobile from the top bar, so they stay out of the bottom
   // bar and appear only in the desktop sidebar.
   { href: "/search", label: "Tìm kiếm", Icon: Search, mobileHidden: true },

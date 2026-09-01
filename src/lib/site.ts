@@ -79,6 +79,7 @@ export const PRIVATE_ROUTES = [
   "/map",
   "/timeline",
   "/trips",
+  "/rides",
   "/vault",
   "/wheel",
   "/settings",

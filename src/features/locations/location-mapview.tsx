@@ -13,7 +13,22 @@ import { buzz } from "@/lib/haptics";
 
 // OpenFreeMap serves free vector tiles + styles with no API key, no signup, and
 // no credit card — unlike Mapbox, which gates tokens behind a payment method.
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+/*
+ * Two base maps, chosen by the clock.
+ *
+ * A white map at night is a torch in the face of someone riding a motorbike,
+ * and the app is used most in the evening. The dark style shares this one's
+ * sprite and a subset of its fonts, so the swap costs nothing that has not
+ * already been downloaded and cached.
+ */
+const MAP_STYLE_DAY = "https://tiles.openfreemap.org/styles/liberty";
+const MAP_STYLE_NIGHT = "https://tiles.openfreemap.org/styles/dark";
+
+/** Dusk to dawn, in the rider's own time zone. */
+function isNightNow(): boolean {
+  const h = new Date().getHours();
+  return h >= 18 || h < 6;
+}
 // Ho Chi Minh City centre.
 const DEFAULT_CENTER = { longitude: 106.7009, latitude: 10.7769, zoom: 12 };
 
@@ -331,6 +346,16 @@ function LocationMapViewImpl({
    * screen blank forever, so after 6s it is shown in whatever state it reached.
    */
   const [drawn, setDrawn] = useState(false);
+  /*
+   * Re-checked on a timer, not read once. A ride that starts at 17:50 crosses
+   * into the evening while the map is open, and the person should not have to
+   * reload to stop being dazzled.
+   */
+  const [night, setNight] = useState(isNightNow);
+  useEffect(() => {
+    const t = setInterval(() => setNight(isNightNow()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   useEffect(() => {
     const t = setTimeout(() => setDrawn(true), 6000);
     return () => clearTimeout(t);
@@ -364,6 +389,11 @@ function LocationMapViewImpl({
       <Map
         ref={mapRef}
         initialViewState={DEFAULT_CENTER}
+        /* Every style load, not just the first: switching to the night map
+           replaces the whole style, and with it the label override. */
+        onStyleData={(e) =>
+          applyEastSeaLabel(e.target as unknown as Parameters<typeof applyEastSeaLabel>[0])
+        }
         onLoad={(e) => {
           // Deliberately does NOT report a centre. The map opens on a fixed
           // default (Saigon), and reporting that as "where the person is
@@ -386,7 +416,7 @@ function LocationMapViewImpl({
           const c = e.target.getCenter();
           onCenterChange?.({ lat: c.lat, lng: c.lng });
         }}
-        mapStyle={MAP_STYLE}
+        mapStyle={night ? MAP_STYLE_NIGHT : MAP_STYLE_DAY}
         attributionControl={false}
         onClick={(e) =>
           onMapClick?.({ lat: e.lngLat.lat, lng: e.lngLat.lng })

@@ -1417,6 +1417,42 @@ Tệ hơn cả im lặng, vì nó sai một cách tự tin.
 gọi `setRouteLegs`. Khi thêm state phái sinh từ một API, hãy **grep tất cả chỗ gọi API đó**, đừng chỉ
 chỗ đầu tiên.
 
+## Bám đường: vẽ vị trí TRÊN đường, và lấy hướng từ con đường
+
+GPS trong hẻm phố Việt Nam lệch 15–25 m là bình thường, nên chấm vị trí đi xuyên qua nhà và qua sông
+trong khi người ta đang chạy trên đường. Nay khi đang bám một tuyến, thứ được **vẽ** là hình chiếu của
+vị trí lên tuyến, và **hướng** lấy từ hướng con đường tại đoạn đó chứ không từ la bàn (điện thoại nằm
+trong túi báo hướng nó đang nằm, còn la bàn lúc dừng đèn đỏ thì quay vòng vòng).
+
+**Ngưỡng `SNAP_MAX_M = 30` là phần quan trọng nhất, không phải phần bám.** Quá ngưỡng đó thì người ta
+thật sự đang ở chỗ khác — hẻm song song, rẽ nhầm, cầu vượt bắc qua đường — và ghim chấm vào tuyến sẽ
+**vẽ ra một lời nói dối tự tin**. Lúc đó trả về vị trí thật.
+
+Đã kiểm bằng đường thẳng giả lập: lệch 15 m → bám đúng lòng đường, hướng 90°/0° đúng; lệch 100 m →
+**không** bám.
+
+## Map tối ban đêm — và cái bẫy nó suýt kéo theo
+
+`liberty` → `dark` sau 18h (kiểm lại mỗi phút, vì chuyến đi bắt đầu 17h50 sẽ bước sang tối giữa đường).
+Đổi style gần như miễn phí: `dark` dùng **chung sprite** và chỉ cần một tập con font của `liberty`, mà
+service worker đã cache cả hai.
+
+⚠️ **Bẫy suýt dính:** hai style đặt tên layer nhãn nước **khác nhau** — `liberty` có
+`water_name_point_label` + `water_name_line_label`, `dark` chỉ có `water_name`. Chuyển sang map tối là
+**mất nhãn Biển Đông**, trả biển về "South China Sea". Đã thêm cả ba tên vào danh sách, và
+`applyEastSeaLabel` nay chạy trên **mọi** lần style nạp (`onStyleData`), không chỉ lần đầu — đổi style
+thay cả style nên override cũng mất theo.
+
+Kiểm bằng cách chạy chính hàm đó trên **style JSON thật của cả hai**: liberty đổi 2 layer, dark đổi 1;
+lần chạy thứ hai đổi 0 nhờ chốt chống bọc lồng. Đo độ sáng vùng bản đồ: **24/255 ban đêm** vs
+**226/255 ban ngày**.
+
+## Lịch sử chuyến đi: ghi cái đã đi được, không ghi cái đã định đi
+
+`ride.record` nhận **quãng đã đi thật** = quãng theo kế hoạch trừ phần còn lại lúc kết thúc — chuyến bỏ
+dở không đi hết kế hoạch. Bỏ qua chuyến **dưới 60 giây hoặc dưới 100 m**: một cú chạm nhầm không được
+để lại kỷ niệm.
+
 ## Bám tuyến: đừng quét cả polyline mỗi nhịp GPS
 
 `remainingAlongRoute` quét **toàn bộ** polyline để tìm điểm bám, rồi cộng dồn **toàn bộ** phần còn lại

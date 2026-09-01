@@ -92,8 +92,9 @@ export function remainingAlongRoute(
   coords: Array<[number, number]>,
   cum: number[],
   hintIdx = 0,
-): { remaining: number; deviation: number; idx: number } {
-  if (coords.length < 2) return { remaining: 0, deviation: 0, idx: 0 };
+): { remaining: number; deviation: number; idx: number; projection: LatLng; bearing: number } {
+  if (coords.length < 2)
+    return { remaining: 0, deviation: 0, idx: 0, projection: user, bearing: 0 };
 
   const scan = (from: number, to: number) => {
     let bestIdx = from;
@@ -128,5 +129,41 @@ export function remainingAlongRoute(
     remaining: toNextVertex + Math.max(0, cum[last] - cum[m.bestIdx + 1]),
     deviation: m.bestDist,
     idx: m.bestIdx,
+    // The point ON the road, and which way the road runs there. Both are what a
+    // map should show while following a route: a raw fix wanders off the tarmac
+    // by tens of metres and a compass reading spins while stopped at a light.
+    projection: m.bestProj,
+    bearing: bearingBetween(
+      { lat: coords[m.bestIdx][1], lng: coords[m.bestIdx][0] },
+      { lat: coords[m.bestIdx + 1][1], lng: coords[m.bestIdx + 1][0] },
+    ),
   };
 }
+
+/**
+ * Compass bearing from a to b, in degrees clockwise from north.
+ *
+ * Used for the direction of travel while snapped to a route. Taken from the
+ * road's own geometry rather than the device: a phone in a pocket reports
+ * whichever way it is lying, and a stationary rider's compass drifts in
+ * circles, both of which spin the map for no reason.
+ */
+export function bearingBetween(a: LatLng, b: LatLng): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const y = Math.sin(toRad(b.lng - a.lng)) * Math.cos(toRad(b.lat));
+  const x =
+    Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) -
+    Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(toRad(b.lng - a.lng));
+  return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360;
+}
+
+/**
+ * How far off the route a fix may be and still be shown on it.
+ *
+ * Beyond this the rider genuinely is somewhere else — a parallel alley, a wrong
+ * turn, a bridge over the road — and pinning the dot to the line would draw a
+ * confident lie. GPS in a Vietnamese street canyon is commonly 15-25m out, so
+ * this has to be loose enough to cover that and tight enough to let a real
+ * deviation through.
+ */
+export const SNAP_MAX_M = 30;

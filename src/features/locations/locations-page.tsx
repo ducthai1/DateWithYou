@@ -274,6 +274,17 @@ export function LocationsPage() {
   // exactly once even when it arrives twice (SSE event + polling fallback).
   const handledInviteRef = useRef<string | null>(null);
   const nav = useNavigation();
+  /*
+   * When the current ride started, so it can be written to the history.
+   *
+   * A ref rather than state: nothing renders from it, and it must survive the
+   * re-renders that a live GPS stream causes several times a second.
+   */
+  const rideStartedAt = useRef<Date | null>(null);
+  const recordRide = trpc.ride.record.useMutation();
+  useEffect(() => {
+    if (nav.isNavigating && !rideStartedAt.current) rideStartedAt.current = new Date();
+  }, [nav.isNavigating]);
 
   /*
    * Re-routing stays on this page rather than moving into the provider: it
@@ -340,6 +351,16 @@ export function LocationsPage() {
 
 
   const liveUser = nav.userGeo ?? userGeo;
+  /*
+   * What to draw and what to point the camera at while a route is being followed.
+   *
+   * The snapped pair when there is one, the raw fix otherwise. Snapping is what
+   * keeps the dot on the road instead of drifting through buildings, and takes
+   * the map's rotation from the road's own direction rather than a compass that
+   * spins while stopped at a light.
+   */
+  const shownUser = nav.snappedGeo ?? liveUser;
+  const shownHeading = nav.snappedHeading ?? nav.heading;
 
   /*
    * Turn-by-turn for the leg currently being ridden.
@@ -1038,7 +1059,35 @@ export function LocationsPage() {
 
   // End the trip for good: reset everything and remember the invite as finished
   // so the server's re-delivery can't auto-start it again after a reload.
+  /*
+   * Write the finished ride to the history.
+   *
+   * Distance is what was actually covered — the planned length minus whatever
+   * was still ahead when it ended — rather than the plan, because a trip cut
+   * short did not cover the plan. Very short or barely-moved trips are dropped:
+   * a mistaken tap should not leave a keepsake behind.
+   */
+  const saveRideIfWorthKeeping = () => {
+    const startedAt = rideStartedAt.current;
+    rideStartedAt.current = null;
+    if (!startedAt) return;
+    const endedAt = new Date();
+    const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
+    const planned = routeDistanceMeters ?? 0;
+    const covered = Math.max(0, planned - (nav.remainingMeters ?? 0));
+    if (durationSeconds < 60 || covered < 100) return;
+    recordRide.mutate({
+      destinationName: selectedName ?? "Chuyến đi",
+      startedAt,
+      endedAt,
+      distanceMeters: Math.round(covered),
+      durationSeconds,
+      companion: !!currentTripInviteId,
+    });
+  };
+
   const endTrip = () => {
+    saveRideIfWorthKeeping();
     if (currentTripInviteId) {
       markTripEnded(currentTripInviteId);
       // Tell the server so the partner gets the "they ended — stop too?" prompt.
@@ -1284,12 +1333,12 @@ export function LocationsPage() {
               draftGeo={draftGeo}
               onCenterChange={setMapCenter}
               userAccuracyM={nav.accuracyM}
-              userGeo={liveUser}
+              userGeo={shownUser}
               partnerLocation={nav.partnerLocation}
               partnerPingAction={navInvites.partnerPingAction}
               userPingAction={nav.userPingAction}
-              followGeo={nav.userGeo}
-              heading={nav.heading}
+              followGeo={nav.snappedGeo ?? nav.userGeo}
+              heading={shownHeading}
               userAvatar={userAvatar}
               partnerAvatar={partnerAvatar}
               onSelect={setSelectedId}
@@ -1582,8 +1631,8 @@ export function LocationsPage() {
                 partnerLocation={nav.partnerLocation}
                 partnerPingAction={navInvites.partnerPingAction}
                 userPingAction={nav.userPingAction}
-                followGeo={nav.isNavigating ? nav.userGeo : null}
-                heading={nav.isNavigating ? nav.heading : null}
+                followGeo={nav.isNavigating ? (nav.snappedGeo ?? nav.userGeo) : null}
+                heading={nav.isNavigating ? shownHeading : null}
                 userAvatar={userAvatar}
                 partnerAvatar={partnerAvatar}
                   onSelect={setSelectedId}
