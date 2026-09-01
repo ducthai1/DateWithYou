@@ -1276,6 +1276,126 @@ Sau khi thêm dòng đánh dấu để mô phỏng deploy, tôi dọn bằng `gi
 nó revert **cả file** về HEAD, cuốn theo thay đổi tách chunk vừa viết. Dọn sửa đổi tạm thì dùng
 `sed -i '/marker/d'`, đừng dùng lệnh revert cả file khi file đó đang có việc chưa commit.
 
+## Tìm địa điểm: nhà cung cấp nào tôn trọng cái gì (đã đo)
+
+TrackAsia nhận `location` + `radius` ở cả ba endpoint nhưng **hành xử khác hẳn nhau**.
+Đo thật, cùng một truy vấn `Jollibee`, bias Đà Nẵng (16.0544, 108.2022), bán kính 25km:
+
+| Endpoint | Kết quả |
+|---|---|
+| `place/textsearch` | 20 kết quả, **chỉ 1 cái trong thành phố**, còn lại 550–800 km. Bán kính gần như bị bỏ qua |
+| `place/nearbysearch` | tôn trọng bán kính nhưng **bỏ qua từ khoá** — trả về ATM, quán cháo, tiệm yến |
+| `place/autocomplete` | **10/10 đều ở Đà Nẵng**. Đây là cái duy nhất dùng được |
+| `textsearch` + tên tỉnh ghép vào query | 3 kết quả, đều đúng — nhưng ít hơn autocomplete |
+
+Vì vậy `suggestPlaces` dùng **autocomplete**. Ba hệ quả phải nhớ:
+
+- **Autocomplete không trả toạ độ.** Toạ độ lấy qua `place/details`, gọi **một lần cho kết quả được chọn**. Đừng gọi details cho từng dòng để hiện khoảng cách — 8 request mỗi lần gõ.
+- **`place_id` của autocomplete và textsearch là hai hệ khác nhau** — đo được 0/10 trùng. Không thể gộp kết quả hai endpoint để lấy toạ độ.
+- Dòng kết quả hiện **địa chỉ 2 dòng** thay cho "x km". Phường và thành phố nằm ở **cuối** địa chỉ, nên `truncate` cắt đúng phần cần đọc — dùng `line-clamp-2`.
+
+`sort` theo khoảng cách **không cứu được** textsearch: nó chỉ sắp xếp lại những gì API đã trả, còn 9 chi nhánh gần mà API không trả thì vẫn vô hình.
+
+### Đừng để khung nhìn mặc định nói thay vị trí người dùng
+
+`near` từng là `mapCenter ?? liveUser`, mà `onLoad` của bản đồ bắn `onCenterChange` ngay bằng
+`DEFAULT_CENTER` = Sài Gòn. Ai mở app ở tỉnh khác cũng bị **ghim bias về Sài Gòn**, tìm gì cũng ra
+kết quả cách vài trăm km trong khi cùng thương hiệu đó có chi nhánh ngay góc đường.
+
+Nay: `onLoad` **không** báo tâm bản đồ, `onMoveEnd` chỉ báo khi `e.originalEvent` tồn tại (người
+thật kéo, không phải camera tự bay theo pin/lộ trình), và thứ tự là `liveUser ?? mapCenter`.
+Cố ý xem thành phố khác vẫn hoạt động đúng — vì lúc đó người ta đã kéo bản đồ thật.
+
+## Dán link Maps: hai lỗi chồng nhau, một cái ngẫu nhiên
+
+Triệu chứng: "hôm qua dán được, hôm nay báo lỗi không tạo được" trên cả Mac lẫn iPhone.
+
+1. **`district` là bắt buộc mà không cách nào điền.** Toạ độ trong link **chỉ giải mã được ở server**
+   (link ngắn phải đi theo redirect; link Share từ điện thoại không chứa toạ độ, phải geocode tên chỗ).
+   Việc đó xảy ra lúc `create`, nên trình duyệt không có `geo` ⇒ query `areaAt` không chạy ⇒ khu vực
+   rỗng ⇒ Zod `min(1)` chặn nguyên lượt lưu. Chọn địa điểm từ ô tìm kiếm thì có `geo` nên lại chạy được
+   — đó là lý do "lúc được lúc không" theo cách người dùng thao tác.
+2. **Không retry khi mạng chớp.** Log bắt được `TypeError: fetch failed` ở hop đầu (DNS chưa ấm /
+   container serverless mới khởi động). Resolver `break` ngay, mà link ngắn **chưa kịp** trở thành
+   `/maps/place/…` nên cũng không còn tên chỗ để geocode ⇒ trả `null`. Chạy lại đúng link đó thì được.
+
+Cách chữa, cả ba tầng — đừng bỏ tầng nào:
+- `location.geoFromUrl` giải mã link **ngay khi dán** (debounce 400ms) → pin rơi xuống → `areaAt` tự điền khu vực **trước** khi bấm lưu.
+- `resolveFinalUrl` **thử lại 1 lần** cho lỗi mạng; **không** retry khi timeout (deadline sinh ra để được tôn trọng).
+- `districtSchema` bỏ `min(1)`; handler gọi `withArea()` suy khu vực từ chính toạ độ vừa giải mã, bí lắm mới ghi `"Chưa rõ khu vực"`. **Một cú dán hợp lệ không bao giờ được phép hard-fail.**
+
+`areaAtPoint()` (`src/server/lib/area-at-point.ts`) ưu tiên TrackAsia reverse-geocode (có key sẵn,
+trả thẳng đơn vị hành chính 2025: `administrative_area_level_2` = phường, `_1` = tỉnh), Nominatim chỉ
+là dự phòng vì bị giới hạn tần suất.
+
+## Không bao giờ dội JSON của Zod vào mặt người dùng
+
+Toast người dùng chụp lại được:
+
+```
+Lưu thất bại: [ { "origin": "string", "code": "too_small", "minimum": 1,
+"inclusive": true, "path": [ "district" ], "message": "Too small: expected
+string to have >=1 characters" } ]
+```
+
+Đúng từng chữ, và **không câu nào** cho biết là thiếu khu vực. Nguyên nhân: `onError` in thẳng
+`err.message`, mà tRPC chuyển nguyên `issues` của Zod thành chuỗi JSON.
+
+`readableFormError()` (`src/lib/form-error.ts`) dịch sang tên field **người ta nhìn thấy trên form**
+(`district` → "Khu vực", `category` → "Loại địa điểm"…) ⇒ chuỗi trên thành **"Thiếu khu vực"**.
+Chuỗi không bắt đầu bằng `[` thì trả về nguyên văn (vd `UNAUTHORIZED`), không đoán bừa.
+
+Hai luật đi kèm:
+- Field nào **hệ thống suy được** (khu vực suy từ toạ độ) thì đừng bắt người dùng điền — suy ở handler.
+- Field nào **chỉ người dùng biết** (loại địa điểm) thì chặn **ở client** kèm câu nói rõ, đừng để rơi
+  xuống server rồi trả về lỗi validate. Nút lưu trước đây chỉ chặn khi thiếu tên ⇒ thiếu loại địa điểm
+  là lọt xuống và vỡ đúng kiểu cũ.
+
+### Link Maps: ưu tiên pin thật, không phải tâm camera
+
+Một link Google Maps thường chứa **hai** toạ độ khác nhau. Đo trên link thật của user
+(`maps.app.goo.gl/ozY1ZQ9C4ccowo3F9`, chỗ "Biển Hồ"):
+
+| Nguồn trong URL | Toạ độ | |
+|---|---|---|
+| `!3d!4d` — pin thật | 14.0522624, 108.002075 | ✅ resolver dùng cái này |
+| `@lat,lng` — tâm camera | 14.0671335, 107.9786836 | lệch **3,02 km** |
+
+Thứ tự `PATTERNS` trong `resolve-maps-geo.ts` đặt `!3d!4d` **đầu** và `@lat,lng` **cuối** chính vì vậy.
+Đừng sắp lại thứ tự này cho "gọn".
+
+⚠️ Khi đọc link từ ảnh chụp màn hình: ô input **cắt chữ ở mép**. Một link tôi lấy từ ảnh bị thiếu
+ký tự, trả HTTP 404, và suýt bị kết luận là "resolver hỏng". Đếm độ dài id (`maps.app.goo.gl` thường
+17 ký tự) hoặc `curl` xem status trước khi tin.
+
+## Nút cảm xúc lúc dẫn đường: prop thiếu ở đúng bản đồ đang nhìn
+
+`LocationMapView` được render **hai lần** trên trang bản đồ: một bản nền, và một bản trong lớp phủ
+dẫn đường (`fixed inset-0 z-50`). Bốn nút 🥵🐌🥺🚨 nằm trên **lớp phủ**, nhưng `partnerPingAction` và
+`userPingAction` chỉ được truyền cho **bản nền** — tức bản đang bị lớp phủ che kín. Bấm thì bong bóng
+vẽ lên một bản đồ không ai nhìn thấy, và ping của người kia bay qua SSE về đến nơi thì không có chỗ đáp.
+
+Kèm hai đường im lặng trong `sendPingAction`: `if (!p.userGeo) return;` (chưa có GPS) và bộ chặn spam
+2.5s. Cả hai đều là `return` trần ⇒ đúng hai tình huống dễ xảy ra nhất lại là hai tình huống không nói gì.
+Nay hàm trả `"sent" | "too-soon" | "no-location"`, thiếu GPS thì toast, còn thời gian chờ thì vẽ mờ nút.
+
+**Luật rút ra:** component nào render nhiều hơn một lần thì mọi prop phải được đối chiếu **giữa các bản**,
+không chỉ đọc một bản. Grep tên prop và đếm số chỗ xuất hiện — lệch số là nghi ngờ.
+
+## Nạp sẵn bản đồ: đúng chỗ, và tuyệt đối không nạp trên chính /map
+
+`WarmMapAssets` (mount ở root layout) tải trước bundle maplibre + asset tile lúc **idle**, trên trang
+người ta đang đọc, để lúc bấm sang bản đồ thì không còn gì phải đợi. Bỏ qua khi `saveData` hoặc mạng 2g.
+
+⚠️ **Phải bỏ qua khi đang ở `/map`.** Nạp trước ngay trên trang bản đồ là xin đúng những byte mà bản đồ
+đang xếp hàng chờ, trên đường truyền vốn đã bão hoà: đo được **26,4 giây** mới vẽ xong, so với 3,4s khi
+có chặn `pathname.startsWith("/map")`.
+
+`onIdle` của MapLibre là tín hiệu "khung hình này đã đủ", nên bản đồ chỉ hiện ra khi vẽ xong thay vì
+ghép dần từng mảng trước mắt người dùng. Có hàng rào 6s để một tile chết không làm màn hình trắng mãi —
+**muốn biết bản đo nào là map thật sự vẽ xong thì xem con số có dưới 6000ms không**; trên 6s nghĩa là
+hàng rào cứu, không phải map xong.
+
 ## Vài điều khác về repo này
 
 - **Route công khai phải thêm vào `MARKETING_ROUTES`**
