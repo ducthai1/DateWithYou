@@ -34,11 +34,32 @@ const DEBOUNCE_MS = 300;
 /** Bias point is rounded to this, in degrees (~5km) — see biasKey below. */
 const BIAS_GRID = 0.05;
 
+/** Metres → the short form people read on a result row. */
+function fmtAway(m: number): string {
+  if (m < 950) return `${Math.round(m / 10) * 10} m`;
+  if (m < 10000) return `${(m / 1000).toFixed(1)} km`;
+  return `${Math.round(m / 1000)} km`;
+}
+
+/** Straight-line metres between two points. */
+function metresBetween(a: LatLng, b: LatLng): number {
+  const R = 6371000;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.lat * Math.PI) / 180) *
+      Math.cos((b.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
 export function PlaceSearchBox({
   value,
   onValueChange,
   onPickPlace,
   near,
+  myGeo,
   filterCount,
   onToggleFilters,
   filtersOpen,
@@ -49,6 +70,13 @@ export function PlaceSearchBox({
   onPickPlace: (place: { name: string; url: string | null } & LatLng) => void;
   /** Where the map is looking, used to bias results. */
   near?: LatLng | null;
+  /**
+   * The person's own live position. Distances are measured from here and from
+   * nowhere else: "3.2 km" has to mean 3.2km from them, so when there is no fix
+   * the row shows no distance rather than a number quietly measured from the
+   * map's centre.
+   */
+  myGeo?: LatLng | null;
   filterCount: number;
   onToggleFilters: () => void;
   filtersOpen: boolean;
@@ -95,6 +123,29 @@ export function PlaceSearchBox({
     },
   );
   const items = useMemo(() => suggestions.data ?? [], [suggestions.data]);
+  /*
+   * Distances arrive after the list, not with it.
+   *
+   * Autocomplete gives no coordinates, so each row needs its own details call —
+   * eight of them measured 1.66s even in parallel. Holding the list back for
+   * that would trade the thing people notice most (suggestions appearing as
+   * they type) for the thing they notice second. So the rows render at once and
+   * the distance fills in a beat later, into space already reserved for it.
+   *
+   * Keyed only by the ids, never by the position: coordinates do not change, so
+   * panning the map or walking down the street must not refetch them.
+   */
+  const placeIds = useMemo(() => items.map((i) => i.placeId), [items]);
+  const coords = trpc.location.placeCoords.useQuery(
+    { placeIds },
+    { enabled: placeIds.length > 0, staleTime: Infinity },
+  );
+  const distanceOf = (placeId: string): number | null => {
+    const point = coords.data?.[placeId];
+    if (!point || !myGeo) return null;
+    return metresBetween(myGeo, point);
+  };
+
 
   // Reset the highlight whenever the result set changes, or Enter would take
   // whatever happened to sit at the old index.
@@ -296,6 +347,15 @@ export function PlaceSearchBox({
                         {item.secondary}
                       </span>
                     ) : null}
+                  </span>
+                  {/* Fixed width, always rendered. The number arrives after the
+                      row does, and a column that appears later would shove the
+                      text sideways under the reader's eye. */}
+                  <span className="text-muted-foreground mt-0.5 w-14 shrink-0 text-right text-xs tabular-nums">
+                    {(() => {
+                      const d = distanceOf(item.placeId);
+                      return d == null ? "" : fmtAway(d);
+                    })()}
                   </span>
                 </button>
               </li>

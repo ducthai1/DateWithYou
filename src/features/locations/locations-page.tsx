@@ -1627,6 +1627,7 @@ export function LocationsPage() {
               // pans, so a deliberate look at another city still biases there,
               // but the default view no longer speaks for where they are.
               near={liveUser ?? mapCenter}
+              myGeo={liveUser}
               filterCount={activeFilterCount}
               filtersOpen={filtersOpen}
               onToggleFilters={() => setFiltersOpen((v) => !v)}

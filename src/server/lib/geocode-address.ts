@@ -485,6 +485,49 @@ export async function suggestPlaces(
   }
 }
 
+/*
+ * Coordinates for suggestion rows, so the list can show how far away each one
+ * is. Autocomplete carries no geometry and has no option to add it (tested:
+ * `fields`, `details`, `strictbounds` all change nothing), so each row costs a
+ * details call.
+ *
+ * Cached because a place never moves. Eight details calls measured 1.66s in
+ * parallel — too slow to make the list wait for, and pure waste to repeat for
+ * the same place on the next keystroke, the next search, or the next person.
+ * With the cache the second sighting of a place is free.
+ *
+ * The cap is a memory bound, not a correctness one; oldest entries go first.
+ */
+const COORD_CACHE = new Map<string, LatLng>();
+const COORD_CACHE_MAX = 2000;
+
+/** Coordinates for a batch of place ids, resolved in parallel and remembered. */
+export async function placeCoords(placeIds: string[]): Promise<Record<string, LatLng>> {
+  const out: Record<string, LatLng> = {};
+  const missing: string[] = [];
+  for (const id of placeIds) {
+    const hit = COORD_CACHE.get(id);
+    if (hit) out[id] = hit;
+    else missing.push(id);
+  }
+  if (missing.length) {
+    const found = await Promise.all(missing.map((id) => placeDetail(id).catch(() => null)));
+    missing.forEach((id, i) => {
+      const d = found[i];
+      if (!d) return;
+      const point = { lat: d.lat, lng: d.lng };
+      out[id] = point;
+      COORD_CACHE.set(id, point);
+    });
+    while (COORD_CACHE.size > COORD_CACHE_MAX) {
+      const oldest = COORD_CACHE.keys().next().value;
+      if (oldest === undefined) break;
+      COORD_CACHE.delete(oldest);
+    }
+  }
+  return out;
+}
+
 export type PlaceDetail = LatLng & {
   name: string;
   address: string;

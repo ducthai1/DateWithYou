@@ -1290,7 +1290,11 @@ TrackAsia nhận `location` + `radius` ở cả ba endpoint nhưng **hành xử 
 
 Vì vậy `suggestPlaces` dùng **autocomplete**. Ba hệ quả phải nhớ:
 
-- **Autocomplete không trả toạ độ.** Toạ độ lấy qua `place/details`, gọi **một lần cho kết quả được chọn**. Đừng gọi details cho từng dòng để hiện khoảng cách — 8 request mỗi lần gõ.
+- **Autocomplete không trả toạ độ, và không có tham số nào thêm được.** Đã thử `fields=geometry`, `details=true`, `strictbounds` — không cái nào đổi gì. Toạ độ chỉ có qua `place/details`.
+- **Khoảng cách km về SAU danh sách, không cùng lúc.** Mỗi dòng cần 1 lần `details`; đo 8 lần **song song vẫn mất 1.658 ms** (1 lần đơn lẻ 294 ms — provider chỉ cho song song ~1,4×). Chặn danh sách để chờ km là đánh đổi cái người ta để ý nhất (gợi ý hiện ra khi đang gõ) lấy cái để ý nhì. Nên: dòng render ngay, km điền vào **ô đã giữ chỗ sẵn** (`w-14 text-right`) — cột hiện muộn mà không giữ chỗ sẽ đẩy chữ sang ngang ngay dưới mắt người đọc.
+- **`placeCoords` cache theo `place_id`, KHÔNG theo vị trí.** Một chỗ thì không di chuyển: cache server (Map, trần 2000) + `staleTime: Infinity` ở client ⇒ lần gặp lại là miễn phí, và **kéo bản đồ hay đi bộ ngoài đường không được refetch**. Khoảng cách tính ở client từ toạ độ đã có.
+- **Khoảng cách phải đo từ GPS của người dùng, không phải điểm bias.** `myGeo` là prop riêng (`liveUser`), tách khỏi `near`. Không có fix GPS thì **để trống**, đừng lặng lẽ đo từ tâm bản đồ — "3,2 km" buộc phải nghĩa là 3,2 km tính từ họ.
+- Thứ tự dòng giữ theo relevance của autocomplete, **không sắp lại theo km sau khi km về**: km tới muộn hơn dòng, sắp lại lúc đó là đảo hàng ngay dưới ngón tay.
 - **`place_id` của autocomplete và textsearch là hai hệ khác nhau** — đo được 0/10 trùng. Không thể gộp kết quả hai endpoint để lấy toạ độ.
 - Dòng kết quả hiện **địa chỉ 2 dòng** thay cho "x km". Phường và thành phố nằm ở **cuối** địa chỉ, nên `truncate` cắt đúng phần cần đọc — dùng `line-clamp-2`.
 

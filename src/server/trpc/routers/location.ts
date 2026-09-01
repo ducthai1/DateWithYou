@@ -14,7 +14,7 @@ import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
 import { requireEnv } from "@/lib/env";
 import { extractFirstUrl } from "@/server/lib/resolve-maps-geo";
 import { resolvePastedMapLink } from "@/server/lib/resolve-pasted-map-link";
-import { placeDetail, suggestPlaces } from "@/server/lib/geocode-address";
+import { placeCoords, placeDetail, suggestPlaces } from "@/server/lib/geocode-address";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
 import { searchAreas } from "@/lib/vn-admin";
 import { areaAtPoint } from "@/server/lib/area-at-point";
@@ -335,6 +335,15 @@ export const locationRouter = router({
       }),
     )
     .query(({ input }) => suggestPlaces(input.query, input.near ?? null)),
+
+  /**
+   * Coordinates for the suggestion rows on screen, so each can say how far away
+   * it is. Separate from suggestPlaces on purpose: this costs one call per row
+   * and would otherwise hold the whole list back by well over a second.
+   */
+  placeCoords: protectedProcedure
+    .input(z.object({ placeIds: z.array(z.string().min(1).max(200)).max(10) }))
+    .query(({ input }) => placeCoords(input.placeIds)),
 
   /** The coordinate behind a suggestion, fetched once the person picks one. */
   placeDetail: protectedProcedure
