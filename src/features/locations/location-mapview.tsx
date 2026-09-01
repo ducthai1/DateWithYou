@@ -8,6 +8,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { geodesicCircle, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { buzz } from "@/lib/haptics";
 
 // OpenFreeMap serves free vector tiles + styles with no API key, no signup, and
 // no credit card — unlike Mapbox, which gates tokens behind a payment method.
@@ -126,8 +127,11 @@ function LocationMapViewImpl({
     if (action === "WAIT") emoji = "🥺 Đợi xíu nha!";
     if (action === "HURRY") {
       emoji = "🚨 Rung rinh!";
-      if (isPartner && typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate([200, 100, 200, 100, 500]); // Urgent pattern
+      if (isPartner) {
+        // Urgent, and allowed to fall back to sound: this is the one signal
+        // meant to reach someone who is not looking at the screen, and on iOS
+        // there is no vibration to fall back on.
+        buzz([200, 100, 200, 100, 500], { urgent: true });
       }
     }
     return emoji;
@@ -172,16 +176,37 @@ function LocationMapViewImpl({
    * it happens exactly once: after that the view belongs to whoever is panning
    * it, and a later fix must not yank it back.
    */
+  /** MapLibre has handed over an instance; before this `mapRef` is still null. */
+  const [mapReady, setMapReady] = useState(false);
+
+  /*
+   * Centre on the person's own position, once, as soon as BOTH the fix and the
+   * map exist.
+   *
+   * Waiting on `mapReady` is the whole fix. This used to fire on the fix alone
+   * and call `mapRef.current?.easeTo(...)` — and the position almost always
+   * wins that race, because the on-arrival lookup accepts a fix up to five
+   * minutes old and so returns from cache immediately, while MapLibre still has
+   * a bundle, a style, a sprite and six font files to fetch. So `mapRef.current`
+   * was null, the optional chaining swallowed the call, and the flag had
+   * already been set — one silent no-op and the map stayed on its default
+   * centre for the rest of the session. Anyone not in Saigon opened the app
+   * looking at Saigon with their location switched on.
+   *
+   * The flag is now set only after the camera has actually been told to move.
+   */
   const centredOnFirstFix = useRef(false);
   useEffect(() => {
-    if (centredOnFirstFix.current || !userGeo || followGeo || focusGeo) return;
+    if (centredOnFirstFix.current || !mapReady || !userGeo || followGeo || focusGeo) return;
+    const map = mapRef.current;
+    if (!map) return;
     centredOnFirstFix.current = true;
-    mapRef.current?.easeTo({
+    map.easeTo({
       center: [userGeo.lng, userGeo.lat],
       zoom: 14,
       duration: 700,
     });
-  }, [userGeo, followGeo, focusGeo]);
+  }, [mapReady, userGeo, followGeo, focusGeo]);
 
   // Follow mode: keep the live position centred as the user moves.
   // When heading is available, rotate the map so "up" = direction of travel.
@@ -297,6 +322,7 @@ function LocationMapViewImpl({
         ref={mapRef}
         initialViewState={DEFAULT_CENTER}
         onLoad={(e) => {
+          setMapReady(true);
           // Deliberately does NOT report a centre. The map opens on a fixed
           // default (Saigon), and reporting that as "where the person is
           // looking" made it the search bias for everyone — so anyone opening

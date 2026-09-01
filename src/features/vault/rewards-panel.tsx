@@ -14,6 +14,7 @@ import { StaggerList } from "@/components/ui/stagger-list";
 import { useCelebrate } from "@/components/ui/celebrate";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { buzz } from "@/lib/haptics";
 
 // Small grant/redeem chip — min 40px tall for touch targets
 const CHIP =
@@ -77,7 +78,7 @@ export function RewardsPanel() {
   function handleRedeem(voucherId: string, forUserId: string, anchorEl?: HTMLElement | null) {
     redeem.mutate({ voucherId, forUserId }, {
       onSuccess: () => {
-        navigator.vibrate?.(30);
+        buzz(30);
       }
     });
     celebrate(anchorEl);

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { calculateDistance, type LatLng } from "@/lib/maps";
+import { buzz } from "@/lib/haptics";
 
 /**
  * The "you two arrived at the same place" moment.
@@ -65,8 +66,8 @@ export function MeetingFlare({
       setVisible(true);
       // One short tap. The previous pattern was a five-pulse "heartbeat",
       // which is a lot of buzzing to receive for walking up to a friend.
-      if (typeof navigator !== "undefined" && navigator.vibrate && !reduceMotion) {
-        navigator.vibrate(18);
+      if (!reduceMotion) {
+        buzz(18);
       }
       hideTimer.current = setTimeout(() => setVisible(false), VISIBLE_MS);
     } else if (distance >= RESET_RADIUS_M) {

@@ -355,14 +355,37 @@ export function ActivityFeed() {
                             <Link
                               href={item.href}
                               className={cn(
-                                "flex min-h-10 items-center gap-2 rounded-lg px-2 py-1.5 transition-colors",
+                                "hover:bg-muted flex min-h-10 items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors",
                                 "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
-                                // Small enough to be a highlight rather than a
-                                // background, and it lands on the one row it is
-                                // true of.
-                                itemNew ? "bg-accent-soft/70 hover:bg-accent-soft" : "hover:bg-muted",
                               )}
                             >
+                              {/*
+                                A dot, not a tinted row.
+                                The tint was warm peach — the same accent that
+                                paints every icon, link and active tab in this
+                                app — so it read as a hover state rather than as
+                                "unread". A filled dot is the glyph Gmail, iOS
+                                Mail and GitHub all use for exactly this, and it
+                                needs no explaining.
+
+                                The slot only exists on cards that have
+                                something new. Reserving it everywhere cost
+                                every row 14px of title on a 390px screen, and
+                                the names are already tight — "Sữa đậu Mai
+                                Hương" became "Sữa đậ…". Within a card the slot
+                                is on every row, so they still line up, and a
+                                card with nothing new is exactly as wide as it
+                                was.
+                              */}
+                              {newCount > 0 && (
+                                <span
+                                  className={cn(
+                                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                                    itemNew ? "bg-accent" : "bg-transparent",
+                                  )}
+                                  aria-hidden="true"
+                                />
+                              )}
                               <KindIcon
                                 className="text-accent h-4 w-4 shrink-0"
                                 aria-hidden="true"
@@ -376,13 +399,21 @@ export function ActivityFeed() {
                                 {item.title}
                                 <span className="sr-only">{itemNew ? " — chưa xem" : ""}</span>
                               </span>
-                              {/* Allowed to shrink and truncate. As shrink-0 a
+                              {/* Not on a phone at all. At 52% of a 390px row
+                                  it truncated the place's own name to "Sữa đậ…",
+                                  and narrowing it only turned the ward itself
+                                  into "Phường B…" — a stub that occupies a
+                                  third of the line and says nothing. The header
+                                  already gives who, what and how many, and the
+                                  full address is one tap away. From sm up there
+                                  is room for both. Allowed to shrink and
+                                  truncate: as shrink-0 a
                                   full date range ("06/09/2026 - 16/09/2026")
                                   could not yield, so once the title had
                                   truncated to nothing the row still pushed 14px
                                   past the screen at 320px. */}
                               {item.subtitle && (
-                                <span className="text-muted-foreground min-w-0 max-w-[52%] truncate text-xs">
+                                <span className="text-muted-foreground hidden min-w-0 max-w-[52%] truncate text-xs sm:inline">
                                   {item.subtitle}
                                 </span>
                               )}

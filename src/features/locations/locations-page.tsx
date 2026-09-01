@@ -100,6 +100,7 @@ import { MeetingFlare } from "./meeting-flare";
 import { MapSheet } from "./map-sheet";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { PlaceSearchBox } from "./place-search-box";
+import { buzz } from "@/lib/haptics";
 
 
 /**
@@ -486,9 +487,7 @@ export function LocationsPage() {
       if (!stationaryTimeoutRef.current) {
         stationaryTimeoutRef.current = setTimeout(() => {
           setShowTrafficWarning(true);
-          if (typeof navigator !== "undefined" && navigator.vibrate) {
-             navigator.vibrate([200, 100, 200]);
-          }
+          buzz([200, 100, 200], { urgent: true });
         }, 10_000); // 10 seconds for testing
       }
     } else {
@@ -866,7 +865,7 @@ export function LocationsPage() {
     if (rem < LEG_ARRIVE_THRESHOLD_M) {
       legArmedRef.current = false;
       setLegArrived(true);
-      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([120, 80, 120]);
+      buzz([120, 80, 120], { urgent: true });
     }
   }, [nav.remainingMeters, legGeometries, legArrived]);
 
@@ -907,7 +906,7 @@ export function LocationsPage() {
     }
     setLegMessage(`Bắt đầu chặng ${nextIdx + 1}/${total} 🛵`);
     setTimeout(() => setLegMessage(null), 4000);
-    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(80);
+    buzz(80);
   };
 
   /*

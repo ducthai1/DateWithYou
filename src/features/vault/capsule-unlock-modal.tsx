@@ -5,6 +5,7 @@ import confetti from "canvas-confetti";
 import { trpc } from "@/lib/trpc";
 import { CapsuleEnvelope } from "./capsule-envelope";
 import { CapsuleLetter } from "./capsule-letter";
+import { buzz } from "@/lib/haptics";
 
 type UnlockState = "locked" | "unlocking" | "opened";
 
@@ -58,9 +59,7 @@ export function CapsuleUnlockModal({
   };
 
   const handleSealClick = () => {
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(isTimeArrived ? [60, 40, 80, 40, 160, 80, 300] : 50);
-    }
+    buzz(isTimeArrived ? [60, 40, 80, 40, 160, 80, 300] : 50);
     if (!isTimeArrived || unlockState !== "locked") return;
 
     setRevealError(null);
@@ -87,7 +86,7 @@ export function CapsuleUnlockModal({
         onError: () => {
           setUnlockState("locked");
           setRevealError("Chưa đến giờ mở khoá nha, đợi xíu nữa nhé 💌");
-          if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(40);
+          buzz(40);
         },
       },
     );

@@ -1332,6 +1332,69 @@ Cách chữa, cả ba tầng — đừng bỏ tầng nào:
 trả thẳng đơn vị hành chính 2025: `administrative_area_level_2` = phường, `_1` = tỉnh), Nominatim chỉ
 là dự phòng vì bị giới hạn tần suất.
 
+## `?.` trên một ref chưa sẵn sàng = im lặng đốt mất cơ hội duy nhất
+
+Map luôn mở ở Sài Gòn dù user đã bật định vị và không ở Sài Gòn. Effect "bay về vị trí lần đầu" **có
+sẵn** và đúng logic, nhưng:
+
+```ts
+centredOnFirstFix.current = true;      // bật cờ TRƯỚC
+mapRef.current?.easeTo({ ... });       // rồi mới gọi — và ref có thể đang null
+```
+
+Vị trí gần như **luôn thắng** cuộc đua đó: hàm lấy fix lúc vào trang nhận `maximumAge: 5 phút` nên
+trả về từ cache **tức thì**, còn MapLibre còn phải tải bundle 267 KB + style + sprite + 6 file font.
+Nên `mapRef.current` là `null`, `?.` nuốt luôn lệnh, mà cờ thì đã bật ⇒ **một no-op im lặng và map
+nằm ở toạ độ mặc định suốt phiên**. (Việc tách chunk maplibre làm cửa sổ đua này rộng thêm.)
+
+**Luật:** cờ "chỉ làm một lần" chỉ được bật **sau khi việc đã thực sự xảy ra**. Và một ref do thư viện
+cấp phải có cờ readiness riêng (`mapReady` set trong `onLoad`) nằm trong deps — đừng tin vào việc
+effect chạy đúng lúc ref đã có.
+
+## iOS KHÔNG có Vibration API — `navigator.vibrate` là no-op trên mọi trình duyệt iPhone
+
+Ping từ Android → Android rung đúng; Android → iOS chỉ hiện banner. Vì WebKit chưa bao giờ ship
+Vibration API, và mọi trình duyệt trên iOS đều là WebKit. Repo này có 8 chỗ gọi `navigator.vibrate`
+trực tiếp — tất cả đều vô hiệu trên iPhone.
+
+`src/lib/haptics.ts` gom lại thành `buzz(pattern, { urgent })`, thử 3 tầng:
+
+1. **Vibration API** — Android/Chrome. Đúng pattern, không cần cử chỉ.
+2. **Switch haptic của iOS** — từ iOS 17.4, `<input type="checkbox" switch>` khi toggle sẽ phát một
+   nhịp haptic, và toggle bằng script cũng vậy. Đây là **đường duy nhất** một trang web chạm được vào
+   Taptic Engine. Element phải **thật sự nằm trong layout** — `display:none` thì không phát gì — nên
+   nó nằm ngoài màn hình ở 1×1, `opacity:0`.
+3. **Một tiếng bíp ngắn** (AudioContext, không cần file). Không phải haptic, nhưng là tín hiệu duy
+   nhất chắc chắn hoạt động trên mọi iPhone. Chỉ dùng cho `urgent` và chỉ khi 2 tầng trên thất bại —
+   bíp cho mọi ping nhỏ thì tệ hơn im lặng.
+
+`primeHaptics()` chạy trong **cử chỉ đầu tiên** của phiên (`PrimeHaptics` mount ở root layout):
+AudioContext tạo ngoài cử chỉ người dùng sẽ ở trạng thái suspended và **không resume lại được** trên
+iOS, nên phải dựng sẵn từ lúc còn có cử chỉ trên stack.
+
+⚠️ **Giới hạn phải nói thật:** iOS không cho trang web rung khi **không** có cử chỉ. Tầng 2 mạnh nhất
+ngay sau một cú chạm, và có thể **không làm gì** khi ping tới lúc máy đang nằm im. Cơ chế duy nhất iOS
+bảo đảm cho tình huống đó là **Web Push từ PWA đã cài** (iOS 16.4+) — cần service-worker push handler
++ VAPID key. Repo hiện **chưa có** Web Push.
+
+## Đánh dấu chưa đọc: 4 vòng chụp mới ra bản dùng được
+
+Ghi lại vì mỗi vòng đều sai theo một kiểu khác nhau, và chỉ **tự chụp lại** mới thấy:
+
+| Vòng | Làm gì | Sai ở đâu |
+|---|---|---|
+| v1 | tô cả thẻ + viền trái 3px + chấm + đậm + vạch "MỚI" | cụm 8 dòng chỉ 2 mới mà tô hết → nói quá; cạnh thẻ trắng đọc ra **đục**; viền cắt góc bo; 4 tín hiệu là ồn |
+| v2 | thẻ trắng + pill `N mới` + **tô đúng dòng mới** | peach chính là màu accent dùng khắp app (icon, link, nav active) ⇒ đọc ra **hover**, không ra "chưa đọc" |
+| v3 | thay tô bằng **chấm tròn** + đậm | ô chấm chiếm 14px ⇒ tên bị cắt nặng hơn: "Sữa đậ…" |
+| v4 | ô chấm **chỉ có ở thẻ có tin mới**, chấm nhỏ hơn, gap hẹp hơn | thẻ không có tin mới không mất chiều rộng nào — nhưng phụ đề vẫn chiếm 52% |
+| **v5–v6** | ẩn phụ đề trên màn hẹp (`hidden sm:inline`) | **chốt.** Tên hiện đủ, chấm rõ, desktop vẫn có phụ đề |
+
+Hai điều rút ra:
+- **Màu accent không dùng được làm dấu "chưa đọc"** trong một app đã dùng accent cho mọi thứ. Chấm
+  tròn là glyph quy ước (Gmail, iOS Mail, GitHub) và không cần giải thích.
+- **Một mẩu chữ bị cắt cụt tệ hơn là không có.** Thu phụ đề từ 52% xuống 34% chỉ biến "Phường Bến
+  Nghé, TP.HCM" thành "Phường B…" — chiếm một phần ba dòng và nói **không gì cả**.
+
 ## Modal chuyến đi: một điều kiện sinh ra ba triệu chứng
 
 User báo 3 chuyện tưởng rời rạc: chọn "đi 1 mình / cùng nhau" xong **modal không đóng**; modal
