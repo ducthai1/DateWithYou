@@ -103,7 +103,6 @@ export function NavigationMiniDock() {
               userGeo={nav.userGeo}
               followGeo={nav.userGeo}
               heading={nav.heading}
-              traveled={nav.traveled}
               partnerLocation={nav.partnerLocation}
               attribution={false}
               // `min-h-0` is doing real work: the map carries a

@@ -718,9 +718,9 @@ export function LocationsPage() {
     id: string,
     dest: LatLng | null,
     waypoints?: Array<{ lat: number; lng: number }>,
+    opts?: { askChoice?: boolean },
   ) {
     if (!dest) return;
-    const isManualTrip = !waypoints || waypoints.length === 0;
     setSelectedId(id);
     setFocusGeo({ ...dest }); // new object each call so the map re-flies
 
@@ -741,8 +741,19 @@ export function LocationsPage() {
      * connection, which reads as a dead button. The dialog appears at once and
      * its actions stay disabled until there is something to start.
      */
-    if (isManualTrip && typeof window !== "undefined" && window.innerWidth < 1024) {
-      setRoutePending(true);
+    /*
+     * Asking is now the caller's decision, not something inferred from whether
+     * waypoints happened to be present.
+     *
+     * It used to open whenever there were no waypoints, which made the solo
+     * planner reopen the very sheet it had just been chosen from: planning no
+     * stops means passing no waypoints, so redrawing the route counted as a
+     * fresh manual "Chỉ đường". The sheet came back, navigation started 1.2s
+     * later and covered it, and pressing "Kết thúc" revealed it again — three
+     * complaints, one condition.
+     */
+    setRoutePending(true);
+    if (opts?.askChoice && typeof window !== "undefined" && window.innerWidth < 1024) {
       setSheetCollapseTick((t) => t + 1);
       setTripChoiceOpen(true);
     }
@@ -806,10 +817,10 @@ export function LocationsPage() {
             }
           }
 
-          // The sheet is already up (see above); this only releases its buttons.
-          if (isManualTrip) {
-            setRoutePending(false);
-          }
+          // Always cleared, because it is always set: the flag now means "a
+          // route is being fetched" for every caller, not just the one that
+          // happens to have a sheet waiting on it.
+          setRoutePending(false);
 
           if (partnerR) {
             setPartnerRouteGeometry(partnerR.geometry);
@@ -899,9 +910,46 @@ export function LocationsPage() {
     if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(80);
   };
 
+  /*
+   * "Begin as soon as the route is drawn."
+   *
+   * The solo planner used to call nav.start() behind a 1200ms setTimeout, which
+   * is a guess at how long routing takes: quicker, and the map jumps before the
+   * line is there; slower, and navigation begins with no route at all and no
+   * way to tell. Waiting on the request itself is both correct and shorter in
+   * the common case — and it can refuse to start when the route failed, which a
+   * timer cannot.
+   */
+  const [autoStartWhenRouted, setAutoStartWhenRouted] = useState(false);
+  useEffect(() => {
+    if (!autoStartWhenRouted || routePending) return;
+    setAutoStartWhenRouted(false);
+    if (routeError) return;
+    setFocusGeo(null);
+    nav.start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartWhenRouted, routePending, routeError]);
+
+  /*
+   * Put away every dialog that belongs to starting a trip.
+   *
+   * They were closed one at a time by whoever happened to open the next one,
+   * which left whichever was missed sitting behind the full-screen navigation
+   * overlay — visible again the moment the trip ended, asking a question that
+   * no longer had a subject.
+   */
+  const closeTripDialogs = () => {
+    setTripChoiceOpen(false);
+    setShowCompanionChoice(false);
+    setSoloPlanOpen(false);
+    setStopPickerOpen(false);
+    setPlannedStops([]);
+  };
+
   // Wipe all live-trip state back to a clean map (no route, no legs, not paused).
   const resetTrip = () => {
     nav.stop();
+    closeTripDialogs();
     setPausedTrip(false);
     setLegGeometries(null);
     setCurrentLegIndex(0);
@@ -916,6 +964,16 @@ export function LocationsPage() {
     setPartnerRouteDurationSeconds(null);
     setSelectedId(null);
   };
+
+  /*
+   * Navigation has begun, so every question about how to begin is answered.
+   * Belt and braces on top of each button closing its own dialog: whatever was
+   * missed would otherwise sit under the full-screen overlay, unreachable and
+   * still open.
+   */
+  useEffect(() => {
+    if (nav.isNavigating) closeTripDialogs();
+  }, [nav.isNavigating]);
 
   // Temporarily leave navigation without ending the trip — GPS watch stops to
   // save battery, but the route stays so Resume can re-enter it.
@@ -1185,7 +1243,6 @@ export function LocationsPage() {
               heading={nav.heading}
               userAvatar={userAvatar}
               partnerAvatar={partnerAvatar}
-              traveled={nav.traveled}
               onSelect={setSelectedId}
               className="min-h-0 rounded-none border-0 shadow-none"
             />
@@ -1441,8 +1498,7 @@ export function LocationsPage() {
                 heading={nav.isNavigating ? nav.heading : null}
                 userAvatar={userAvatar}
                 partnerAvatar={partnerAvatar}
-                traveled={nav.traveled}
-                onSelect={setSelectedId}
+                  onSelect={setSelectedId}
                 onMapClick={handleMapClick}
               />
             </div>
@@ -2024,7 +2080,7 @@ export function LocationsPage() {
                       {l.geo && (
                         <button
                           className={`${ACTION_CLS} text-accent hover:bg-accent-soft`}
-                          onClick={() => goToLocation(l.id, l.geo)}
+                          onClick={() => goToLocation(l.id, l.geo, undefined, { askChoice: true })}
                         >
                           <Navigation className="h-3.5 w-3.5" /> Chỉ đường
                         </button>
@@ -2486,7 +2542,7 @@ export function LocationsPage() {
                       onClick={() => {
                         if (!selectedId) return;
                         const loc = list.data?.find((l) => l.id === selectedId);
-                        if (loc?.geo) goToLocation(loc.id, loc.geo);
+                        if (loc?.geo) goToLocation(loc.id, loc.geo, undefined, { askChoice: true });
                       }}
                     >
                       <Route className="h-4 w-4" /> Thử vẽ lại đường
@@ -2557,7 +2613,7 @@ export function LocationsPage() {
               // accepted companion trip takes.
               goToLocation(loc.id, loc.geo, waypointGeos.length ? waypointGeos : undefined);
               setPlannedStops([]);
-              setTimeout(() => { setFocusGeo(null); nav.start(); }, 1200);
+              setAutoStartWhenRouted(true);
             }}
           >
             <Play className="h-4 w-4" />

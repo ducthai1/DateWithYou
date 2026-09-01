@@ -278,10 +278,24 @@ export const activityRouter = router({
     return { count: counts.reduce((sum, n) => sum + n, 0) };
   }),
 
-  /** Moves this member's read watermark to now. */
+  /**
+   * Moves this member's read watermark to now, and reports where it was.
+   *
+   * The previous position is the whole point of returning anything: the feed
+   * marks itself seen the moment it opens, so without knowing where the line
+   * used to be there is no way to show which entries were the new ones. The
+   * caller holds that value for the visit and the badge still clears at once.
+   */
   markSeen: protectedProcedure.mutation(async ({ ctx }) => {
     await connectToDatabase();
     const now = new Date();
+
+    const before = await MemberStateModel.findOne({
+      spaceId: ctx.spaceId,
+      userId: ctx.userId,
+    })
+      .select("lastSeenActivityAt")
+      .lean<{ lastSeenActivityAt?: Date }>();
 
     // $max, not $set: two tabs marking seen out of order must never drag the
     // watermark backwards and resurrect already-read activity.
@@ -291,6 +305,11 @@ export const activityRouter = router({
       { upsert: true },
     );
 
-    return { lastSeenActivityAt: now };
+    return {
+      lastSeenActivityAt: now,
+      // null means the feed had never been opened, so everything the other
+      // person has ever added counts as new.
+      previousSeenAt: before?.lastSeenActivityAt ?? null,
+    };
   }),
 });

@@ -50,7 +50,6 @@ function LocationMapViewImpl({
   heading,
   userAvatar,
   partnerAvatar,
-  traveled,
   onSelect,
   onMapClick,
   onCenterChange,
@@ -79,7 +78,6 @@ function LocationMapViewImpl({
   heading?: number | null;
   userAvatar?: string;
   partnerAvatar?: string;
-  traveled?: Array<[number, number]>;
   onSelect?: (id: string) => void;
   onMapClick?: (geo: LatLng) => void;
   /**
@@ -457,24 +455,12 @@ function LocationMapViewImpl({
             </Marker>
           ))}
 
-        {traveled && traveled.length > 1 && (
-          <Source
-            id="traveled"
-            type="geojson"
-            data={{
-              type: "Feature",
-              properties: {},
-              geometry: { type: "LineString", coordinates: traveled } as never,
-            }}
-          >
-            <Layer
-              id="traveled-line"
-              type="line"
-              layout={{ "line-cap": "round", "line-join": "round" }}
-              paint={{ "line-color": "#4f46e5", "line-width": 8, "line-opacity": 1 }}
-            />
-          </Source>
-        )}
+        {/* No trail of where you have been.
+            It was drawn as an 8px indigo line at full opacity, over the top of
+            the route it belonged to, so the two blues fought each other and the
+            one that mattered — where to go next — was the fainter of the pair.
+            Where you have already been is the one thing a person navigating does
+            not need told. */}
 
         {userGeo && (
           <Marker
@@ -693,11 +679,38 @@ function LocationMapViewImpl({
               type="geojson"
               data={{ type: "Feature", properties: {}, geometry: routeGeometry as never }}
             >
+              {/*
+                Two lines, not one: a dark casing under a bright core.
+                A single pale-blue line at 0.8 opacity took its colour partly
+                from whatever it crossed — roads, water, park green — so it
+                faded exactly where the map was busiest and needed reading most.
+                The casing gives the route an edge of its own, which is how
+                every map application draws one, and the core can then be fully
+                opaque and properly bright.
+
+                Widths scale with zoom rather than sitting at a fixed 8px: the
+                same line that reads as a thread across a city is a stripe
+                across a street.
+              */}
+              <Layer
+                id="route-casing"
+                type="line"
+                layout={{ "line-cap": "round", "line-join": "round" }}
+                paint={{
+                  "line-color": "#1e3a8a",
+                  "line-opacity": 0.9,
+                  "line-width": ["interpolate", ["linear"], ["zoom"], 10, 7, 14, 13, 18, 20],
+                }}
+              />
               <Layer
                 id="route-line"
                 type="line"
                 layout={{ "line-cap": "round", "line-join": "round" }}
-                paint={{ "line-color": "#60a5fa", "line-width": 8, "line-opacity": 0.8 }}
+                paint={{
+                  "line-color": "#3b82f6",
+                  "line-opacity": 1,
+                  "line-width": ["interpolate", ["linear"], ["zoom"], 10, 4, 14, 9, 18, 14],
+                }}
               />
             </Source>
           )
@@ -711,7 +724,7 @@ function LocationMapViewImpl({
  * Memoised so the whole map subtree (and every Marker reconciliation) is skipped
  * when the parent re-renders for unrelated reasons — filter changes, modal opens,
  * form typing. It still re-renders when its OWN props change (live position,
- * traveled path, route), which is exactly when the map must update. For this to
+ * route, live position), which is exactly when the map must update. For this to
  * pay off the parent must pass stable refs for array/callback props (pins,
  * onSelect, onMapClick) — see locations-page memoisation.
  */

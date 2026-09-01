@@ -168,8 +168,24 @@ export function ActivityFeed() {
     staleTime: 60_000,
   });
 
+  /*
+   * Where the read line stood when this visit began.
+   *
+   * `undefined` while unknown, so nothing is marked before the answer arrives —
+   * a flash of "everything is new" would be worse than a beat with no marks.
+   * `null` means the feed has never been opened, and then everything the other
+   * person has added is new.
+   *
+   * Frozen for the visit on purpose. The feed marks itself seen the moment it
+   * opens (that is what clears the badge), so reading the live watermark would
+   * erase the distinction in the same breath as showing it — the reader would
+   * never see which entries they had not seen.
+   */
+  const [seenBefore, setSeenBefore] = useState<Date | null | undefined>(undefined);
+
   const markSeen = trpc.activity.markSeen.useMutation({
-    onSuccess: () => {
+    onSuccess: (res) => {
+      setSeenBefore(res.previousSeenAt ? new Date(res.previousSeenAt) : null);
       utils.activity.unreadCount.invalidate();
     },
     onError: () => toast("Chưa đánh dấu được là đã xem, thử lại sau nhé", "error"),
@@ -191,6 +207,38 @@ export function ActivityFeed() {
 
   const items = useMemo(() => list.data?.items ?? [], [list.data]);
   const days = useMemo(() => byDay(items), [items]);
+
+  /*
+   * What counts as unread.
+   *
+   * Only the other person's activity. Your own additions are not news to you,
+   * and the badge already counts it that way — marking them would put a "new"
+   * flag on something you did thirty seconds ago.
+   */
+  const isSelf = (actorId: string) => memberById.get(actorId)?.isSelf === true;
+  const newSince = (actorId: string, at: Date) =>
+    seenBefore !== undefined &&
+    !isSelf(actorId) &&
+    (seenBefore === null || at > seenBefore);
+  const burstUnread = (burst: { actorId: string; createdAt: Date }) =>
+    newSince(burst.actorId, burst.createdAt);
+
+  /*
+   * The boundary gets a label of its own, above the newest unread entry.
+   *
+   * Per-row marks say which entries are new; only a line says where "new" stops
+   * — which is the thing a reader scans for. The feed is newest-first, so the
+   * first unread in render order is the top of the new block.
+   */
+  const firstUnreadKey = useMemo(() => {
+    for (const day of days) {
+      for (const burst of day.bursts) {
+        if (burstUnread(burst)) return burst.key;
+      }
+    }
+    return null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [days, seenBefore, memberById]);
 
   function actorName(actorId: string): string {
     const m = memberById.get(actorId);
@@ -267,14 +315,42 @@ export function ActivityFeed() {
                 const count = burst.items.length;
                 const quantity = count > 1 ? String(count) : "một";
 
+                const unread = burstUnread(burst);
+
                 return (
-                  <Card key={burst.key} className="flex gap-3">
+                  <div key={burst.key} className="space-y-3">
+                    {burst.key === firstUnreadKey && (
+                      <div className="flex items-center gap-2" aria-hidden="true">
+                        <span className="bg-accent/50 h-px flex-1" />
+                        <span className="text-accent text-[11px] font-semibold tracking-wide uppercase">
+                          Mới
+                        </span>
+                        <span className="bg-accent/50 h-px flex-1" />
+                      </div>
+                    )}
+                  <Card
+                    className={cn(
+                      "flex gap-3",
+                      // Three signals rather than one, because any single one is
+                      // easy to miss: an edge down the side to catch the eye
+                      // while scrolling, a tint so the block reads as a group,
+                      // and a dot on the line that names who did it.
+                      unread && "border-l-accent bg-accent-soft/40 border-l-[3px]",
+                    )}
+                  >
                     <ActorAvatar member={memberById.get(burst.actorId)} />
 
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <p className="text-sm font-medium">
+                        <p className={cn("text-sm", unread ? "font-semibold" : "font-medium")}>
+                          {unread && (
+                            <span
+                              className="bg-accent mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full align-middle"
+                              aria-hidden="true"
+                            />
+                          )}
                           {actorName(burst.actorId)} {meta.verb} {quantity} {meta.noun}
+                          <span className="sr-only">{unread ? " — chưa xem" : ""}</span>
                         </p>
                         <time
                           dateTime={burst.createdAt.toISOString()}
@@ -288,7 +364,18 @@ export function ActivityFeed() {
                       </div>
 
                       <ul className="space-y-1">
-                        {burst.items.map((item) => (
+                        {burst.items.map((item) => {
+                          /*
+                           * Marked per entry as well as per card.
+                           *
+                           * A burst is a whole run of one kind by one person, so
+                           * "the other person saved 3 places" can hold two that
+                           * were read yesterday and one from a minute ago. The
+                           * card says the group has something new; this says
+                           * which line it is.
+                           */
+                          const itemNew = newSince(burst.actorId, item.createdAt);
+                          return (
                           <li key={item.id}>
                             <Link
                               href={item.href}
@@ -301,7 +388,12 @@ export function ActivityFeed() {
                                 className="text-accent h-4 w-4 shrink-0"
                                 aria-hidden="true"
                               />
-                              <span className="min-w-0 flex-1 truncate text-sm">
+                              <span
+                                className={cn(
+                                  "min-w-0 flex-1 truncate text-sm",
+                                  itemNew && "text-foreground font-semibold",
+                                )}
+                              >
                                 {item.title}
                               </span>
                               {/* Allowed to shrink and truncate. As shrink-0 a
@@ -316,10 +408,12 @@ export function ActivityFeed() {
                               )}
                             </Link>
                           </li>
-                        ))}
+                          );
+                        })}
                       </ul>
                     </div>
                   </Card>
+                  </div>
                 );
               })}
             </StaggerList>

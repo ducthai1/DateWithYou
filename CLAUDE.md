@@ -1332,6 +1332,73 @@ Cách chữa, cả ba tầng — đừng bỏ tầng nào:
 trả thẳng đơn vị hành chính 2025: `administrative_area_level_2` = phường, `_1` = tỉnh), Nominatim chỉ
 là dự phòng vì bị giới hạn tần suất.
 
+## Modal chuyến đi: một điều kiện sinh ra ba triệu chứng
+
+User báo 3 chuyện tưởng rời rạc: chọn "đi 1 mình / cùng nhau" xong **modal không đóng**; modal
+**tự mở lại** vô lý; bấm **Kết thúc** cũng ra modal chẳng để làm gì. Tất cả từ **một** dòng:
+
+```ts
+const isManualTrip = !waypoints || waypoints.length === 0;   // trong goToLocation
+if (isManualTrip && mobile) setTripChoiceOpen(true);
+```
+
+Suy "đây có phải cú Chỉ đường thủ công không" từ việc **có waypoint hay không**. Mà solo planner khi
+người dùng **không chọn điểm dừng nào** thì cũng truyền `undefined` ⇒ vẽ lại đường bị tính là một cú
+"Chỉ đường" mới ⇒ **mở lại đúng cái sheet vừa được chọn từ đó**. 1,2s sau `nav.start()` phủ toàn màn
+lên, sheet nằm lại phía dưới; bấm Kết thúc, lớp phủ mất, sheet cũ lộ ra.
+
+Ba thứ đã sửa:
+- **`askChoice` là quyết định của người gọi**, không suy từ dữ liệu. Chỉ nút "Chỉ đường" trên thẻ
+  truyền `{ askChoice: true }`.
+- **`closeTripDialogs()`** đóng cả `tripChoiceOpen`, `showCompanionChoice`, `soloPlanOpen`,
+  `stopPickerOpen` và xoá `plannedStops`. Gọi trong `resetTrip()` **và** khi `nav.isNavigating` bật.
+  Trước đó mỗi modal chỉ được đóng bởi kẻ mở modal kế tiếp — sót cái nào thì cái đó nằm lại dưới lớp phủ.
+- **Bỏ `setTimeout(..., 1200)`** để khởi hành. 1,2s là *đoán* thời gian định tuyến: nhanh hơn thì map
+  nhảy trước khi có đường, chậm hơn thì bắt đầu đi mà **không có đường nào cả**. Nay `routePending`
+  mang nghĩa thật cho mọi caller, và một effect khởi hành khi request xong — kèm khả năng **từ chối
+  khởi hành nếu định tuyến lỗi**, điều mà timer không làm được.
+
+**Luật:** đừng suy ý định của người dùng từ hình dạng dữ liệu (`có waypoint?`, `initial truthy?`).
+Ý định thì truyền thẳng bằng tham số hoặc ghi bằng cờ. Hai lỗi nặng nhất trong repo này —
+[toạ độ bị vứt lúc tạo](#) và cái này — cùng một kiểu sai.
+
+## Vẽ đường: không vẽ vệt đã đi, và đường chỉ đường cần viền
+
+Vệt "đã đi" (`traveled`) được vẽ `#4f46e5` dày 8px **opacity 1**, đè lên chính con đường nó thuộc về
+— hai màu xanh đánh nhau, và cái quan trọng hơn (đi đâu tiếp) lại là cái nhạt hơn. Đã bỏ hẳn: nơi
+mình **đã** đi qua là thứ duy nhất người đang dẫn đường không cần được nhắc. Bỏ luôn phần tích luỹ
+trong hook (mỗi nhịp GPS đẩy thêm một điểm vào array).
+
+Đường chỉ đường nay là **2 lớp**: casing tối (`#1e3a8a`) dưới lõi sáng (`#3b82f6`), cả hai
+`line-width` theo `interpolate` của zoom (10→4px, 14→9px, 18→14px cho lõi). Một lớp nhạt ở opacity
+0.8 lấy màu lẫn từ thứ nó đi qua — đường, nước, công viên — nên **nhạt đi đúng lúc bản đồ rối nhất**.
+Casing cho nó một đường biên riêng, đó là cách mọi app bản đồ vẽ route, và nhờ vậy lõi mới dám đặc và
+sáng hẳn.
+
+⚠️ Chưa nghiệm thu được bằng hình: `STADIA_API_KEY` không có ở máy dev nên `getRoute` luôn lỗi, không
+vẽ được đường để chụp. Bản maplibre trong repo cũng không expose `style-spec` để validate biểu thức
+offline. Ai có key thì chụp lại một lần.
+
+## Đã đọc / chưa đọc: mốc đọc phải được ĐỌC TRƯỚC khi bị dịch
+
+Feed gọi `markSeen` ngay khi mount (đó là cách badge tắt), nên nếu render dựa vào mốc **hiện tại** thì
+mốc vừa bị dịch lên `now` ⇒ **không có gì là mới**, và người dùng không bao giờ thấy cái nào chưa đọc.
+
+Cách làm (giống GitHub/Slack): `markSeen` trả về **mốc cũ** (`previousSeenAt`), client **đóng băng** giá
+trị đó cho cả lượt xem. `undefined` = chưa biết (chưa đánh dấu gì, để tránh loé "tất cả đều mới");
+`null` = chưa từng mở feed ⇒ mọi thứ của người kia là mới.
+
+Ba tín hiệu chứ không phải một, vì tín hiệu đơn lẻ rất dễ bị bỏ qua:
+- **vạch "MỚI"** ở ranh giới — chỉ có một đường kẻ mới trả lời được câu "mới **tới đâu**", mà đó đúng
+  là thứ mắt người quét tìm;
+- **cấp thẻ**: viền accent bên trái 3px + nền `accent-soft/40` + chấm tròn + chữ đậm;
+- **cấp từng dòng**: một cụm là cả một loạt cùng loại cùng người, nên "người kia đã lưu 4 địa điểm"
+  có thể chứa 3 dòng đọc hôm qua và 1 dòng mới một phút trước. Thẻ nói "cụm này có cái mới", dòng nói
+  **dòng nào**.
+
+**Không đánh dấu hoạt động của chính mình** — việc mình vừa làm 30 giây trước không phải tin mới, và
+`unreadCount` ở server cũng đếm theo đúng nguyên tắc đó.
+
 ## Toạ độ bị VỨT ĐI lúc tạo — vì so sánh tham chiếu object
 
 Triệu chứng user báo: chọn điểm trên bản đồ, lưu thành công, nhưng **không có nút Chỉ đường**, và

@@ -75,7 +75,6 @@ export type LiveNavigation = {
   /** Partner link health, or null when no partner is being tracked. */
   partnerConnection: PartnerConnection | null;
   /** Accumulated travelled path as [lng, lat] pairs for a map line. */
-  traveled: Array<[number, number]>;
   /** Estimated remaining distance in metres (null before first fix). */
   remainingMeters: number | null;
   /** Estimated remaining time in seconds (null before first fix). */
@@ -192,7 +191,6 @@ export function useLiveNavigation(options?: {
   const [lastFixTs, setLastFixTs] = useState<number>(() => Date.now());
   // Ticks while navigating so partner + GPS staleness re-evaluate between events.
   const [nowTs, setNowTs] = useState<number>(() => Date.now());
-  const [traveled, setTraveled] = useState<Array<[number, number]>>([]);
   const [remainingMeters, setRemainingMeters] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [legs, setLegs] = useState<LegInfo[]>([]);
@@ -378,7 +376,6 @@ export function useLiveNavigation(options?: {
       return;
     }
     setError(null);
-    setTraveled([]);
     setRemainingMeters(null);
     setRemainingSeconds(null);
     setEverHadPartner(false);
@@ -391,8 +388,7 @@ export function useLiveNavigation(options?: {
         setUserGeo(g);
         setLastFixTs(Date.now()); // fresh fix → clears any "lost GPS" state
         setError(null);
-        setTraveled((t) => [...t, [g.lng, g.lat]]);
-
+  
         // Heading: only set when the device reports a valid value.
         if (pos.coords.heading != null && !isNaN(pos.coords.heading)) {
           setHeading(pos.coords.heading);
@@ -537,7 +533,6 @@ export function useLiveNavigation(options?: {
     accuracyM,
     partnerConnection,
     userPingAction,
-    traveled,
     remainingMeters,
     remainingSeconds,
     error,
