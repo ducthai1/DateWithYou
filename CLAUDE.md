@@ -1525,6 +1525,112 @@ theo sự kiện.
 Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
 câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
 
+## iOS im lặng: CÔNG TẮC TẮT TIẾNG chặn cả giọng đọc của trang web
+
+Ảnh chụp từ máy người dùng có một chi tiết quyết định mà không ai nghĩ tới khi đọc code: **biểu tượng
+chuông gạch chéo trên thanh trạng thái** — iOS 17 trở lên hiện nó khi công tắc im lặng đang bật.
+
+Trên iOS, công tắc đó **tắt luôn `speechSynthesis` và Web Audio**, chỉ tha cho `<audio>`/`<video>` HTML
+thường. Không có lỗi, không có sự kiện nào báo — utterance vẫn `onstart` rồi `onend` bình thường, chỉ là
+không ai nghe được. Đó là lý do "cả voice cả rung đều không hoạt động" xuất hiện cùng lúc: giọng bị công
+tắc chặn, còn âm báo dự phòng (Web Audio) cũng bị chặn bởi đúng cái công tắc đó.
+
+Đòn bẩy duy nhất là **hạng mục phiên âm thanh**. Mặc định một trang web nhận `ambient` — theo định nghĩa
+là "bị công tắc im lặng tắt". `playback` thì không.
+
+| cách | ghi chú |
+|---|---|
+| `navigator.audioSession.type = "playback"` | Safari 16.4+, API chuẩn (chỉ Safari cài) |
+| phát một `<audio>` im lặng, `loop` | mẹo mọi thư viện audio web đều dùng, cho bản cũ hơn |
+
+`src/lib/audio-session.ts` làm cả hai. Chọn `playback` **không** chọn `transient-solo`: spec lấy đúng ví
+dụ "driving directions" cho `transient-solo`, nghe thì trúng, nhưng nó **dừng hẳn** mọi âm thanh khác ⇒
+mỗi câu chỉ đường sẽ tắt nhạc của người ta. `playback` chỉ hạ âm lượng nền.
+
+⚠️ **Không có bảo đảm nào.** Apple chưa bao giờ hứa trang web phát được qua công tắc im lặng, báo cáo
+khác nhau theo phiên bản iOS. Vì vậy có `audioReport()` + ô tự kiểm tra: máy nào vẫn chặn thì **nói ra
+được** thay vì để user đoán app hỏng hay máy đang im lặng.
+
+## `setTimeout(utter, 0)` giết đúng câu quan trọng nhất trên iOS
+
+`speak()` luôn `cancel()` rồi `setTimeout(utter, 0)`. Cái timeout đó có lý do thật — Chrome **bỏ luôn**
+utterance nếu `speak()` đi ngay sau `cancel()` trong cùng một tick.
+
+Nhưng iOS đòi **câu ĐẦU TIÊN của một lượt truy cập** được nói khi cử chỉ người dùng còn trên stack, mà
+`setTimeout` thì theo định nghĩa là *sau* cử chỉ. Nên câu duy nhất có thể mở được đường âm thanh — câu
+phát ra từ cú chạm "Bắt đầu" — lại là câu chắc chắn tới muộn.
+
+Sửa: **chỉ hoãn khi thật sự có gì để cancel.** `const busy = s.speaking || s.pending` — không có gì trong
+hàng đợi thì không có lý do gì phải nhường tick.
+
+Cùng lý do, `primeSpeech()` đổi từ `volume = 0` sang `volume = 1`: một nền tảng quyết định có mở đường âm
+thanh hay không dựa trên thứ đang được yêu cầu, thì hỏi nó bằng một utterance **xin không phát ra tiếng
+gì** là hỏi sai. Một dấu cách ở âm lượng đầy vẫn không phát ra tiếng — trong nó không có gì để đọc.
+
+## Rung trên iOS: phải click vào `<label>`, click vào `<input>` là vô ích
+
+Mẹo iOS 17.4+ là `<input type="checkbox" switch>`, và bản đầu của `haptics.ts` gọi `input.click()`.
+WebKit phát haptic từ **activation behaviour của `<label>`**, nên click nhắm thẳng vào input thì lật được
+công tắc mà **không rung gì**. Đây là lỗi thứ hai trên đúng một dòng đó (lỗi đầu: tự set `checked` trước
+khi click, huỷ mất chính cái state change sinh ra haptic).
+
+Kiểm trong trình duyệt thật: 3 lần `label.click()` → 3 sự kiện `change`, trạng thái lật đúng ⇒ đường
+truyền tới input thông. Bản thân cái rung thì **chỉ quan sát được trên iPhone thật**.
+
+⚠️ **Apple đã bịt haptic-bằng-JavaScript ở iOS 26.5.** Mẹo này chạy từ 17.4 đến 26.4. Máy mới hơn thì
+không có đường nào từ web nữa — cần biết phiên bản iOS trước khi kết luận là code sai.
+
+## Ngưỡng đọc: 80m PHẢI nói, 60m im là ĐÚNG
+
+Giả thuyết "chưa rơi vào ngưỡng nên không có gì" — mô phỏng bằng `stepAnnouncer` cho thấy **không phải**:
+
+```
+xuất phát cách 80m:  80m → NÓI  ·  60m → im  ·  40m → NÓI
+xuất phát cách 60m:  60m → NÓI  ·  40m → NÓI
+xuất phát cách 600m: 600m → im · 400m → NÓI · 250m → im · 150m → NÓI · 70m → NÓI · 30m → NÓI
+```
+
+`STAGES = [500, 200, 80, 40]`, và một khoảng cách nằm trong ngưỡng nào thì **nói ngay ở lần cập nhật vị
+trí đầu tiên** — không cần đi qua ngưỡng trên trước. 60m im vì cùng ngưỡng 80 đã nói. 600m im vì chưa
+vào ngưỡng nào. ⇒ Phần quyết định đúng; im lặng nằm ở đường âm thanh, không ở đây.
+
+## Câu chào khởi hành: một câu, và nó gánh ba việc
+
+`src/lib/departure-voice.ts`. Nói **một** câu ngay khi bắt đầu, ~4 giây:
+
+1. Cho hai con số user muốn biết trước khi đi — bao xa, bao lâu — vào đúng lúc còn nhìn được màn hình.
+2. **Là bằng chứng giọng đọc hoạt động.** Mọi câu sau đều chờ ngưỡng khoảng cách, nên đường thẳng dài
+   một cây số là một cây số im lặng, và user không có cách nào phân biệt giọng hỏng với đường trống.
+3. Trên iOS **đây là câu mở đường âm thanh**, vì nó phát ra từ cú chạm bắt đầu chuyến.
+
+Nói với **bất kỳ số nào đang có**, cố tình **KHÔNG đợi** route trả về đủ: đợi là tiêu mất cửa sổ cử chỉ,
+mà đó mới là thứ quý. Không có số thì câu tự bỏ phần số đi.
+
+Câu mở đầu **đổi theo ngày, không random**: đa dạng để câu nghe mỗi chuyến không bị nhàm, nhưng một
+chuyến xe không phải chỗ để bị bất ngờ — cố định theo ngày thì nó là giọng của app, không phải máy xèng.
+
+## VAPID: kiểm bằng cách VERIFY chữ ký, không phải bằng cách nhìn
+
+Đừng tin cặp khoá vì nó "trông giống base64url". Kiểm thật: `webpush.generateRequestDetails()` trên một
+thuê bao giả, tách JWT trong header `Authorization`, rồi `crypto.verify` chữ ký ES256 bằng chính public
+key. Đúng thì mới chắc.
+
+```
+alg ES256 · aud https://fcm.googleapis.com · k= khớp public key ở env · CHỮ KÝ VERIFY: ĐÚNG
+```
+
+Test đầy-đủ-hơn (đăng ký `pushManager.subscribe` trong Chrome headless rồi gửi thật) **treo ở
+`serviceWorker.ready`** trong headless — bỏ, không đáng. Cách trên đã bắt được đúng thứ sẽ hỏng nếu khoá
+sai.
+
+## `pgrep -f "<chuỗi>"` khớp cả chính lệnh đang chạy — tự giết mình
+
+`for p in $(pgrep -f "cdp-push-"); do kill $p; done` → shell thoát với 144, không in gì. Vì dòng lệnh của
+chính nó **có chứa** `cdp-push-`, nên `pgrep -f` trả về luôn PID của mình.
+
+Dùng `pgrep -f` để dọn tiến trình thì phải loại chính mình (`$$`), hoặc lọc theo tên tiến trình
+(`pgrep -x`), hoặc lưu PID lúc spawn rồi kill theo PID đó. Liên quan: [[never-pkill-shared-processes]].
+
 ## Ảnh gốc: giới hạn 10 MB là của GÓI, và nó bắt user trả giá bằng thời gian chờ
 
 Đo thật bằng cách upload lên đúng tài khoản: gói **Free của Cloudinary chặn cứng ở

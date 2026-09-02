@@ -18,7 +18,9 @@ import { type LegInfo } from "./use-live-navigation";
 import { useTurnByTurn } from "./use-turn-by-turn";
 import { ManeuverArrowIcon } from "./maneuver-arrow-icon";
 import { maneuverArrow, maneuverLabel, fmtMetresVi } from "@/lib/maneuver-vi";
-import { isVoiceEnabled, setVoiceEnabled } from "@/lib/speak";
+import { isVoiceEnabled, setVoiceEnabled, speak } from "@/lib/speak";
+import { departureSentence } from "@/lib/departure-voice";
+import { releaseAudio, unlockAudio } from "@/lib/audio-session";
 import { useNavigation } from "./navigation-context";
 import { fmtDistance, fmtDuration } from "./format-journey";
 import { ToneArt } from "@/components/theme/tone-art";
@@ -1174,6 +1176,47 @@ export function LocationsPage() {
   // Prefer live remaining values; fall back to initial route totals.
   const displayDistance = nav.remainingMeters ?? routeDistanceMeters;
   const displayDuration = nav.remainingSeconds ?? routeDurationSeconds;
+
+  /*
+   * One spoken line as the ride starts.
+   *
+   * Said on the first render where navigation is on, with whatever figures are
+   * known by then, and deliberately NOT held back until they arrive. Every
+   * other announcement waits on a distance threshold — the first was 500 m out
+   * — so a rider on a straight road heard nothing for a kilometre and had no
+   * way to tell a working voice from a broken one. More importantly this is the
+   * utterance iOS needs: the platform opens the audio route for the FIRST
+   * utterance of a visit only while a user gesture is still in effect, and the
+   * tap that starts the ride is the last such moment before the phone goes in
+   * a pocket. Waiting for a route figure would spend it.
+   */
+  const departureSaid = useRef(false);
+  useEffect(() => {
+    if (!nav.isNavigating) {
+      departureSaid.current = false;
+      // Hand the playback session back; holding it costs battery and keeps the
+      // phone in a state where other apps duck for no reason.
+      releaseAudio();
+      return;
+    }
+    if (departureSaid.current) return;
+    departureSaid.current = true;
+    unlockAudio();
+    speak(
+      departureSentence({
+        destination: selectedName,
+        metres: displayDistance,
+        seconds: displayDuration,
+        partnerOnTheWay: nav.partnerLocation != null,
+        // Rotates the opener by the day so it varies between rides but never
+        // within one.
+        dayIndex: new Date().getDate(),
+      }),
+    );
+    // The figures are read once, at the start; re-running as they tick down
+    // would say the line again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nav.isNavigating]);
 
   // ── Logic for Meet Me Halfway ──
   const partnerLocationRef = useRef(nav.partnerLocation);

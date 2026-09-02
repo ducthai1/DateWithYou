@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { useToast } from "@/components/ui/toast";
+import { VoiceHapticTestRow } from "@/features/locations/voice-haptic-test-row";
 
 const PRESET_AVATARS = [
   // Animals
@@ -491,6 +492,17 @@ export function SpaceSettings() {
             )}
           </>
         )}
+      </Card>
+
+      {/*
+          Sits on this screen rather than in the map's own settings: the voice
+          and the buzz are properties of the phone, not of a place, and this is
+          the one screen reachable from every page — which matters for a check
+          whose whole job is to be run the moment someone says "I hear nothing".
+       */}
+      <h2 className="text-lg font-semibold mt-2">Giọng &amp; rung</h2>
+      <Card>
+        <VoiceHapticTestRow />
       </Card>
 
       {mine.data && !mine.data.isPersonal && mine.data.createdBy === session?.user.id && (

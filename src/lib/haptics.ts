@@ -29,15 +29,25 @@
  * service-worker push handler and VAPID keys — see the note in CLAUDE.md.
  */
 
+import { unlockAudio } from "@/lib/audio-session";
+
 /** Milliseconds: [buzz, pause, buzz, …] — the Vibration API's own shape. */
 export type BuzzPattern = number | number[];
 
-let switchEl: HTMLInputElement | null = null;
+let switchLabel: HTMLLabelElement | null = null;
 
-/** The off-screen switch whose toggle iOS answers with a haptic tap. */
-function iosSwitch(): HTMLInputElement | null {
+/**
+ * The off-screen switch whose toggle iOS answers with a haptic tap.
+ *
+ * Returns the LABEL, not the input, and that distinction is the whole fix:
+ * WebKit produces the haptic from the label's activation behaviour, so a click
+ * dispatched straight at the input never reaches the code that buzzes. The page
+ * was toggling the switch correctly and getting nothing, which is why every
+ * layer above reported success while the phone stayed still.
+ */
+function iosSwitch(): HTMLLabelElement | null {
   if (typeof document === "undefined") return null;
-  if (switchEl?.isConnected) return switchEl;
+  if (switchLabel?.isConnected) return switchLabel;
   const label = document.createElement("label");
   label.setAttribute("aria-hidden", "true");
   /*
@@ -56,8 +66,8 @@ function iosSwitch(): HTMLInputElement | null {
   input.setAttribute("switch", "");
   label.appendChild(input);
   document.body.appendChild(label);
-  switchEl = input;
-  return input;
+  switchLabel = label;
+  return label;
 }
 
 /** True when the page is running under WebKit on an Apple touch device. */
@@ -92,6 +102,9 @@ export function primeHaptics(): void {
   }
   // Toggling the switch once here also gets iOS to accept it later in the visit.
   iosSwitch();
+  // Same tap, same one chance: the ringer switch mutes the tone below unless
+  // the page has moved itself into a playback audio session.
+  unlockAudio();
 }
 
 function tone(): boolean {
@@ -132,8 +145,8 @@ export function buzz(
   }
 
   if (isIosLike()) {
-    const input = iosSwitch();
-    if (input) {
+    const label = iosSwitch();
+    if (label) {
       // One tap per "on" phase of the pattern, at the pattern's own timings.
       const phases = Array.isArray(pattern) ? pattern : [pattern];
       let at = 0;
@@ -142,15 +155,16 @@ export function buzz(
           const delay = at;
           setTimeout(() => {
             /*
-             * `.click()` and nothing else.
+             * The label, and `.click()` and nothing else.
              *
-             * The first version set `checked` by hand first, which cancelled
-             * the change the click was about to make — the switch ended the
-             * call in the state it started in, and the haptic is produced by
-             * the state change, not by the call. That is why an iPhone stayed
-             * silent while every layer above reported success.
+             * Two separate mistakes lived on this line. The first set `checked`
+             * by hand before clicking, which cancelled the change the click was
+             * about to make — the haptic comes from the state change, not from
+             * the call. The second clicked the input directly: WebKit fires the
+             * haptic from the LABEL's activation behaviour, so a click aimed at
+             * the input toggles the switch and buzzes nothing.
              */
-            input.click();
+            label.click();
           }, delay);
         }
         at += ms;
