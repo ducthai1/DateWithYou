@@ -1525,6 +1525,45 @@ theo sự kiện.
 Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
 câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
 
+## Chạy được route THẬT rồi mới thấy 2 thứ mô phỏng không bao giờ thấy
+
+Có `STADIA_API_KEY` (từ `.env` — xem cuối mục này), gọi thật một tuyến Sài Gòn 10,9 km:
+
+**1. `speed_limit` KHÔNG được trả về — 0/16 maneuver.** Tôi đã dựng badge giới hạn tốc độ dựa trên báo
+cáo khảo sát nói Valhalla có trường này. Nó có trong tài liệu, nhưng với `costing: motor_scooter` trên
+Stadia thì **không có dữ liệu nào**. Badge đó sẽ **không bao giờ hiện**. Đã gỡ khỏi UI, giữ lại phần
+parse (miễn phí, dữ liệu có thể tốt lên) và ghi rõ ở type rằng `null` là **trường hợp thường**, không
+phải ngoại lệ.
+**Luật:** báo cáo khảo sát — của agent hay của người — là **giả thuyết**, không phải sự thật. Gọi API
+một lần rồi hãy dựng UI trên nó.
+
+**2. Một con đường bị đọc tên 4 lần.** Tuyến thật cho ra *"Chếch phải vào Trường Chinh"* **bốn lần**,
+vì Valhalla phát một maneuver ở **mỗi lần đường đổi hình dạng**, mà Trường Chinh thì cong nhiều lần.
+Bị nhắc bẻ phải vào con đường mình đã chạy hai cây số không phải là chỉ dẫn.
+
+Nay maneuver thuộc nhóm **giữ làn** (9, 16, 22, 23, 24, 25 — chếch, giữ bên, nhập làn) bị bỏ nếu **trùng
+tên đường với khúc được giữ ngay trước**. Rẽ thật thì **không bao giờ** bị bỏ, kể cả khi tên đường quen:
+rẽ là một quyết định.
+
+| | trước | sau |
+|---|---|---|
+| khúc đáng thông báo | 15 | **13** |
+| số câu đọc cả tuyến | 32 | **27** |
+| câu trùng lặp | 1 | **0** |
+
+Đường thay thế cũng đã nghiệm thu thật: `alternates: 2` được chấp nhận (HTTP 200), app trả về **2 tuyến
+kèm maneuvers riêng** (17 và 16), và chip "Đường khác" hiện đúng trên giao diện.
+
+### `.env` của repo này là LOCAL, không dùng chung prod
+
+Kiểm trước khi dùng, vì chạy test lên nhầm DB thật là hỏng không cứu được: `MONGODB_URI` trỏ Atlas
+(**không** phải localhost) nhưng database tên **`DateWithYou_Local`**, `locations` **rỗng**, và những
+địa điểm user từng nhắc **không có ở đó** — DB nháp, không phải prod.
+
+Dù vậy nó vẫn là DB **từ xa dùng chung**, nên khi test tôi chỉ lấy `STADIA_API_KEY` từ đó và giữ mongod
+ở máy cho dữ liệu test. **Cách kiểm an toàn:** đọc tên database + đếm document + tìm một bản ghi mà chỉ
+prod mới có. Đừng bao giờ ghi trước rồi mới hỏi.
+
 ## Thêm tham số vào một request đang chạy được là việc CÓ RỦI RO
 
 Xin `alternates` từ Valhalla để có đường đi thay thế. Nếu nhà cung cấp từ chối tham số đó thì **mọi

@@ -18,7 +18,14 @@ export type Maneuver = {
   streetNames: string[];
   /** Length of the step that begins at this maneuver. */
   distanceMeters: number;
-  /** Posted limit on the road this step begins on, km/h, when the data has one. */
+  /*
+   * Posted limit, km/h — carried but not currently shown.
+   *
+   * Measured against a real Saigon route: the router returned it for ZERO of 16
+   * manoeuvres, so a badge built on it would never appear. The field stays
+   * because parsing it costs nothing and the data may improve; anything that
+   * displays it must handle null as the normal case, not the exception.
+   */
   speedLimitKmh?: number | null;
   lat: number;
   lng: number;

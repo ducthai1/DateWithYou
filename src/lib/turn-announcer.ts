@@ -17,9 +17,36 @@ export const STAGES = [500, 200, 80, IMMINENT_M] as const;
 /** Close enough to count the turn as taken and move to the next one. */
 export const PASSED_M = 25;
 
-/** Only the turns worth interrupting for: real turns, plus the arrival. */
+/*
+ * Manoeuvre types that are lane guidance rather than a decision: bearing
+ * slightly one way, keeping to a side, merging. On their own they are worth
+ * saying; repeated along the road you are already on they are noise.
+ */
+const LANE_KEEPING = new Set([9, 16, 22, 23, 24, 25]);
+
+/**
+ * Only the turns worth interrupting for.
+ *
+ * Real turns and the arrival — and then a second pass that a real route made
+ * necessary: a 10.9km ride across Saigon produced FOUR separate "chếch phải vào
+ * Trường Chinh" instructions, because the router emits a manoeuvre wherever the
+ * road changes shape and that road bends repeatedly. Being told to bear right
+ * onto the street you have been riding along for two kilometres is not guidance.
+ *
+ * So a lane-keeping manoeuvre is dropped when it names the same street as the
+ * last one kept. A real turn onto that street is never dropped, because turning
+ * is a decision even when the name is familiar.
+ */
 export function announceableTurns(maneuvers: Maneuver[] | null): Maneuver[] {
-  return (maneuvers ?? []).filter((m) => isRealTurn(m.type) || (m.type >= 4 && m.type <= 6));
+  const real = (maneuvers ?? []).filter((m) => isRealTurn(m.type) || (m.type >= 4 && m.type <= 6));
+  const kept: Maneuver[] = [];
+  for (const m of real) {
+    const street = m.streetNames.filter(Boolean)[0] ?? null;
+    const lastStreet = kept.length ? (kept[kept.length - 1].streetNames.filter(Boolean)[0] ?? null) : null;
+    if (LANE_KEEPING.has(m.type) && street && street === lastStreet) continue;
+    kept.push(m);
+  }
+  return kept;
 }
 
 export type AnnouncerState = {

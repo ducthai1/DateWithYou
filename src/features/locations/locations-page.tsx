@@ -1405,17 +1405,6 @@ export function LocationsPage() {
                         {turn.metres <= 40 ? "Ngay bây giờ" : `còn ${fmtMetresVi(turn.metres)}`}
                       </p>
                     </div>
-                    {/* Informational, not an instruction: the posted limit is
-                        missing from a lot of Vietnamese side streets and wrong
-                        on some, so it is shown where it exists and nothing is
-                        claimed where it does not. */}
-                    {turn.next.speedLimitKmh ? (
-                      <div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full border-[3px] border-red-500 bg-white">
-                        <span className="text-[13px] font-bold leading-none text-slate-900 tabular-nums">
-                          {turn.next.speedLimitKmh}
-                        </span>
-                      </div>
-                    ) : null}
                     <button
                       type="button"
                       onClick={() => {
