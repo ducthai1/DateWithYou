@@ -1525,6 +1525,75 @@ theo sự kiện.
 Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
 câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
 
+## Nút cuối trang bị nav che: khoảng chừa của KHUNG không đi vào phần TRÀN
+
+Trang `/settings` cuộn hết cỡ rồi mà **28 trong 44px của nút "Đăng xuất" vẫn nằm dưới thanh nav**, không
+còn gì để cuộn thêm. Đo ở 390×844 (`[data-app-main]`, đã `scrollTop = scrollHeight`):
+
+```
+main:        scrollHeight 3356 · clientHeight 844 · paddingBottom 64px · đã ở đáy 2512
+nav dưới:    top 769 · cao 76          ← nav cao 76px, khung chỉ chừa 64px
+nút:         top 752 · bottom 796      ← bị che 28px
+con của main: HEADER 57 · DIV flex-1 min-h-0 = 707 · (844 − 57 − 80)
+```
+
+Hai tầng nguyên nhân, và tầng thứ hai mới là tầng thật:
+
+**1. `4rem` < nav.** Thanh nav đo được **76px**, khung chừa `4rem` = 64px ⇒ thiếu 12px với *mọi* trang.
+
+**2. Nội dung tràn khỏi hộp `flex-1 min-h-0`, và khoảng chừa mắc lại phía trên phần tràn.**
+`template.tsx` cho mỗi trang một hộp `flex min-h-0 flex-1 flex-col`. `flex-1` = `flex: 1 1 0%` và
+`min-h-0` bỏ sàn theo nội dung ⇒ hộp **cao đúng phần còn lại của khung (707px), không nở theo nội dung**.
+Trang cài đặt là một div cao 3200px đặt thẳng vào đó ⇒ tràn ra ngoài, và khung (`overflow-y-auto`, "lưới
+an toàn") cuộn giúp.
+
+Nhưng khoảng chừa của khung được xếp **từ chiều cao 707px của hộp**, tức nó nằm ở *giữa* vùng cuộn chứ
+không ở cuối. Cuộn tới đáy thì sau phần tử cuối chỉ còn **48px** — đúng bằng `pb-12` của chính trang.
+`padding-bottom` của khung hay một `<div>` spacer **đều mắc như nhau**: tôi thử spacer 80px in-flow, xác
+nhận nó có trong DOM (`h: 80`, con cuối, `paddingBottom: 0px`) mà số đo **không đổi một pixel**.
+
+⇒ **Chỉ padding của CHÍNH phần tử đang tràn mới đi vào vùng cuộn.**
+
+### Sửa ở gốc: trang tự cuộn, như mọi trang khác
+
+Thêm `min-h-0 flex-1 overflow-y-auto overscroll-contain` vào div gốc của `space-settings`. Đó đúng là
+việc `PageShell` làm cho các trang khác — và `/settings` là một trong ba trang **không** dùng `PageShell`.
+
+Sau khi sửa: khung thôi cuộn (`scrollHeight == clientHeight == 844`), trang cuộn trong hộp của mình
+(3280/707), nút cách nav **53px**, `nútBịNavChe: 0` — kiểm cả bằng số đo lẫn ảnh chụp.
+
+Khung vẫn nâng `4rem` → `5rem` để phủ 76px thật, cho các trang *vừa khít* khung.
+
+⚠️ Kiểm cả `/onboarding` (trang thứ ba không dùng `PageShell`): **không bị** — nó nằm trong
+`NAV_HIDDEN_ON` nên không có nav dưới và không áp khung (`overflow: visible`). Xác nhận bằng đo, không
+phải suy đoán.
+
+### Bẫy khi đo: đừng tin số nếu chưa biết mình đang cuộn hộp nào
+
+Ba lần đo đầu **sai đối tượng** mà vẫn ra số trông hợp lý:
+- Bài test đầu chấm **bản build cũ** vì cổng 3987 do một `next start` giữ (xem mục cổng ở trên).
+- Sau khi trang tự cuộn, script vẫn `main.scrollTop = ...` nên nút báo `top: 3264` — "ngoài màn hình
+  2445px", nghe như hỏng nặng, thật ra chỉ là **chưa cuộn đúng hộp**.
+
+Cách đo đúng: **đi từ phần tử cần thấy ngược lên**, cuộn *mọi* tổ tiên có `overflow-y: auto|scroll` và
+`scrollHeight > clientHeight`, rồi mới đọc `getBoundingClientRect()`. Và luôn in kèm `location.pathname`
++ `h1` để biết chắc đang đứng ở đâu.
+
+### Dựng session để test UI mà không sửa dữ liệu của user
+
+`/settings` khoá sau `mine.isLoading || !mine.data`, cookie jar cũ đã hết hạn (401). Thay vì sửa bảng
+`session` trong DB thật, **đăng ký một tài khoản test qua đúng API công khai của app**:
+
+```
+POST /api/auth/sign-up/email     → nhận cookie session
+POST /api/trpc/space.create      → cần header Origin = BETTER_AUTH_URL (ở đây :4488), thiếu là 403
+                                   "Forbidden origin"; tRPC dùng superjson ⇒ body {"json":{...}}
+```
+
+Xong việc thì **xoá sạch**: `user` 2, `spaces` 1, `session` 2, `account` 2. Lưu ý tên collection **không
+đồng nhất** — `spaces` số nhiều (mongoose) nhưng `user`/`session`/`account` số ít (better-auth); xoá theo
+tên đoán sai thì báo `deletedCount: 0` mà trông như đã xong.
+
 ## iOS im lặng: CÔNG TẮC TẮT TIẾNG chặn cả giọng đọc của trang web
 
 Ảnh chụp từ máy người dùng có một chi tiết quyết định mà không ai nghĩ tới khi đọc code: **biểu tượng

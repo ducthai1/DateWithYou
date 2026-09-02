@@ -39,11 +39,22 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
        * scrolled here instead of being clipped away.
        *
        * The bottom-nav allowance is padding on the frame, so it is inside the
-       * 100dvh (border-box) — a page filling the frame ends above the nav, and
-       * a page scrolling the frame gets the same clearance at the end of it.
+       * 100dvh (border-box) — a page filling the frame ends above the nav.
+       *
+       * 5rem, because the nav measures 76px at 390px wide (plus the safe-area
+       * inset it adds for the home indicator, matched here). It was 4rem, which
+       * was 12px short of covering it.
+       *
+       * ⚠️ This only clears the nav for a page that FITS the frame. A page that
+       * overflows the `flex-1 min-h-0` content box instead — settings did — is
+       * scrolled by this frame, and neither this padding nor a spacer element
+       * lands after that overflow: both are laid out from the content box's own
+       * height, which flex has already fixed, so they strand above the part
+       * that scrolls. The fix for such a page is to scroll inside its own box,
+       * the way PageShell does; then this padding does its job again.
        */
       !hidden && "flex h-[100dvh] flex-col overflow-y-auto",
-      !hidden && "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0",
+      !hidden && "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0",
       !hidden && (isCollapsed ? "md:pl-28" : "md:pl-72")
     )}>
       {children}

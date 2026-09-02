@@ -164,7 +164,25 @@ export function SpaceSettings() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 pt-12 pb-12 md:px-[30px] short:gap-4 short:pt-5 short:pb-6">
+    /*
+      Scrolls itself, rather than overflowing the frame.
+
+      Every other screen puts its content in a box that scrolls (PageShell does
+      it for them); this one was a tall plain div dropped into the route
+      template's `flex-1 min-h-0` content box, which flex fixes at the frame's
+      leftover height — 707px on a 390x844 phone. The content is 3200px, so it
+      spilled out and the app frame scrolled it as a safety net. That worked for
+      reading, but the frame's own bottom-nav allowance is laid out from that
+      707px box and therefore stranded above the spill: scrolled as far as it
+      would go, only the page's own 48px of padding stood between the last
+      element and the frame's edge, so 28px of the "Đăng xuất" button sat under
+      the 76px nav with nothing left to scroll.
+
+      Owning the scroll fixes it at the root: the frame no longer scrolls, its
+      padding keeps this whole box above the nav, and the button ends inside a
+      box that can actually reach its own end.
+    */
+    <div className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-4 pt-12 pb-12 md:px-[30px] short:gap-4 short:pt-5 short:pb-6">
       <h1 className="text-2xl font-semibold">Cài đặt</h1>
 
       <h2 className="text-lg font-semibold mt-2">Hồ sơ</h2>
