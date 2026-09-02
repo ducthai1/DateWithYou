@@ -1,10 +1,11 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { useCallback, memo, useEffect, useRef, useState } from "react";
 import { LocateFixed } from "lucide-react";
 import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
 import { VietnamSovereigntyMarkers } from "./vietnam-sovereignty-markers";
 import { applyEastSeaLabel } from "./east-sea-label";
+import { applyNightPalette } from "@/lib/night-map-palette";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { geodesicCircle, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
@@ -361,6 +362,26 @@ function LocationMapViewImpl({
     return () => clearTimeout(t);
   }, []);
 
+  /*
+   * Both style overrides, in one place, applied on every style event.
+   *
+   * Switching between day and night replaces the entire style object, and with
+   * it anything set on the previous one — so these cannot run once at startup.
+   *
+   * The palette is gated on `night` for a reason that is easy to miss: the day
+   * style names its layers the same way, so recolouring unconditionally would
+   * paint the daytime map in night colours.
+   */
+  const dressStyle = useCallback(
+    (target: unknown) => {
+      const map = target as Parameters<typeof applyEastSeaLabel>[0] &
+        Parameters<typeof applyNightPalette>[0];
+      applyEastSeaLabel(map);
+      if (night) applyNightPalette(map);
+    },
+    [night],
+  );
+
   return (
     <div 
       className={cn("relative h-full min-h-[280px] overflow-hidden rounded-xl border border-border bg-card shadow-sm", className)}
@@ -390,10 +411,8 @@ function LocationMapViewImpl({
         ref={mapRef}
         initialViewState={DEFAULT_CENTER}
         /* Every style load, not just the first: switching to the night map
-           replaces the whole style, and with it the label override. */
-        onStyleData={(e) =>
-          applyEastSeaLabel(e.target as unknown as Parameters<typeof applyEastSeaLabel>[0])
-        }
+           replaces the whole style, and with it both overrides below. */
+        onStyleData={(e) => dressStyle(e.target)}
         onLoad={(e) => {
           // Deliberately does NOT report a centre. The map opens on a fixed
           // default (Saigon), and reporting that as "where the person is
@@ -405,7 +424,7 @@ function LocationMapViewImpl({
 
           // The sea carries its Vietnamese name, in the position the base map
           // chose for that label rather than a plate guessing at it.
-          applyEastSeaLabel(e.target as unknown as Parameters<typeof applyEastSeaLabel>[0]);
+          dressStyle(e.target);
         }}
         onIdle={() => setDrawn(true)}
         onMoveEnd={(e) => {

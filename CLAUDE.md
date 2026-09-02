@@ -1525,6 +1525,57 @@ theo sự kiện.
 Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
 câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
 
+## Bản đồ đêm "đen xì": style gốc là xám trung tính từ 10 đến 35
+
+Style `dark` của OpenFreeMap tô mọi thứ bằng xám không màu:
+
+```
+background rgb(12,12,12)   water rgb(27,27,29)   building rgb(10,10,10)
+landuse_park rgb(32,32,32) railway rgb(35,35,35) place_* rgb(101,101,101)
+water_name  text hsla(0,0%,0%,0.7)          ← chữ ĐEN trên nước gần đen: vô hình
+highway_motorway_inner  line-color nội suy → "#000" từ zoom 6
+```
+
+Nước cách đất **15 mức sáng** — không màn hình điện thoại nào ngoài đường phân biệt được. Và cao tốc bị
+nội suy về **đen thuần** từ zoom 6, tức mất hẳn ở đúng mức zoom người ta chạy xe.
+
+`src/lib/night-map-palette.ts` tô lại, **giữ nguyên layer / độ rộng / hành vi theo zoom** của style gốc,
+chỉ đổi màu qua `setPaintProperty`. Đo sau khi sửa (390×844, vùng bản đồ 780×878):
+
+| | trước | sau |
+|---|---|---|
+| độ sáng trung bình | 24/255 | **75/255** |
+| số màu khác nhau | — | 3219 |
+| nền / đường lớn / nước | gần như một màu | `#17212e` 25.7% · `#3b4a5d` 16.2% · `#0c1522` 4.7% |
+
+### Hai luật định hình bảng màu
+
+- **Màu ấm được để dành.** Mọi loại đường đều xanh-xám lạnh, để **đường đi (route)** — vẽ bằng terracotta
+  của app lên trên — là thứ ấm duy nhất trên màn hình và không thể bị nhầm với một con cao tốc. Chỉ
+  **nhãn** cao tốc lấy màu hổ phách, và nhãn thì nhỏ, không cạnh tranh.
+- **Nước TỐI HƠN đất**, không sáng hơn. Đó là cách bản đồ đêm đọc đúng; style gốc làm nước sáng hơn đất
+  một chút nên nhìn như một vũng xám.
+
+Ban ngày dùng `liberty`, ban đêm dùng `dark` — **hai style đặt tên layer giống nhau** (`background`,
+`water`, …) nên `applyNightPalette` **phải gán cờ `night`**, không thì bản đồ ban ngày bị tô màu đêm.
+
+### ⚠️ Nợ đã biết: style `dark` KHÔNG có layer POI nào
+
+`dark` 47 layer, **0 layer POI**. `liberty` 111 layer, có 5 layer POI, bridge/tunnel riêng, và cả
+`fill-extrusion` (nhà 3D). Nghĩa là từ 18h đến 6h bản đồ **mất sạch tên quán, tên địa điểm** — Google
+Maps ban đêm vẫn hiện đủ.
+
+Cách chữa đúng là dùng `liberty` cho **cả** ngày và đêm rồi tô lại theo bảng màu. Lợi thêm: đổi ngày↔đêm
+sẽ chỉ là đổi paint property thay vì **tải và dựng lại toàn bộ style**. Nhưng phải kèm snapshot màu gốc
+để hoàn nguyên khi tắt chế độ đêm, vì `mapStyle` không đổi nữa ⇒ `onStyleData` không còn bắn khi toggle.
+**Chưa làm — chờ user quyết.**
+
+### Đo màu: đừng tính lại mean trong vòng lặp
+
+`sum((x-sum(g)/len(g))**2 for x in g)` — biểu thức trong ngoặc tính lại `sum(g)/len(g)` cho **từng** pixel
+⇒ O(n²), 700k pixel là 700k×700k phép tính, script treo tới hết 300s timeout. Dùng
+`statistics.pstdev(g)`, hoặc tính mean ra biến trước.
+
 ## Push không tới: khoá ĐÚNG, deploy ĐÚNG, mà cái nút bật thì TỰ ẨN
 
 Kiểm prod trước khi đoán, và cả hai thứ dễ nghi nhất đều **không sai**:
