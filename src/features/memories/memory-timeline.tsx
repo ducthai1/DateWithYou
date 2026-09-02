@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ImagePlus } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
+import { cldFull, cldPreview, cldThumb } from "@/lib/cloudinary-url";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -259,6 +260,10 @@ export function MemoryTimeline() {
                       </div>
                       <p className="text-muted-foreground text-xs">
                         {new Date(m.date).toLocaleDateString("vi-VN")}
+                        {/* Only when it was recorded. Everything saved before
+                            the field existed shows the date alone, exactly as
+                            it always did. */}
+                        {m.time ? ` · ${m.time}` : ""}
                       </p>
                     </div>
                     {m.caption && <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">{m.caption}</p>}
@@ -274,13 +279,21 @@ export function MemoryTimeline() {
                     {photoCount > 0 && (
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {m.photos.slice(0, 3).map((p: { url: string; publicId: string }) => (
-                           
+                          /*
+                           * A square crop from Cloudinary, not the original.
+                           * These are ~120px on screen and were being fed the
+                           * full upload — three multi-megabyte phone photos per
+                           * card, for a strip of thumbnails.
+                           */
                           <img
                             key={p.publicId}
-                            src={p.url}
+                            src={cldThumb(p.url)}
                             alt={m.title}
                             loading="lazy"
-                            className="aspect-square w-full rounded-lg object-cover"
+                            decoding="async"
+                            width={400}
+                            height={400}
+                            className="bg-muted aspect-square w-full rounded-lg object-cover"
                           />
                         ))}
                       </div>
@@ -373,6 +386,7 @@ export function MemoryTimeline() {
                 {new Date(selectedMemo.date).toLocaleDateString("vi-VN", {
                   weekday: "long", day: "numeric", month: "long", year: "numeric",
                 })}
+                {selectedMemo.time ? ` · lúc ${selectedMemo.time}` : ""}
               </p>
               {selectedMemo.caption && <p className="text-sm">{selectedMemo.caption}</p>}
               {(selectedMemo.tags ?? []).length > 0 && (
@@ -384,11 +398,37 @@ export function MemoryTimeline() {
               )}
               {selectedMemo.photos.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
-                  {selectedMemo.photos.map((p: { url: string; publicId: string }) => (
-                    <PhotoView key={p.publicId} src={p.url}>
-                      <img src={p.url} alt={selectedMemo.title} loading="lazy" className="w-full cursor-zoom-in rounded-lg object-cover" />
-                    </PhotoView>
-                  ))}
+                  {selectedMemo.photos.map(
+                    (p: { url: string; publicId: string; width?: number | null; height?: number | null }) => (
+                      /*
+                       * Two sizes, not one. The dialog gets a version scaled to
+                       * fit a phone screen; the full one is fetched only if the
+                       * photo is actually opened to pinch into. Before this both
+                       * were the original, so opening a memory downloaded every
+                       * photo at full resolution before anything appeared.
+                       *
+                       * The aspect ratio comes from the dimensions recorded at
+                       * upload, so each photo holds its space from the first
+                       * paint. Without it every image was zero-high until it
+                       * arrived and the dialog shunted itself downward as they
+                       * landed one by one.
+                       */
+                      <PhotoView key={p.publicId} src={cldFull(p.url)}>
+                        <img
+                          src={cldPreview(p.url)}
+                          alt={selectedMemo.title}
+                          loading="lazy"
+                          decoding="async"
+                          style={
+                            p.width && p.height
+                              ? { aspectRatio: `${p.width} / ${p.height}` }
+                              : undefined
+                          }
+                          className="bg-muted w-full cursor-zoom-in rounded-lg object-cover"
+                        />
+                      </PhotoView>
+                    ),
+                  )}
                 </div>
               )}
               {(selectedMemo.embeds ?? []).length > 0 && (

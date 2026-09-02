@@ -47,6 +47,9 @@ const memoryInput = z.object({
   embeds: z.array(embed).max(10).default([]),
   tags: z.array(z.string().trim().min(1).max(24)).max(8).default([]),
   date: z.coerce.date(),
+  // Optional, and validated as a clock time so a stray value cannot reach the
+  // display layer. Empty string is accepted and stored as absent.
+  time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Giờ không hợp lệ").optional().or(z.literal("")),
   locationId: z.string().optional(),
   geo: z.object({ lat: z.number(), lng: z.number() }).optional(),
 });
@@ -122,10 +125,18 @@ export const memoryRouter = router({
       id: String(d._id),
       title: d.title,
       caption: d.caption ?? null,
-      photos: (d.photos ?? []).map((p: { url: string; publicId: string }) => ({
-        url: p.url,
-        publicId: p.publicId,
-      })),
+      time: (d as { time?: string }).time || null,
+      // Dimensions travel with the URL. They are stored and validated already,
+      // and without them the client cannot reserve a photo's space before it
+      // loads — which is what made the timeline jump around as it scrolled.
+      photos: (d.photos ?? []).map(
+        (p: { url: string; publicId: string; width?: number; height?: number }) => ({
+          url: p.url,
+          publicId: p.publicId,
+          width: p.width ?? null,
+          height: p.height ?? null,
+        }),
+      ),
       embeds: (d.embeds ?? []).map((e: Record<string, string>) => ({
         provider: e.provider,
         url: e.url,

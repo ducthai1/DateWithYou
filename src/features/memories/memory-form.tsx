@@ -50,6 +50,8 @@ export function MemoryForm({
     title: string;
     caption: string | null;
     date: Date | string;
+    /** Optional clock time, "HH:mm". Absent on everything saved before it existed. */
+    time?: string | null;
     photos: { url: string; publicId: string }[];
     embeds: { url: string }[];
     tags: string[];
@@ -57,6 +59,13 @@ export function MemoryForm({
 }) {
   const [title, setTitle] = useState(initialMemory?.title ?? initialTitle ?? "");
   const [caption, setCaption] = useState(initialMemory?.caption ?? "");
+  /*
+   * Time of day, optional.
+   *
+   * Its own field rather than part of the date, so the memories saved before it
+   * existed are untouched and no entry gains an hour nobody recorded.
+   */
+  const [time, setTime] = useState(() => initialMemory?.time ?? "");
   const [date, setDate] = useState(() => {
     if (initialMemory?.date) return new Date(initialMemory.date).toISOString().slice(0, 10);
     if (initialDate) return initialDate;
@@ -218,7 +227,36 @@ export function MemoryForm({
         onChange={(e) => setCaption(e.target.value)}
         rows={3}
       />
-      <DatePicker value={date} onChange={setDate} />
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <DatePicker value={date} onChange={setDate} />
+        </div>
+        {/* Beside the date, not below it: the two answer one question, and the
+            hour is the smaller half of it. Clearable, because "some time that
+            day" is a real answer and the field must be able to go back to it. */}
+        <div className="relative w-[7.5rem] shrink-0">
+          <input
+            type="time"
+            aria-label="Giờ của kỷ niệm (không bắt buộc)"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className="border-border bg-background text-foreground h-11 w-full rounded-xl border px-3 text-sm font-medium shadow-sm outline-none focus:border-accent"
+          />
+          {time && (
+            <button
+              type="button"
+              onClick={() => setTime("")}
+              aria-label="Xoá giờ"
+              className="text-muted-foreground hover:text-foreground absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-xs shadow-sm"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="text-muted-foreground -mt-1.5 text-xs">
+        Giờ là tuỳ chọn — để trống nếu chỉ nhớ ngày.
+      </p>
 
       <div>
         <p className="text-muted-foreground mb-2.5 text-xs font-medium">Nhãn</p>
@@ -407,6 +445,7 @@ export function MemoryForm({
                   title,
                   caption: caption || undefined,
                   date: new Date(date),
+                  time: time || undefined,
                   photos,
                   embeds: collectAllEmbeds(),
                   tags,
@@ -416,6 +455,7 @@ export function MemoryForm({
                   title,
                   caption: caption || undefined,
                   date: new Date(date),
+                  time: time || undefined,
                   photos,
                   embeds: collectAllEmbeds(),
                   tags,

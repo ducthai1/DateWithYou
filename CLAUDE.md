@@ -1525,6 +1525,53 @@ theo sự kiện.
 Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
 câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
 
+## Kỷ niệm: ảnh GỐC được nhét vào ô 120px, ba cái mỗi thẻ
+
+`memory-timeline.tsx` render `<img src={p.url}>` — mà `p.url` là `secure_url` Cloudinary trả về lúc
+upload, tức **ảnh gốc**. Ảnh điện thoại 4032×3024 (~3–5 MB) được tải về để vẽ một ô vuông ~120px, ba ô
+mỗi thẻ. Modal thì tải **lại lần nữa**, vẫn gốc, cho mọi ảnh của kỷ niệm đó — nên mở kỷ niệm lên là
+phải đợi tải xong toàn bộ ảnh gốc trước khi thấy gì.
+
+Cloudinary đọc tham số biến đổi ở đoạn ngay sau `/upload/`, nên **cùng một URL đã lưu** phục vụ được
+mọi kích thước — không phải upload lại, không phải migrate bản ghi nào. `src/lib/cloudinary-url.ts`:
+
+| dùng ở đâu | biến đổi |
+|---|---|
+| thumbnail lưới | `c_fill,g_auto,w_400,h_400,f_auto,q_auto,dpr_auto` |
+| ảnh trong modal | `c_limit,w_1000,f_auto,q_auto,dpr_auto` |
+| lightbox (pinch-zoom) | `c_limit,w_2000,f_auto,q_auto` |
+
+`f_auto` + `q_auto` là phần tiết kiệm lớn nhất **trước cả khi** resize: Cloudinary tự chọn AVIF/WebP và
+mức nén hợp ảnh. `dpr_auto` nhân đôi trên màn retina mà không nhân đôi trên laptop.
+
+Hàm chỉ viết lại URL nó nhận ra (`res.cloudinary.com` + `/image/upload/`), **để nguyên** URL lạ, và
+**không chồng** biến đổi lên URL đã có sẵn một cái.
+
+### Vỡ layout khi cuộn: kích thước ảnh CÓ lưu nhưng bị router cắt
+
+`photoSchema` lưu `width`/`height`, zod cũng nhận — nhưng projection ở `memory.list` chỉ trả
+`{url, publicId}`. Không có kích thước thì client **không giữ chỗ được**, ảnh cao 0px rồi nhảy khi tải
+xong. Nay trả về, và modal đặt `style={{aspectRatio}}` từ đó; thumbnail thì `aspect-square` + thuộc
+tính `width`/`height`.
+
+⚠️ Khi thêm state phái sinh từ một API, **kiểm cả projection** — dữ liệu có trong DB không có nghĩa là
+nó tới được client.
+
+## Giờ của kỷ niệm: trường RIÊNG, không gộp vào Date
+
+`time: "HH:mm"` là string riêng, không nhét vào `date`. Lý do: mọi kỷ niệm lưu trước khi có trường này
+**giữ nguyên** — không migrate, và không có bản ghi nào tự dưng mọc ra "00:00" cho một giờ chẳng ai ghi.
+Hiển thị chỉ khi có: thẻ ghi `15/8/2026 · 17:30`, không có giờ thì chỉ ngày.
+
+## `variant="outline"` KHÔNG đặt màu chữ
+
+Nút mở lịch trong `DatePicker` dùng `variant="outline"`, mà variant đó chỉ đặt viền/nền — **không đặt
+màu chữ**. Ngày hiển thị thừa hưởng màu xám của khung xung quanh và **đọc ra như một field bị khoá**:
+user tưởng không đổi được ngày nên không thử bấm, dù bấm vào vẫn mở lịch bình thường.
+
+Sửa bằng `text-foreground font-medium` ngay trên nút đó. **Luật:** bất kỳ chỗ nào hiển thị *giá trị
+người dùng đã chọn* phải nói bằng màu chữ chính — màu xám là ngôn ngữ của "không dùng được".
+
 ## Chạy được route THẬT rồi mới thấy 2 thứ mô phỏng không bao giờ thấy
 
 Có `STADIA_API_KEY` (từ `.env` — xem cuối mục này), gọi thật một tuyến Sài Gòn 10,9 km:

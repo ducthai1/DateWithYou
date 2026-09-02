@@ -90,7 +90,15 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
       <Button
         type="button"
         variant="outline"
-        className="w-full justify-start text-left font-normal bg-background hover:bg-background hover:border-accent"
+        /*
+         * The chosen date is stated in the foreground colour, at medium weight.
+         *
+         * The outline variant sets no text colour, so the date inherited the
+         * muted grey of whatever surrounded it and read as a disabled field —
+         * people assumed the date could not be changed and did not try, even
+         * though tapping it has always opened the picker.
+         */
+        className="text-foreground w-full justify-start bg-background text-left font-medium hover:border-accent hover:bg-background"
         onClick={() => setOpen(!open)}
       >
         <CalendarIcon className="mr-2 h-4 w-4 text-accent" />

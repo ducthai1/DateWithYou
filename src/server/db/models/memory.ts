@@ -36,6 +36,14 @@ const memorySchema = new Schema(
     embeds: { type: [embedSchema], default: [] },
     tags: { type: [String], default: [] },
     date: { type: Date, required: true },
+    /*
+     * Time of day, "HH:mm", optional and separate from `date`.
+     *
+     * Kept as its own string rather than folded into the Date so every memory
+     * saved before this existed stays exactly as it was — no migration, no
+     * midnight appearing on entries whose hour nobody recorded.
+     */
+    time: { type: String },
     locationId: { type: String },
     geo: {
       lat: { type: Number },
