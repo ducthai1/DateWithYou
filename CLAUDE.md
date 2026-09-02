@@ -1525,6 +1525,96 @@ theo sự kiện.
 Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
 câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
 
+## Ảnh gốc: giới hạn 10 MB là của GÓI, và nó bắt user trả giá bằng thời gian chờ
+
+Đo thật bằng cách upload lên đúng tài khoản: gói **Free của Cloudinary chặn cứng ở
+10.485.760 byte/ảnh** (`"File size too large. Got 58656604. Maximum is 10485760."`). Không phải code
+đặt ra, và **không tắt được** — muốn cao hơn thì phải đổi gói.
+
+Cái đắt không phải lời từ chối, mà là **lúc** nó tới: server chỉ trả lời sau khi đã nhận hết body, nên
+ảnh 56 MB **đi hết đường lên rồi mới bị từ chối — đo được 47,6 giây**. Ảnh 9,3 MB lên được nhưng mất
+11,4 giây, và đó là từ máy bàn nối dây; qua 4G còn lâu hơn nhiều.
+
+⇒ **Kích thước phải chốt ở client, trước khi byte đầu tiên rời máy.** `src/lib/image-prepare.ts`.
+
+### Luật hẹp có chủ đích: dưới ngưỡng thì KHÔNG ĐỤNG MỘT BYTE
+
+| ảnh | làm gì |
+|---|---|
+| ≤ 10 MB | trả về **đúng object `File` đó**, không giải mã, không vẽ lại, không nén |
+| > 10 MB | thu vừa đủ để lọt, ở mức chất lượng cao nhất còn lọt được |
+
+Ảnh điện thoại thường 2–5 MB nên **không bao giờ đi vào nhánh thu nhỏ**. Kiểm bằng md5 hai đầu: ảnh
+3,94 MB tải về từ Cloudinary trùng md5 và trùng từng byte (`4136487`) với bản trên máy.
+
+Chỗ cần nói rõ: với ảnh **trên** 10 MB thì lựa chọn không phải "giữ nguyên hay nén", mà là **"nén một
+chút hay mất luôn ảnh"** — gói này không lưu nó nguyên bản được. Thu 25,5 MB / 6000×4000 → 8,2 MB /
+4899×3266, vẫn 16 MP.
+
+### Ba cái bẫy trong đường thu nhỏ
+
+- **Safari iOS trả canvas TRẮNG quá ~16,7 triệu điểm ảnh** — không báo lỗi, chỉ ra ảnh rỗng. Nên có
+  `MAX_PIXELS = 16_000_000`. Ảnh 48 MP trên iPhone mà không chặn trần thì lưu lên một ô trắng.
+- **`createImageBitmap(file, { imageOrientation: "from-image" })`** — thiếu tham số này thì ảnh chụp
+  dọc bị **encode nằm ngang**, vì cờ orientation trong EXIF biến mất cùng phần metadata khi vẽ lại.
+- **Safari chỉ ENCODE được WebP từ 16.4**, bản cũ hơn **im lặng trả về PNG** chứ không từ chối ⇒ phải
+  xét `blob.type` trả về, đừng tin `toBlob("image/webp")` đã chạy là đã ra WebP. Chọn WebP vì cùng dung
+  lượng nó giữ nhiều chi tiết hơn JPEG, mà delivery đằng nào cũng `f_auto` nên lưu định dạng gì cũng được.
+
+Giải mã thất bại (HEIC iPhone ở browser không đọc được) **không phải lỗi**: đẩy nguyên bản lên, để
+server — nơi hiểu định dạng đó — quyết định.
+
+## `Promise.all` cho 10 ảnh: một ảnh rớt mạng là mất cả chín ảnh đã lên xong
+
+`Promise.all` **reject ngay ảnh lỗi đầu tiên và bỏ hết kết quả**. Nên trên đường truyền điện thoại —
+nơi máy chuyển giữa wifi và 4G giữa lúc upload — một ảnh hỏng khiến chín ảnh đã lên tới Cloudinary bị
+vứt đi, và user phải chọn lại từ đầu cả 10.
+
+Nay mỗi ảnh đi một đường riêng, mang tiến độ và lỗi của riêng nó: hỏng cái nào thì **chỉ ô đó** xám lại
+kèm nút "Thử lại", mọi ảnh khác và mọi thứ đã gõ trong form nằm nguyên. Thêm 2 lần tự thử lại
+(700ms, 2s) cho lỗi mạng — **4xx thì không thử lại**, vì đó là phán quyết về chính tấm ảnh đó.
+
+**Dùng `XMLHttpRequest`, không phải `fetch`** — chỉ vì một lý do: nó báo đã đẩy được bao nhiêu
+(`xhr.upload.onprogress`). 10 ảnh qua mạng điện thoại là gần một phút, và một phút không có gì nhúc
+nhích thì **đọc ra là app treo** dù nó đang chạy.
+
+Kiểm bằng cách chặn `api.cloudinary.com` giữa lúc upload: 3 request (1 + 2 lần thử lại) → hiện
+"0 ảnh · 1 lỗi" + 1 nút Thử lại; bỏ chặn, bấm → 200 → "1 ảnh, 0 lỗi".
+
+## ⚠️ Preset upload đang MỞ TOANG — và comment trong code nói ngược
+
+`cloudinary-upload.ts` từng ghi *"preset (locked to folder / formats / size in the Cloudinary
+dashboard)"*. Hỏi Admin API thì preset `my_love` chỉ có
+`['overwrite','type','unique_filename','use_asset_folder_as_public_id_prefix','use_filename','use_filename_as_display_name']`
+— **không có** `folder`, `allowed_formats`, `max_file_size`, `incoming_transformation`.
+
+`NEXT_PUBLIC_CLOUDINARY_*` nằm trong bundle JS công khai ⇒ ai đọc bundle cũng POST được file bất kỳ vào
+tài khoản, đốt hạn mức 25 credit của gói Free. Comment đã sửa lại cho đúng sự thật. **Chưa bịt** — cần
+user quyết: siết preset, hay chuyển sang **signed upload** (server phát signature, chỉ user đã đăng
+nhập upload được).
+
+**Luật:** comment khẳng định một tính chất an toàn ("đã khoá ở dashboard") thì phải **gọi API xác nhận**
+rồi mới viết. Comment sai kiểu này còn tệ hơn không có comment, vì nó khiến người sau thôi kiểm tra.
+
+## Test chấm bản CŨ: cổng đã có người giữ, `next dev` chết mà test vẫn "chạy"
+
+Chạy `next dev -p 3987` rồi test, thấy chữ trên form vẫn là bản cũ. Lý do: cổng 3987 đang do một
+**`next start`** (bản build từ trước) giữ; `next dev` chết ngay với `EADDRINUSE` (chỉ nằm trong log,
+không nổi lên đâu cả), còn `curl` vẫn trả 200 nên trông như server của mình. Bài test hợp lệ hoàn toàn
+— nó chỉ đang chấm code cũ.
+
+**Trước khi tin một bài test UI: xem CHÍNH XÁC tiến trình nào đang giữ cổng đó**
+(`ss -ltnp | grep <port>`), và tail log của server mình vừa bật.
+
+## Phép thay thế trượt mỏ neo làm bài test "đậu" bằng cách không test gì
+
+Sửa file test bằng `str.replace` mà mỏ neo đã bị chính mình chèn thêm dòng vào từ lượt trước ⇒ Python
+`replace` **im lặng không làm gì**, script chạy lại đúng bài cũ và in ra kết quả xanh. Dòng
+`>>> ĐÃ CHẶN` không hề xuất hiện, đó là bằng chứng duy nhất cho thấy có chuyện.
+
+**Mọi `str.replace` khi vá file phải `assert s.count(old)==1`.** Và bài test nào có bật/tắt một điều
+kiện thì phải **in ra rằng nó đã bật** — nếu không, "không lỗi" và "không test" trông y như nhau.
+
 ## Kỷ niệm: ảnh GỐC được nhét vào ô 120px, ba cái mỗi thẻ
 
 `memory-timeline.tsx` render `<img src={p.url}>` — mà `p.url` là `secure_url` Cloudinary trả về lúc

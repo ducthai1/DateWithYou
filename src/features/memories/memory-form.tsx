@@ -10,7 +10,8 @@ import {
   cloudinaryConfigured,
   type UploadedPhoto,
 } from "@/lib/cloudinary-upload";
-import { ImagePlus, Link2, X, ExternalLink, Play, Loader2 } from "lucide-react";
+import { cldFull, cldThumb } from "@/lib/cloudinary-url";
+import { ExternalLink, ImagePlus, Link2, Loader2, Play, RotateCw, X } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
@@ -30,6 +31,16 @@ function extractUrls(text: string): string[] {
   // Deduplicate
   return [...new Set(all)].filter(Boolean);
 }
+
+/** A photo picked but not yet stored, with the state of its own journey. */
+type PendingPhoto = {
+  id: string;
+  /** Object URL of the local file, shown in the photo's place while it climbs. */
+  url: string;
+  file: File;
+  progress: number;
+  error: string | null;
+};
 
 export function MemoryForm({
   onDone,
@@ -76,8 +87,14 @@ export function MemoryForm({
     return `${y}-${m}-${day}`;
   });
   const [photos, setPhotos] = useState<UploadedPhoto[]>(initialMemory?.photos ?? []);
-  /** Object URLs for files being uploaded right now, shown in their place. */
-  const [pending, setPending] = useState<string[]>([]);
+  /*
+   * One entry per photo still on its way up, each carrying its own progress and
+   * its own failure. They used to travel as a single batch through Promise.all,
+   * which rejects on the first error and discards every result — so one photo
+   * losing the connection threw away the nine that had already arrived, and the
+   * person had to pick all ten again.
+   */
+  const [pending, setPending] = useState<PendingPhoto[]>([]);
   const photosRef = useRef<HTMLDivElement>(null);
 
   /*
@@ -114,7 +131,8 @@ export function MemoryForm({
   });
   const toast = useToast();
   const [linkInput, setLinkInput] = useState("");
-  const [uploading, setUploading] = useState(false);
+  /** Something is still climbing; a photo sitting in an error state is not. */
+  const uploading = pending.some((p) => !p.error);
   const [err, setErr] = useState<string | null>(null);
 
   /** Add a single URL to embeds if not already present. */
@@ -173,26 +191,67 @@ export function MemoryForm({
   async function onFiles(files: FileList | null) {
     if (!files) return;
     setErr(null);
-    const slots = Math.max(0, 10 - photos.length);
+    const slots = Math.max(0, 10 - photos.length - pending.length);
     const picked = Array.from(files).slice(0, slots);
     if (picked.length === 0) return;
 
-    const previews = picked.map((f) => URL.createObjectURL(f));
-    setPending(previews);
-    setUploading(true);
+    const items: PendingPhoto[] = picked.map((file, i) => ({
+      id: `${Date.now()}-${i}-${file.name}`,
+      url: URL.createObjectURL(file),
+      file,
+      progress: 0,
+      error: null,
+    }));
+    setPending((p) => [...p, ...items]);
+    items.forEach(startUpload);
+  }
+
+  /*
+   * Each photo climbs on its own. A failure parks that one thumbnail in an
+   * error state with a way to try again, and leaves every other photo — and
+   * everything already typed into the form — exactly where it was.
+   */
+  async function startUpload(item: PendingPhoto) {
+    const patch = (fields: Partial<PendingPhoto>) =>
+      setPending((ps) => ps.map((p) => (p.id === item.id ? { ...p, ...fields } : p)));
+    patch({ error: null, progress: 0 });
     try {
-      const uploaded = await Promise.all(picked.map(uploadToCloudinary));
-      setPhotos((p) => [...p, ...uploaded]);
-    } catch {
-      setErr("Upload ảnh thất bại. Kiểm tra cấu hình Cloudinary.");
-    } finally {
-      // Release the object URLs: they pin the file in memory until revoked, and
+      const uploaded = await uploadToCloudinary(item.file, {
+        onProgress: (fraction) => patch({ progress: fraction }),
+      });
+      setPhotos((p) => [...p, uploaded]);
+      setPending((ps) => ps.filter((p) => p.id !== item.id));
+      // Release the object URL: it pins the file in memory until revoked, and
       // ten phone photos is tens of megabytes held for the life of the tab.
-      previews.forEach(URL.revokeObjectURL);
-      setPending([]);
-      setUploading(false);
+      URL.revokeObjectURL(item.url);
+    } catch (e) {
+      patch({
+        progress: 0,
+        error: e instanceof Error ? e.message : "Tải ảnh lên thất bại",
+      });
     }
   }
+
+  /** Give up on one photo that would not upload. */
+  function dismissPending(id: string) {
+    setPending((ps) => {
+      const gone = ps.find((p) => p.id === id);
+      if (gone) URL.revokeObjectURL(gone.url);
+      return ps.filter((p) => p.id !== id);
+    });
+  }
+
+  /*
+   * Object URLs outlive the component unless revoked, and a closed form still
+   * holding ten phone photos is tens of megabytes the tab never gets back.
+   * Reading through a ref so this runs on unmount only, not on every change.
+   */
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
+  useEffect(
+    () => () => pendingRef.current.forEach((p) => URL.revokeObjectURL(p.url)),
+    [],
+  );
 
   /** Drop one picture from the draft. Nothing is saved until the form is. */
   function removePhoto(publicId: string) {
@@ -332,7 +391,7 @@ export function MemoryForm({
         <label
           className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center transition-all duration-200 sm:p-6
             ${
-              uploading || photos.length >= 10
+              photos.length + pending.length >= 10
                 ? "cursor-not-allowed border-border/50 bg-muted/20 opacity-60"
                 : "border-border hover:border-accent hover:bg-accent-soft/30 bg-card active:scale-[0.99]"
             }
@@ -343,10 +402,12 @@ export function MemoryForm({
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              {uploading ? "Đang tải lên..." : "Chạm để tải ảnh lên"}
+              {uploading ? "Đang tải lên — chọn thêm được" : "Chạm để tải ảnh lên"}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {photos.length >= 10 ? "Đã đạt tối đa 10 ảnh" : "Hỗ trợ ảnh JPG, PNG. Tối đa 10 ảnh."}
+              {photos.length + pending.length >= 10
+                ? "Đã đạt tối đa 10 ảnh"
+                : "Ảnh gốc từ máy, không cần thu nhỏ trước. Tối đa 10 ảnh."}
             </p>
           </div>
           <input
@@ -356,7 +417,7 @@ export function MemoryForm({
             multiple
             className="hidden"
             onChange={(e) => onFiles(e.target.files)}
-            disabled={uploading || photos.length >= 10}
+            disabled={photos.length + pending.length >= 10}
           />
         </label>
       ) : (
@@ -369,7 +430,13 @@ export function MemoryForm({
         <div ref={photosRef} className="scroll-mt-4 space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-xs">
-              {photos.length} ảnh{pending.length > 0 ? ` · đang tải ${pending.length}` : ""}
+              {photos.length} ảnh
+              {pending.some((p) => !p.error)
+                ? ` · đang tải ${pending.filter((p) => !p.error).length}`
+                : ""}
+              {pending.some((p) => p.error)
+                ? ` · ${pending.filter((p) => p.error).length} lỗi`
+                : ""}
             </p>
             {photos.length > 1 && (
               <button
@@ -387,11 +454,13 @@ export function MemoryForm({
           <div className="flex flex-wrap gap-2.5">
             {photos.map((p) => (
               <div key={p.publicId} className="group relative">
-                <PhotoView src={p.url}>
+                <PhotoView src={cldFull(p.url)}>
                   <img
-                    src={p.url}
+                    src={cldThumb(p.url, 200)}
                     alt=""
-                    className="border-border h-20 w-20 cursor-zoom-in rounded-xl border object-cover"
+                    width={200}
+                    height={200}
+                    className="border-border bg-muted h-20 w-20 cursor-zoom-in rounded-xl border object-cover"
                   />
                 </PhotoView>
                 {/* Always visible, not hover-only: this form is used on a phone
@@ -406,16 +475,52 @@ export function MemoryForm({
                 </button>
               </div>
             ))}
-            {pending.map((url) => (
-              <div key={url} className="relative">
+            {pending.map((item) => (
+              <div key={item.id} className="relative">
                 <img
-                  src={url}
+                  src={item.url}
                   alt=""
-                  className="border-border h-20 w-20 rounded-xl border object-cover opacity-50"
+                  className={`border-border h-20 w-20 rounded-xl border object-cover ${
+                    item.error ? "opacity-40 grayscale" : "opacity-60"
+                  }`}
                 />
-                <span className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className="text-accent h-5 w-5 animate-spin" />
-                </span>
+                {item.error ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => startUpload(item)}
+                      aria-label={`Thử tải lại ảnh này. ${item.error}`}
+                      title={item.error}
+                      className="bg-card/85 text-destructive absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold"
+                    >
+                      <RotateCw className="h-4 w-4" />
+                      Thử lại
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => dismissPending(item.id)}
+                      aria-label="Bỏ ảnh này"
+                      className="bg-card text-muted-foreground hover:bg-destructive hover:text-destructive-foreground border-border absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border shadow-sm transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="text-accent h-5 w-5 animate-spin" />
+                    </span>
+                    {/* A number that moves is the difference between "it is
+                        working" and "it is stuck". Ten photos over a phone
+                        connection is a minute of otherwise silent waiting. */}
+                    <span className="bg-card/85 absolute inset-x-1 bottom-1 h-1 overflow-hidden rounded-full">
+                      <span
+                        className="bg-accent block h-full rounded-full transition-[width] duration-200"
+                        style={{ width: `${Math.round(item.progress * 100)}%` }}
+                      />
+                    </span>
+                  </>
+                )}
               </div>
             ))}
           </div>
