@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 import { useToast } from "@/components/ui/toast";
 import { VoiceHapticTestRow } from "@/features/locations/voice-haptic-test-row";
+import { PushPermissionRow } from "@/features/locations/push-permission-row";
 
 const PRESET_AVATARS = [
   // Animals
@@ -518,6 +519,17 @@ export function SpaceSettings() {
           the one screen reachable from every page — which matters for a check
           whose whole job is to be run the moment someone says "I hear nothing".
        */}
+      {/*
+          Notifications belong on the screen people go to for settings.
+          The switch existed only inside the map's own settings modal — two taps
+          deep behind a sheet — so the person whose invites never arrived had no
+          reason to ever find it.
+       */}
+      <h2 className="text-lg font-semibold mt-2">Thông báo</h2>
+      <Card>
+        <PushPermissionRow />
+      </Card>
+
       <h2 className="text-lg font-semibold mt-2">Giọng &amp; rung</h2>
       <Card>
         <VoiceHapticTestRow />

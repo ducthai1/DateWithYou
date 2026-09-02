@@ -724,14 +724,28 @@ export const locationRouter = router({
        * because a push service was slow would lose the invite over the
        * notification.
        */
-      await sendPushToUser(partnerId, {
+      const push = await sendPushToUser(partnerId, {
         title: "Lời mời đi chung 🛵",
         body: `Rủ bạn đi ${input.locationName}. Mở app để trả lời nhé!`,
         url: "/map",
         // One pending invite at a time, so a new one replaces the old on screen.
         tag: "nav-invite",
-      }).catch((err) => console.error("sendNavInvite: push failed", err));
-      return { id: String(invite._id) };
+      }).catch((err): null => {
+        console.error("sendNavInvite: push failed", err);
+        return null;
+      });
+      console.log("sendNavInvite: push", push ?? { reason: "threw" });
+      /*
+       * Handed back to the sender, so "did it reach them" is answerable.
+       *
+       * Silence was the whole problem before: a send with no registered device
+       * returned the same nothing as a successful one, so an invite that could
+       * not possibly arrive looked identical to one that did.
+       */
+      return {
+        id: String(invite._id),
+        push: push ? { reason: push.reason, delivered: push.delivered } : null,
+      };
     }),
 
   /** Accept or reject an incoming navigation invite. */

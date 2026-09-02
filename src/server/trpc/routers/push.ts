@@ -2,6 +2,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { PushSubscriptionModel } from "@/server/db/models/push-subscription";
+import { SpaceModel } from "@/server/db/models/space";
 import { pushConfigured } from "@/server/lib/push";
 
 /**
@@ -11,8 +12,30 @@ import { pushConfigured } from "@/server/lib/push";
  * remember it against the person, keyed by the endpoint the browser minted.
  */
 export const pushRouter = router({
-  /** Whether the server can send at all, so the UI can hide a dead switch. */
-  available: protectedProcedure.query(() => ({ enabled: pushConfigured() })),
+  /**
+   * Whether the server can send, and who is actually reachable.
+   *
+   * The counts are the answer to the only question anyone asks about push:
+   * "why didn't it arrive?" A device that never registered and a server with no
+   * keys both produce silence, and neither is visible from the phone that was
+   * waiting. `partnerDevices` is here for the same reason from the other side —
+   * an invite sent to someone with no registered device cannot arrive, and the
+   * sender may as well be told rather than left assuming it did.
+   */
+  available: protectedProcedure.query(async ({ ctx }) => {
+    const enabled = pushConfigured();
+    if (!enabled) return { enabled, myDevices: 0, partnerDevices: 0 };
+    await connectToDatabase();
+    const space = await SpaceModel.findById(ctx.spaceId)
+      .select("members")
+      .lean<{ members: string[] }>();
+    const partnerId = space?.members.find((m) => m !== ctx.userId);
+    const [myDevices, partnerDevices] = await Promise.all([
+      PushSubscriptionModel.countDocuments({ userId: ctx.userId }),
+      partnerId ? PushSubscriptionModel.countDocuments({ userId: partnerId }) : Promise.resolve(0),
+    ]);
+    return { enabled, myDevices, partnerDevices };
+  }),
 
   subscribe: protectedProcedure
     .input(

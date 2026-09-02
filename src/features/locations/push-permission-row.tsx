@@ -1,62 +1,62 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Bell, BellOff, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Bell, BellOff, Loader2, Smartphone } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-
-/** Same conversion as the silent re-registration; see push-setup.tsx. */
-function urlBase64ToBytes(base64: string): ArrayBuffer {
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
-  const normalised = padded.replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(normalised);
-  const buffer = new ArrayBuffer(raw.length);
-  const out = new Uint8Array(buffer);
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-  return buffer;
-}
+import {
+  ensurePushSubscription,
+  isStandalone,
+  pushBlocker,
+  type PushBlocker,
+} from "@/lib/push-subscribe";
 
 /**
- * The switch that asks for notification permission.
+ * The switch that asks for notification permission — and, when it cannot, says
+ * why instead of vanishing.
  *
  * Asking lives here, behind a press, rather than on page load: a prompt that
  * arrives unexplained is refused by reflex, and a refusal is close to permanent
- * — browsers will not ask again, and the person has to find it in site settings.
- * So the copy says what it is for before the system dialog appears.
+ * — browsers will not ask again, and the person has to find it in site
+ * settings. So the copy says what it is for before the system dialog appears.
  *
- * The iOS note is not a detail. Safari grants push to installed web apps only,
- * so on an iPhone still using the app in a Safari tab this cannot work at all,
- * and saying so is better than a switch that fails silently.
+ * This component used to `return null` whenever push was unavailable, which
+ * hid exactly the case that most needed explaining. Safari grants push only to
+ * an installed web app, so on an iPhone using the app in a tab there was
+ * nothing on screen at all — no switch, no note, no hint that "Thêm vào Màn
+ * hình chính" is the missing step. Someone whose invites never arrived went
+ * looking for the setting and found an empty space.
  */
 export function PushPermissionRow() {
   const toast = useToast();
-  const available = trpc.push.available.useQuery(undefined, { retry: false, staleTime: 60_000 });
+  const status = trpc.push.available.useQuery(undefined, { retry: false, staleTime: 30_000 });
   const subscribe = trpc.push.subscribe.useMutation();
   const unsubscribe = trpc.push.unsubscribe.useMutation();
 
-  const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
-  const [busy, setBusy] = useState(false);
+  const [blocker, setBlocker] = useState<PushBlocker | "loading">("loading");
+  const [permission, setPermission] = useState<NotificationPermission | null>(null);
+  const [installed, setInstalled] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setPermission("unsupported");
-      return;
-    }
-    setPermission(Notification.permission);
+  const readDevice = useCallback(() => {
+    setBlocker(pushBlocker());
+    setInstalled(isStandalone());
+    setPermission("Notification" in window ? Notification.permission : null);
+    if (!("serviceWorker" in navigator)) return;
     void navigator.serviceWorker.ready
-      .then((reg) => reg.pushManager.getSubscription())
-      .then((sub) => setSubscribed(!!sub))
-      .catch(() => {});
+      .then((reg) => reg.pushManager?.getSubscription())
+      .then((sub) => setSubscribed(Boolean(sub)))
+      .catch(() => undefined);
   }, []);
 
+  useEffect(readDevice, [readDevice]);
+
   const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  // Nothing to offer if the server cannot send or the browser cannot receive.
-  if (permission === "unsupported" || !key || available.data?.enabled === false) return null;
 
   const enable = async () => {
+    if (!key) return;
     setBusy(true);
     try {
       const result = await Notification.requestPermission();
@@ -65,26 +65,23 @@ export function PushPermissionRow() {
         toast("Bạn đã từ chối thông báo — bật lại trong cài đặt của trình duyệt nhé", "error");
         return;
       }
-      const reg = await navigator.serviceWorker.ready;
-      const sub =
-        (await reg.pushManager.getSubscription()) ??
-        (await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToBytes(key),
-        }));
-      const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) throw new Error("no endpoint");
+      const reg = await ensurePushSubscription(key);
       await subscribe.mutateAsync({
-        endpoint: json.endpoint,
-        keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+        endpoint: reg.endpoint,
+        keys: reg.keys,
         userAgent: navigator.userAgent.slice(0, 300),
       });
       setSubscribed(true);
+      await status.refetch();
       toast("Đã bật thông báo ✓", "success");
-    } catch {
-      toast("Không bật được thông báo, thử lại sau nhé", "error");
+    } catch (err) {
+      toast(
+        `Không bật được thông báo: ${err instanceof Error ? err.message : "thử lại sau nhé"}`,
+        "error",
+      );
     } finally {
       setBusy(false);
+      readDevice();
     }
   };
 
@@ -98,43 +95,114 @@ export function PushPermissionRow() {
         await sub.unsubscribe();
       }
       setSubscribed(false);
+      await status.refetch();
       toast("Đã tắt thông báo trên máy này");
     } catch {
       toast("Không tắt được, thử lại sau nhé", "error");
     } finally {
       setBusy(false);
+      readDevice();
     }
   };
 
   const on = permission === "granted" && subscribed;
 
   return (
-    <div className="space-y-3 w-full">
-      <h3 className="font-medium text-foreground">Thông báo lời mời</h3>
+    <div className="w-full space-y-3">
+      <h3 className="text-foreground font-medium">Thông báo lời mời</h3>
       <p className="text-muted-foreground text-sm leading-relaxed">
         Bật để nhận lời mời đi chung ngay trên máy — kể cả khi đang khoá màn hình hoặc đang dùng app
-        khác. Trên iPhone cần <span className="text-foreground font-medium">thêm app vào Màn hình
-        chính</span> trước, Safari chỉ cho phép thông báo với app đã cài.
+        khác.
       </p>
-      <Button
-        type="button"
-        variant={on ? "outline" : "primary"}
-        onClick={() => void (on ? disable() : enable())}
-        disabled={busy}
-        className="gap-2"
-      >
-        {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : on ? (
-          <BellOff className="h-4 w-4" />
-        ) : (
-          <Bell className="h-4 w-4" />
-        )}
-        {on ? "Tắt thông báo trên máy này" : "Bật thông báo"}
-      </Button>
-      {permission === "denied" && (
-        <p className="text-xs font-medium text-amber-600">
-          Trình duyệt đang chặn thông báo cho trang này — mở cài đặt trang để cho phép lại.
+
+      {blocker === "ios-needs-install" ? (
+        /*
+         * The instruction, not an apology. Apple gives push to installed web
+         * apps only, and this is the whole of what someone on an iPhone has to
+         * do — spelled out, because the menu item is not where anyone looks.
+         */
+        <div className="border-border bg-accent-soft/30 space-y-2 rounded-xl border p-3">
+          <p className="text-foreground flex items-center gap-1.5 text-sm font-medium">
+            <Smartphone className="h-4 w-4" /> Trên iPhone cần cài app vào Màn hình chính trước
+          </p>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Safari chỉ cho phép thông báo với app đã cài. Trong Safari, chạm nút{" "}
+            <strong className="text-foreground">Chia sẻ</strong> (hình vuông có mũi tên lên) →{" "}
+            <strong className="text-foreground">Thêm vào MH chính</strong> → mở app từ biểu tượng vừa
+            xuất hiện, rồi quay lại đây bật thông báo.
+          </p>
+        </div>
+      ) : blocker === "denied" ? (
+        <p className="text-sm font-medium text-amber-600">
+          Trình duyệt đang chặn thông báo cho trang này. Mở cài đặt trang trong trình duyệt và cho
+          phép lại — sau khi từ chối, trình duyệt sẽ không hỏi nữa.
+        </p>
+      ) : blocker === "unsupported" || blocker === "no-service-worker" ? (
+        <p className="text-muted-foreground text-sm">
+          Trình duyệt này không hỗ trợ thông báo đẩy. Thử Chrome trên Android, hoặc cài app vào Màn
+          hình chính trên iPhone.
+        </p>
+      ) : status.data && !status.data.enabled ? (
+        <p className="text-muted-foreground text-sm">
+          Server chưa có khoá VAPID nên chưa gửi được thông báo. Cần thêm{" "}
+          <code className="text-xs">NEXT_PUBLIC_VAPID_PUBLIC_KEY</code> và{" "}
+          <code className="text-xs">VAPID_PRIVATE_KEY</code> rồi deploy lại.
+        </p>
+      ) : (
+        <Button
+          type="button"
+          variant={on ? "outline" : "primary"}
+          onClick={() => void (on ? disable() : enable())}
+          disabled={busy || blocker === "loading"}
+          className="gap-2"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : on ? (
+            <BellOff className="h-4 w-4" />
+          ) : (
+            <Bell className="h-4 w-4" />
+          )}
+          {on ? "Tắt thông báo trên máy này" : "Bật thông báo"}
+        </Button>
+      )}
+
+      {/*
+        The four facts that decide whether a notification can arrive, on screen
+        together. Every one of them was previously invisible, which is why
+        "nothing arrived" had no next step.
+      */}
+      <dl className="text-muted-foreground grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+        <dt>Đã cài vào Màn hình chính</dt>
+        <dd className="text-foreground font-medium">{installed ? "có" : "chưa"}</dd>
+        <dt>Quyền thông báo</dt>
+        <dd className="text-foreground font-medium">
+          {permission === "granted"
+            ? "đã cho phép"
+            : permission === "denied"
+              ? "đã chặn"
+              : permission === "default"
+                ? "chưa hỏi"
+                : "không có"}
+        </dd>
+        <dt>Máy này đã đăng ký</dt>
+        <dd className="text-foreground font-medium">{subscribed ? "có" : "chưa"}</dd>
+        <dt>Server gửi được</dt>
+        <dd className="text-foreground font-medium">
+          {status.isLoading
+            ? "đang kiểm…"
+            : status.data
+              ? status.data.enabled
+                ? `có · bạn ${status.data.myDevices} máy · người kia ${status.data.partnerDevices} máy`
+                : "chưa cấu hình khoá"
+              : "không kiểm được"}
+        </dd>
+      </dl>
+
+      {status.data?.enabled && status.data.partnerDevices === 0 && (
+        <p className="text-xs leading-relaxed text-amber-600">
+          Người kia chưa có máy nào đăng ký nhận thông báo — lời mời bạn gửi sẽ không hiện lên máy họ
+          khi họ đóng app. Nhờ họ vào đây bật giúp nhé.
         </p>
       )}
     </div>

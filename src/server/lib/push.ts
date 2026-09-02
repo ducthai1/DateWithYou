@@ -59,13 +59,38 @@ export type PushPayload = {
  * push protocol's way of saying the subscription is gone for good, and keeping
  * it would mean a failed request on every future send.
  */
-export async function sendPushToUser(userId: string, payload: PushPayload): Promise<number> {
-  if (!pushConfigured()) return 0;
+/**
+ * What a send actually did.
+ *
+ * It used to return a bare count, and the two ways of returning zero — no keys
+ * on the server, no registered device for that person — are the two different
+ * problems anyone debugging "the notification never came" needs to tell apart.
+ * Reported as a reason rather than inferred from a number.
+ */
+export type PushResult = {
+  reason: "sent" | "not-configured" | "no-devices";
+  /** Rows on file for this person. */
+  devices: number;
+  /** How many the push service accepted. */
+  delivered: number;
+};
+
+export async function sendPushToUser(
+  userId: string,
+  payload: PushPayload,
+): Promise<PushResult> {
+  if (!pushConfigured()) {
+    console.warn("push: VAPID keys missing, nothing sent");
+    return { reason: "not-configured", devices: 0, delivered: 0 };
+  }
   await connectToDatabase();
   const subs = await PushSubscriptionModel.find({ userId }).lean<
     Array<{ endpoint: string; keys: { p256dh: string; auth: string } }>
   >();
-  if (!subs.length) return 0;
+  if (!subs.length) {
+    console.warn("push: no registered device for user", userId);
+    return { reason: "no-devices", devices: 0, delivered: 0 };
+  }
 
   const body = JSON.stringify(payload);
   let delivered = 0;
@@ -84,8 +109,23 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
         delivered += 1;
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode;
-        if (status === 404 || status === 410) dead.push(sub.endpoint);
-        else console.error("push: send failed", status, err);
+        if (status === 404 || status === 410) {
+          // The endpoint is gone for good; the row can only fail from here.
+          dead.push(sub.endpoint);
+        } else if (status === 403) {
+          /*
+           * Signed with a key this endpoint was not created under. The row is
+           * dead too, permanently — but it is dropped with a distinct message
+           * because the cause is ours, not the browser's: the VAPID pair
+           * changed after the device subscribed. The client re-subscribes when
+           * it notices the same mismatch; dropping the row here stops us
+           * retrying a send that can never succeed in the meantime.
+           */
+          console.error("push: VAPID key mismatch for endpoint, dropping", sub.endpoint.slice(0, 60));
+          dead.push(sub.endpoint);
+        } else {
+          console.error("push: send failed", status, err);
+        }
       }
     }),
   );
@@ -93,5 +133,6 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
   if (dead.length) {
     await PushSubscriptionModel.deleteMany({ endpoint: { $in: dead } }).catch(() => {});
   }
-  return delivered;
+
+  return { reason: "sent", devices: subs.length, delivered };
 }

@@ -1525,6 +1525,74 @@ theo sự kiện.
 Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
 câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
 
+## Push không tới: khoá ĐÚNG, deploy ĐÚNG, mà cái nút bật thì TỰ ẨN
+
+Kiểm prod trước khi đoán, và cả hai thứ dễ nghi nhất đều **không sai**:
+
+```
+khoá public VAPID có trong bundle prod: /_next/static/chunks/app/layout-*.js  ✓
+/sw.js prod GIỐNG HỆT public/sw.js, có cả addEventListener("push") và notificationclick  ✓
+cache-control: max-age=0, must-revalidate  (SW tự cập nhật)  ✓
+sendNavInvite CÓ gọi sendPushToUser  ✓
+```
+
+Lỗi thật nằm ở `push-permission-row.tsx`:
+
+```ts
+if (permission === "unsupported" || !key || available.data?.enabled === false) return null;
+```
+
+`PushManager` không tồn tại trên **iPhone dùng Safari khi app chưa được cài vào Màn hình chính** — Apple
+chỉ cấp push cho app đã cài. Nên đúng cái trường hợp cần hướng dẫn nhất lại là trường hợp **cả dòng biến
+mất**: người đi tìm "tại sao không nhận được lời mời" gặp một khoảng trống. Nó lại chỉ nằm trong modal
+cài đặt của bản đồ, hai lớp sâu sau một sheet, không ở `/settings`.
+
+Và `PushSetup` **không bao giờ tự hỏi quyền** (đúng — prompt lúc tải trang bị từ chối theo phản xạ, mà từ
+chối là gần như vĩnh viễn). Nó chỉ đăng ký khi quyền **đã** được cấp. Cộng lại: không ai cấp quyền ⇒
+không có thuê bao ⇒ `sendPushToUser` trả 0 và không ai biết.
+
+**Luật:** một điều khiển không dùng được thì **nói ra lý do**, đừng render `null`. `null` biến "chưa đủ
+điều kiện" thành "tính năng không tồn tại", và người dùng không có bước tiếp theo nào.
+
+## Hai kiểu số 0 khác nhau, và im lặng làm chúng giống nhau
+
+`sendPushToUser` cũ trả `Promise<number>` và `return 0` ở **hai** chỗ: server không có khoá, và người đó
+không có máy nào đăng ký. Cùng một con số, hai vấn đề hoàn toàn khác, và không cái nào hiện lên đâu.
+Caller thì `.catch()` rồi bỏ luôn giá trị trả về.
+
+Nay trả `{ reason: "sent" | "not-configured" | "no-devices", devices, delivered }`, log ở server, và
+`sendNavInvite` trả kèm về client. `push.available` cũng trả `myDevices` + **`partnerDevices`** — vì câu
+hỏi duy nhất ai cũng hỏi về push là "sao nó không tới", và người gửi đáng được biết là mình đang mời một
+người **không có máy nào đăng ký**, thay vì tưởng đã tới.
+
+Bảng 4 dữ kiện hiện thẳng trên `/settings`: đã cài vào MH chính · quyền thông báo · máy này đã đăng ký ·
+server gửi được (kèm số máy hai bên). Trước đó **cả bốn đều vô hình**.
+
+## Thuê bao đúc bằng khoá VAPID KHÁC là thuê bao chết vĩnh viễn
+
+`getSubscription() ?? subscribe(...)` dùng lại bất kỳ thuê bao có sẵn — nhưng một thuê bao **bị buộc vào
+khoá VAPID lúc nó được tạo**. Đổi cặp khoá xong thì mọi lần gửi tới nó bị dịch vụ push trả **403**, mãi
+mãi, và `sendPushToUser` chỉ dọn row khi gặp 404/410 ⇒ nó nằm đó fail vô hạn. Triệu chứng tệ nhất có
+thể: **nút báo đã bật, mà thông báo không bao giờ tới.**
+
+`ensurePushSubscription()` so `sub.options.applicationServerKey` với khoá hiện tại, khác thì
+`unsubscribe()` rồi tạo lại. Phía server, 403 nay cũng bị dọn row, kèm log nói rõ nguyên nhân là **của
+mình** (đổi khoá) chứ không phải của trình duyệt.
+
+## Test UI sau lớp auth: đăng ký qua API công khai, rồi xoá sạch
+
+```
+POST /api/auth/sign-up/email                → cookie session
+POST /api/trpc/space.create                 → cần header Origin = BETTER_AUTH_URL, thiếu là 403
+```
+
+Giả lập iPhone-Safari-chưa-cài bằng CDP: `Emulation.setUserAgentOverride` + `Page.addScript‌ToEvaluate‌OnNewDocument`
+xoá `window.PushManager` **trước khi code app chạy** (đặt sau khi navigate là muộn).
+
+Dọn thì nhớ: tên collection **không đồng nhất** (`spaces` số nhiều của mongoose, `user`/`session`/
+`account` số ít của better-auth), và `session`/`account` phải xoá theo **bản mồ côi** — xoá theo
+`userId: {$in: ids}` trả `deletedCount: 0` vì kiểu dữ liệu khác, trông như đã xong.
+
 ## Nút cuối trang bị nav che: khoảng chừa của KHUNG không đi vào phần TRÀN
 
 Trang `/settings` cuộn hết cỡ rồi mà **28 trong 44px của nút "Đăng xuất" vẫn nằm dưới thanh nav**, không
