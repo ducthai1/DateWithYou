@@ -56,10 +56,10 @@ const VERBS: Record<number, string> = {
   8: "đi thẳng",
   9: "chếch phải",
   10: "rẽ phải",
-  11: "rẽ phải gấp",
+  11: "ngoặt phải",
   12: "quay đầu",
   13: "quay đầu",
-  14: "rẽ trái gấp",
+  14: "ngoặt trái",
   15: "rẽ trái",
   16: "chếch trái",
   17: "đi thẳng theo đường nhánh",
@@ -177,10 +177,25 @@ export function maneuverSentence(m: Maneuver, metres: number): string {
   const street = maneuverStreet(m);
   const onto = street ? ` vào ${street}` : "";
   if (m.type >= 4 && m.type <= 6) {
-    return metres <= IMMINENT_M ? "Đã tới đích" : `Còn ${fmtMetresVi(metres)} là tới đích`;
+    // "Đã tới đích" is what a system says. This is the end of someone's ride.
+    return metres <= IMMINENT_M ? "Tới rồi!" : `Còn ${fmtMetresVi(metres)} là tới đích`;
   }
   if (metres <= IMMINENT_M) {
-    return `${verb.charAt(0).toUpperCase()}${verb.slice(1)} ngay${onto}`;
+    /*
+     * "Rẽ phải vào Pasteur nha", not "Rẽ phải ngay vào Pasteur".
+     *
+     * This is a guide, not a dispatcher. "Ngay" adds urgency the junction
+     * already has, and a bare imperative at the moment someone is committing to
+     * a turn lands as being ordered about — which is a small thing once and a
+     * tiring thing over a whole ride.
+     *
+     * The softener goes at the END so the words that matter still come first:
+     * by the time "nha" arrives the rider already knows which way to go. Which
+     * particle depends on whether there is a street to name, because "chếch
+     * phải nha" alone is thinner than "chếch phải nào".
+     */
+    const head = `${verb.charAt(0).toUpperCase()}${verb.slice(1)}`;
+    return onto ? `${head}${onto} nha` : `${head} nào`;
   }
   return `Sau ${fmtMetresVi(metres)} ${verb}${onto}`;
 }

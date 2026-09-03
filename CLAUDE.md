@@ -1956,6 +1956,39 @@ truyền tới input thông. Bản thân cái rung thì **chỉ quan sát đư�
 ⚠️ **Apple đã bịt haptic-bằng-JavaScript ở iOS 26.5.** Mẹo này chạy từ 17.4 đến 26.4. Máy mới hơn thì
 không có đường nào từ web nữa — cần biết phiên bản iOS trước khi kết luận là code sai.
 
+## Giọng dẫn đường, không phải giọng ra lệnh
+
+User: *"Chếch phải ngay như kiểu ra lệnh là không được nha. Chếch phải nào thì user thoải mái. App dẫn
+đường chứ không phải app ra lệnh."*
+
+Soát **toàn bộ** chuỗi được đọc (`maneuver-vi.ts`, `departure-voice.ts`, `nav-chatter.ts`), tìm ra **ba**
+chỗ mang giọng ra lệnh chứ không chỉ một:
+
+| trước | sau | vì sao |
+|---|---|---|
+| `Chếch phải ngay vào X` | `Chếch phải vào X nha` · `Chếch trái nào` | `ngay` thêm sự gấp gáp mà cái ngã ba **đã** có; động từ trần ở đúng lúc người ta đang vào khúc rẽ thì nghe như bị điều |
+| `rẽ phải gấp` / `rẽ trái gấp` (type 11/14) | `ngoặt phải` / `ngoặt trái` | "gấp" trong tiếng Việt vừa là *gắt* vừa là *khẩn* — mô tả một khúc gắt mà nghe ra thành thúc giục |
+| `Đã tới đích` | `Tới rồi!` | đó là câu một cái hệ thống nói. Đây là lúc kết thúc chuyến đi của một người |
+
+### Tiểu từ đặt ở CUỐI, không đặt ở đầu
+
+`Rẽ phải vào Pasteur nha` — chữ quan trọng vẫn ra trước. Tới lúc nghe "nha" thì người ta đã biết rẽ
+hướng nào rồi. Đặt softener lên đầu (*"Bạn ơi, rẽ phải…"*) là trì hoãn đúng phần cần nghe.
+
+Chọn tiểu từ theo việc **có tên đường hay không**: `nha` khi có (`Rẽ phải vào Pasteur nha`), `nào` khi
+không (`Rẽ trái nào`) — vì `chếch phải nha` đứng một mình mỏng hơn `chếch phải nào`.
+
+### Cái KHÔNG sửa
+
+`Sau 500 mét rẽ phải vào Pasteur` **giữ nguyên**. Đó là câu **tường thuật** lộ trình, không phải câu
+lệnh, và user đã nói phần đó tốt rồi. Thêm `nhé` vào đây thì nó lặp 4 lần mỗi khúc rẽ × mọi khúc rẽ.
+
+`Ngay bây giờ` trên banner cũng giữ: nó nằm ở **cột khoảng cách**, trả lời "còn bao xa", không phải ra
+lệnh.
+
+**Luật:** trước khi sửa văn phong, **liệt kê hết chuỗi được đọc ra rồi soi từng câu** — chỗ user chỉ ra
+thường không phải chỗ duy nhất. Ở đây `gấp` và `Đã tới đích` đều lọt qua mắt cho tới khi lập bảng.
+
 ## Tới đích: nói tên chỗ, và nói nó nằm bên tay nào
 
 App **đã** báo tới đích từ trước (`maneuverSentence` xử lý type 4–6: *"Còn 100 mét là tới đích"* →
