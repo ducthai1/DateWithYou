@@ -2362,6 +2362,55 @@ tính `width`/`height`.
 ⚠️ Khi thêm state phái sinh từ một API, **kiểm cả projection** — dữ liệu có trong DB không có nghĩa là
 nó tới được client.
 
+## "Đi 1 mình" vẫn ra giao diện 2 người: ONLINE bị nhầm thành ĐỒNG Ý
+
+Bảy chỗ trong `locations-page` suy ra "chuyến này đi cùng nhau" từ `nav.partnerLocation != null`. Đó
+**không phải cùng một câu hỏi**, và nó đúng thường xuyên hơn nhiều — người kia chỉ cần **mở trang Bản đồ
+trong vài phút gần đây** là có live location.
+
+Hệ quả trên một chuyến đi một mình, khi người kia tình cờ đang cầm điện thoại:
+
+| dòng | nó làm gì |
+|---|---|
+| 655 | tự lấy route **của người kia tới đích của mình** → `partnerRouteGeometry` ≠ null → HUD bật cột đôi |
+| 896 | ngay lần lấy route đầu đã kéo luôn route người kia |
+| 1259 | đọc *"Người kia cũng đang trên đường rồi"* |
+| 558 | băng *"Người kia đang dừng xe hoặc kẹt cứng rồi!"* khi họ ngồi yên |
+| 1480 | `MeetingFlare` — pháo hoa "gặp nhau" |
+| 1507 / 1801 | ghim người kia trên **cả hai** bản đồ |
+| ping | nút "Gửi cảm xúc cho người kia" **không có điều kiện nào cả** |
+
+Người kia không hề đồng ý, thậm chí không biết.
+
+### Tín hiệu đúng: lời mời, vì lời mời LÀ sự đồng ý
+
+`const isCompanionTrip = currentTripInviteId != null;` — id này đã tồn tại sẵn (dùng cho
+`companion: !!currentTripInviteId` lúc ghi lịch sử), chỉ là không ai dùng nó cho phần hiển thị.
+
+⚠️ **Bẫy thứ tự — bên trong `goToLocation` KHÔNG đọc được state đó.** Chính hàm này `setCurrentTripInviteId(null)`
+lúc vào (chuyến thủ công không có lời mời), còn handler nhận-lời-mời set lại ở **dòng ngay sau lời gọi**.
+Nên trong hàm state luôn nói "đi một mình", kể cả với chuyến đi chung. Vì vậy `goToLocation` phải nhận
+**cờ tường minh** `opts.withPartner`, không được suy từ state.
+
+Ngoài hàm đó thì gate bằng `isCompanionTrip` là đúng, vì effect chạy ở render sau — lúc state đã set.
+
+### Kiểm phải TỚI ĐƯỢC màn dẫn đường thật
+
+Luồng là **4 bước**: `Chỉ đường` → `Đi 1 mình` → `Bắt đầu nào 💕` → `Bắt đầu đi`. Dừng ở bước 1 thì mọi
+cờ đều `false` **vì HUD chưa tồn tại**, và bài test sẽ "đậu" mà không kiểm gì. Cách tìm ra đường đi: in
+`document.querySelectorAll('button')` ở từng bước thay vì đoán nhãn.
+
+Dựng bối cảnh bug bằng cách ghi thẳng DB: thêm một `userId` giả vào `space.members` + một `livelocations`
+mới cho nó — không cần tài khoản thứ hai.
+
+Kết quả với người kia ĐANG có vị trí:
+```
+đangDẫnĐường true · cộtNgườiKia false · nútGửiCảmXúc false · băngDừngXe false
+```
+
+**Luật:** "đang online" không bao giờ là bằng chứng của "đã đồng ý". Mọi tính năng hai người phải gate
+bằng **hành động đồng ý được lưu lại**, không phải bằng dấu hiệu hiện diện.
+
 ## Masonry (`columns-2`) phá thứ tự đọc — sort xong mà mắt không đi theo thì vô nghĩa
 
 Sắp xếp theo giờ xong, FE vẫn nhìn như chưa sort. Vì `memory-timeline` dùng `sm:columns-2` — CSS

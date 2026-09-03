@@ -168,6 +168,24 @@ export function LocationsPage() {
   // Invite id backing the current companion trip, so End can mark it ended and
   // stop the server-side re-delivery from auto-starting it again on reload.
   const [currentTripInviteId, setCurrentTripInviteId] = useState<string | null>(null);
+
+  /*
+   * Whether THIS ride is one both people agreed to travel together on.
+   *
+   * The app used to infer it from "the other person has a live location",
+   * which is not the same question and is true far more often: a live location
+   * exists whenever they have opened the map in the last few minutes. So a solo
+   * ride, taken while the other person happened to be looking at their phone,
+   * drew their route to YOUR destination, turned the HUD into the two-column
+   * companion layout, announced "người kia cũng đang trên đường rồi", and put
+   * up "người kia đang dừng xe" when they sat still — none of which they had
+   * agreed to or even knew about.
+   *
+   * The invite is the agreement, so the invite is the signal. It is cleared by
+   * goToLocation for a manual trip and set again only by the accepted-invite
+   * handler.
+   */
+  const isCompanionTrip = currentTripInviteId != null;
   // Controls the "are you sure you want to end?" confirmation modal.
   const [showEndConfirm, setShowEndConfirm] = useState(false);
 
@@ -555,7 +573,9 @@ export function LocationsPage() {
   
   // Detect if partner is stuck
   useEffect(() => {
-    const speed = nav.partnerLocation?.speedKmH;
+    // Only for a trip taken together: on a solo ride the other person standing
+    // still is not information, it is their business.
+    const speed = isCompanionTrip ? nav.partnerLocation?.speedKmH : undefined;
     if (speed != null && speed < 3) {
       if (!stationaryTimeoutRef.current) {
         stationaryTimeoutRef.current = setTimeout(() => {
@@ -570,7 +590,7 @@ export function LocationsPage() {
       }
       setShowTrafficWarning(false);
     }
-  }, [nav.partnerLocation?.speedKmH]);
+  }, [isCompanionTrip, nav.partnerLocation?.speedKmH]);
 
   // Cleanup timeout ONLY on unmount to prevent resetting on minor speed fluctuations (e.g. 0 -> 2 -> 0)
   useEffect(() => {
@@ -652,7 +672,13 @@ export function LocationsPage() {
 
   // Auto-fetch partner route when their live location connects and we don't have their route yet
   useEffect(() => {
-    if (selectedId && nav.partnerLocation && !partnerRouteGeometry && !isRecalculating.current) {
+    if (
+      isCompanionTrip &&
+      selectedId &&
+      nav.partnerLocation &&
+      !partnerRouteGeometry &&
+      !isRecalculating.current
+    ) {
       utils.location.getRoute.fetch({
         destinationId: selectedId,
         origin: { lat: nav.partnerLocation.lat, lng: nav.partnerLocation.lng }
@@ -665,7 +691,7 @@ export function LocationsPage() {
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, nav.partnerLocation?.lat, nav.partnerLocation?.lng, partnerRouteGeometry, utils.location]);
+  }, [isCompanionTrip, selectedId, nav.partnerLocation?.lat, nav.partnerLocation?.lng, partnerRouteGeometry, utils.location]);
 
   // Subscribe to the accepted-trip store so we react when an invite is accepted
   // (either partner). The store survives client navigation (module-level) and is
@@ -713,7 +739,7 @@ export function LocationsPage() {
     // Convert invite Waypoint[] to the {lat,lng}[] shape getRoute expects.
     const waypointGeos = waypoints.map(w => ({ lat: w.lat, lng: w.lng }));
 
-    goToLocation(loc.id, loc.geo, waypointGeos);
+    goToLocation(loc.id, loc.geo, waypointGeos, { withPartner: true });
     // Remember which invite backs this trip so End can mark it finished.
     setCurrentTripInviteId(acceptedTrip.inviteId);
     // Friendly notice tailored to each side: the sender hears their invite was
@@ -826,7 +852,15 @@ export function LocationsPage() {
     id: string,
     dest: LatLng | null,
     waypoints?: Array<{ lat: number; lng: number }>,
-    opts?: { askChoice?: boolean },
+    /**
+     * `withPartner` has to be passed in rather than read from state.
+     *
+     * This function CLEARS `currentTripInviteId` on entry — a manual trip
+     * carries no invite — and the accepted-invite handler sets it again on the
+     * line after calling this. So inside here the state still says "solo" even
+     * for a companion trip, and always will.
+     */
+    opts?: { askChoice?: boolean; withPartner?: boolean },
   ) {
     if (!dest) return;
     setSelectedId(id);
@@ -892,8 +926,9 @@ export function LocationsPage() {
           };
           const reqs = [utils.location.getRoute.fetch(routeArgs)];
 
-          // If partner is currently active, fetch a route for them too
-          if (nav.partnerLocation) {
+          // Their route is drawn only when this is a trip they agreed to. Being
+          // online is not agreement.
+          if (opts?.withPartner && nav.partnerLocation) {
             reqs.push(utils.location.getRoute.fetch({
               destinationId: id,
               origin: { lat: nav.partnerLocation.lat, lng: nav.partnerLocation.lng },
@@ -1256,7 +1291,7 @@ export function LocationsPage() {
           destination: selectedName,
           metres: withNumbers ? displayDistance : null,
           seconds: withNumbers ? displayDuration : null,
-          partnerOnTheWay: nav.partnerLocation != null,
+          partnerOnTheWay: isCompanionTrip && nav.partnerLocation != null,
           // Rotates the opener by the day so it varies between rides but never
           // within one.
           dayIndex: new Date().getDate(),
@@ -1264,7 +1299,7 @@ export function LocationsPage() {
         { chime: true },
       );
     },
-    [selectedName, displayDistance, displayDuration, nav.partnerLocation],
+    [selectedName, displayDistance, displayDuration, isCompanionTrip, nav.partnerLocation],
   );
 
   useEffect(() => {
@@ -1442,7 +1477,7 @@ export function LocationsPage() {
           triggered from inside it fired twice. */}
       <MeetingFlare
         userGeo={nav.userGeo}
-        partnerLocation={nav.partnerLocation}
+        partnerLocation={isCompanionTrip ? nav.partnerLocation : null}
         userAvatar={userAvatar}
         partnerAvatar={partnerAvatar}
       />
@@ -1469,7 +1504,7 @@ export function LocationsPage() {
               onCenterChange={setMapCenter}
               userAccuracyM={nav.accuracyM}
               userGeo={shownUser}
-              partnerLocation={nav.partnerLocation}
+              partnerLocation={isCompanionTrip ? nav.partnerLocation : null}
               partnerPingAction={navInvites.partnerPingAction}
               userPingAction={nav.userPingAction}
               followGeo={nav.snappedGeo ?? nav.userGeo}
@@ -1640,7 +1675,10 @@ export function LocationsPage() {
               </div>
             )}
 
-            {/* Quick Pings */}
+            {/* Quick Pings — a nudge aimed at someone riding with you. On a
+                solo trip there is nobody on the other end, and these sat there
+                offering to send one anyway. */}
+            {isCompanionTrip && (
             <div className="absolute right-4 top-[60%] flex flex-col items-center gap-2">
                <p className="text-[9px] font-semibold text-white/80 bg-black/30 rounded-full px-2 py-0.5 text-center leading-tight backdrop-blur-sm">Gửi cảm xúc<br/>cho người kia:</p>
                {PING_BUTTONS.map((p) => (
@@ -1663,6 +1701,7 @@ export function LocationsPage() {
                  </button>
                ))}
             </div>
+            )}
 
             {/* Floating stop button — always visible over the map */}
             <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4"
@@ -1763,7 +1802,7 @@ export function LocationsPage() {
                 onCenterChange={setMapCenter}
                 userAccuracyM={nav.accuracyM}
                 userGeo={liveUser}
-                partnerLocation={nav.partnerLocation}
+                partnerLocation={isCompanionTrip ? nav.partnerLocation : null}
                 partnerPingAction={navInvites.partnerPingAction}
                 userPingAction={nav.userPingAction}
                 followGeo={nav.isNavigating ? (nav.snappedGeo ?? nav.userGeo) : null}
