@@ -7,12 +7,12 @@ import { ChevronLeft, Settings2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { TripItinerary } from "./trip-itinerary";
 import { TripChecklist } from "./trip-checklist";
 import { TripBudget } from "./trip-budget";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { TripForm } from "./trip-form";
-import { ToneArt } from "@/components/theme/tone-art";
 
 const TABS = [
   { key: "itinerary", label: "Lịch trình" },
@@ -27,85 +27,100 @@ export function TripDetail({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <div className="p-4">
+      <PageShell className="space-y-4">
         <Skeleton className="mb-4 h-12 w-12 rounded-full" />
         <Skeleton className="mb-2 h-8 w-2/3" />
         <Skeleton className="h-4 w-1/2" />
-      </div>
+      </PageShell>
     );
   }
 
   if (!trip) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center p-4 text-center">
-        <p className="mb-4 text-lg font-medium">Không tìm thấy chuyến đi</p>
-        <Link href="/trips" className="text-accent underline">Quay lại danh sách</Link>
-      </div>
+      <PageShell className="space-y-4">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="mb-4 text-lg font-medium">Không tìm thấy chuyến đi</p>
+          <Link href="/trips" className="text-accent underline">
+            Quay lại danh sách
+          </Link>
+        </div>
+      </PageShell>
     );
   }
 
+  /*
+   * PageShell, like every other screen.
+   *
+   * This one used to build its own page: `min-h-dvh`, its own sticky app-bar,
+   * a tab strip pinned at a hard-coded `top-[65px]` measured off that bar, and
+   * `bg-background` painted across both. On a phone that reads as a normal
+   * full-screen view. On desktop the app is cards floating over artwork, and an
+   * opaque slab the height of the window sat beside the floating sidebar
+   * looking like a different product — which is exactly what it was, a mobile
+   * page dropped into a desktop shell.
+   *
+   * The shell already supplies the parts this was reimplementing: a header row
+   * that does not scroll, the artwork band, the page column, and a scroll box
+   * underneath. Nothing here is sticky any more except the tabs, and those
+   * carry a translucent card of their own rather than a full-width opaque bar.
+   */
   return (
-    <div className="flex min-h-dvh flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <Link href="/trips" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80">
-            <ChevronLeft className="h-6 w-6" />
-          </Link>
-          <div className="flex flex-col">
-            <h1 className="font-serif text-lg font-semibold leading-tight line-clamp-1">{trip.title}</h1>
-            <span className="text-[11px] text-muted-foreground">{trip.startDate} - {trip.endDate}</span>
-          </div>
-        </div>
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80"
-        >
-          <Settings2 className="h-5 w-5" />
-        </button>
-      </header>
-
-      {/* Artwork band — the only screen with nothing between the app-bar and
-          its content. Deliberately NOT sticky: the tab strip below is pinned
-          at top-[65px] to sit flush under the sticky app-bar, and a sticky
-          band here would either fight that hard-coded offset or need the
-          tabs re-pinned to a height that now depends on this band's own. */}
-      <div className="relative h-28 shrink-0 overflow-hidden sm:h-36 short:hidden">
-        <ToneArt name="bannerSub" alt="" fill position="center 40%" sizes="(max-width: 1024px) 100vw, 1024px" />
-        <div
-          aria-hidden="true"
-          className="from-background/80 via-background/10 to-transparent absolute inset-0 bg-gradient-to-b"
+    <PageShell
+      className="space-y-5"
+      header={
+        <PageHeader
+          title={trip.title}
+          subtitle={`${trip.startDate} — ${trip.endDate}`}
+          art="bannerSub"
+          artPosition="center 40%"
+          actions={
+            <div className="flex items-center gap-2">
+              <Link
+                href="/trips"
+                aria-label="Quay lại danh sách chuyến đi"
+                className="bg-card/90 text-foreground hover:bg-card flex h-10 w-10 items-center justify-center rounded-full shadow-sm backdrop-blur-md transition-colors"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                aria-label="Cài đặt chuyến đi"
+                className="bg-card/90 text-foreground hover:bg-card flex h-10 w-10 items-center justify-center rounded-full shadow-sm backdrop-blur-md transition-colors"
+              >
+                <Settings2 className="h-5 w-5" />
+              </button>
+            </div>
+          }
         />
-      </div>
-
-      {/* Tabs */}
-      <div className="sticky top-[65px] z-10 bg-background px-4 pt-3 pb-2 shadow-sm">
-        {/* Scrolls rather than compressing. Four labels forced into 320px
-            pushed the page 25px wider than the screen once button labels
-            stopped wrapping — the tab strip is the thing that should give. */}
-        <div className="mx-auto w-full max-w-4xl">
+      }
+    >
+      <div className="mx-auto w-full max-w-4xl space-y-5">
+        {/*
+          Sticky inside the scroll box, on a card of its own.
+          A full-width opaque bar is what made the old version look pasted on;
+          the same translucent card the rest of the app floats on keeps the
+          artwork visible behind it while the labels stay readable.
+        */}
+        <div className="bg-card/85 sticky top-0 z-10 rounded-2xl p-1.5 shadow-sm backdrop-blur-md">
+          {/* Scrolls rather than compressing: three labels forced into 320px
+              pushed the page wider than the screen once they stopped wrapping. */}
           <ScrollStrip>
             <Tabs tabs={TABS} value={activeTab} onChange={setActiveTab} className="w-max sm:w-full" />
           </ScrollStrip>
         </div>
+
+        {activeTab === "itinerary" && <TripItinerary trip={trip} />}
+        {activeTab === "checklist" && <TripChecklist trip={trip} />}
+        {activeTab === "budget" && <TripBudget trip={trip} />}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 bg-background px-4 py-6 md:px-[30px] md:py-8">
-        <div className="mx-auto w-full max-w-4xl">
-          {activeTab === "itinerary" && <TripItinerary trip={trip} />}
-          {activeTab === "checklist" && <TripChecklist trip={trip} />}
-          {activeTab === "budget" && <TripBudget trip={trip} />}
-        </div>
-      </div>
-
-      {/* Settings Modal */}
       {settingsOpen && (
         <Modal open onClose={() => setSettingsOpen(false)} className="max-w-xl">
           <ModalHeader title="Cài đặt chuyến đi" onClose={() => setSettingsOpen(false)} />
           <TripForm trip={trip} onSuccess={() => setSettingsOpen(false)} />
         </Modal>
       )}
-    </div>
+    </PageShell>
   );
 }

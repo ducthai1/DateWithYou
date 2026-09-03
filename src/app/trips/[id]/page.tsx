@@ -5,8 +5,12 @@ export default async function TripDetailPage({ params }: { params: Promise<{ id:
   const { id } = await params;
 
   return (
-    <main className="min-h-dvh bg-background">
-      <TripDetail id={id} />
-    </main>
+    /*
+       No wrapper of its own: the app frame already gives every screen its
+       height and the artwork behind it, and `min-h-dvh bg-background` here
+       painted a second opaque layer over that background — the flat white slab
+       this page showed on desktop.
+    */
+    <TripDetail id={id} />
   );
 }
