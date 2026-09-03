@@ -2362,6 +2362,42 @@ tính `width`/`height`.
 ⚠️ Khi thêm state phái sinh từ một API, **kiểm cả projection** — dữ liệu có trong DB không có nghĩa là
 nó tới được client.
 
+## Masonry (`columns-2`) phá thứ tự đọc — sort xong mà mắt không đi theo thì vô nghĩa
+
+Sắp xếp theo giờ xong, FE vẫn nhìn như chưa sort. Vì `memory-timeline` dùng `sm:columns-2` — CSS
+multi-column, tức **masonry**: nó xếp đầy cột trái từ trên xuống rồi mới sang cột phải.
+
+```
+DOM (đúng sort):  23:00 · 21:00 · 09:30 · 07:10
+columns-2  ⇒   trái: 23:00        phải: 09:30
+               trái: 21:00        phải: 07:10      ← đọc ngang: 23:00 rồi 09:30
+grid       ⇒   trái: 23:00        phải: 21:00
+               trái: 09:30        phải: 07:10      ← đọc ngang đúng thứ tự
+```
+
+Masonry gói thẻ khít, không có khoảng trống lởm chởm — và đổi lại nó **phá thứ tự đọc**. Với một danh
+sách *có sắp xếp* thì đó là đánh đổi sai: **sort chỉ có ích nếu mắt đi theo nó.**
+
+`grid items-start gap-3 sm:grid-cols-2`. `items-start` để mỗi thẻ giữ chiều cao tự nhiên thay vì bị kéo
+giãn cho bằng thẻ bên cạnh — nên **không có gì về bản thân thẻ thay đổi**, chỉ đổi chỗ nó ngồi.
+
+Đo bằng `getBoundingClientRect` chứ không bằng mắt:
+
+```
+display: grid · cols: 460px 460px · align: flex-start
+hàng 1 (y=209): 23:00 @x318 | 21:00 @x790
+hàng 2 (y=599): 09:30 @x318 | 07:10 @x790
+hàng 3 (y=938): 06:00 @x318 | 05:00 @x790
+chiều cao 377 vs 328 ⇒ không bị stretch
+```
+
+⚠️ `home-screen.tsx` cũng dùng `lg:columns-2`. **Để nguyên có chủ đích**: đó là các widget khác loại
+nhau, không phải một dãy đã sắp xếp, nên thứ tự đọc không mang thông tin. Grid là khuôn mẫu sẵn có cho
+danh sách (`library-page`, `locations-page`, `games-panel` đều dùng).
+
+`StaggerList` bọc mỗi con trong một `motion.div` ⇒ chúng thành grid item, đổi sang grid không cần sửa gì
+trong đó.
+
 ## Thêm khoá sắp xếp thì PHẢI sửa con trỏ keyset — và `time` còn có thể KHÔNG tồn tại
 
 Thêm `time` cho kỷ niệm mà quên `sort` ⇒ hai kỷ niệm cùng ngày vẫn xếp theo `_id` (thứ tự nhập), giờ

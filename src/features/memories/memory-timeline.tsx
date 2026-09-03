@@ -232,7 +232,23 @@ export function MemoryTimeline() {
         Object.entries(groups).map(([month, items]: [string, Memo[]]) => (
           <section key={month} className="space-y-3">
             <h2 className="text-foreground/80 text-sm font-medium capitalize sm:text-xs sm:text-muted-foreground">{month}</h2>
-            <StaggerList className="gap-3 sm:columns-2 [&>*]:mb-3 [&>*]:break-inside-avoid">
+            {/*
+              Grid, not CSS columns.
+
+              This was `columns-2`, which is masonry: it fills the left column
+              top to bottom and only then starts the right one. That packs the
+              cards with no ragged gaps, and it destroys the reading order the
+              list is sorted in — a day sorted 23:00, 21:00, 09:30, 07:10 came
+              out with 23:00 and 21:00 stacked on the left and 09:30, 07:10 on
+              the right, so reading across gave 23:00 then 09:30 and the sort
+              looked broken. Sorting is only useful if the eye follows it.
+
+              A grid fills across, then down, which is how the numbers now read.
+              `items-start` keeps each card at its natural height rather than
+              stretching it to match its neighbour, so nothing about the cards
+              themselves changes — only where they sit.
+            */}
+            <StaggerList className="grid items-start gap-3 sm:grid-cols-2">
               {items.map((m) => {
                 const photoCount = m.photos.length;
                 const embedCount = (m.embeds ?? []).length;
