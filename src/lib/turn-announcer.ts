@@ -64,7 +64,7 @@ export type AnnouncerStep = {
   speak: string | null;
   /** The turn being approached, for the banner. */
   next: Maneuver | null;
-  /** Straight-line metres to it. */
+  /** Metres to it ALONG THE ROUTE when the route is known, straight line otherwise. */
   metres: number | null;
 };
 
@@ -80,29 +80,62 @@ export function stepAnnouncer(
   turns: Maneuver[],
   state: AnnouncerState,
   userGeo: LatLng,
+  /**
+   * How far the rider has come along this leg's polyline, in metres.
+   *
+   * Given, everything below is measured along the road. Absent — no route
+   * matched yet, or a route cached before manoeuvres carried their offsets —
+   * it falls back to straight lines, which is what this used to do everywhere
+   * and is the reason it was wrong.
+   */
+  travelledM?: number | null,
 ): AnnouncerStep {
   if (turns.length === 0) return { state, speak: null, next: null, metres: null };
 
-  /*
-   * Catch up in one step, not one turn per fix.
-   *
-   * Advancing a single index per position fix means a rider who passes two
-   * corners between fixes — a fast road, a sparse fix rate, a tunnel — spends
-   * the next fixes counting down to corners already behind them. Settling the
-   * index here costs a few comparisons and leaves the announcer describing
-   * where they actually are. Bounded by the list length so it can never spin.
-   */
+  const alongKnown =
+    travelledM != null && turns.every((t) => typeof t.alongRouteMeters === "number");
+
   let idx = Math.min(state.idx, turns.length - 1);
-  let metres = haversineM(userGeo, { lat: turns[idx].lat, lng: turns[idx].lng });
-  for (let guard = 0; guard < turns.length && idx < turns.length - 1; guard++) {
-    const ahead = turns[idx + 1];
-    const toAhead = haversineM(userGeo, { lat: ahead.lat, lng: ahead.lng });
-    if (metres <= PASSED_M || toAhead < metres) {
-      idx += 1;
-      metres = toAhead;
-      continue;
+  let metres: number;
+
+  if (alongKnown) {
+    /*
+     * Which corner is next is decided by the rider's own progress along the
+     * line, not by which corner happens to be nearest through the air.
+     *
+     * Measured against a real 7.8 km Saigon route that includes a U-turn on
+     * Cộng Hòa. Straight lines got both jobs wrong there. The distances were
+     * short by a fifth on ordinary bends — "500 mét" spoken with 608 m of road
+     * left, "200 mét" with 296 — and around the U-turn they collapsed: every
+     * corner after it sits a few metres from the road before it, so the
+     * announcer locked onto a corner 1219 m ahead and said "rẽ phải NGAY" while
+     * 751 m of road remained. Progress along the line is monotonic, so no
+     * amount of doubling back can make a later corner look nearer.
+     */
+    const off = (i: number) => turns[i].alongRouteMeters as number;
+    while (idx < turns.length - 1 && travelledM >= off(idx) - PASSED_M) idx += 1;
+    metres = Math.max(0, off(idx) - travelledM);
+  } else {
+    /*
+     * Catch up in one step, not one turn per fix.
+     *
+     * Advancing a single index per position fix means a rider who passes two
+     * corners between fixes — a fast road, a sparse fix rate, a tunnel — spends
+     * the next fixes counting down to corners already behind them. Settling the
+     * index here costs a few comparisons and leaves the announcer describing
+     * where they actually are. Bounded by the list length so it can never spin.
+     */
+    metres = haversineM(userGeo, { lat: turns[idx].lat, lng: turns[idx].lng });
+    for (let guard = 0; guard < turns.length && idx < turns.length - 1; guard++) {
+      const ahead = turns[idx + 1];
+      const toAhead = haversineM(userGeo, { lat: ahead.lat, lng: ahead.lng });
+      if (metres <= PASSED_M || toAhead < metres) {
+        idx += 1;
+        metres = toAhead;
+        continue;
+      }
+      break;
     }
-    break;
   }
   const advanced = idx !== state.idx;
   const turn = turns[idx];

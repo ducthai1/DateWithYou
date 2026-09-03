@@ -10,6 +10,7 @@ import {
   type AnnouncerState,
 } from "@/lib/turn-announcer";
 import { speak } from "@/lib/speak";
+import { cumulativeMetres, remainingAlongRoute } from "@/lib/route-geometry";
 
 /**
  * Which turn is next, how far it is, and saying so out loud once per stage.
@@ -33,29 +34,55 @@ export type TurnByTurn = {
 
 export function useTurnByTurn({
   maneuvers,
+  coordinates,
   userGeo,
   active,
 }: {
   maneuvers: Maneuver[] | null;
+  /** The active leg's polyline, the line the manoeuvre offsets are measured on. */
+  coordinates?: Array<[number, number]> | null;
   userGeo: LatLng | null;
   active: boolean;
 }): TurnByTurn {
   const turns = useMemo(() => announceableTurns(maneuvers), [maneuvers]);
+  /*
+   * Built once per route, not per fix: it is a running total over every shape
+   * point, and a position arrives about once a second.
+   */
+  const cum = useMemo(
+    () => (coordinates && coordinates.length > 1 ? cumulativeMetres(coordinates) : null),
+    [coordinates],
+  );
   const stateRef = useRef<AnnouncerState>(initialAnnouncerState);
+  /** Where the last fix matched, so each new one searches a window, not the line. */
+  const matchIdx = useRef(0);
   const [view, setView] = useState<TurnByTurn>({ next: null, metres: null, sentence: null });
 
   // A new route is a new set of turns; nothing already said applies to it.
   useEffect(() => {
     stateRef.current = initialAnnouncerState;
+    matchIdx.current = 0;
     setView({ next: null, metres: null, sentence: null });
-  }, [turns]);
+  }, [turns, cum]);
 
   useEffect(() => {
     if (!active || !userGeo || turns.length === 0) {
       setView({ next: null, metres: null, sentence: null });
       return;
     }
-    const step = stepAnnouncer(turns, stateRef.current, userGeo);
+    /*
+     * How far along the leg the rider has come, which is what turns a corner's
+     * offset into a distance to it. Falls through as null when there is no line
+     * to match against yet, and the announcer then uses straight lines.
+     */
+    let travelled: number | null = null;
+    if (coordinates && cum) {
+      const matched = remainingAlongRoute(userGeo, coordinates, cum, matchIdx.current);
+      matchIdx.current = matched.idx;
+      travelled = cum[cum.length - 1] - matched.remaining;
+    }
+
+    const step = stepAnnouncer(turns, stateRef.current, userGeo, travelled);
     stateRef.current = step.state;
     // Chime on every instruction: this is the one that has to land while the
     // rider is moving, with the road making its own noise.
@@ -68,7 +95,7 @@ export function useTurnByTurn({
       // stale thing on screen.
       sentence: step.speak ?? prev.sentence,
     }));
-  }, [active, userGeo, turns]);
+  }, [active, userGeo, turns, coordinates, cum]);
 
   return view;
 }

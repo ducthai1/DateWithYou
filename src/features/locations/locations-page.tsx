@@ -375,7 +375,7 @@ export function LocationsPage() {
    * drawn, but announcing them to someone still looking at the map deciding
    * whether to go is noise.
    */
-  const activeManeuvers = useMemo(() => {
+  const activeLeg = useMemo(() => {
     /*
      * `legGeometries` first, because it is the one a reroute keeps current.
      *
@@ -386,11 +386,16 @@ export function LocationsPage() {
      */
     const legs = legGeometries ?? routeLegs;
     if (!legs?.length) return null;
-    const leg = legs[Math.min(currentLegIndex, legs.length - 1)];
-    return leg?.maneuvers ?? null;
+    return legs[Math.min(currentLegIndex, legs.length - 1)] ?? null;
   }, [legGeometries, routeLegs, currentLegIndex]);
   const turn = useTurnByTurn({
-    maneuvers: activeManeuvers,
+    maneuvers: activeLeg?.maneuvers ?? null,
+    /*
+     * The same leg's line, because that is what the manoeuvre offsets are
+     * measured along. Reading the turns from one leg and the geometry from
+     * another would put every distance out by the difference between them.
+     */
+    coordinates: activeLeg?.geometry?.coordinates ?? null,
     userGeo: nav.userGeo,
     active: nav.isNavigating,
   });

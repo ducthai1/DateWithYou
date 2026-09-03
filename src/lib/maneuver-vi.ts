@@ -29,6 +29,19 @@ export type Maneuver = {
   speedLimitKmh?: number | null;
   lat: number;
   lng: number;
+  /**
+   * How far along this leg's polyline the manoeuvre sits, in metres.
+   *
+   * The reason guidance needs this rather than a coordinate: a straight line to
+   * a corner is not the distance to it. On a route that bends it is short by a
+   * fifth or more, and on one that doubles back it is meaningless — a U-turn
+   * puts everything after it a few metres from everything before it, so the
+   * nearest corner as the crow flies can be a kilometre away by road.
+   *
+   * Optional because a route cached before this existed has none, and straight
+   * line is still better than nothing.
+   */
+  alongRouteMeters?: number | null;
 };
 
 /** Which way, as a person would say it. */

@@ -11,6 +11,7 @@ import { LiveLocationModel } from "@/server/db/models/live-location";
 import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
 import { SpaceModel } from "@/server/db/models/space";
 import { DISTRICTS, CATEGORIES } from "@/lib/districts-categories";
+import { cumulativeMetres } from "@/lib/route-geometry";
 import { requireEnv } from "@/lib/env";
 import { extractFirstUrl } from "@/server/lib/resolve-maps-geo";
 import { resolvePastedMapLink } from "@/server/lib/resolve-pasted-map-link";
@@ -162,6 +163,14 @@ type RawLeg = {
  */
 function parseLeg(leg: RawLeg): ParsedLeg {
   const coordinates = leg.shape ? decodePolyline(leg.shape, 6) : [];
+  /*
+   * Distance along the leg at every shape point, so each manoeuvre can carry
+   * where it sits on the road rather than only where it is on the map. Done
+   * here because this is where the polyline is already decoded; the client
+   * would have to snap each corner back onto the line to recover it, and on a
+   * route that doubles back it would snap some of them to the wrong passage.
+   */
+  const cum = coordinates.length > 1 ? cumulativeMetres(coordinates) : [];
   return {
     distanceMeters: Math.round((leg.length ?? 0) * 1000),
     durationSeconds: Math.round(leg.time ?? 0),
@@ -180,6 +189,7 @@ function parseLeg(leg: RawLeg): ParsedLeg {
           speedLimitKmh: typeof m.speed_limit === "number" ? Math.round(m.speed_limit) : null,
           lng: at[0],
           lat: at[1],
+          alongRouteMeters: typeof i === "number" && cum[i] != null ? Math.round(cum[i]) : null,
         },
       ];
     }),

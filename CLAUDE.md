@@ -1956,6 +1956,50 @@ truyền tới input thông. Bản thân cái rung thì **chỉ quan sát đư�
 ⚠️ **Apple đã bịt haptic-bằng-JavaScript ở iOS 26.5.** Mẹo này chạy từ 17.4 đến 26.4. Máy mới hơn thì
 không có đường nào từ web nữa — cần biết phiên bản iOS trước khi kết luận là code sai.
 
+## Khoảng cách chỉ đường: ĐƯỜNG THẲNG là con số sai, và ở khúc quay đầu thì vô nghĩa
+
+User báo thực địa: *"thông báo 500m nữa rẽ nhưng thực tế còn dưới 100m"*, mà chuỗi ngưỡng và câu cuối
+thì đúng. Đo trên **route thật** 7,8 km Sài Gòn (Q1 → Tân Bình, có một khúc **quay đầu** trên Cộng Hòa),
+mô phỏng đi dọc polyline 12 m/bước, so từng lời đọc với khoảng cách **dọc đường** thật:
+
+```
+app nói "Sau 500 mét rẽ phải vào Nam Kỳ Khởi Nghĩa"   thật 608 m   lệch −118
+app nói "Sau 200 mét ..."                             thật 296 m   lệch  −98
+app nói "Sau 500 mét rẽ phải vào Đường C18"           thật 1219 m  lệch −724
+app nói "Rẽ phải NGAY vào Đường C18"                  thật  751 m  lệch −719
+```
+
+Hai lỗi, **một gốc: `metres = haversineM(user, turn)`** — đường thẳng qua không khí.
+
+1. **Trên đường cong nó ngắn hơn đường thật ~20%.** Nên câu "500 mét" phát ra khi còn 608 m đường.
+2. **Ở khúc quay đầu nó vô nghĩa.** Sau khi quay đầu, mọi khúc rẽ nằm cách đoạn đường trước đó vài mét.
+   Luật cũ `toAhead < metres` ("khúc sau gần hơn thì nhảy tới") vì thế **nhảy vượt** khúc quay đầu và
+   khoá vào một khúc cách 1219 m, rồi hô "rẽ NGAY" khi còn 751 m đường.
+
+Và nó **ăn mất hẳn 2 khúc rẽ**: `Trần Quốc Toản` (2083 m) và **chính khúc quay đầu** (7196 m) chưa bao
+giờ được đọc một câu nào.
+
+### Sửa: đo theo TIẾN ĐỘ DỌC ĐƯỜNG
+
+- Server (`parseLeg`) tính sẵn `alongRouteMeters` cho từng maneuver = `cumulativeMetres(shape)` tại
+  `begin_shape_index`. Làm ở server vì polyline **đã** được giải ở đó; client mà tự snap từng khúc rẽ lên
+  đường thì ở đoạn quay đầu sẽ snap sai lượt.
+- Client (`useTurnByTurn`) đo tiến độ của mình bằng `remainingAlongRoute` trên **đúng polyline của chặng
+  đang đi** (đọc turns từ chặng này mà lấy hình học chặng khác là lệch toàn bộ).
+- `stepAnnouncer` nhận `travelledM`: `metres = alongRouteMeters − travelled`, và **tiến index theo tiến
+  độ** (`travelled >= off(idx) − PASSED_M`) chứ không theo "cái nào gần hơn".
+
+Tiến độ dọc đường là **đơn điệu tăng**, nên không có kiểu hình học nào làm khúc sau trông gần hơn được.
+
+Kết quả đo lại trên cùng route đó: **mọi lời đọc lệch = 0 m**, và cả 2 khúc bị mất đều có đủ chuỗi
+500/200/80/ngay — kể cả khúc quay đầu.
+
+⚠️ Giữ nhánh đường-thẳng làm dự phòng cho route chưa khớp được hoặc route cache từ trước khi có
+`alongRouteMeters`. Sai vẫn hơn im.
+
+**Luật:** trong chỉ đường, "khoảng cách" luôn có nghĩa là **dọc theo đường**. Dùng haversine tới một khúc
+rẽ chỉ đúng khi đường thẳng — mà nếu đường thẳng thì đã chẳng có khúc rẽ nào.
+
 ## Ngưỡng đọc: 80m PHẢI nói, 60m im là ĐÚNG
 
 Giả thuyết "chưa rơi vào ngưỡng nên không có gì" — mô phỏng bằng `stepAnnouncer` cho thấy **không phải**:
