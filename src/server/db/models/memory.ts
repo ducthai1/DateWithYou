@@ -54,7 +54,14 @@ const memorySchema = new Schema(
   { timestamps: true },
 );
 
-memorySchema.index({ spaceId: 1, date: -1 });
+/*
+ * `time` is in the key so the timeline's sort stays index-covered.
+ *
+ * Two memories on the same day order by the hour beside the date, and without
+ * this the tie group is sorted in memory. Harmless at this size, and free to
+ * avoid.
+ */
+memorySchema.index({ spaceId: 1, date: -1, time: -1 });
 // Serves activity.feed: find({ spaceId, createdAt: { $lt: before } })
 // .sort({ createdAt: -1 }).limit(n) — and activity.unreadCount, which adds
 // an equality-free createdAt range on the same prefix.

@@ -99,19 +99,43 @@ export const memoryRouter = router({
     const filter: Record<string, unknown> = { spaceId: ctx.spaceId };
     if (input.tag) filter.tags = input.tag;
     if (input.cursor) {
-      // date is a Date, so the cursor carries it as ISO and it is compared as
-      // a Date — a string comparison against a BSON date matches nothing and
-      // would silently return an empty second page.
-      const [cursorDate, cursorId] = input.cursor.split("|");
+      /*
+       * Keyset over (date, time, _id), and every part of it is load-bearing.
+       *
+       * date travels as ISO and is compared as a Date: a string against a BSON
+       * date matches nothing and would silently return an empty second page.
+       *
+       * time is a plain "HH:mm" string, which sorts chronologically because the
+       * input regex forces zero padding — no parsing needed. But it is OPTIONAL,
+       * and a missing field is where a keyset quietly loses rows: `$lt` only
+       * matches within a BSON type, so `{ time: { $lt: "17:30" } }` never
+       * matches a memory that has no time at all. Those need their own branch.
+       *
+       * Sorted descending, a missing time comes after every real one, so within
+       * a day the timed memories run newest-first and the ones that only know
+       * the date sit under them.
+       */
+      const [cursorDate, cursorTime, cursorId] = input.cursor.split("|");
       const at = new Date(cursorDate);
-      filter.$or = [
-        { date: { $lt: at } },
-        { date: at, _id: { $lt: cursorId } },
-      ];
+      const t = cursorTime || null;
+      filter.$or = t
+        ? [
+            { date: { $lt: at } },
+            { date: at, time: { $lt: t } },
+            // Every untimed memory of this day is still ahead of us: they sort
+            // after all timed ones, so none of them can have been returned yet.
+            { date: at, time: null },
+            { date: at, time: t, _id: { $lt: cursorId } },
+          ]
+        : [
+            { date: { $lt: at } },
+            // Past the timed ones already; only untimed with a smaller _id left.
+            { date: at, time: null, _id: { $lt: cursorId } },
+          ];
     }
     // One extra row tells us whether another page exists without a count query.
     const docs = await MemoryModel.find(filter)
-      .sort({ date: -1, _id: -1 })
+      .sort({ date: -1, time: -1, _id: -1 })
       .limit(input.limit + 1)
       .lean();
     const hasMore = docs.length > input.limit;
@@ -119,7 +143,7 @@ export const memoryRouter = router({
     const last = page[page.length - 1];
     const nextCursor =
       hasMore && last
-        ? `${new Date(last.date as Date).toISOString()}|${String(last._id)}`
+        ? `${new Date(last.date as Date).toISOString()}|${(last as { time?: string }).time ?? ""}|${String(last._id)}`
         : null;
     const items = page.map((d) => ({
       id: String(d._id),

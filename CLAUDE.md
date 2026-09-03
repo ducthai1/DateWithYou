@@ -2362,6 +2362,51 @@ tính `width`/`height`.
 ⚠️ Khi thêm state phái sinh từ một API, **kiểm cả projection** — dữ liệu có trong DB không có nghĩa là
 nó tới được client.
 
+## Thêm khoá sắp xếp thì PHẢI sửa con trỏ keyset — và `time` còn có thể KHÔNG tồn tại
+
+Thêm `time` cho kỷ niệm mà quên `sort` ⇒ hai kỷ niệm cùng ngày vẫn xếp theo `_id` (thứ tự nhập), giờ
+hiển thị đúng mà thứ tự sai. Sửa `sort` thành `{ date: -1, time: -1, _id: -1 }` là **một nửa** việc.
+
+Nửa còn lại: `memory.list` phân trang **keyset** trên `(date, _id)`. Đổi khoá sắp xếp mà không đổi con
+trỏ thì trang 2 lặp mục hoặc mất mục — và mất mục thì **không ai thấy**, vì trang vẫn trả về đủ số dòng.
+
+### Chỗ dễ sai nhất: `$lt` không khớp qua BSON type
+
+`time` là **tuỳ chọn**. `{ time: { $lt: "17:30" } }` **không bao giờ khớp** một kỷ niệm không có `time`,
+vì `$lt` chỉ so trong cùng một BSON type. Nên nhánh untimed phải viết riêng, không thể gộp:
+
+```js
+filter.$or = t
+  ? [ { date: { $lt: at } },
+      { date: at, time: { $lt: t } },
+      { date: at, time: null },                    // untimed xếp SAU mọi giờ ⇒ chưa trả cái nào
+      { date: at, time: t, _id: { $lt: cursorId } } ]
+  : [ { date: { $lt: at } },
+      { date: at, time: null, _id: { $lt: cursorId } } ];
+```
+
+`{ time: null }` khớp **cả missing lẫn null** — đó là lý do dùng được cho dữ liệu cũ không cần migrate.
+
+Sort giảm dần thì missing xếp **sau** mọi string ⇒ trong một ngày: các mốc có giờ chạy mới-nhất-trước,
+rồi tới những cái chỉ biết ngày. Đó là thứ tự **miễn phí** theo BSON, không phải chọn tay.
+
+Con trỏ nay là `ISO|HH:mm|_id`, phần giữa rỗng khi untimed.
+
+### Kiểm phải ĐI QUA ranh giới phân trang
+
+Seed 6 kỷ niệm: 3 có giờ + 2 không giờ cùng một ngày + 1 ngày khác. Rồi so **1 trang (limit 10)** với
+**đi hết bằng limit=2**:
+
+```
+1 trang : 20:00 → 12:00 → 08:30 → (không giờ) → (không giờ) → 09:00 (14/8)
+limit=2 : giống hệt · không trùng · không thiếu
+```
+
+Trang 2→3 rơi đúng chỗ chuyển có-giờ → không-giờ, tức đúng nhánh mà keyset naive làm mất mục. Test mà
+chỉ đọc một trang thì **không bao giờ** bắt được lỗi này.
+
+Index nâng thành `{ spaceId: 1, date: -1, time: -1 }` để sort vẫn được index phủ, không sort trong RAM.
+
 ## Giờ của kỷ niệm: trường RIÊNG, không gộp vào Date
 
 `time: "HH:mm"` là string riêng, không nhét vào `date`. Lý do: mọi kỷ niệm lưu trước khi có trường này
