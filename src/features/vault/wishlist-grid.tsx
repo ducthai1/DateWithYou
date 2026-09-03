@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,11 +41,11 @@ export function WishlistGrid() {
   const invalidate = () => utils.wishlist.list.invalidate();
   const create = trpc.wishlist.create.useMutation({
     onSuccess: () => { closeForm(); invalidate(); toast("Đã lưu vào wishlist ✓", "success"); },
-    onError: (err) => toast(err.message, "error"),
+    onError: (err) => toast(readableFormError(err.message), "error"),
   });
   const update = trpc.wishlist.update.useMutation({
     onSuccess: () => { closeForm(); invalidate(); toast("Đã cập nhật wishlist ✓", "success"); },
-    onError: (err) => toast(err.message, "error"),
+    onError: (err) => toast(readableFormError(err.message), "error"),
   });
   /*
    * The tick moves first; the server hears about it afterwards.
@@ -64,7 +65,7 @@ export function WishlistGrid() {
     },
     onError: (err, _v, ctx) => {
       if (ctx?.prev) utils.wishlist.list.setData(undefined, ctx.prev);
-      toast(err.message, "error");
+      toast(readableFormError(err.message), "error");
     },
     onSettled: () => invalidate(),
   });
@@ -79,7 +80,7 @@ export function WishlistGrid() {
     },
     onError: (err, _v, ctx) => {
       if (ctx?.prev) utils.wishlist.list.setData(undefined, ctx.prev);
-      toast(err.message, "error");
+      toast(readableFormError(err.message), "error");
     },
     onSuccess: () => toast("Đã xoá món quà khỏi danh sách", "success"),
     onSettled: () => invalidate(),
@@ -90,7 +91,7 @@ export function WishlistGrid() {
       toast("Đã đổi quà 🎁", "success");
       // the confetti will be triggered from the button click
     },
-    onError: (err) => { setRedeemError(err.message); toast(err.message, "error"); },
+    onError: (err) => { setRedeemError(readableFormError(err.message)); toast(readableFormError(err.message), "error"); },
   });
 
   const celebrate = useCelebrate();

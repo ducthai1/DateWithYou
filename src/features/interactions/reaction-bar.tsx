@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/trpc/root";
 import { trpc } from "@/lib/trpc";
@@ -112,7 +113,7 @@ export function ReactionBar({
     },
     onError: (err, _vars, ctx) => {
       if (ctx?.prev) utils.interaction.forTargets.setData(queryInput, ctx.prev);
-      toast(err.message || "Chưa gửi được cảm xúc", "error");
+      toast(readableFormError(err.message, "Chưa gửi được cảm xúc"), "error");
     },
     onSettled: () => utils.interaction.forTargets.invalidate(),
   });

@@ -2898,6 +2898,63 @@ Hai luật đi kèm:
   xuống server rồi trả về lỗi validate. Nút lưu trước đây chỉ chặn khi thiếu tên ⇒ thiếu loại địa điểm
   là lọt xuống và vỡ đúng kiểu cũ.
 
+**Cập nhật 04/09/2026 — luật này từng chỉ áp cho ĐÚNG MỘT file.** Nó được viết sau sự cố
+"district", sửa `location-form.tsx`, rồi dừng ở đó. Bốn tháng sau người dùng chụp lại một bức
+tường JSON y hệt, lần này từ form kỷ niệm. Quét ra **48 chỗ** in thẳng `err.message` vào toast —
+kể cả một chỗ trong chính `location-form.tsx`. Nay đã bọc `readableFormError()` toàn bộ; câu kiểm
+để không tái phát:
+
+```bash
+grep -rn "toast(\|setRedeemError(" src/ | grep "\.message" | grep -v "readableFormError"   # phải rỗng
+```
+
+Bài học chung: **viết luật mà chỉ sửa chỗ vừa cháy thì luật đó chưa được thi hành.** Sửa xong một
+ca thì quét cả repo tìm anh em cùng họ, rồi để lại câu grep làm bằng chứng kiểm tra được.
+
+Hai điểm helper phải xử đúng, phát hiện khi làm việc này:
+- Lấy **đoạn CUỐI** của `path`, không phải đoạn đầu. `["photos", 0, "caption"]` mà lấy đoạn đầu thì
+  báo "photos chưa hợp lệ" — chỉ sai chỗ. Lấy đoạn cuối ra "Lời kể", đúng ô cần sửa.
+- Có số trong `path` nghĩa là field nằm trong danh sách ⇒ nói rõ **mục thứ mấy**, không thì người
+  dùng có 30 ảnh mà không biết ảnh nào.
+- Tên biến bắt lỗi trong repo này không thống nhất (`err`, `_err`, `_e`, `error`, `res.error`).
+  Quét theo tên biến sẽ sót; quét theo `toast(... .message` rồi loại chỗ đã bọc mới đủ.
+
+## API phải nhận lại được CHÍNH CÁI NÓ VỪA NHẢ RA
+
+Triệu chứng người dùng gặp: tạo kỷ niệm mới thì bình thường, **sửa** kỷ niệm cũ thì
+`photos.0.caption: expected string, received null`.
+
+Nguyên nhân là một vòng tròn không khép:
+
+| Chiều | Hình dạng |
+|---|---|
+| đọc ra (`toItem`) | `caption: p.caption \|\| null` · `width: p.width ?? null` |
+| form giữ | nguyên si object vừa đọc (`useState(initialMemory.photos)`) |
+| gửi lên | `z.string().optional()` ⇒ **null bị từ chối** |
+
+Vậy nên nó **chỉ vỡ ở lần chạm thứ hai** vào một bản ghi. Test tạo-mới chạy xanh mãi mãi.
+
+Ba luật rút ra:
+
+1. **Schema đầu vào phải nhận được đúng shape mà đầu ra phát ra.** Nếu `toItem` nhả `null` cho
+   field trống thì input phải `.nullish()` rồi chuẩn hoá về `undefined` — helper `emitted()` trong
+   `routers/memory.ts`. Đừng bắt client phải dọn dẹp thứ chính server vừa đưa cho nó.
+2. **TypeScript không cứu được, vì kiểu khai bị hẹp hơn sự thật.** `initialMemory.photos` khai là
+   `{url, publicId}[]` trong khi API trả thêm `caption/width/height` toàn `null`. Kiểu hẹp hơn thì
+   vẫn gán được ⇒ compiler im. Khai kiểu **đúng bằng cái API trả về** (`caption?: string \| null`),
+   rồi chuẩn hoá lúc nạp vào state — có vậy compiler mới chỉ ra chỗ lệch.
+3. **Test phải đi hết vòng: tạo → đọc → nhét NGUYÊN SI cái vừa đọc vào sửa.** Đây là test duy nhất
+   bắt được lớp lỗi này, và nó rẻ. Bản trong `scratchpad/roundtrip.mjs` tái hiện đúng lỗi trên code
+   cũ rồi xanh trên code mới.
+
+Cùng họ, chưa từng nổ nhưng đã vá sẵn: ảnh up từ **trước khi có `width/height`** cũng bị nhả ra
+`null` ⇒ sửa kỷ niệm chứa ảnh đời đầu sẽ vỡ y hệt.
+
+**Một test chưa từng thấy màu đỏ thì chưa phải test.** Trước khi tin bản vá, `git stash` nó đi rồi
+chạy lại test — phải thấy đúng thông báo lỗi người dùng đã chụp. Sao lưu file ra ngoài repo trước
+khi đụng vào git.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

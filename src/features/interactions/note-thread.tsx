@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { MessageCircle, RotateCw, Send } from "lucide-react";
@@ -79,7 +80,7 @@ export function NoteThread({
       setDraft("");
       utils.interaction.forTargets.invalidate(queryInput);
     },
-    onError: (err) => toast(err.message || "Chưa gửi được ghi chú", "error"),
+    onError: (err) => toast(readableFormError(err.message, "Chưa gửi được ghi chú"), "error"),
   });
 
   const removeNote = trpc.interaction.removeNote.useMutation({
@@ -100,7 +101,7 @@ export function NoteThread({
     },
     onError: (err, _v, ctx) => {
       if (ctx?.prev) utils.interaction.forTargets.setData(queryInput, ctx.prev);
-      toast(err.message || "Chưa xoá được ghi chú", "error");
+      toast(readableFormError(err.message, "Chưa xoá được ghi chú"), "error");
     },
     onSettled: () => utils.interaction.forTargets.invalidate(queryInput),
   });

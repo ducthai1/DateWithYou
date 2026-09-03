@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,7 @@ export function MediaForm({
       toast("Đã thêm vào bộ sưu tập", "success");
       onDone();
     },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const update = trpc.media.update.useMutation({
     onSuccess: () => {
@@ -51,7 +52,7 @@ export function MediaForm({
       toast("Đã cập nhật", "success");
       onDone();
     },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
 
   const isRecipe = kind === "recipe";

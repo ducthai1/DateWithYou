@@ -29,31 +29,51 @@ const FIELD_LABELS: Record<string, string> = {
   startDate: "Ngày bắt đầu",
   endDate: "Ngày kết thúc",
   budget: "Ngân sách",
+  caption: "Lời kể",
+  photos: "Ảnh",
+  url: "Đường dẫn",
+  publicId: "Ảnh",
+  date: "Ngày",
+  time: "Giờ",
+  tags: "Nhãn",
+  mentions: "Người được nhắc",
+  pin: "Mã PIN",
+  email: "Email",
+  password: "Mật khẩu",
 };
 
 type ZodIssue = { path?: unknown[]; code?: string; message?: string };
 
 function describe(issue: ZodIssue): string {
-  const key = issue.path?.find((p): p is string => typeof p === "string");
+  /*
+   * The LAST string in the path is the field; the ones before it are its
+   * container. Taking the first instead turned ["photos", 0, "caption"] into a
+   * complaint about "photos", which points at the wrong box to fix.
+   */
+  const names = (issue.path ?? []).filter((p): p is string => typeof p === "string");
+  const key = names[names.length - 1];
   const label = (key && FIELD_LABELS[key]) || key;
   if (!label) return issue.message ?? "";
+  // A numeric step means the field sits in a list, so say which entry.
+  const index = (issue.path ?? []).find((p): p is number => typeof p === "number");
+  const at = typeof index === "number" ? ` (mục thứ ${index + 1})` : "";
   switch (issue.code) {
     case "too_small":
-      return `Thiếu ${label.toLowerCase()}`;
+      return `Thiếu ${label.toLowerCase()}${at}`;
     case "too_big":
-      return `${label} dài quá`;
+      return `${label} dài quá${at}`;
     case "invalid_format":
     case "invalid_string":
-      return `${label} không đúng định dạng`;
+      return `${label} không đúng định dạng${at}`;
     default:
-      return `${label} chưa hợp lệ`;
+      return `${label} chưa hợp lệ${at}`;
   }
 }
 
 /** Human-readable reason for a failed save. Never returns raw JSON. */
-export function readableFormError(message: string | undefined): string {
+export function readableFormError(message: string | undefined, fallback = "Thử lại nhé"): string {
   const raw = (message ?? "").trim();
-  if (!raw) return "Thử lại nhé";
+  if (!raw) return fallback;
   // Zod arrives as a JSON array of issues; anything else is already prose.
   if (!raw.startsWith("[")) return raw;
   try {

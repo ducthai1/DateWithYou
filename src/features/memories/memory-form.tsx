@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,7 +71,17 @@ export function MemoryForm({
     date: Date | string;
     /** Optional clock time, "HH:mm". Absent on everything saved before it existed. */
     time?: string | null;
-    photos: { url: string; publicId: string }[];
+    /*
+     * Nullable on purpose — this is what the API returns, not what the draft
+     * holds. Declaring the narrower shape hid the mismatch from the compiler.
+     */
+    photos: {
+      url: string;
+      publicId: string;
+      width?: number | null;
+      height?: number | null;
+      caption?: string | null;
+    }[];
     embeds: { url: string }[];
     tags: string[];
   };
@@ -93,7 +104,16 @@ export function MemoryForm({
     const day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
   });
-  const [photos, setPhotos] = useState<UploadedPhoto[]>(initialMemory?.photos ?? []);
+  // Nulls from the API become absent fields, so the draft matches what we send back.
+  const [photos, setPhotos] = useState<UploadedPhoto[]>(() =>
+    (initialMemory?.photos ?? []).map((p) => ({
+      url: p.url,
+      publicId: p.publicId,
+      width: p.width ?? undefined,
+      height: p.height ?? undefined,
+      caption: p.caption ?? undefined,
+    })),
+  );
   /*
    * One entry per photo still on its way up, each carrying its own progress and
    * its own failure. They used to travel as a single batch through Promise.all,
@@ -184,7 +204,7 @@ export function MemoryForm({
     onDone();
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onError = (err: any) => toast("Lưu thất bại: " + (err?.message || "Thử lại nhé"), "error");
+  const onError = (err: any) => toast("Lưu thất bại: " + (readableFormError(err?.message, "Thử lại nhé")), "error");
   const signUpload = trpc.upload.sign.useMutation();
   /*
    * Who can be named. A space holds two people, so in practice this is "the
@@ -484,7 +504,7 @@ export function MemoryForm({
             <p className="text-xs text-muted-foreground mt-1">
               {photos.length + pending.length >= MAX_PHOTOS_PER_MEMORY
                 ? `Đã đạt tối đa ${MAX_PHOTOS_PER_MEMORY} ảnh`
-                : "Ảnh gốc từ máy, không cần thu nhỏ trước. Tối đa 10 ảnh."}
+                : `Ảnh gốc từ máy, không cần thu nhỏ trước. Tối đa ${MAX_PHOTOS_PER_MEMORY} ảnh.`}
             </p>
           </div>
           <input

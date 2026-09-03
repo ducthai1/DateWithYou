@@ -1,6 +1,7 @@
 "use client";
 
 import { ImagePlus, Pencil, Trash2 } from "lucide-react";
+import { readableFormError } from "@/lib/form-error";
 import { PhotoView } from "react-photo-view";
 import { trpc } from "@/lib/trpc";
 import { ConfirmButton } from "@/components/ui/confirm-button";
@@ -44,7 +45,7 @@ export function DayPhotos({
       utils.memory.list.invalidate();
       toast("Đã xoá ảnh", "success");
     },
-    onError: (err) => toast(err.message, "error"),
+    onError: (err) => toast(readableFormError(err.message), "error"),
   });
 
   const withPhotos = memories.filter((m) => m.photos.length > 0);

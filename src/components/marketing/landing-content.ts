@@ -87,7 +87,7 @@ export const FEATURES: Feature[] = [
   {
     emoji: "🖼️",
     title: "Dòng kỷ niệm",
-    body: "Album theo mốc thời gian như một quyển nhật ký, mỗi kỷ niệm tối đa 10 ảnh kèm vài dòng kể lại hôm đó.",
+    body: "Album theo mốc thời gian như một quyển nhật ký, mỗi kỷ niệm tối đa 30 ảnh kèm vài dòng kể lại hôm đó.",
   },
   {
     emoji: "🔐",

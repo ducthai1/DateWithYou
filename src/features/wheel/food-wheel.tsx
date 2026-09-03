@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { ToneArt } from "@/components/theme/tone-art";
 import { motion, useAnimationControls } from "framer-motion";
@@ -65,7 +66,7 @@ export function FoodWheel() {
         },
         onError: (err) => {
           setInviteError(true);
-          toast(err.message || "Gửi lời mời thất bại", "error");
+          toast(readableFormError(err.message, "Gửi lời mời thất bại"), "error");
         },
       },
     );

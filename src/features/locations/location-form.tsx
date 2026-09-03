@@ -187,7 +187,7 @@ export function LocationForm({
       setAddingCategory(false);
       toast("Đã thêm loại địa điểm ✓", "success");
     },
-    onError: (err) => toast(err.message, "error"),
+    onError: (err) => toast(readableFormError(err.message), "error"),
   });
   const addCategoryPending = saveConfig.isPending;
   function addCategory() {

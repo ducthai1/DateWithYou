@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,11 +68,11 @@ export function PlanItemForm({
   };
   const create = trpc.planItem.create.useMutation({
     onSuccess: () => { invalidate(); onDone(); toast("Đã lưu kế hoạch", "success"); },
-    onError: (err) => toast(err.message, "error"),
+    onError: (err) => toast(readableFormError(err.message), "error"),
   });
   const update = trpc.planItem.update.useMutation({
     onSuccess: () => { invalidate(); onDone(); toast("Đã cập nhật kế hoạch", "success"); },
-    onError: (err) => toast(err.message, "error"),
+    onError: (err) => toast(readableFormError(err.message), "error"),
   });
   const pending = create.isPending || update.isPending;
 

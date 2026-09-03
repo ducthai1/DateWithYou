@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ export function CapsulesPanel() {
       setUnlockDate("");
     },
     onError: (err) => {
-      toast(err.message, "error");
+      toast(readableFormError(err.message), "error");
     }
   });
 

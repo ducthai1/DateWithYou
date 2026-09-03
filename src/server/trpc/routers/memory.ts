@@ -30,12 +30,25 @@ async function deriveEmbeds(embeds: { url: string }[] | undefined) {
   );
 }
 
+/*
+ * An input schema must accept the shape this router itself hands out.
+ *
+ * The read side emits `null` for every absent field (see toItem), and the edit
+ * form sends those same objects straight back untouched. A schema that only
+ * takes `string | undefined` therefore rejects every photo the user did not
+ * retype — which broke editing any memory while leaving creation fine, so the
+ * failure only appeared on the second visit to an entry.
+ */
+const emitted = <T extends z.ZodTypeAny>(inner: T) =>
+  inner.nullish().transform((v) => (v === null ? undefined : v));
+
 const photo = z.object({
   url: z.string().url().startsWith("https://"),
   publicId: z.string().min(1),
-  width: z.number().optional(),
-  height: z.number().optional(),
-  caption: z.string().trim().max(MAX_PHOTO_CAPTION).optional(),
+  width: emitted(z.number()),
+  height: emitted(z.number()),
+  // Blank clears the note: photos are replaced wholesale, so an absent field is gone.
+  caption: z.string().trim().max(MAX_PHOTO_CAPTION).nullish().transform((v) => v || undefined),
 });
 
 // Only the URL is accepted; embed metadata is derived server-side (deriveEmbeds).
@@ -45,7 +58,7 @@ const embed = z.object({
 
 const memoryInput = z.object({
   title: z.string().trim().min(1).max(120),
-  caption: z.string().trim().max(1000).optional(),
+  caption: emitted(z.string().trim().max(1000)),
   photos: z.array(photo).max(MAX_PHOTOS_PER_MEMORY).default([]),
   embeds: z.array(embed).max(10).default([]),
   tags: z.array(z.string().trim().min(1).max(24)).max(8).default([]),
@@ -158,7 +171,7 @@ export const memoryRouter = router({
    * One page of the timeline, newest first.
    *
    * Used to return every memory in the space with all its photos and embeds.
-   * A feed that grows for years and carries up to ten photos per entry is not
+   * A feed that grows for years and carries up to thirty photos per entry is not
    * something to send in one response — the payload only ever gets bigger, and
    * nobody scrolls to the bottom of it.
    *

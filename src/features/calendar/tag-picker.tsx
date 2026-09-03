@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Plus, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,7 +24,7 @@ export function TagPicker({
   const tags = trpc.space.tags.useQuery();
   const addTag = trpc.space.addTag.useMutation({
     onSuccess: () => { utils.space.tags.invalidate(); toast("Đã thêm nhãn mới", "success"); },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");

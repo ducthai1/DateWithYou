@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { trpc } from "@/lib/trpc";
@@ -45,11 +46,11 @@ export function RoadmapBoard() {
   const invalidate = () => utils.plan.list.invalidate();
   const create = trpc.plan.create.useMutation({ 
     onSuccess: () => { closeForm(); invalidate(); toast("Đã thêm dự định mới!", "success"); },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const update = trpc.plan.update.useMutation({ 
     onSuccess: () => { closeForm(); invalidate(); toast("Đã cập nhật dự định!", "success"); },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const setStatus = trpc.plan.setStatus.useMutation({
     onMutate: async ({ id, status }) => {
@@ -64,7 +65,7 @@ export function RoadmapBoard() {
       if (context?.previous) {
         utils.plan.list.setData(undefined, context.previous);
       }
-      toast("Lỗi khi chuyển trạng thái: " + err.message, "error");
+      toast("Lỗi khi chuyển trạng thái: " + readableFormError(err.message), "error");
     },
     onSettled: () => {
       invalidate();
@@ -76,7 +77,7 @@ export function RoadmapBoard() {
   });
   const remove = trpc.plan.remove.useMutation({ 
     onSuccess: () => { invalidate(); toast("Đã xóa dự định!", "success"); },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
 
   const celebrate = useCelebrate();

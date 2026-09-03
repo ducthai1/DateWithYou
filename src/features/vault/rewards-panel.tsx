@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { Coins, Gift, ListChecks, Plus, CheckCircle2, History, Ticket } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -33,19 +34,19 @@ export function RewardsPanel() {
 
   const createTask = trpc.reward.createTask.useMutation({ 
     onSuccess: () => { setTaskTitle(""); invalidate(); toast("Đã thêm nhiệm vụ", "success"); },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const createVoucher = trpc.reward.createVoucher.useMutation({ 
     onSuccess: () => { setVTitle(""); invalidate(); toast("Đã thêm voucher", "success"); },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const complete = trpc.reward.completeTask.useMutation({
     onSuccess: () => { invalidate(); toast("Đã cộng điểm ✓", "success"); },
-    onError: (err) => toast("Cộng điểm thất bại: " + err.message, "error"),
+    onError: (err) => toast("Cộng điểm thất bại: " + readableFormError(err.message), "error"),
   });
   const redeem = trpc.reward.redeem.useMutation({
     onSuccess: () => { invalidate(); toast("Đã đổi voucher 🎉", "success"); },
-    onError: (err) => toast(err.message === "INSUFFICIENT_POINTS" ? "Không đủ điểm để đổi voucher này." : "Lỗi đổi voucher: " + err.message, "error"),
+    onError: (err) => toast(err.message === "INSUFFICIENT_POINTS" ? "Không đủ điểm để đổi voucher này." : "Lỗi đổi voucher: " + readableFormError(err.message), "error"),
   });
 
   const celebrate = useCelebrate();

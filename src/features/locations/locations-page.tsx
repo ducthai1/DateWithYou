@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { readableFormError } from "@/lib/form-error";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSidebar } from "@/components/layout/sidebar-context";
 import { cn } from "@/lib/utils";
@@ -267,11 +268,11 @@ export function LocationsPage() {
   const sendInvite = trpc.location.sendNavInvite.useMutation();
   const cancelInvite = trpc.location.cancelNavInvite.useMutation({
     onSuccess: () => toast("Đã huỷ lời mời", "success"),
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const endNavTrip = trpc.location.endNavTrip.useMutation({
     onSuccess: () => toast("Đã kết thúc chuyến đi", "success"),
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
 
@@ -561,14 +562,14 @@ export function LocationsPage() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) utils.location.list.setData(listInput, ctx.prev);
-      toast(_err.message, "error");
+      toast(readableFormError(_err.message), "error");
     },
     onSuccess: () => toast("Đã chuyển trạng thái", "success"),
     onSettled: () => utils.location.list.invalidate(),
   });
   const remove = trpc.location.remove.useMutation({
     onSuccess: () => { utils.location.list.invalidate(); toast("Đã xoá địa điểm", "success"); },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   
   // Detect if partner is stuck

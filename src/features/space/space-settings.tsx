@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { TonePicker } from "@/components/theme/tone-picker";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -104,19 +105,19 @@ export function SpaceSettings() {
       utils.space.getAllMine.invalidate();
       toast("Đã lưu thiết lập giao diện", "success");
     },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const createInvite = trpc.space.createInvite.useMutation({
     onSuccess: (d) => { setInvite(d.code); toast("Đã tạo mã mời", "success"); },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const createSpace = trpc.space.create.useMutation({
     onSuccess: (data) => { toast("Đã tạo không gian", "success"); handleSpaceSwitch(data.id); },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const joinSpace = trpc.space.joinByCode.useMutation({
     onSuccess: (data) => { toast("Đã tham gia không gian", "success"); handleSpaceSwitch(data.id); },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const deleteSpace = trpc.space.delete.useMutation({
     onSuccess: () => {
@@ -131,7 +132,7 @@ export function SpaceSettings() {
         window.location.assign("/onboarding");
       }
     },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
   const setSpacePin = trpc.space.setPin.useMutation({
     onSuccess: () => {
@@ -139,7 +140,7 @@ export function SpaceSettings() {
       setManagePin("");
       toast("Đã cập nhật mã PIN", "success");
     },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
 
   if (mine.isLoading || !mine.data || allMine.isLoading) {
@@ -258,7 +259,7 @@ export function SpaceSettings() {
                     setIsUpdatingAvatar(true);
                     const res = await authClient.updateUser({ image: url });
                     if (res.error) {
-                      toast(res.error.message || "Lỗi khi cập nhật ảnh", "error");
+                      toast(readableFormError(res.error.message, "Lỗi khi cập nhật ảnh"), "error");
                       setIsUpdatingAvatar(false);
                     } else {
                       toast("Đã cập nhật ảnh đại diện", "success");
@@ -299,7 +300,7 @@ export function SpaceSettings() {
                   setIsUpdatingAvatar(true);
                   const res = await authClient.updateUser({ image: customAvatarUrl.trim() });
                   if (res.error) {
-                    toast(res.error.message || "Lỗi khi cập nhật ảnh", "error");
+                    toast(readableFormError(res.error.message, "Lỗi khi cập nhật ảnh"), "error");
                     setIsUpdatingAvatar(false);
                   } else {
                     toast("Đã cập nhật ảnh đại diện", "success");
@@ -329,7 +330,7 @@ export function SpaceSettings() {
                       provider: "google",
                       callbackURL: "/settings",
                     }).then((res) => {
-                      if (res.error) toast(res.error.message || "Đã xảy ra lỗi", "error");
+                      if (res.error) toast(readableFormError(res.error.message, "Đã xảy ra lỗi"), "error");
                     });
                   }}
                 >

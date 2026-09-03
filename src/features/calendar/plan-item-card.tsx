@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { motion } from "framer-motion";
 import { Check, ChevronUp, ChevronDown, Pencil, Trash2, ImagePlus, MapPin, Users, Plane } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -83,7 +84,7 @@ export function PlanItemCard({
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) utils.calendar.dayDetail.setData({ date }, ctx.prev);
-      toast(_e.message, "error");
+      toast(readableFormError(_e.message), "error");
     },
     onSettled: () => utils.calendar.monthSummary.invalidate(),
   });
@@ -99,7 +100,7 @@ export function PlanItemCard({
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) utils.calendar.dayDetail.setData({ date }, ctx.prev);
-      toast(_e.message, "error");
+      toast(readableFormError(_e.message), "error");
     },
     onSuccess: () => toast("Đã xoá kế hoạch", "success"),
     onSettled: () => utils.calendar.monthSummary.invalidate(),
@@ -122,7 +123,7 @@ export function PlanItemCard({
     onError: (err, _v, ctx) => {
       const c = ctx as { prev?: ReturnType<typeof utils.calendar.dayDetail.getData> } | undefined;
       if (c?.prev) utils.calendar.dayDetail.setData({ date }, c.prev);
-      toast(err.message, "error");
+      toast(readableFormError(err.message), "error");
     },
     onSettled: () => utils.calendar.monthSummary.invalidate(),
   });

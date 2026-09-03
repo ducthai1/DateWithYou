@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +52,7 @@ export function SpecialDatesPanel() {
   };
   const create = trpc.specialDate.create.useMutation({
     onSuccess: () => { invalidate(); toast("Đã lưu ngày đặc biệt 💖", "success"); },
-    onError: (err) => toast(err.message, "error"),
+    onError: (err) => toast(readableFormError(err.message), "error"),
   });
   const remove = trpc.specialDate.remove.useMutation({
     // The row goes now; the server hears about it after. Waiting a round
@@ -64,7 +65,7 @@ export function SpecialDatesPanel() {
     },
     onError: (err, _v, ctx) => {
       if (ctx?.prev) utils.specialDate.list.setData(undefined, ctx.prev);
-      toast(err.message, "error");
+      toast(readableFormError(err.message), "error");
     },
     onSuccess: () => toast("Đã xoá ngày đặc biệt", "success"),
     onSettled: () => invalidate(),

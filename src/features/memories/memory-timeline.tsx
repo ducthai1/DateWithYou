@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { ImagePlus } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { cldFull, cldPreview, cldThumb } from "@/lib/cloudinary-url";
@@ -86,7 +87,7 @@ export function MemoryTimeline() {
     },
     onError: (err, _v, ctx) => {
       if (ctx?.prev) utils.memory.list.setInfiniteData(ctx.key, ctx.prev);
-      toast(err.message, "error");
+      toast(readableFormError(err.message), "error");
     },
     onSuccess: () => toast("Đã xoá kỷ niệm", "success"),
     onSettled: () => utils.memory.list.invalidate(),

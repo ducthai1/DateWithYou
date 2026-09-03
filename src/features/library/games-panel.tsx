@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -52,7 +53,7 @@ export function GamesPanel() {
     },
     onError: (err, _v, ctx) => {
       if (ctx?.prev) utils.media.list.setData(ctx.key, ctx.prev);
-      toast(err.message, "error");
+      toast(readableFormError(err.message), "error");
     },
     onSuccess: () => toast("Đã xoá trò chơi", "success"),
     onSettled: () => utils.media.list.invalidate(),

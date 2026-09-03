@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
@@ -50,7 +51,7 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
     },
     onError: (err, _v, ctx) => {
       if (ctx?.prev) utils.media.list.setData(ctx.key, ctx.prev);
-      toast(err.message, "error");
+      toast(readableFormError(err.message), "error");
     },
     onSuccess: () => {
       toast("Đã xoá mục khỏi bộ sưu tập", "success");

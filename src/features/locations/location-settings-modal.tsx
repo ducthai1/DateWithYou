@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readableFormError } from "@/lib/form-error";
 import { Plus, Save, SlidersHorizontal, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ export function LocationSettingsModal({
       toast("Đã lưu cấu hình", "success");
       onClose();
     },
-    onError: (err) => toast(err.message, "error")
+    onError: (err) => toast(readableFormError(err.message), "error")
   });
 
   const handleAddCategory = () => {
