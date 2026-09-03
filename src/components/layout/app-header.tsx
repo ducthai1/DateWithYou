@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Lock, Settings } from "lucide-react";
+import { Search, Settings } from "lucide-react";
 import { NAV_HIDDEN_ON } from "./nav-items";
 import { MobileMoreMenu } from "./mobile-more-menu";
 import { BrandMark } from "./brand-mark";
@@ -48,12 +48,15 @@ export function AppHeader() {
         {/* No bell here any more. This header is md:hidden — phones only — and
             the count now lives in the bottom bar, where the thumb already is.
             Two copies of the same number on one screen is worse than one. */}
+        {/* Tìm kiếm out here, Bí mật moved into the sheet: one is reached
+            mid-thought and wants a single tap, the other is a place you go on
+            purpose and can afford two. */}
         <Link
-          href="/vault"
-          aria-label="Bí mật"
-          className={ACTION_CLASS(pathname.startsWith("/vault"))}
+          href="/search"
+          aria-label="Tìm kiếm"
+          className={ACTION_CLASS(pathname.startsWith("/search"))}
         >
-          <Lock className="h-5 w-5" />
+          <Search className="h-5 w-5" />
         </Link>
         {/* Settings left the mobile bottom bar (six targets is already the
             limit at 390px), so this is now its only mobile entry point —

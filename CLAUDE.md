@@ -1568,6 +1568,29 @@ Kiểm chiều rộng ở **cả 320px** (khổ từng làm logo bị cắt mấ
 **Luật:** một cờ kiểu "ẩn ở đâu đó" phải kèm **nơi nó xuất hiện thay thế**, và nơi đó phải đọc từ chính
 danh sách gốc. Comment nói "vẫn vào được ở chỗ khác" mà không có code bảo đảm thì chỉ là một lời hứa.
 
+### `BottomSheet` KHÔNG tự có padding ngang
+
+Nó chỉ vẽ tấm panel. Mọi chỗ dùng phải tự bọc `px-4` — chỗ dùng sẵn có
+(`reaction-bar.tsx`) làm đúng thế, phần "Mục khác" thì quên, nên tiêu đề và dòng mô tả **dính sát mép
+trái** trong khi danh sách bên dưới trông có thụt lề nhờ `px-3` của chính nó. Kiểu lỗi khó thấy vì một
+nửa nội dung *trông* vẫn đúng.
+
+```
+trước: tiêuĐề left=0    môTả left=0    mụcĐầu left=17
+sau  : tiêuĐề left=16   môTả left=16   mụcĐầu left=33
+```
+
+Bọc kèm `pb-[calc(env(safe-area-inset-bottom)+1rem)]` để hàng cuối không nằm dưới home indicator.
+
+### Chia việc giữa icon header và sheet
+
+Tìm kiếm ra header (một chạm), Bí mật vào sheet (hai chạm): **cái nào được với tới giữa chừng một ý nghĩ
+thì đáng một chạm; cái nào người ta đi tới có chủ đích thì chịu được hai.**
+
+`/vault` **không** nằm trong `NAV_ITEMS` — sidebar desktop cũng gắn tay nó ở cuối, vì nó là một đích đến
+nhưng không ngang hàng với các mục khác, đưa vào danh sách chung là nó lọt vào thứ tự của thanh dưới.
+Sheet khai lại nó trong `EXTRA` theo đúng hình dạng đó.
+
 ## Favicon trên Google: index lại trang KHÔNG làm mới logo
 
 Search Console báo thu thập thành công 02:49 ngày 30/08, mà kết quả tìm kiếm vẫn hiện logo cũ. Cả hai

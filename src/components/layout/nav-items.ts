@@ -47,10 +47,10 @@ export const NAV_ITEMS: {
   { href: "/library", label: "Bộ sưu tập", Icon: Library },
   // Rides already taken: a screen people visit to look back rather than one
   // they reach for mid-trip, so it gives up its bottom-bar slot and lives in
-  // the header's "Mục khác" sheet on a phone.
+  // the header's "Mục khác" sheet on a phone, next to Bí mật.
   { href: "/rides", label: "Đã đi", Icon: Bike, mobileHidden: true },
-  // Out of the bottom bar: Cài đặt is linked directly in the mobile header,
-  // Tìm kiếm sits in its "Mục khác" sheet.
+  // Out of the bottom bar: both are linked directly in the mobile header, which
+  // is why "Mục khác" skips them.
   { href: "/search", label: "Tìm kiếm", Icon: Search, mobileHidden: true },
   { href: "/settings", label: "Cài đặt", Icon: Settings, mobileHidden: true },
 ];

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MoreHorizontal } from "lucide-react";
+import { Lock, MoreHorizontal } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { NAV_ITEMS } from "./nav-items";
 import { cn } from "@/lib/utils";
@@ -25,13 +25,26 @@ import { cn } from "@/lib/utils";
  */
 
 /** Hrefs the header already links directly, so they are not repeated here. */
-const IN_HEADER = ["/settings"];
+const IN_HEADER = ["/settings", "/search"];
+
+/*
+ * Bí mật, which is not a NAV_ITEM.
+ *
+ * The desktop sidebar appends it by hand for the same reason: it is a
+ * destination but not a peer of the others, and putting it in the shared list
+ * would place it in the bottom bar's ordering. Listed here in the same shape so
+ * the sheet renders it identically.
+ */
+const EXTRA = [{ href: "/vault", label: "Bí mật", Icon: Lock }];
 
 export function MobileMoreMenu({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  const items = NAV_ITEMS.filter((it) => it.mobileHidden && !IN_HEADER.includes(it.href));
+  const items = [
+    ...NAV_ITEMS.filter((it) => it.mobileHidden && !IN_HEADER.includes(it.href)),
+    ...EXTRA,
+  ];
   if (items.length === 0) return null;
 
   return (
@@ -48,6 +61,13 @@ export function MobileMoreMenu({ className }: { className?: string }) {
       </button>
 
       <BottomSheet open={open} onClose={() => setOpen(false)}>
+        {/*
+          The sheet paints a panel and nothing else — no horizontal padding of
+          its own, which is why the heading and its line sat flush against the
+          left edge while the list below looked inset by its own px-3. The
+          bottom inset keeps the last row clear of the home indicator.
+        */}
+        <div className="px-4 pt-1 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
         <h2 className="text-foreground mb-1 text-base font-semibold">Mục khác</h2>
         <p className="text-muted-foreground mb-3 text-xs">
           Những phần không nằm trong thanh dưới.
@@ -76,6 +96,7 @@ export function MobileMoreMenu({ className }: { className?: string }) {
             );
           })}
         </ul>
+        </div>
       </BottomSheet>
     </>
   );
