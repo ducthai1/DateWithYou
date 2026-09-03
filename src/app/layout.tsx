@@ -124,13 +124,36 @@ export const metadata: Metadata = {
    * app/favicon.ico is a metadata route that Next parses at build time, while a
    * public/ file is copied verbatim — one less thing that can fail in a build.
    */
+  /*
+   * The search favicon points at a versioned path on purpose.
+   *
+   * Google caches the icon it shows in search results PER URL, on its own
+   * schedule, fetched by a crawler that has nothing to do with indexing the
+   * page. Traced by rebuilding all 21 historical versions of these files and
+   * matching them against a screenshot of the live result: search was still
+   * showing the mark from 25/08 22:32 — the first commit that made the site
+   * indexable — nine days and four logo changes later, including through a
+   * successful re-crawl of the page on 30/08. The file at /favicon.ico had been
+   * correct that whole time, and every deploy gave it a fresh Last-Modified,
+   * which changed nothing: the cache is held by time, not by validators.
+   *
+   * A path Google has never fetched is the only lever left short of moving off
+   * a vercel.app subdomain. It is a nudge with no guarantee, so:
+   *
+   *   /favicon.ico STAYS, byte-identical, and is not to be deleted. Browsers,
+   *   feed readers and Google's own fallback all request that exact path
+   *   without reading any HTML, and this file is the duplicate, not the source.
+   *
+   * If search is still showing an old mark long after a logo change, bump to
+   * -v3 rather than editing this one in place — the point is the new URL.
+   */
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
+      { url: "/favicon-v2.ico", sizes: "48x48", type: "image/x-icon" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    shortcut: [{ url: "/favicon.ico" }],
+    shortcut: [{ url: "/favicon-v2.ico" }],
     apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
   /*

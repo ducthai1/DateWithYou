@@ -1525,6 +1525,51 @@ theo sự kiện.
 Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
 câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
 
+## Favicon trên Google: index lại trang KHÔNG làm mới logo
+
+Search Console báo thu thập thành công 02:49 ngày 30/08, mà kết quả tìm kiếm vẫn hiện logo cũ. Cả hai
+đều đúng: **favicon trong kết quả tìm kiếm do một trình thu thập riêng lấy, theo lịch riêng.** "Yêu cầu
+lập chỉ mục" làm mới tiêu đề/mô tả/nội dung — không kéo theo favicon, và Search Console **không có** nút
+yêu cầu làm mới favicon.
+
+### Cách truy ra Google đang giữ bản nào
+
+Đừng đoán "chắc là bản cũ". Dựng lại **mọi** phiên bản icon trong lịch sử rồi so với ảnh chụp kết quả:
+
+```bash
+for h in $(git log --format='%h' -- public/favicon.ico src/app/icon.png); do
+  git show "$h:public/favicon.ico" > /tmp/favhist/$h.ico 2>/dev/null
+done
+# rồi ghép thành contact sheet, ICO phải chọn frame: im.size=(48,48) trước convert
+```
+
+21 bản, khớp đúng một: `f517799` — **25/08 22:32**, commit đầu tiên khiến site được index. Tức Google
+lấy favicon **đúng lần đầu site vào index** rồi giữ nguyên qua 4 lần đổi logo và một lần re-crawl.
+
+### Điều đã loại trừ được (nên đừng đi lại)
+
+| nghi ngờ | kết quả đo |
+|---|---|
+| file sai / hỏng | `/favicon.ico` 200, ICO đa size **16/32/48/64**, đúng khuyến nghị Google |
+| robots.txt chặn | không chặn đường dẫn icon nào |
+| CDN giữ bản cũ | `cache-control: max-age=0, must-revalidate` |
+| validator không đổi | `Last-Modified` đổi **mỗi lần deploy** — Google vẫn không lấy lại ⇒ cache giữ theo **thời gian**, không theo validator |
+| mẹo `google.com/s2/favicons?domain=…&sz=64` | **404** — dịch vụ đó khoá theo domain đăng ký được, mà `vercel.app` nằm trong Public Suffix List |
+
+### Đòn bẩy duy nhất còn lại: một URL Google chưa từng tải
+
+Google cache **theo URL**. Nên trỏ `<link rel="icon">` sang `/favicon-v2.ico` (bản sao byte-identical).
+
+⚠️ **`/favicon.ico` ở gốc PHẢI GIỮ, đừng xoá.** Trình duyệt, feed reader và chính fallback của Google hỏi
+thẳng đường dẫn đó mà không đọc HTML. File `-v2` là bản sao, không phải bản gốc.
+
+Lần sau cần hích nữa thì **tăng lên `-v3`**, đừng sửa tại chỗ — cái có tác dụng là URL mới, không phải
+nội dung mới.
+
+Đây là **một cú hích có xác suất, không phải bản sửa lỗi**: nếu trình thu thập favicon vẫn ưu tiên
+`/favicon.ico` ở gốc thì nó không có tác dụng gì. Cách chữa dứt điểm là **domain riêng** — site đang là
+một subdomain giữa hàng triệu subdomain `vercel.app`.
+
 ## ⛔ CHẾ ĐỘ BẢN ĐỒ ĐÊM ĐÃ GỠ (2026-09-03) — đừng thêm lại theo cách cũ
 
 User chốt gỡ: *"tạm bỏ đi chế độ tối vì nó gây ra bug nhiều quá"*. Bản đồ nay dùng **một style
