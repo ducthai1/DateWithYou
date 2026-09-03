@@ -1,11 +1,18 @@
-// Client-side unsigned upload to Cloudinary. Unsigned means no API secret ships
-// to the browser; what the preset itself permits is set in the Cloudinary
-// dashboard, not here.
+// Browser-side upload to Cloudinary, authorised per request by a signature the
+// server mints. The file never travels through our server; the permission to
+// send it does. See routers/upload.ts for why an unsigned preset was not enough.
 
 import { MAX_UPLOAD_BYTES, prepareForUpload } from "@/lib/image-prepare";
 
 const CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-const PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+/** What the server hands over for one upload. */
+export type UploadTicket = {
+  apiKey: string;
+  timestamp: number;
+  folder: string;
+  signature: string;
+};
 
 export type UploadedPhoto = {
   url: string;
@@ -14,7 +21,12 @@ export type UploadedPhoto = {
   height?: number;
 };
 
-export const cloudinaryConfigured = Boolean(CLOUD && PRESET);
+/*
+ * Only the cloud name now. Whether an upload can actually be authorised is the
+ * server's business and is answered when one is attempted — hiding the picker
+ * on a guess would hide it from someone whose server is configured fine.
+ */
+export const cloudinaryConfigured = Boolean(CLOUD);
 
 /** Network trouble is worth retrying; a rejected file never is. */
 export class UploadError extends Error {
@@ -30,6 +42,7 @@ const RETRY_DELAYS_MS = [700, 2000];
 
 function post(
   file: File,
+  ticket: UploadTicket,
   onProgress?: (fraction: number) => void,
   signal?: AbortSignal,
 ): Promise<UploadedPhoto> {
@@ -37,7 +50,16 @@ function post(
     if (signal?.aborted) return reject(new UploadError("Đã huỷ", false));
     const form = new FormData();
     form.append("file", file);
-    form.append("upload_preset", PRESET as string);
+    /*
+     * Exactly the fields the signature covers, and no others. Cloudinary
+     * rejects the request outright if the browser adds a parameter that was not
+     * signed, which is the property that stops a client widening its own
+     * permission — so this list has to match routers/upload.ts.
+     */
+    form.append("api_key", ticket.apiKey);
+    form.append("timestamp", String(ticket.timestamp));
+    form.append("folder", ticket.folder);
+    form.append("signature", ticket.signature);
 
     /*
      * XMLHttpRequest rather than fetch, for one reason: it reports how much of
@@ -105,10 +127,15 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
 
 export async function uploadToCloudinary(
   input: File,
-  opts: { onProgress?: (fraction: number) => void; signal?: AbortSignal } = {},
+  opts: {
+    /** Asks the server to authorise this upload. One ticket per attempt. */
+    sign: () => Promise<UploadTicket>;
+    onProgress?: (fraction: number) => void;
+    signal?: AbortSignal;
+  },
 ): Promise<UploadedPhoto> {
-  if (!CLOUD || !PRESET) {
-    throw new UploadError("Cloudinary chưa cấu hình (NEXT_PUBLIC_CLOUDINARY_*)", false);
+  if (!CLOUD) {
+    throw new UploadError("Cloudinary chưa cấu hình (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME)", false);
   }
 
   const prepared = await prepareForUpload(input);
@@ -124,7 +151,15 @@ export async function uploadToCloudinary(
   let lastError: unknown;
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     try {
-      return await post(prepared.file, opts.onProgress, opts.signal);
+      /*
+       * A fresh ticket per attempt, not one reused across retries: the
+       * signature carries a timestamp Cloudinary checks for staleness, and a
+       * retry after two seconds of backoff on a slow connection is exactly
+       * where a reused one starts failing for a reason that looks like the
+       * network.
+       */
+      const ticket = await opts.sign();
+      return await post(prepared.file, ticket, opts.onProgress, opts.signal);
     } catch (e) {
       lastError = e;
       if (!(e instanceof UploadError) || !e.retryable) throw e;

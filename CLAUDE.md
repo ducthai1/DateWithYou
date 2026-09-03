@@ -2237,6 +2237,65 @@ nhích thì **đọc ra là app treo** dù nó đang chạy.
 Kiểm bằng cách chặn `api.cloudinary.com` giữa lúc upload: 3 request (1 + 2 lần thử lại) → hiện
 "0 ảnh · 1 lỗi" + 1 nút Thử lại; bỏ chặn, bấm → 200 → "1 ảnh, 0 lỗi".
 
+## Ảnh: lưu ở đâu, ai xem được, và chỗ đã bịt (2026-09-03)
+
+Kiểm bằng Admin API, không đoán:
+
+| lớp | kết quả |
+|---|---|
+| Qua app/API | **không lộ** — `memory.list` là `protectedProcedure` lọc theo `ctx.spaceId` |
+| Liệt kê từ ngoài | **không** — `res.cloudinary.com/<cloud>/image/list/*.json` trả **401** (đã tắt cho cloud này) |
+| Đoán URL | **không khả thi** — `public_id` 20 ký tự `[a-z0-9]` ⇒ 36²⁰ ≈ 1,3×10³¹; kiểm 100 mẫu, **không** có tên file gốc |
+| Xoá ảnh có xoá thật? | **có** — `destroyAssets` được gọi ở cả sửa (bỏ ảnh) và xoá kỷ niệm |
+
+⚠️ Nhưng `type: upload`, **không** `access_mode`/`access_control` ⇒ **URL công khai, không cần đăng
+nhập**. Bảo mật hiện tại là *"URL không đoán được"*, **không phải** *"chỉ người có quyền mới xem"*. URL
+lọt ra một lần là mở được vĩnh viễn, không hạn dùng, không thu hồi (trừ khi xoá ảnh). Nâng lên mức thật
+cần `type: authenticated` + URL ký có hạn — **user chưa chọn**, và có đánh đổi: URL ký thì CDN không
+cache lâu được ⇒ ảnh chậm hơn, và `cloudinary-url.ts` phải gọi server thay vì tự dựng chuỗi.
+
+### Đã bịt: lỗ GHI (signed upload)
+
+`NEXT_PUBLIC_CLOUDINARY_*` nằm trong bundle JS công khai, mà preset là `unsigned` và **không giới hạn
+gì** ⇒ ai đọc bundle cũng POST được file bất kỳ vào tài khoản: đốt quota, hoặc đẩy nội dung bất hợp pháp
+vào cloud mang tên user.
+
+`routers/upload.ts` phát **chữ ký cho từng lần upload**, chỉ cho thành viên đã đăng nhập:
+
+```
+folder = `memories/${ctx.spaceId}`   ← NẰM TRONG chữ ký
+```
+
+Folder ở trong chữ ký nên nó là **ranh giới**, không phải quy ước: client không đổi được sang folder của
+không gian khác mà chữ ký còn hợp lệ. Và Cloudinary **từ chối** request nếu browser gửi thêm tham số
+không được ký — đó chính là tính chất khiến client không tự nới quyền của mình được.
+
+**Lấy chữ ký mới cho MỖI lần thử lại**, không tái dùng: chữ ký mang timestamp mà Cloudinary xét hạn, và
+lần retry sau 2 giây backoff trên mạng chậm đúng là chỗ chữ ký cũ bắt đầu hỏng — với triệu chứng trông
+y như lỗi mạng.
+
+⚠️ `CLOUDINARY_API_KEY`/`_SECRET` là **optional** trong `env.ts` ⇒ deploy thiếu vẫn boot được, và hỏng
+sẽ hiện ra dưới dạng "ảnh không lên được, không rõ vì sao". Nên `sign` **throw** `PRECONDITION_FAILED`
+kèm câu tiếng Việt nói rõ thiếu biến nào.
+
+### Còn 1 bước: tắt preset unsigned SAU KHI deploy
+
+Đã siết preset (`folder=memories`, `allowed_formats=jpg,jpeg,png,webp,gif,heic,heif,avif`;
+`max_file_size` bị Cloudinary từ chối trên preset unsigned — hạn 10MB của gói vẫn chặn). Nhưng nó **vẫn
+`unsigned: true`** vì bản prod đang chạy còn dùng nó. Sau khi deploy bản signed và upload thử thành công:
+
+```bash
+curl -u "$KEY:$SECRET" -X PUT \
+  "https://api.cloudinary.com/v1_1/<cloud>/upload_presets/my_love" -d "unsigned=false"
+```
+
+### Bẫy khi test: "Forbidden origin"
+
+Mọi **mutation** tRPC bị chặn nếu `Origin` của browser ≠ `BETTER_AUTH_URL` (xem
+`app/api/trpc/[trpc]/route.ts`). Chạy dev ở cổng khác `BETTER_AUTH_URL` thì upload báo
+`Unexpected token 'F', "Forbidden origin" is not valid JSON` — **lỗi của bài test, không phải của app**.
+Chạy dev **đúng cổng của `BETTER_AUTH_URL`** (ở đây 4488).
+
 ## ⚠️ Preset upload đang MỞ TOANG — và comment trong code nói ngược
 
 `cloudinary-upload.ts` từng ghi *"preset (locked to folder / formats / size in the Cloudinary

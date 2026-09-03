@@ -19,6 +19,7 @@ import { dashboardRouter } from "@/server/trpc/routers/dashboard";
 import { searchRouter } from "@/server/trpc/routers/search";
 import { statsRouter } from "@/server/trpc/routers/stats";
 import { pushRouter } from "@/server/trpc/routers/push";
+import { uploadRouter } from "@/server/trpc/routers/upload";
 
 /** Root tRPC router. Each feature registers its own sub-router here. */
 export const appRouter = router({
@@ -42,6 +43,7 @@ export const appRouter = router({
   search: searchRouter,
   stats: statsRouter,
   push: pushRouter,
+  upload: uploadRouter,
 });
 
 export type AppRouter = typeof appRouter;

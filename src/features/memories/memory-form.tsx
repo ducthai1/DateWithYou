@@ -178,6 +178,7 @@ export function MemoryForm({
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onError = (err: any) => toast("Lưu thất bại: " + (err?.message || "Thử lại nhé"), "error");
+  const signUpload = trpc.upload.sign.useMutation();
   const create = trpc.memory.create.useMutation({ onSuccess, onError });
   const update = trpc.memory.update.useMutation({ onSuccess, onError });
 
@@ -217,6 +218,9 @@ export function MemoryForm({
     patch({ error: null, progress: 0 });
     try {
       const uploaded = await uploadToCloudinary(item.file, {
+        // The server authorises each upload; the browser no longer carries a
+        // credential that would let it post anything on its own.
+        sign: () => signUpload.mutateAsync(),
         onProgress: (fraction) => patch({ progress: fraction }),
       });
       setPhotos((p) => [...p, uploaded]);
