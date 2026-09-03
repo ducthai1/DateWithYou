@@ -1525,6 +1525,27 @@ theo sự kiện.
 Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
 câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
 
+## ⛔ CHẾ ĐỘ BẢN ĐỒ ĐÊM ĐÃ GỠ (2026-09-03) — đừng thêm lại theo cách cũ
+
+User chốt gỡ: *"tạm bỏ đi chế độ tối vì nó gây ra bug nhiều quá"*. Bản đồ nay dùng **một style
+`liberty` cho cả ngày lẫn đêm**.
+
+Bốn lỗi cộng lại, và **tô màu chỉ chữa được lỗi đầu**:
+
+| lỗi | tô màu chữa được? |
+|---|---|
+| style xám trung tính, nước cách đất 15 mức sáng | ✅ (xem bên dưới) |
+| `dark` **không có layer POI nào** → 18h–6h mất sạch tên quán, tên địa điểm | ❌ |
+| nhãn biển nằm ở layer tên khác (`water_name`) → sai nếu quên | ❌ |
+| `map-tile-assets.ts` chỉ warm `liberty` → 18h ập tới là **tải nguội giữa chuyến đi** | ❌ |
+
+Muốn làm lại thì **chỉ có một cách đúng**: dùng chính `liberty` cho ban đêm rồi tô lại bằng bảng màu.
+Kèm hai việc bắt buộc: **chụp lại màu gốc để hoàn nguyên** (vì `mapStyle` không đổi nữa ⇒ `onStyleData`
+không bắn khi toggle), và tô đủ **111 layer** thay vì 47. Bảng màu + phần nối dây nằm ở commit
+`30e6902`, lấy lại từ đó chứ đừng viết lại từ đầu.
+
+Phần dưới giữ lại vì các phép đo và luật phối màu vẫn đúng khi nào làm lại.
+
 ## Bản đồ đêm "đen xì": style gốc là xám trung tính từ 10 đến 35
 
 Style `dark` của OpenFreeMap tô mọi thứ bằng xám không màu:

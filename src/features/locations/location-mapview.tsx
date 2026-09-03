@@ -5,7 +5,6 @@ import { LocateFixed } from "lucide-react";
 import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
 import { VietnamSovereigntyMarkers } from "./vietnam-sovereignty-markers";
 import { applyEastSeaLabel } from "./east-sea-label";
-import { applyNightPalette } from "@/lib/night-map-palette";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { geodesicCircle, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
@@ -15,21 +14,22 @@ import { buzz } from "@/lib/haptics";
 // OpenFreeMap serves free vector tiles + styles with no API key, no signup, and
 // no credit card — unlike Mapbox, which gates tokens behind a payment method.
 /*
- * Two base maps, chosen by the clock.
+ * One base map, all day.
  *
- * A white map at night is a torch in the face of someone riding a motorbike,
- * and the app is used most in the evening. The dark style shares this one's
- * sprite and a subset of its fonts, so the swap costs nothing that has not
- * already been downloaded and cached.
+ * There was a second one, swapped in from 18:00 to 06:00 — a white map at night
+ * is a torch in the face of someone riding a motorbike, so the reasoning stands.
+ * What did not stand was the style available to swap to. It carries none of the
+ * POI layers this one has, so every shop and landmark name vanished after dark;
+ * it publishes its sea label under a different layer name; its motorway cores
+ * interpolate to pure black above zoom 6; and nothing pre-warmed it, so dusk
+ * arrived as a cold download in the middle of a ride.
+ *
+ * Recolouring it fixed the colours and none of the rest. Withdrawn until the
+ * night map can be this same style under a dark palette, which is the only
+ * version of it that keeps the map whole — see the palette and its wiring in
+ * commit 30e6902 for the groundwork.
  */
 const MAP_STYLE_DAY = "https://tiles.openfreemap.org/styles/liberty";
-const MAP_STYLE_NIGHT = "https://tiles.openfreemap.org/styles/dark";
-
-/** Dusk to dawn, in the rider's own time zone. */
-function isNightNow(): boolean {
-  const h = new Date().getHours();
-  return h >= 18 || h < 6;
-}
 // Ho Chi Minh City centre.
 const DEFAULT_CENTER = { longitude: 106.7009, latitude: 10.7769, zoom: 12 };
 
@@ -347,40 +347,19 @@ function LocationMapViewImpl({
    * screen blank forever, so after 6s it is shown in whatever state it reached.
    */
   const [drawn, setDrawn] = useState(false);
-  /*
-   * Re-checked on a timer, not read once. A ride that starts at 17:50 crosses
-   * into the evening while the map is open, and the person should not have to
-   * reload to stop being dazzled.
-   */
-  const [night, setNight] = useState(isNightNow);
-  useEffect(() => {
-    const t = setInterval(() => setNight(isNightNow()), 60_000);
-    return () => clearInterval(t);
-  }, []);
   useEffect(() => {
     const t = setTimeout(() => setDrawn(true), 6000);
     return () => clearTimeout(t);
   }, []);
 
   /*
-   * Both style overrides, in one place, applied on every style event.
-   *
-   * Switching between day and night replaces the entire style object, and with
-   * it anything set on the previous one — so these cannot run once at startup.
-   *
-   * The palette is gated on `night` for a reason that is easy to miss: the day
-   * style names its layers the same way, so recolouring unconditionally would
-   * paint the daytime map in night colours.
+   * Applied on every style event, not once at startup: MapLibre replaces the
+   * whole style object when it reloads one, and anything set on the previous
+   * one goes with it.
    */
-  const dressStyle = useCallback(
-    (target: unknown) => {
-      const map = target as Parameters<typeof applyEastSeaLabel>[0] &
-        Parameters<typeof applyNightPalette>[0];
-      applyEastSeaLabel(map);
-      if (night) applyNightPalette(map);
-    },
-    [night],
-  );
+  const dressStyle = useCallback((target: unknown) => {
+    applyEastSeaLabel(target as Parameters<typeof applyEastSeaLabel>[0]);
+  }, []);
 
   return (
     <div 
@@ -410,8 +389,6 @@ function LocationMapViewImpl({
       <Map
         ref={mapRef}
         initialViewState={DEFAULT_CENTER}
-        /* Every style load, not just the first: switching to the night map
-           replaces the whole style, and with it both overrides below. */
         onStyleData={(e) => dressStyle(e.target)}
         onLoad={(e) => {
           // Deliberately does NOT report a centre. The map opens on a fixed
@@ -435,7 +412,7 @@ function LocationMapViewImpl({
           const c = e.target.getCenter();
           onCenterChange?.({ lat: c.lat, lng: c.lng });
         }}
-        mapStyle={night ? MAP_STYLE_NIGHT : MAP_STYLE_DAY}
+        mapStyle={MAP_STYLE_DAY}
         attributionControl={false}
         onClick={(e) =>
           onMapClick?.({ lat: e.lngLat.lat, lng: e.lngLat.lng })

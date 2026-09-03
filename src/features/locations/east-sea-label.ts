@@ -13,13 +13,13 @@
  */
 
 /*
- * Layers that draw water names, across the styles this app uses.
+ * Layers that draw water names.
  *
- * The names differ between them: Liberty splits point and line labels, while
- * the dark style has a single `water_name`. Listing all three and skipping the
- * ones a style does not have is what keeps the sea named correctly after a
- * switch to night mode — checked against both styles, because the first version
- * of night mode silently handed the sea back to "South China Sea".
+ * Liberty, the style in use, splits these into point and line labels. The third
+ * name is what the dark style called the same thing, kept because a style that
+ * does not have a layer is skipped at no cost, and because the one time these
+ * names were assumed rather than checked the sea quietly went back to being
+ * "South China Sea" on half the map.
  */
 const WATER_LABEL_LAYERS = ["water_name_point_label", "water_name_line_label", "water_name"];
 
