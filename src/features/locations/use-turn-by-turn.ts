@@ -37,12 +37,15 @@ export function useTurnByTurn({
   coordinates,
   userGeo,
   active,
+  arrival,
 }: {
   maneuvers: Maneuver[] | null;
   /** The active leg's polyline, the line the manoeuvre offsets are measured on. */
   coordinates?: Array<[number, number]> | null;
   userGeo: LatLng | null;
   active: boolean;
+  /** Name and side of the destination, for the last sentence of the ride. */
+  arrival?: { name?: string | null; side?: "left" | "right" | null } | null;
 }): TurnByTurn {
   const turns = useMemo(() => announceableTurns(maneuvers), [maneuvers]);
   /*
@@ -82,7 +85,7 @@ export function useTurnByTurn({
       travelled = cum[cum.length - 1] - matched.remaining;
     }
 
-    const step = stepAnnouncer(turns, stateRef.current, userGeo, travelled);
+    const step = stepAnnouncer(turns, stateRef.current, userGeo, travelled, arrival);
     stateRef.current = step.state;
     // Chime on every instruction: this is the one that has to land while the
     // rider is moving, with the road making its own noise.
@@ -95,7 +98,7 @@ export function useTurnByTurn({
       // stale thing on screen.
       sentence: step.speak ?? prev.sentence,
     }));
-  }, [active, userGeo, turns, coordinates, cum]);
+  }, [active, userGeo, turns, coordinates, cum, arrival]);
 
   return view;
 }

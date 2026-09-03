@@ -21,6 +21,7 @@ import { maneuverArrow, maneuverLabel, fmtMetresVi } from "@/lib/maneuver-vi";
 import { isVoiceEnabled, setVoiceEnabled, speak } from "@/lib/speak";
 import { departureSentence } from "@/lib/departure-voice";
 import { rerouteLine } from "@/lib/nav-chatter";
+import { destinationSide } from "@/lib/route-geometry";
 import { releaseAudio, unlockAudio } from "@/lib/audio-session";
 import { useNavigation } from "./navigation-context";
 import { fmtDistance, fmtDuration } from "./format-journey";
@@ -394,17 +395,6 @@ export function LocationsPage() {
     if (!legs?.length) return null;
     return legs[Math.min(currentLegIndex, legs.length - 1)] ?? null;
   }, [legGeometries, routeLegs, currentLegIndex]);
-  const turn = useTurnByTurn({
-    maneuvers: activeLeg?.maneuvers ?? null,
-    /*
-     * The same leg's line, because that is what the manoeuvre offsets are
-     * measured along. Reading the turns from one leg and the geometry from
-     * another would put every distance out by the difference between them.
-     */
-    coordinates: activeLeg?.geometry?.coordinates ?? null,
-    userGeo: nav.userGeo,
-    active: nav.isNavigating,
-  });
 
   const utils = trpc.useUtils();
   const configQuery = trpc.location.getConfig.useQuery();
@@ -599,6 +589,42 @@ export function LocationsPage() {
   const selectedName = selectedId
     ? (list.data?.find((l) => l.id === selectedId)?.name ?? null)
     : null;
+
+  /*
+   * Name and side of the destination, for the closing sentence of a ride.
+   *
+   * Only on the FINAL leg. An intermediate stop ends in an arrival manoeuvre
+   * too, and "tới rồi, Cà phê Sỏi Đá ở bên phải" announced at a stop halfway
+   * through would be naming somewhere the rider is not going yet.
+   *
+   * The side compares the direction of travel over the last stretch of the line
+   * with the direction from where the line ends to the pin itself — the route
+   * stops where the road comes closest to the place, not at the place.
+   */
+  const arrivalContext = useMemo(() => {
+    const legs = legGeometries ?? routeLegs;
+    const onFinalLeg = !legs?.length || currentLegIndex >= legs.length - 1;
+    if (!onFinalLeg) return null;
+    const geo = selectedId ? (list.data?.find((l) => l.id === selectedId)?.geo ?? null) : null;
+    const coords = activeLeg?.geometry?.coordinates ?? null;
+    return {
+      name: selectedName,
+      side: geo && coords?.length ? destinationSide(coords, geo) : null,
+    };
+  }, [legGeometries, routeLegs, currentLegIndex, selectedId, list.data, selectedName, activeLeg]);
+
+  const turn = useTurnByTurn({
+    maneuvers: activeLeg?.maneuvers ?? null,
+    /*
+     * The same leg's line, because that is what the manoeuvre offsets are
+     * measured along. Reading the turns from one leg and the geometry from
+     * another would put every distance out by the difference between them.
+     */
+    coordinates: activeLeg?.geometry?.coordinates ?? null,
+    userGeo: nav.userGeo,
+    active: nav.isNavigating,
+    arrival: arrivalContext,
+  });
 
   // Fetch weather when destination is selected
   useEffect(() => {

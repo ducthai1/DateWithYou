@@ -1956,6 +1956,53 @@ truyền tới input thông. Bản thân cái rung thì **chỉ quan sát đư�
 ⚠️ **Apple đã bịt haptic-bằng-JavaScript ở iOS 26.5.** Mẹo này chạy từ 17.4 đến 26.4. Máy mới hơn thì
 không có đường nào từ web nữa — cần biết phiên bản iOS trước khi kết luận là code sai.
 
+## Tới đích: nói tên chỗ, và nói nó nằm bên tay nào
+
+App **đã** báo tới đích từ trước (`maneuverSentence` xử lý type 4–6: *"Còn 100 mét là tới đích"* →
+*"Đã tới đích"*). Thiếu hai thứ: **tên chỗ** và **bên nào**.
+
+Bên nào là câu hỏi duy nhất còn lại lúc cuối chuyến: **route kết thúc ở chỗ đường gần cái quán nhất,
+không kết thúc ở cái quán.** Được nói bên nào thì dừng một lần; không được nói thì ngó ngang ngó dọc ở
+tốc độ đi bộ giữa dòng xe.
+
+```
+7668   Còn 100 mét là tới đích
+7704   Còn 80 mét là tới đích
+7752   Tới rồi! Cà phê Sỏi Đá nằm bên phải bạn đó.
+```
+
+### `destinationSide()` — và 3 trường hợp phải IM
+
+So hướng đi trên **~25m cuối** của polyline với hướng từ điểm cuối polyline tới **cái ghim thật**. Lấy
+25m chứ không lấy đoạn cuối, vì đoạn cuối có thể dài 1m và chỉ đâu cũng được.
+
+Trả `null` — không nói gì — ở ba ca mà nói ra còn tệ hơn im:
+
+| ca | vì sao |
+|---|---|
+| ghim cách đường **< 6m** | nằm ngay trên đường, không có bên nào đúng |
+| lệch **< 25°** so với thẳng trước / thẳng sau | sai số nhỏ ở một trong hai hướng là đảo đáp án |
+| còn **< 3m** polyline để tính hướng | không xác định được đang hướng mặt về đâu |
+
+Trái/phải là loại logic **rất dễ làm ngược**, nên có test 7 ca (bắc/đông × đông/tây/nam/bắc × thẳng
+trước × trên đường × polyline 1 điểm) — cả 7 đúng. Dấu của `((toDest − travel + 540) % 360) − 180`:
+**dương là bên phải.**
+
+### Chỉ áp cho CHẶNG CUỐI
+
+Điểm dừng giữa đường cũng sinh maneuver type 4–6. Đọc *"Tới rồi! Cà phê Sỏi Đá ở bên phải"* tại một điểm
+dừng giữa chuyến là gọi tên chỗ mà người ta **chưa** tới. `arrivalContext` trả `null` khi
+`currentLegIndex < legs.length - 1`.
+
+### Tên + bên đều tuỳ chọn, câu tự dựng theo cái nào có
+
+4 bộ câu: có-tên-có-bên / có-tên / có-bên / không-gì. Thiếu bên **không phải lỗi để xin lỗi** —
+`destinationSide` cố tình im ở 3 ca trên, và ở những ca đó thật sự không có bên nào để gọi.
+
+⚠️ `useTurnByTurn` phải gọi **sau** `list`/`selectedName` (dòng ~537/599) vì cần toạ độ điểm đến. Đã
+chuyển lời gọi hook xuống dưới — kiểm trước là `turn` không được dùng ở đoạn giữa. Hook vẫn vô điều kiện
+nên đổi vị trí là an toàn.
+
 ## Đoạn đường dài: chỗ im lặng dài nhất không phải khúc rẽ, mà là 6km giữa hai khúc rẽ
 
 Lời chỉ đường ở khúc rẽ chưa bao giờ là khoảng trống. Khoảng trống là **quãng giữa hai khúc rẽ**: xong

@@ -1,7 +1,7 @@
 import type { LatLng } from "@/lib/maps";
 import { haversineM } from "@/lib/route-geometry";
 import { IMMINENT_M, isRealTurn, maneuverSentence, maneuverStreet, type Maneuver } from "@/lib/maneuver-vi";
-import { LONG_LEG_M, LONG_STAGES, longLegOpener, longLegProgress } from "@/lib/nav-chatter";
+import { LONG_LEG_M, LONG_STAGES, arrivalLine, longLegOpener, longLegProgress } from "@/lib/nav-chatter";
 
 /**
  * Deciding what to say next, as a pure step.
@@ -26,6 +26,9 @@ const ALL_STAGES = [...LONG_STAGES, ...STAGES] as const;
 
 /** Stages at or above this are a long-stretch milestone, not a turn call. */
 const LONG_STAGE_FLOOR = LONG_STAGES[LONG_STAGES.length - 1];
+
+/** Valhalla's destination manoeuvres: plain, on the right, on the left. */
+const isArrival = (m: Maneuver) => m.type >= 4 && m.type <= 6;
 
 /** Close enough to count the turn as taken and move to the next one. */
 export const PASSED_M = 25;
@@ -102,6 +105,14 @@ export function stepAnnouncer(
    * and is the reason it was wrong.
    */
   travelledM?: number | null,
+  /**
+   * What to say on arrival, when it is known.
+   *
+   * Passed in rather than derived here because neither the name of the place
+   * nor which side of the road it is on is anywhere in a manoeuvre list — the
+   * router knows the road, the app knows the destination.
+   */
+  arrival?: { name?: string | null; side?: "left" | "right" | null } | null,
 ): AnnouncerStep {
   if (turns.length === 0) return { state, speak: null, next: null, metres: null };
 
@@ -218,9 +229,13 @@ export function stepAnnouncer(
   return {
     state: { idx, said },
     speak:
-      stage >= LONG_STAGE_FLOOR
-        ? longLegProgress({ metres, upcoming: turn })
-        : maneuverSentence(turn, metres),
+      // Arrival, close enough to be arriving: the one sentence that gets to
+      // name the place and point at it.
+      isArrival(turn) && stage === IMMINENT_M && arrival
+        ? arrivalLine(arrival)
+        : stage >= LONG_STAGE_FLOOR
+          ? longLegProgress({ metres, upcoming: turn })
+          : maneuverSentence(turn, metres),
     next: turn,
     metres,
   };

@@ -157,6 +157,63 @@ export function bearingBetween(a: LatLng, b: LatLng): number {
   return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360;
 }
 
+/** Which hand the destination is on, once you are facing the way you arrived. */
+export type ArrivalSide = "left" | "right" | null;
+
+/**
+ * Which side of the road the destination sits on.
+ *
+ * Worth saying out loud because it is the one question left at the end of a
+ * ride: the route ends where the road comes closest to the place, and the place
+ * itself is a few metres off to one hand. A rider who is told which hand stops
+ * once; a rider who is not looks both ways at walking pace in traffic.
+ *
+ * Compares the direction of travel over the last stretch of the line with the
+ * direction from the line's end to the actual pin. `null` — say nothing — for
+ * three cases where a claim would be worse than silence:
+ *
+ *   - the pin is essentially on the road, so neither hand is true
+ *   - it is nearly straight ahead or straight behind, where a small error in
+ *     either bearing flips the answer
+ *   - there is not enough line left to establish which way the rider is facing
+ *
+ * The approach bearing is taken over about 25 m rather than from the final
+ * segment, which can be a metre long and point anywhere.
+ */
+const APPROACH_M = 25;
+/** Off the road by less than this and there is no side to speak of. */
+const SIDE_MIN_OFFSET_M = 6;
+/** Within this of dead ahead or dead behind, a side is not worth claiming. */
+const SIDE_AMBIGUOUS_DEG = 25;
+
+export function destinationSide(
+  coords: Array<[number, number]>,
+  destination: LatLng,
+): ArrivalSide {
+  if (coords.length < 2) return null;
+  const at = (i: number): LatLng => ({ lat: coords[i][1], lng: coords[i][0] });
+  const end = at(coords.length - 1);
+
+  if (haversineM(end, destination) < SIDE_MIN_OFFSET_M) return null;
+
+  // Walk back along the line until about APPROACH_M of it is behind us.
+  let back = coords.length - 2;
+  let walked = haversineM(at(back), end);
+  while (back > 0 && walked < APPROACH_M) {
+    back -= 1;
+    walked = haversineM(at(back), end);
+  }
+  if (walked < 3) return null;
+
+  const travel = bearingBetween(at(back), end);
+  const toDest = bearingBetween(end, destination);
+  // Signed difference in (-180, 180]: positive is clockwise, i.e. to the right.
+  const delta = ((toDest - travel + 540) % 360) - 180;
+  const off = Math.abs(delta);
+  if (off < SIDE_AMBIGUOUS_DEG || off > 180 - SIDE_AMBIGUOUS_DEG) return null;
+  return delta > 0 ? "right" : "left";
+}
+
 /**
  * How far off the route a fix may be and still be shown on it.
  *

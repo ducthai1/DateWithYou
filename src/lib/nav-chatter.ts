@@ -130,6 +130,62 @@ const ARRIVING = [
   (d: string) => `Còn ${d} nữa là đến nơi.`,
 ] as const;
 
+const ARRIVE_NAME_SIDE = [
+  (n: string, h: string) => `Tới rồi! ${n} nằm bên ${h} bạn đó.`,
+  (n: string, h: string) => `Đến nơi rồi nha. ${n} ở bên ${h} thôi, khỏi phải tìm.`,
+  (n: string, h: string) => `${n} đây rồi, bên ${h} bạn. Chuyến này đi ngon lành.`,
+  (n: string, h: string) => `Vậy là tới. Ngó sang bên ${h} là thấy ${n} nhé.`,
+] as const;
+
+const ARRIVE_NAME = [
+  (n: string) => `Tới rồi! ${n} ngay quanh đây thôi.`,
+  (n: string) => `Đến nơi rồi nha, ${n} đây rồi.`,
+  (n: string) => `${n} đây rồi. Chuyến này đi ngon lành.`,
+] as const;
+
+const ARRIVE_SIDE = [
+  (h: string) => `Tới rồi! Điểm đến nằm bên ${h} bạn đó.`,
+  (h: string) => `Đến nơi rồi nha, ngó sang bên ${h} là thấy.`,
+  (h: string) => `Vậy là tới. Chỗ mình cần ở bên ${h} thôi.`,
+] as const;
+
+const ARRIVE_PLAIN = [
+  "Tới rồi! Chuyến này đi ngon lành.",
+  "Đến nơi rồi nha. Nghỉ chân thôi.",
+  "Vậy là tới. Đi cẩn thận nhé, hẹn chuyến sau.",
+] as const;
+
+/**
+ * The last thing said on a ride.
+ *
+ * Names the place and which hand it is on, because that is the question a rider
+ * is left holding when the route ends: the line stops where the road comes
+ * closest to the place, and the place is a few metres off to one side. Being
+ * told is the difference between stopping once and looking both ways at walking
+ * pace in traffic.
+ *
+ * Side and name are both optional and the sentence is built from whichever
+ * exist. A missing side is not a gap to apologise for — `destinationSide`
+ * returns nothing when the pin is on the road or nearly straight ahead, and in
+ * those cases there is genuinely no hand to name.
+ */
+export function arrivalLine({
+  name,
+  side,
+  seed,
+}: {
+  name?: string | null;
+  side?: "left" | "right" | null;
+  seed?: number;
+}): string {
+  const n = name?.trim() || null;
+  const h = side === "left" ? "trái" : side === "right" ? "phải" : null;
+  if (n && h) return pick(ARRIVE_NAME_SIDE, seed)(n, h);
+  if (n) return pick(ARRIVE_NAME, seed)(n);
+  if (h) return pick(ARRIVE_SIDE, seed)(h);
+  return pick(ARRIVE_PLAIN, seed);
+}
+
 const REROUTE = [
   "Ơ, bạn có lựa chọn riêng rồi ư? Mình vừa vẽ lại đường theo lối bạn đi.",
   "Đi lối này cũng hay. Đường mới vẽ xong rồi nhé.",
