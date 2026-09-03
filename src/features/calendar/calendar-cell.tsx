@@ -94,7 +94,12 @@ export const CalendarCell = memo(function CalendarCell({
         `Ngày ${cell.day}` +
         (isToday ? ", hôm nay" : "") +
         (count > 0 ? `, ${count} việc` : "") +
-        (hasSpecial ? `, ${summary!.special!.title}` : "")
+        (hasSpecial ? `, ${summary!.special!.title}` : "") +
+        // The band itself is decorative; without this a screen reader gets no
+        // hint that the day is part of a trip at all.
+        (summary?.trip
+          ? `, ${summary.trip.title} ngày ${summary.trip.day} trên ${summary.trip.total}`
+          : "")
       }
       className={cn(
         // Mobile: soft borderless tile with tap feedback. Desktop (md+): the
@@ -187,9 +192,36 @@ export const CalendarCell = memo(function CalendarCell({
         />
       )}
 
+      {/* ── Trip band ──
+          One continuous stripe across every day of a stay, rounded only at the
+          two ends, so five days away read as one stretch rather than as five
+          unrelated squares. A trip under way is drawn solid; one still ahead or
+          already over sits back at partial opacity so today keeps the emphasis.
+          The name rides on the opening day only, and only where there is room
+          for it — repeating it on every cell is noise, not information. */}
+      {summary?.trip && (
+        <>
+          <div
+            aria-hidden="true"
+            className={cn(
+              "absolute inset-x-0 top-0 z-20 h-1.5",
+              summary.trip.status === "active" ? "bg-accent" : "bg-accent/40",
+              summary.trip.first && "ml-1 rounded-l-full",
+              summary.trip.last && "mr-1 rounded-r-full",
+            )}
+          />
+        </>
+      )}
+
       {/* ── Top row: day number + count badge ── */}
       <div className="relative flex w-full items-start justify-between z-20">
         <div className="min-w-0 flex items-center gap-1">
+          {/* The trip's name rides beside the day number rather than on top of
+              it. Absolutely positioned it sat exactly where "today" draws its
+              filled circle, so a trip leaving today would have printed its name
+              through the date. In the flex row the two can only ever sit side
+              by side, and the chip keeps the letters readable over any of the
+              day artwork behind them. */}
           {/* Today gets a solid filled circle around the number on all devices */}
           <span
             className={cn(
@@ -205,8 +237,13 @@ export const CalendarCell = memo(function CalendarCell({
           >
             {cell.day}
           </span>
+          {summary?.trip?.first && (
+            <span className="bg-card/90 text-accent hidden min-w-0 truncate rounded-md px-1.5 py-0.5 text-[9px] font-bold shadow-sm backdrop-blur-sm md:inline-block">
+              {summary.trip.title}
+            </span>
+          )}
           {summary && summary.memoryCount > 0 && !summary.thumbnailUrl && (
-            <span className="h-1.5 w-1.5 rounded-full bg-stone-400" title="Kỷ niệm" />
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" title="Kỷ niệm" />
           )}
         </div>
         {/* Mobile special-date marker: a small filled heart (the desktop ribbon

@@ -6,7 +6,7 @@ import { LocationModel } from "@/server/db/models/location";
 import { MediaItemModel } from "@/server/db/models/media-item";
 import { TripModel } from "@/server/db/models/trip";
 import { TimeCapsuleModel } from "@/server/db/models/time-capsule";
-import { SAIGON_OFFSET_MIN, dateKeyFromDate } from "@/lib/date-keys";
+import { SAIGON_OFFSET_MIN, dateKeyFromDate, daysBetweenKeys } from "@/lib/date-keys";
 
 /* Everything here is deliberately a *shared* number for the space. There is no
  * per-member breakdown and no streak: the point is reminiscence ("tụi mình đã
@@ -20,14 +20,6 @@ const SAIGON_TZ = `+${String(Math.floor(SAIGON_OFFSET_MIN / 60)).padStart(2, "0"
 
 type Counted = { count: number }[];
 
-/** Whole days between two `YYYY-MM-DD` Saigon day keys. */
-function daysBetweenKeys(fromKey: string, toKey: string): number {
-  const [fy, fm, fd] = fromKey.split("-").map(Number);
-  const [ty, tm, td] = toKey.split("-").map(Number);
-  const from = Date.UTC(fy, fm - 1, fd);
-  const to = Date.UTC(ty, tm - 1, td);
-  return Math.round((to - from) / 86_400_000);
-}
 
 export const statsRouter = router({
   /**

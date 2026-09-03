@@ -8,6 +8,8 @@ import { Plane, Plus, CalendarDays, Wallet, CheckSquare } from "lucide-react";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { TripForm } from "./trip-form";
 import { cn } from "@/lib/utils";
+import { TRIP_STATUS_META, tripDay } from "@/lib/trip-status";
+import { TripNudgeBar, TripStatusChips } from "./trip-status-control";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { ToneArt } from "@/components/theme/tone-art";
@@ -62,6 +64,7 @@ export function TripList() {
             const d2 = new Date(trip.endDate);
             const diffDays = Math.ceil(Math.abs(d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
             
+            const day = tripDay(trip.startDate, trip.endDate);
             const totalChecklist = trip.checklists?.length || 0;
             const doneChecklist = trip.checklists?.filter((c: { isDone: boolean }) => c.isDone).length || 0;
             
@@ -87,23 +90,24 @@ export function TripList() {
                     className="absolute inset-0 bg-gradient-to-br from-gradient-from/30 to-gradient-to/40"
                   />
 
-                  {/* Status Pill */}
+                  {/* Status pill. A trip under way says which day it is on
+                      instead of repeating a word the chips below already show —
+                      "NGÀY 2/5" is the thing a traveller actually looks for.
+                      Colours come from the space's accent, not fixed green and
+                      blue, so the pill follows the chosen theme like everything
+                      else on the card. */}
                   <div className="absolute top-3 right-3">
                     <span
                       className={cn(
                         "rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide shadow-sm backdrop-blur-md",
-                        trip.status === "completed"
-                          ? "bg-green-100/90 text-green-700"
-                          : trip.status === "upcoming"
-                          ? "bg-blue-100/90 text-blue-700"
-                          : "bg-orange-100/90 text-orange-700"
+                        trip.status === "active"
+                          ? "bg-accent text-accent-foreground"
+                          : "bg-card/85 text-foreground/75",
                       )}
                     >
-                      {trip.status === "completed"
-                        ? "ĐÃ XONG"
-                        : trip.status === "upcoming"
-                        ? "SẮP ĐI"
-                        : "LÊN KẾ HOẠCH"}
+                      {trip.status === "active" && day
+                        ? `NGÀY ${day.day}/${day.total}`
+                        : TRIP_STATUS_META[trip.status].pill}
                     </span>
                   </div>
                   
@@ -145,7 +149,7 @@ export function TripList() {
                       <div className="flex flex-col gap-1.5">
                         <span className="text-[11px] font-bold text-muted-foreground/70 uppercase tracking-wider">Ngân sách</span>
                         <span className="flex items-center gap-1.5 font-medium text-foreground text-[13px]">
-                          <Wallet className="h-4 w-4 text-green-500/80" />
+                          <Wallet className="h-4 w-4 text-accent/70" />
                           {trip.budget > 0 ? `${trip.budget.toLocaleString("vi-VN")} ₫` : "---"}
                         </span>
                       </div>
@@ -169,6 +173,19 @@ export function TripList() {
                         </div>
                       </div>
                     )}
+                    {/* Quick action. Status is the one field a trip changes
+                        several times over its life, and it used to sit three
+                        taps deep in a settings modal. The nudge above it only
+                        appears when the dates and the stored status disagree. */}
+                    <div className="border-border/60 space-y-2 border-t pt-3">
+                      <TripNudgeBar trip={trip} />
+                      <TripStatusChips
+                        tripId={trip.id}
+                        status={trip.status}
+                        size="sm"
+                        className="w-full justify-between"
+                      />
+                    </div>
                   </div>
                 </div>
               </Link>

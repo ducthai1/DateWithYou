@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import { PhotoView } from "react-photo-view";
-import { CalendarHeart, ChevronRight, Plus, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { CalendarHeart, ChevronRight, Plane, Plus, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { colorsForTags, mergeTags } from "@/lib/plan-meta";
@@ -47,6 +48,7 @@ export function CalendarDayHero({
   const cover = photos[0] ?? null;
   const special = data?.specials?.[0] ?? null;
   const SpecialIcon = special ? resolveIcon(special.icon ?? undefined) : null;
+  const trip = data?.trip ?? null;
   const items = data?.items ?? [];
   const doneCount = items.filter((i) => i.status === "done").length;
 
@@ -86,6 +88,20 @@ export function CalendarDayHero({
           <div className="min-w-0">
             <p className="text-2xl font-semibold leading-tight text-white drop-shadow-sm">{weekday}</p>
             <p className="text-sm font-medium text-white/85 drop-shadow-sm">{dayMonth}</p>
+            {/* Which day of which journey. Without it the day's items read as
+                an ordinary Tuesday, and "ngày 3/5" is the thing that makes the
+                same list feel like being away. */}
+            {trip && (
+              <Link
+                href={`/trips/${trip.id}`}
+                className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-accent shadow-sm transition-colors hover:bg-white"
+              >
+                <Plane className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                  Ngày {trip.day}/{trip.total} · {trip.title}
+                </span>
+              </Link>
+            )}
           </div>
           {isToday && (
             <span className="bg-white/90 text-accent rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm">

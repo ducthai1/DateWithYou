@@ -21,6 +21,7 @@ import { HomeSkeleton, HomeError } from "./home-states";
 import { CapsuleReadyCard } from "./capsule-ready-card";
 import { MilestoneCard, SpecialDateCountdownCard } from "./milestone-card";
 import { TodayPlansCard } from "./today-plans-card";
+import { ActiveTripCard } from "./active-trip-card";
 import { OnThisDayCard } from "./on-this-day-card";
 import { UpcomingCard } from "./upcoming-card";
 import { ActivityLinkCard } from "./activity-link-card";
@@ -83,6 +84,16 @@ type TodayData = inferRouterOutputs<AppRouter>["dashboard"]["today"];
 function buildCards(data: TodayData): React.ReactNode[] {
   const cards: React.ReactNode[] = [];
 
+  /*
+   * A trip under way outranks everything else on the screen. Nothing else here
+   * is time-critical in the same way: a capsule keeps, an anniversary countdown
+   * keeps, but "what are we doing next" is the question being asked right now,
+   * standing somewhere unfamiliar.
+   */
+  if (data.activeTrip) {
+    cards.push(<ActiveTripCard key="active-trip" trip={data.activeTrip} />);
+  }
+
   if (data.capsulesReady.length > 0) {
     cards.push(<CapsuleReadyCard key="capsule" capsules={data.capsulesReady} />);
   }
@@ -112,9 +123,19 @@ function buildCards(data: TodayData): React.ReactNode[] {
     return cards;
   }
 
-  cards.push(
-    <TodayPlansCard key="today" items={data.todayPlans} hasAnyPlan={data.hasAnyPlan} />,
-  );
+  /*
+   * Today's other plans. Items belonging to the running trip are already listed
+   * inside its own card above, and showing them twice on one screen made the
+   * day look twice as full as it was.
+   */
+  const otherPlans = data.activeTrip
+    ? data.todayPlans.filter((p) => p.tripId !== data.activeTrip!.id)
+    : data.todayPlans;
+  if (!data.activeTrip || otherPlans.length > 0) {
+    cards.push(
+      <TodayPlansCard key="today" items={otherPlans} hasAnyPlan={data.hasAnyPlan} />,
+    );
+  }
 
   // Self-hides for an established couple with no match on this date.
   const onThisDay = (

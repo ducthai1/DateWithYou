@@ -100,6 +100,19 @@ export function addDaysKey(key: string, n: number): string {
   return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
 }
 
+/**
+ * Whole days from one day key to another. Both are Saigon day keys, so this is
+ * plain arithmetic on calendar days with no timezone or DST arithmetic.
+ *
+ * Lived in two routers as private copies before a trip needed it on the client
+ * as well; one definition is the only way the two ends agree on "day 2 of 5".
+ */
+export function daysBetweenKeys(fromKey: string, toKey: string): number {
+  const [fy, fm, fd] = fromKey.split("-").map(Number);
+  const [ty, tm, td] = toKey.split("-").map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000);
+}
+
 /** The 7 day keys (Monday-first) of the week containing `key`. */
 export function weekDaysOf(key: string): string[] {
   const [y, m, d] = key.split("-").map(Number);

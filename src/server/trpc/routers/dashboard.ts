@@ -1,17 +1,13 @@
 import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
+import { TripModel } from "@/server/db/models/trip";
+import { normaliseTripStatus, tripDay } from "@/lib/trip-status";
 import { SpaceModel } from "@/server/db/models/space";
 import { SpecialDateModel } from "@/server/db/models/special-date";
 import { MemoryModel } from "@/server/db/models/memory";
 import { PlanItemModel } from "@/server/db/models/plan-item";
 import { TimeCapsuleModel } from "@/server/db/models/time-capsule";
-import {
-  todayKey,
-  addDaysKey,
-  dateKeyFromDate,
-  saigonMidnightUtc,
-  daysUntil,
-} from "@/lib/date-keys";
+import { addDaysKey, dateKeyFromDate, daysBetweenKeys, daysUntil, saigonMidnightUtc, todayKey } from "@/lib/date-keys";
 import { BUCKET_ORDER, type BucketKey } from "@/lib/plan-meta";
 
 /**
@@ -42,14 +38,7 @@ const MAX_SPECIAL_DATES = 200;
 /** A milestone is only worth surfacing this many days before it lands. */
 const MILESTONE_WINDOW_DAYS = 7;
 
-const DAY_MS = 86_400_000;
 
-/** Whole days between two `YYYY-MM-DD` keys (negative when `to` is earlier). */
-function daysBetweenKeys(fromKey: string, toKey: string): number {
-  const [fy, fm, fd] = fromKey.split("-").map(Number);
-  const [ty, tm, td] = toKey.split("-").map(Number);
-  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / DAY_MS);
-}
 
 export type Milestone = {
   /** The round day-count being approached (100, 365, 1000…). */
@@ -112,6 +101,15 @@ type PlanDoc = {
   status?: string;
   tags?: string[];
   assigneeId?: string;
+  tripId?: string;
+};
+
+type TripDoc = {
+  _id: unknown;
+  title: string;
+  startDate: string;
+  endDate: string;
+  status?: string;
 };
 
 type SpecialDoc = {
@@ -139,6 +137,9 @@ function serialisePlan(d: PlanDoc) {
     status: d.status ?? "planned",
     tags: d.tags ?? [],
     assigneeId: d.assigneeId ?? null,
+    // Lets the client tell an ordinary plan from one belonging to a trip that
+    // is under way, so the same item is not listed twice on the same screen.
+    tripId: d.tripId ?? null,
   };
 }
 
@@ -159,7 +160,7 @@ export const dashboardRouter = router({
     const todayStartUtc = saigonMidnightUtc(todayYear, todayMonth, todayDay);
     const upcomingLastKey = addDaysKey(today, UPCOMING_DAYS);
 
-    const [space, specials, onThisDayDocs, planDocs, capsuleDocs, anyMemory, anyPlan] =
+    const [space, specials, onThisDayDocs, planDocs, capsuleDocs, anyMemory, anyPlan, tripDocs] =
       await Promise.all([
         SpaceModel.findById(ctx.spaceId).select("anniversaryDate").lean<{
           anniversaryDate?: Date;
@@ -208,7 +209,7 @@ export const dashboardRouter = router({
           spaceId: ctx.spaceId,
           date: { $gte: today, $lte: upcomingLastKey },
         })
-          .select("title date bucket time order status tags assigneeId")
+          .select("title date bucket time order status tags assigneeId tripId")
           .sort({ date: 1, order: 1 })
           .limit(MAX_PLAN_ITEMS)
           .lean<PlanDoc[]>(),
@@ -230,6 +231,28 @@ export const dashboardRouter = router({
         // different copy, and a false empty state is the bug we are avoiding.
         MemoryModel.exists({ spaceId: ctx.spaceId }),
         PlanItemModel.exists({ spaceId: ctx.spaceId }),
+
+        /*
+         * A trip whose own dates contain today.
+         *
+         * Keyed on the dates, not on the stored status, on purpose: a couple
+         * already on the road who forgot to flip a switch is exactly the case
+         * this screen has to get right. The status still decides the wording
+         * and whether an offer to start it appears — it just does not decide
+         * whether the trip is acknowledged at all.
+         *
+         * Sorted by start date so a trip that began earlier wins if two ever
+         * overlap, rather than the order Mongo happens to return.
+         */
+        TripModel.find({
+          spaceId: ctx.spaceId,
+          startDate: { $lte: today },
+          endDate: { $gte: today },
+        })
+          .select("title startDate endDate status")
+          .sort({ startDate: 1 })
+          .limit(1)
+          .lean<TripDoc[]>(),
       ]);
 
     // a) Days together — whole days elapsed since the anniversary (0 on the day
@@ -303,8 +326,39 @@ export const dashboardRouter = router({
       unlockDate: c.unlockDate,
     }));
 
+    /*
+     * g) The trip today belongs to, if there is one.
+     *
+     * Everything the card needs is worked out here rather than on the client:
+     * which day of the trip today is, how much of today's itinerary is done,
+     * and what comes next. `nextItem` is the first thing still outstanding in
+     * chronological order — the question a person on a trip actually asks, and
+     * one the client would otherwise have to re-derive from two lists.
+     */
+    const tripDoc = tripDocs[0] ?? null;
+    let activeTrip = null;
+    if (tripDoc) {
+      const span = tripDay(tripDoc.startDate, tripDoc.endDate, today);
+      const mine = todayPlans.filter((p) => p.tripId === String(tripDoc._id));
+      const done = mine.filter((p) => p.status === "done").length;
+      const next = mine.find((p) => p.status === "planned") ?? null;
+      activeTrip = {
+        id: String(tripDoc._id),
+        title: tripDoc.title,
+        startDate: tripDoc.startDate,
+        endDate: tripDoc.endDate,
+        status: normaliseTripStatus(tripDoc.status),
+        day: span?.day ?? 1,
+        totalDays: span?.total ?? 1,
+        items: mine,
+        doneCount: done,
+        nextItem: next,
+      };
+    }
+
     return {
       today,
+      activeTrip,
       anniversaryDate,
       daysTogether,
       milestone,

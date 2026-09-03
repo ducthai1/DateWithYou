@@ -2955,6 +2955,65 @@ chạy lại test — phải thấy đúng thông báo lỗi người dùng đã
 khi đụng vào git.
 
 
+## Trạng thái chuyến đi: đừng bắt người dùng khai thứ hệ thống đã biết
+
+Yêu cầu ban đầu là "cho quick action ra ngoài, thêm trạng thái đang chuẩn bị / đang diễn ra".
+Nhưng gốc rễ nằm chỗ khác: **chuyến đi đã có `startDate` và `endDate`** — hệ thống thừa sức biết
+hôm nay có đang trong chuyến hay không, vậy mà vẫn bắt người dùng mở modal cài đặt để *nói cho nó
+biết điều nó đã biết*.
+
+Ba luật rút ra:
+
+1. **Field nào suy được từ dữ liệu sẵn có thì đừng hỏi.** `tripPhase()` / `tripDay()` trong
+   `src/lib/trip-status.ts` so ngày, không hỏi ai. Trang chủ hiện khối chuyến khi **hôm nay nằm
+   trong khoảng ngày**, KHÔNG chờ ai bật cờ — cặp đôi đang trên đường mà quên bật công tắc chính
+   là ca mà màn hình đó phải đúng nhất.
+2. **Nhưng suy ra rồi thì MỜI, đừng tự sửa.** `tripNudge()` chỉ trả về lời mời khi ngày và trạng
+   thái lệch nhau; một chạm là xong, không chạm thì thôi. Chuyến bị dời một tuần là chuyện bình
+   thường, app không có quyền tự đánh dấu "đang đi". Câu chữ phải là *"Bắt đầu hành trình"* chứ
+   không phải mệnh lệnh — cùng luật với voice dẫn đường.
+3. **Trạng thái trùng nghĩa thì gộp, đừng thêm.** "Lên kế hoạch" và "Sắp đi" đều nghĩa là *chưa đi*
+   — một ô cho một phân biệt không ai làm. Bộ mới vẫn 3 giá trị: `planning` / `active` / `completed`.
+
+**Di trú không cần migration.** `"upcoming"` đời cũ được `normaliseTripStatus()` gộp về `planning`
+**lúc đọc**, và enum trong model vẫn giữ `"upcoming"` để bản ghi cũ còn lưu lại được. Không có
+lệnh UPDATE nào chạy trên dữ liệu thật; bản ghi tự đúng khi lần sau được lưu.
+
+### Ba cái bẫy đã sập khi làm việc này
+
+- **`trip.create` chỉ trả `{ id }`** trong khi `update`/`setStatus` trả nguyên chuyến. Đọc
+  `.status` trên kết quả create được `undefined` mà **không có lỗi nào** — im lặng, đúng kiểu
+  nguy hiểm nhất. Nay cả ba trả cùng một hình dạng.
+- **Đặt tuyệt đối chồng lên nhau.** Tên chuyến trong ô lịch từng là `absolute left-1.5 top-2` —
+  đúng chỗ vòng tròn "hôm nay". Chuyến khởi hành đúng hôm nay sẽ in tên đè lên số ngày. Cho nó
+  **chảy trong hàng flex** cạnh số ngày thì hai thứ không bao giờ đè nhau được nữa.
+- **"Tiếp theo: X" rồi ngay dưới là danh sách chỉ có mỗi X.** Dòng dẫn chỉ có nghĩa khi có thứ để
+  chọn ra *từ đó*; chỉ hiện khi còn từ 2 việc trở lên.
+
+### Kiểm thử: 3 cái làm test xanh giả
+
+Đã trả giá đủ ba lần trong một buổi:
+
+1. **`npm run build` rồi bật `next dev` trên cùng thư mục build** ⇒ dev server trả **404 cho
+   `_next/static/chunks/*`**, trang không hydrate, mà **không có exception nào** — nhìn y hệt
+   "đang tải chậm". Xong build thì phải khởi động lại dev server.
+2. **Driver CDP vứt hết message không có `id`** nên mọi lỗi console bị nuốt. Trang chết vì JS
+   trông không khác gì trang tải chậm. Phải nghe `Runtime.exceptionThrown` + `Log.entryAdded`.
+3. **Chờ theo đồng hồ thay vì theo điều kiện.** `setTimeout(1400)` đủ cho trang thứ hai nhưng
+   không đủ cho lần biên dịch đầu. Và `goto` chờ chữ "Đang tải…" biến mất thì **vô dụng ở trang
+   không bao giờ có chữ đó** — nó trả về ngay khi React chưa vẽ, rồi test báo "không tìm thấy
+   nút" cho một tính năng hoạt động hoàn hảo. Luôn chờ **đúng phần tử mình sắp đo**.
+
+Thêm hai chuyện về môi trường:
+- Trang chủ khi đã đăng nhập là **`/home`**, không phải `/` (`/` là trang giới thiệu).
+- better-auth đặt **2 cookie** (`session_token` + `session_data`). Nạp thiếu một cái là rơi về
+  trang giới thiệu, và test sẽ đo nhầm trang.
+- Đóng tab CDP sau mỗi lượt (`/json/close/<id>`), không chỉ đóng WebSocket. 17 tab tồn đọng làm
+  Chrome treo hẳn lượt sau.
+- Tài khoản mới bị **modal chào mừng che kín màn hình** — đặt `localStorage["dwy:welcomeSeen"]="1"`
+  trước khi chụp.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

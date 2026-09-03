@@ -8,6 +8,8 @@ import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
+import { tripDay } from "@/lib/trip-status";
+import { TripNudgeBar, TripStatusChips } from "./trip-status-control";
 import { TripItinerary } from "./trip-itinerary";
 import { TripChecklist } from "./trip-checklist";
 import { TripBudget } from "./trip-budget";
@@ -24,6 +26,9 @@ export function TripDetail({ id }: { id: string }) {
   const { data: trip, isLoading } = trpc.trip.get.useQuery({ id });
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]["key"]>("itinerary");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Null unless today falls inside the trip, so the counter never renders
+  // "ngày 0" for a trip that has not left yet.
+  const day = trip ? tripDay(trip.startDate, trip.endDate) : null;
 
   if (isLoading) {
     return (
@@ -96,6 +101,21 @@ export function TripDetail({ id }: { id: string }) {
       }
     >
       <div className="mx-auto w-full max-w-4xl space-y-5">
+        {/* State of the trip, above the tabs rather than behind the settings
+            button: it is the first thing anyone opening a trip wants to know,
+            and now the first thing they can change. */}
+        <div className="space-y-2">
+          <TripNudgeBar trip={trip} />
+          <div className="flex flex-wrap items-center gap-2">
+            <TripStatusChips tripId={trip.id} status={trip.status} />
+            {trip.status === "active" && day && (
+              <span className="bg-accent text-accent-foreground rounded-full px-3 py-1.5 text-[11px] font-semibold">
+                Ngày {day.day}/{day.total}
+              </span>
+            )}
+          </div>
+        </div>
+
         {/*
           Sticky inside the scroll box, on a card of its own.
           A full-width opaque bar is what made the old version look pasted on;

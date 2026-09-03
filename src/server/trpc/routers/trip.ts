@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { TripModel } from "@/server/db/models/trip";
+import { TRIP_STATUSES, normaliseTripStatus } from "@/lib/trip-status";
 
 const tripInput = z.object({
   title: z.string().trim().min(1).max(100),
@@ -11,7 +12,12 @@ const tripInput = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   budget: z.number().min(0).default(0),
-  status: z.enum(["planning", "upcoming", "completed"]).default("planning"),
+  // "upcoming" still arrives from a client that has not reloaded since the
+  // rename; it is folded into "planning" rather than rejected mid-edit.
+  status: z
+    .enum([...TRIP_STATUSES, "upcoming"])
+    .default("planning")
+    .transform(normaliseTripStatus),
 });
 
 const checklistInput = z.object({
@@ -29,7 +35,7 @@ function serialize(d: Record<string, any>) {
     startDate: d.startDate as string,
     endDate: d.endDate as string,
     budget: (d.budget as number) ?? 0,
-    status: d.status as "planning" | "upcoming" | "completed",
+    status: normaliseTripStatus(d.status),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     checklists: (d.checklists || []).map((c: any) => ({
       id: String(c._id),
@@ -65,7 +71,10 @@ export const tripRouter = router({
       spaceId: ctx.spaceId,
       createdBy: ctx.userId,
     });
-    return { id: String(doc._id) };
+    // The whole trip, like update and setStatus return. Handing back only an id
+    // meant a caller reading `.status` on the result got undefined with no
+    // error — the two sibling mutations answer the same question in full.
+    return serialize(doc.toObject());
   }),
 
   update: protectedProcedure
@@ -77,6 +86,27 @@ export const tripRouter = router({
         { _id: id, spaceId: ctx.spaceId },
         { $set: patch },
         { new: true }
+      ).lean();
+      if (!res) throw new TRPCError({ code: "NOT_FOUND" });
+      return serialize(res);
+    }),
+
+  /**
+   * One field, one tap.
+   *
+   * Separate from `update` because the quick action on a trip card has only a
+   * status to send: routing it through `update` would make a card carry the
+   * whole trip in memory just to change a single word, and any field the card
+   * held stale would be written back along with it.
+   */
+  setStatus: protectedProcedure
+    .input(z.object({ id: z.string(), status: z.enum(TRIP_STATUSES) }))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const res = await TripModel.findOneAndUpdate(
+        { _id: input.id, spaceId: ctx.spaceId },
+        { $set: { status: input.status } },
+        { new: true },
       ).lean();
       if (!res) throw new TRPCError({ code: "NOT_FOUND" });
       return serialize(res);

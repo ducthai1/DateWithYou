@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { todayKey } from "@/lib/date-keys";
+import type { TripStatus } from "@/lib/trip-status";
+import { TripStatusChips } from "./trip-status-control";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 
@@ -21,7 +23,7 @@ export function TripForm({
     startDate: string;
     endDate: string;
     budget: number;
-    status: "planning" | "upcoming" | "completed";
+    status: TripStatus;
   };
   onSuccess: () => void;
 }) {
@@ -32,7 +34,6 @@ export function TripForm({
   const [startDate, setStartDate] = useState(trip?.startDate ?? todayKey());
   const [endDate, setEndDate] = useState(trip?.endDate ?? todayKey());
   const [budget, setBudget] = useState(trip?.budget?.toString() ?? "0");
-  const [status, setStatus] = useState(trip?.status ?? "planning");
 
   const createMut = trpc.trip.create.useMutation({
     onSuccess: () => {
@@ -79,7 +80,6 @@ export function TripForm({
         startDate,
         endDate,
         budget: Number(budget) || 0,
-        status,
       });
     } else {
       createMut.mutate({
@@ -88,7 +88,6 @@ export function TripForm({
         startDate,
         endDate,
         budget: Number(budget) || 0,
-        status,
       });
     }
   };
@@ -151,18 +150,22 @@ export function TripForm({
           />
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-muted-foreground">Trạng thái</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as "planning" | "upcoming" | "completed")}
-            className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-          >
-            <option value="planning">Đang lên kế hoạch</option>
-            <option value="upcoming">Sắp khởi hành</option>
-            <option value="completed">Đã hoàn thành</option>
-          </select>
-        </div>
+        {/* Status is not a form field any more. It changed several times over
+            a trip's life while living three taps deep in here, so it moved out
+            to the trip card and the trip header as a one-tap control. Editing
+            still shows it — as that same control, writing immediately — so the
+            two places can never disagree about what the trip's state is. A new
+            trip has no id to write to, and is being prepared by definition; a
+            trip logged after the fact gets an offer to close it from the dates
+            themselves. */}
+        {trip && (
+          <div>
+            <label className="text-muted-foreground mb-1 block text-sm font-medium">
+              Trạng thái
+            </label>
+            <TripStatusChips tripId={trip.id} status={trip.status} />
+          </div>
+        )}
 
         <div>
           <label className="mb-1 block text-sm font-medium text-muted-foreground">Ghi chú thêm</label>

@@ -12,8 +12,20 @@ import {
   dayRangeUtc,
   dateKeyFromDate,
   monthDayOf,
+  addDaysKey,
+  daysBetweenKeys,
 } from "@/lib/date-keys";
+import { TripModel } from "@/server/db/models/trip";
+import { normaliseTripStatus, tripDay, type TripStatus } from "@/lib/trip-status";
 import { mergeTags, colorsForTags, BUCKET_ORDER, type BucketKey, type Tag } from "@/lib/plan-meta";
+
+type TripLean = {
+  _id: unknown;
+  title: string;
+  startDate: string;
+  endDate: string;
+  status?: string;
+};
 
 const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -26,6 +38,21 @@ export type DaySummary = {
   plans: { title: string; color: string; done: boolean }[];
   special: { title: string; icon: string | null } | null;
   thumbnailUrl: string | null;
+  /**
+   * The trip this day belongs to, if any. `first`/`last` mark the ends so the
+   * grid can draw one continuous band across the stay instead of a separate
+   * badge on each square — a five-day trip should look like five days away,
+   * not like five unrelated appointments.
+   */
+  trip: {
+    id: string;
+    title: string;
+    day: number;
+    total: number;
+    status: TripStatus;
+    first: boolean;
+    last: boolean;
+  } | null;
 };
 
 export const calendarRouter = router({
@@ -40,7 +67,7 @@ export const calendarRouter = router({
       const { fromKey, toKey } = monthKeyRange(year, month);
       const mm = String(month).padStart(2, "0");
 
-      const [plans, memories, visited, specials, space] = await Promise.all([
+      const [plans, memories, visited, specials, trips, space] = await Promise.all([
         PlanItemModel.find({ spaceId: ctx.spaceId, date: { $gte: fromKey, $lt: toKey } })
           .select("date status tags title")
           .lean(),
@@ -55,6 +82,16 @@ export const calendarRouter = router({
           .select("visitedAt")
           .lean(),
         SpecialDateModel.find({ spaceId: ctx.spaceId }).select("title date recurYearly icon").lean(),
+        // Trips overlapping this month. Overlap, not containment: a trip that
+        // starts in March and ends in April has to band both grids.
+        TripModel.find({
+          spaceId: ctx.spaceId,
+          startDate: { $lt: toKey },
+          endDate: { $gte: fromKey },
+        })
+          .select("title startDate endDate status")
+          .sort({ startDate: 1 })
+          .lean(),
         SpaceModel.findById(ctx.spaceId).select("tags anniversaryDate").lean<{
           tags?: Tag[];
           anniversaryDate?: Date;
@@ -73,6 +110,7 @@ export const calendarRouter = router({
           plans: [],
           special: null,
           thumbnailUrl: null,
+          trip: null,
         });
 
       for (const p of plans) {
@@ -91,6 +129,34 @@ export const calendarRouter = router({
           });
         }
       }
+      /*
+       * Walk each trip day by day rather than tagging only the endpoints, so a
+       * stay reads as one stretch across the grid. Trips are sorted by start
+       * date and a later one does not overwrite a day an earlier one claimed,
+       * which keeps two overlapping stays from flickering between each other
+       * depending on collection order.
+       */
+      for (const t of trips) {
+        const start = t.startDate as string;
+        const end = t.endDate as string;
+        const total = daysBetweenKeys(start, end) + 1;
+        for (let i = 0; i < total; i++) {
+          const key = addDaysKey(start, i);
+          if (key < fromKey || key >= toKey) continue;
+          const d = get(key);
+          if (d.trip) continue;
+          d.trip = {
+            id: String(t._id),
+            title: t.title as string,
+            day: i + 1,
+            total,
+            status: normaliseTripStatus(t.status),
+            first: i === 0,
+            last: i === total - 1,
+          };
+        }
+      }
+
       for (const m of memories) {
         const d = get(dateKeyFromDate(m.date as Date));
         d.memoryCount++;
@@ -131,7 +197,7 @@ export const calendarRouter = router({
       const { from, to } = dayRangeUtc(key);
       const md = monthDayOf(key);
 
-      const [plans, memories, visited, specials, recent] = await Promise.all([
+      const [plans, memories, visited, specials, recent, tripDoc] = await Promise.all([
         PlanItemModel.find({ spaceId: ctx.spaceId, date: key }).lean(),
         MemoryModel.find({ spaceId: ctx.spaceId, date: { $gte: from, $lt: to } })
           // date/tags/embeds ride along so the day view can open a memory for
@@ -151,7 +217,21 @@ export const calendarRouter = router({
           .sort({ date: -1 })
           .limit(300)
           .lean(),
+        // The trip this day sits inside, if any — so the day can say which day
+        // of the journey it is rather than leaving the items context-free.
+        TripModel.findOne({
+          spaceId: ctx.spaceId,
+          startDate: { $lte: key },
+          endDate: { $gte: key },
+        })
+          .select("title startDate endDate status")
+          .sort({ startDate: 1 })
+          // Typed explicitly: inside Promise.all the lean() result widens into a
+          // union with the array-returning finds and every field falls off it.
+          .lean<TripLean | null>(),
       ]);
+
+      const tripSpan = tripDoc ? tripDay(tripDoc.startDate, tripDoc.endDate, key) : null;
 
       const items = plans
         .map((d) => ({
@@ -201,6 +281,16 @@ export const calendarRouter = router({
         specials: specials
           .filter((s) => ((s.recurYearly as boolean) ? monthDayOf(s.date as string) === md : (s.date as string) === key))
           .map((s) => ({ id: String(s._id), title: s.title as string, icon: (s.icon as string) ?? null })),
+        trip:
+          tripDoc && tripSpan
+            ? {
+                id: String(tripDoc._id),
+                title: tripDoc.title,
+                day: tripSpan.day,
+                total: tripSpan.total,
+                status: normaliseTripStatus(tripDoc.status),
+              }
+            : null,
         onThisDay,
       };
     }),
