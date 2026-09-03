@@ -1956,6 +1956,56 @@ truyền tới input thông. Bản thân cái rung thì **chỉ quan sát đư�
 ⚠️ **Apple đã bịt haptic-bằng-JavaScript ở iOS 26.5.** Mẹo này chạy từ 17.4 đến 26.4. Máy mới hơn thì
 không có đường nào từ web nữa — cần biết phiên bản iOS trước khi kết luận là code sai.
 
+## Đoạn đường dài: chỗ im lặng dài nhất không phải khúc rẽ, mà là 6km giữa hai khúc rẽ
+
+Lời chỉ đường ở khúc rẽ chưa bao giờ là khoảng trống. Khoảng trống là **quãng giữa hai khúc rẽ**: xong
+một khúc là im hoàn toàn cho tới 500m trước khúc sau — đủ lâu để user tưởng app ngủ, và đủ lâu để họ
+**nhìn màn hình lúc đang chạy**, đúng cái mà giọng đọc sinh ra để tránh.
+
+`src/lib/nav-chatter.ts` + mốc dài trong `turn-announcer.ts`:
+
+| khi nào | nói gì |
+|---|---|
+| vừa rẽ xong vào đoạn ≥ **1500m** | *"Vào Cộng Hòa rồi. Đường này thẳng 6 ki lô mét, mình nhắc lại khi gần tới nhé."* |
+| mốc **4km / 2km** | *"Đang đi tốt lắm. Còn 2 ki lô mét."* |
+| mốc **1km** (nêu tên khúc rẽ tới) | *"Chuẩn bị rẽ trái nha, còn 1 ki lô mét."* |
+| 500/200/80/ngay | **giữ nguyên** như cũ — đó là câu lệnh, phải ngắn và giống nhau mọi lần |
+| vẽ lại đường | *"Ơ, bạn có lựa chọn riêng rồi ư? Mình vừa vẽ lại đường theo lối bạn đi."* |
+
+`ALL_STAGES = [...LONG_STAGES, ...STAGES]` — một danh sách duy nhất, để luật "mốc gần nhất đã vượt" lo
+cả hai nửa mà không nửa nào phải biết về nửa kia. Câu nào thuộc mốc `>= 1000` thì dùng `nav-chatter`,
+dưới đó dùng `maneuverSentence`.
+
+### Ngưỡng 1500m, không phải 2000m
+
+Đo trên route thật 7,8km: mốc 2000 chỉ bắt được **1 trong 3** đoạn dài, để lọt đoạn **1870m** và
+**1512m** — đúng loại đoạn sinh ra khiếu nại. Dưới ~1,5km thì câu 500m tới đủ sớm rồi.
+
+### Câu mở đầu phải TIÊU luôn các mốc đã vượt
+
+Bản đầu đọc hai câu **cách nhau 12m**, cùng một nội dung:
+```
+192   "1,9 ki lô mét nữa mới tới khúc rẽ tiếp theo..."
+204   "Còn 1,9 ki lô mét nữa thôi, vẫn đi thẳng nhé."   ← trùng
+```
+Vì câu mở đầu bắn ở bước *advance*, còn bước sau đó mốc 2000 mới được xét. Sửa: khi mở đầu, đánh dấu
+`${idx}:${far}` cho **mọi** mốc `>= stretch`. Câu mở đầu đã nói con số đó rồi.
+
+### Ba luật viết câu cho giọng đọc
+
+- **Chỉ dấu chấm và dấu phẩy.** `—` không phải dấu ngắt với bộ đọc, nó là ký tự lạ, và mỗi nền tảng xử
+  lý một kiểu — thứ cuối cùng mà một câu định nói cho thân thiện cần.
+- **Điểm đến không phải khúc rẽ.** `maneuverVerb` trả "đã tới đích" cho type 4–6, nhét vào khuôn câu
+  dành cho khúc rẽ thì ra *"sắp tới khúc đã tới đích rồi"*. Phải có nhánh `ARRIVING` riêng.
+- **Vẽ lại đường KHÔNG BAO GIỜ nói như đang sửa lỗi user.** Người ta rẽ lối khác thường là có lý do —
+  đường chặn, lối tắt họ biết, chỗ muốn ghé — và bị cái điện thoại lên giọng vì mình biết thành phố hơn
+  nó là chuyện nhỏ nhưng cộng dồn qua nhiều chuyến. Và chỉ nói **sau khi** có đường mới trong tay: nói
+  lúc request còn đang bay là hứa hộ cái mà bản đồ chưa làm được.
+
+`pick(list, seed?)` — `seed` tồn tại để **mô phỏng cả chuyến rồi đọc lại câu**: thứ đang cần kiểm là câu
+chữ, mà câu chữ thì không kiểm được nếu mỗi lần chạy một khác. Trong app thì bỏ seed, vì cái hay chính
+là không đoán được.
+
 ## Khoảng cách chỉ đường: ĐƯỜNG THẲNG là con số sai, và ở khúc quay đầu thì vô nghĩa
 
 User báo thực địa: *"thông báo 500m nữa rẽ nhưng thực tế còn dưới 100m"*, mà chuỗi ngưỡng và câu cuối

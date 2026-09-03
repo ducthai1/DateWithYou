@@ -1,6 +1,7 @@
 import type { LatLng } from "@/lib/maps";
 import { haversineM } from "@/lib/route-geometry";
-import { IMMINENT_M, isRealTurn, maneuverSentence, type Maneuver } from "@/lib/maneuver-vi";
+import { IMMINENT_M, isRealTurn, maneuverSentence, maneuverStreet, type Maneuver } from "@/lib/maneuver-vi";
+import { LONG_LEG_M, LONG_STAGES, longLegOpener, longLegProgress } from "@/lib/nav-chatter";
 
 /**
  * Deciding what to say next, as a pure step.
@@ -13,6 +14,18 @@ import { IMMINENT_M, isRealTurn, maneuverSentence, type Maneuver } from "@/lib/m
 
 /** Metres at which each announcement is made, far to near. */
 export const STAGES = [500, 200, 80, IMMINENT_M] as const;
+
+/*
+ * The milestones of a long stretch in front of the manoeuvre stages.
+ *
+ * One list so the "nearest crossed stage" rule covers both: a 6 km run speaks
+ * at 4 km, 2 km and 1 km and then hands over at 500 m without either half
+ * needing to know about the other.
+ */
+const ALL_STAGES = [...LONG_STAGES, ...STAGES] as const;
+
+/** Stages at or above this are a long-stretch milestone, not a turn call. */
+const LONG_STAGE_FLOOR = LONG_STAGES[LONG_STAGES.length - 1];
 
 /** Close enough to count the turn as taken and move to the next one. */
 export const PASSED_M = 25;
@@ -140,9 +153,46 @@ export function stepAnnouncer(
   const advanced = idx !== state.idx;
   const turn = turns[idx];
 
-  // Nothing more to say on the step that moved the pointer: the rider is being
-  // told about the corner they are now approaching, not the one just left.
+  /*
+   * The step that moved the pointer is where a long road gets announced.
+   *
+   * Nothing is said about the corner just left — the rider is past it. But if
+   * what lies ahead is a long run, this is the moment to say so, because it is
+   * the moment the question "how long am I on this road?" occurs to them, and
+   * the alternative is silence until 500 m before the far end. Needs the
+   * along-route offsets: the length of a stretch is not something straight
+   * lines can tell you.
+   */
   if (advanced) {
+    const openKey = `${idx}:open`;
+    const prevOff = idx > 0 ? turns[idx - 1].alongRouteMeters : 0;
+    const stretch =
+      alongKnown && prevOff != null ? (turns[idx].alongRouteMeters as number) - prevOff : 0;
+    if (stretch >= LONG_LEG_M && !state.said.has(openKey)) {
+      const said = new Set(state.said);
+      said.add(openKey);
+      /*
+       * The opener has just stated the distance, so every milestone already
+       * behind that number is spent.
+       *
+       * Without this the next fix — a dozen metres later — spoke the nearest
+       * crossed milestone and said the same thing again: "1,9 ki lô mét nữa mới
+       * tới khúc rẽ" followed immediately by "còn 1,9 ki lô mét nữa thôi". Two
+       * sentences in one breath, neither adding to the other.
+       */
+      for (const far of LONG_STAGES) if (stretch <= far) said.add(`${idx}:${far}`);
+      return {
+        state: { idx, said },
+        // The street just turned ONTO is named by the manoeuvre that turned
+        // onto it, which is the one now behind.
+        speak: longLegOpener({
+          street: idx > 0 ? maneuverStreet(turns[idx - 1]) : null,
+          metres: stretch,
+        }),
+        next: turn,
+        metres,
+      };
+    }
     return { state: { idx, said: state.said }, speak: null, next: turn, metres };
   }
 
@@ -156,7 +206,7 @@ export function stepAnnouncer(
    * point where the instruction was needed. `filter().at(-1)` takes the last —
    * the nearest — match.
    */
-  const stage = STAGES.filter((s) => metres <= s).at(-1);
+  const stage = ALL_STAGES.filter((s) => metres <= s).at(-1);
   if (stage == null) return { state: { idx, said: state.said }, speak: null, next: turn, metres };
 
   const key = `${idx}:${stage}`;
@@ -167,7 +217,10 @@ export function stepAnnouncer(
   said.add(key);
   return {
     state: { idx, said },
-    speak: maneuverSentence(turn, metres),
+    speak:
+      stage >= LONG_STAGE_FLOOR
+        ? longLegProgress({ metres, upcoming: turn })
+        : maneuverSentence(turn, metres),
     next: turn,
     metres,
   };

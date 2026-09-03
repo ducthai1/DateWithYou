@@ -20,6 +20,7 @@ import { ManeuverArrowIcon } from "./maneuver-arrow-icon";
 import { maneuverArrow, maneuverLabel, fmtMetresVi } from "@/lib/maneuver-vi";
 import { isVoiceEnabled, setVoiceEnabled, speak } from "@/lib/speak";
 import { departureSentence } from "@/lib/departure-voice";
+import { rerouteLine } from "@/lib/nav-chatter";
 import { releaseAudio, unlockAudio } from "@/lib/audio-session";
 import { useNavigation } from "./navigation-context";
 import { fmtDistance, fmtDuration } from "./format-journey";
@@ -319,6 +320,10 @@ export function LocationsPage() {
           );
           if (coords.length) {
             nav.setRouteInfo(coords, leg?.distanceMeters ?? r.distanceMeters, leg?.durationSeconds ?? r.durationSeconds);
+            // Only once the new line is actually in hand: saying it has been
+            // redrawn while the request is still out, or after it failed, is a
+            // promise the map has not kept.
+            speak(rerouteLine(), { chime: true });
           }
         } catch (err) {
           console.error("Lỗi tính lại chặng đang đi", err);
@@ -341,6 +346,7 @@ export function LocationsPage() {
         const coords = (r.geometry as { coordinates?: Array<[number, number]> }).coordinates;
         if (coords) {
           nav.setRouteInfo(coords, r.distanceMeters, r.durationSeconds);
+          speak(rerouteLine(), { chime: true });
         }
       } catch (err) {
         console.error("Lỗi tính lại đường đi", err);
