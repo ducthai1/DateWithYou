@@ -2492,6 +2492,54 @@ chỉ đọc một trang thì **không bao giờ** bắt được lỗi này.
 
 Index nâng thành `{ spaceId: 1, date: -1, time: -1 }` để sort vẫn được index phủ, không sort trong RAM.
 
+## Chú thích từng ảnh, 30 ảnh/lượt, và nhắc tên
+
+### Mentions đọc TỪ CHỮ, không giữ state song song
+
+`collectMentions(text, members)` chạy lúc lưu. Giữ một mảng id bên cạnh câu chữ thì nó **trôi** ngay khi
+user sửa câu: xoá tên đi mà mention vẫn còn ⇒ người kia bị báo về một caption không còn nhắc họ.
+
+Hai bẫy trong việc dò tên, cả hai đều có test:
+- **Phải ĂN phần đã khớp.** Sắp dài-trước là chưa đủ: ký tự sau `"An"` trong `@An Nhiên` là **dấu cách**
+  — qua được kiểm biên — nên `An` khớp *bên trong* `An Nhiên` và **cả hai** người bị báo. Thay mỗi lần
+  khớp bằng khoảng trắng cùng độ dài trước khi dò tên tiếp.
+- **Biên phải dùng `\p{L}\p{N}`, không dùng `\w`.** `\w` coi `ệ` là *không phải* ký tự chữ nên biên rơi
+  vào giữa tên tiếng Việt.
+
+10/10 ca đạt, gồm `"@An Nhiên và @An cùng lúc"` → cả hai.
+
+### Chỉ báo tên MỚI khi sửa
+
+`update` so với `mentions` đang lưu và chỉ gửi cho tên **chưa có trước đó**. Không thì sửa lỗi chính tả
+trong caption là ping lại toàn bộ, và một kỷ niệm sửa vài lần thành nguồn thông báo lặp cho một chuyện
+xảy ra một lần.
+
+### 30 ảnh, nhưng 3 cái bay cùng lúc
+
+Trần không nằm ở document (30 bản ghi ảnh vài KB so với giới hạn 16MB) cũng không ở lưới (đã xin
+Cloudinary bản 400px). Nó nằm ở **upload**: 30 file rời điện thoại cùng lúc là 30 request chia nhau một
+đường lên, cái nào cũng bò, và trình duyệt giữ phần lớn ở chỗ **không thanh tiến độ nào nhìn thấy**. Nên
+nâng số lượng và **chặn số đang bay** — 3, đủ để mọi thanh đang chạy đều nhúc nhích.
+
+### Deep-link cần `memory.get`, không dùng được danh sách đã tải
+
+Timeline phân trang. Một lời nhắc từ sáu tháng trước **không nằm** trong các trang đã tải nên `find` trả
+rỗng — thông báo sẽ mở timeline rồi để người ta tự cuộn đi tìm thứ vừa được báo. Thêm `memory.get` và
+dùng `toItem` **chung** với `list`, để kỷ niệm mở từ thông báo có đúng hình dạng như trong danh sách —
+hai đường cùng render một component, thiếu field ở một đường là một khoảng trống không ai giải thích được.
+
+Đọc `?memory=` bằng `new URLSearchParams(window.location.search)` trong effect, **không** dùng
+`useSearchParams` — nó kéo theo yêu cầu Suspense cho một trang không cần, mà đây là đọc một lần lúc mount,
+trên client.
+
+### Bài học về công cụ: đừng vá JSX bằng regex nhiều dòng
+
+Sửa khối `<PhotoView>` bằng regex `(?:.*\n)*?` làm hỏng file (`JSX expressions must have one parent`).
+Cách đúng: `python -c` in **repr** của đoạn đó rồi `str.replace` nguyên văn.
+
+⚠️ Và cái bẫy khiến tôi mất 3 lần thử: pipeline hiển thị `sed 's/^/  /'` **tự thêm 2 khoảng trắng**, tôi
+chép luôn vào mỏ neo nên không bao giờ khớp. In bằng `repr()`, đừng in qua pipeline có trang trí.
+
 ## Giờ của kỷ niệm: trường RIÊNG, không gộp vào Date
 
 `time: "HH:mm"` là string riêng, không nhét vào `date`. Lý do: mọi kỷ niệm lưu trước khi có trường này

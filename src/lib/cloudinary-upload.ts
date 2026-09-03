@@ -19,6 +19,8 @@ export type UploadedPhoto = {
   publicId: string;
   width?: number;
   height?: number;
+  /** A note written under this one picture. Carried with the draft, saved with it. */
+  caption?: string;
 };
 
 /*

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ImagePlus } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { cldFull, cldPreview, cldThumb } from "@/lib/cloudinary-url";
@@ -108,7 +108,30 @@ export function MemoryTimeline() {
   // in the add form, etc. Recompute only when the data or active filter changes.
   // Already filtered by the server; the query key changes with `filter`.
   const memories: Memo[] = loaded;
-  const selectedMemo = selected ? all.find((m) => m.id === selected) ?? null : null;
+  const inList = selected ? all.find((m) => m.id === selected) ?? null : null;
+  /*
+   * Fetched by id when it is not in the pages already loaded.
+   *
+   * A mention notification links straight at one memory, and the one it names
+   * may be months down a paged feed. Without this the link opened the timeline
+   * and left the reader to scroll for the thing they had just been told about.
+   */
+  const fetched = trpc.memory.get.useQuery(
+    { id: selected ?? "" },
+    { enabled: !!selected && !inList, retry: false },
+  );
+  const selectedMemo = inList ?? (selected ? fetched.data ?? null : null);
+
+  /*
+   * ?memory=<id> opens that entry. Read from the URL directly rather than
+   * through useSearchParams, which drags a Suspense boundary into a page that
+   * needs none — this is a one-off read on mount, on the client, by definition.
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("memory");
+    if (id) setSelected(id);
+  }, []);
   const groups = useMemo(
     () =>
       memories.reduce<Record<string, Memo[]>>((acc, m) => {
@@ -415,7 +438,13 @@ export function MemoryTimeline() {
               {selectedMemo.photos.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
                   {selectedMemo.photos.map(
-                    (p: { url: string; publicId: string; width?: number | null; height?: number | null }) => (
+                    (p: {
+                      url: string;
+                      publicId: string;
+                      width?: number | null;
+                      height?: number | null;
+                      caption?: string | null;
+                    }) => (
                       /*
                        * Two sizes, not one. The dialog gets a version scaled to
                        * fit a phone screen; the full one is fetched only if the
@@ -429,20 +458,30 @@ export function MemoryTimeline() {
                        * arrived and the dialog shunted itself downward as they
                        * landed one by one.
                        */
-                      <PhotoView key={p.publicId} src={cldFull(p.url)}>
-                        <img
-                          src={cldPreview(p.url)}
-                          alt={selectedMemo.title}
-                          loading="lazy"
-                          decoding="async"
-                          style={
-                            p.width && p.height
-                              ? { aspectRatio: `${p.width} / ${p.height}` }
-                              : undefined
-                          }
-                          className="bg-muted w-full cursor-zoom-in rounded-lg object-cover"
-                        />
-                      </PhotoView>
+                      /* The photo and its own line, kept together: a note about
+                         one picture belongs under that picture, not in the
+                         paragraph written about all of them. */
+                      <figure key={p.publicId} className="space-y-1">
+                        <PhotoView src={cldFull(p.url)}>
+                          <img
+                            src={cldPreview(p.url)}
+                            alt={p.caption || selectedMemo.title}
+                            loading="lazy"
+                            decoding="async"
+                            style={
+                              p.width && p.height
+                                ? { aspectRatio: `${p.width} / ${p.height}` }
+                                : undefined
+                            }
+                            className="bg-muted w-full cursor-zoom-in rounded-lg object-cover"
+                          />
+                        </PhotoView>
+                        {p.caption && (
+                          <figcaption className="text-muted-foreground px-0.5 text-xs leading-snug">
+                            {p.caption}
+                          </figcaption>
+                        )}
+                      </figure>
                     ),
                   )}
                 </div>

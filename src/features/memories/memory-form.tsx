@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,13 @@ import {
   type UploadedPhoto,
 } from "@/lib/cloudinary-upload";
 import { cldFull, cldThumb } from "@/lib/cloudinary-url";
+import {
+  MAX_PHOTOS_PER_MEMORY,
+  MAX_PHOTO_CAPTION,
+  UPLOAD_CONCURRENCY,
+} from "@/lib/memory-limits";
+import { collectMentions, mentionToken } from "@/lib/mentions";
+import { authClient } from "@/lib/auth-client";
 import { ExternalLink, ImagePlus, Link2, Loader2, Play, RotateCw, X } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
@@ -179,6 +186,28 @@ export function MemoryForm({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onError = (err: any) => toast("Lưu thất bại: " + (err?.message || "Thử lại nhé"), "error");
   const signUpload = trpc.upload.sign.useMutation();
+  /*
+   * Who can be named. A space holds two people, so in practice this is "the
+   * other one" — read from the space rather than assumed, because a personal
+   * space has nobody to name and the buttons should not appear there.
+   */
+  const { data: session } = authClient.useSession();
+  const membersQuery = trpc.space.members.useQuery(undefined, { staleTime: 300_000 });
+  const mentionable = useMemo(
+    () =>
+      (membersQuery.data ?? [])
+        .filter((m) => m.id !== session?.user.id && m.name?.trim())
+        .map((m) => ({ id: m.id, name: m.name as string })),
+    [membersQuery.data, session?.user.id],
+  );
+
+  /*
+   * Names are read out of the words at save time, never tracked beside them.
+   * Edit the sentence and the mention follows; a list kept in parallel keeps
+   * notifying someone whose name has already been deleted.
+   */
+  const mentionIds = () =>
+    collectMentions([caption, ...photos.map((x) => x.caption ?? "")].join("\n"), mentionable);
   const create = trpc.memory.create.useMutation({ onSuccess, onError });
   const update = trpc.memory.update.useMutation({ onSuccess, onError });
 
@@ -192,7 +221,7 @@ export function MemoryForm({
   async function onFiles(files: FileList | null) {
     if (!files) return;
     setErr(null);
-    const slots = Math.max(0, 10 - photos.length - pending.length);
+    const slots = Math.max(0, MAX_PHOTOS_PER_MEMORY - photos.length - pending.length);
     const picked = Array.from(files).slice(0, slots);
     if (picked.length === 0) return;
 
@@ -204,7 +233,15 @@ export function MemoryForm({
       error: null,
     }));
     setPending((p) => [...p, ...items]);
-    items.forEach(startUpload);
+    /*
+     * A queue, not all at once.
+     *
+     * Thirty files leaving a phone together is thirty requests dividing one
+     * uplink: every one of them crawls, and the browser silently holds most of
+     * them where no progress bar can see. Three in the air keeps each running
+     * bar moving, and the rest start the instant a slot frees.
+     */
+    void runUploadQueue(items);
   }
 
   /*
@@ -236,6 +273,20 @@ export function MemoryForm({
     }
   }
 
+  /** Runs the picked files through a fixed number of parallel slots. */
+  async function runUploadQueue(items: PendingPhoto[]) {
+    let next = 0;
+    const worker = async () => {
+      while (next < items.length) {
+        const item = items[next++];
+        await startUpload(item);
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(UPLOAD_CONCURRENCY, items.length) }, worker),
+    );
+  }
+
   /** Give up on one photo that would not upload. */
   function dismissPending(id: string) {
     setPending((ps) => {
@@ -256,6 +307,13 @@ export function MemoryForm({
     () => () => pendingRef.current.forEach((p) => URL.revokeObjectURL(p.url)),
     [],
   );
+
+  /** Write a note under one picture. Saved with the memory, not on its own. */
+  function setPhotoCaption(publicId: string, text: string) {
+    setPhotos((ps) =>
+      ps.map((p) => (p.publicId === publicId ? { ...p, caption: text } : p)),
+    );
+  }
 
   /** Drop one picture from the draft. Nothing is saved until the form is. */
   function removePhoto(publicId: string) {
@@ -290,6 +348,21 @@ export function MemoryForm({
         onChange={(e) => setCaption(e.target.value)}
         rows={3}
       />
+      {mentionable.length > 0 && (
+        <div className="-mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground text-xs">Nhắc tên:</span>
+          {mentionable.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setCaption((c) => `${c ? `${c} ` : ""}${mentionToken(m.name)} `)}
+              className="border-border text-accent hover:bg-accent-soft rounded-full border px-2 py-0.5 text-xs font-medium"
+            >
+              {mentionToken(m.name)}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <DatePicker value={date} onChange={setDate} />
@@ -389,13 +462,13 @@ export function MemoryForm({
         )}
       </div>
 
-      <p className="text-muted-foreground text-xs font-medium ml-0.5">Thêm ảnh (tuỳ chọn) · tối đa 10</p>
+      <p className="text-muted-foreground text-xs font-medium ml-0.5">Thêm ảnh (tuỳ chọn) · tối đa {MAX_PHOTOS_PER_MEMORY}</p>
 
       {cloudinaryConfigured ? (
         <label
           className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center transition-all duration-200 sm:p-6
             ${
-              photos.length + pending.length >= 10
+              photos.length + pending.length >= MAX_PHOTOS_PER_MEMORY
                 ? "cursor-not-allowed border-border/50 bg-muted/20 opacity-60"
                 : "border-border hover:border-accent hover:bg-accent-soft/30 bg-card active:scale-[0.99]"
             }
@@ -409,8 +482,8 @@ export function MemoryForm({
               {uploading ? "Đang tải lên — chọn thêm được" : "Chạm để tải ảnh lên"}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {photos.length + pending.length >= 10
-                ? "Đã đạt tối đa 10 ảnh"
+              {photos.length + pending.length >= MAX_PHOTOS_PER_MEMORY
+                ? `Đã đạt tối đa ${MAX_PHOTOS_PER_MEMORY} ảnh`
                 : "Ảnh gốc từ máy, không cần thu nhỏ trước. Tối đa 10 ảnh."}
             </p>
           </div>
@@ -421,7 +494,7 @@ export function MemoryForm({
             multiple
             className="hidden"
             onChange={(e) => onFiles(e.target.files)}
-            disabled={photos.length + pending.length >= 10}
+            disabled={photos.length + pending.length >= MAX_PHOTOS_PER_MEMORY}
           />
         </label>
       ) : (
@@ -455,18 +528,52 @@ export function MemoryForm({
           {/* 80px rather than 64: at 64 a photo of a place and a photo of a
               plate of food are the same brown smudge, and the point of the
               thumbnail is to tell you whether you picked the right one. */}
-          <div className="flex flex-wrap gap-2.5">
+          {/*
+            A card per photo instead of a bare thumbnail: each one now carries its own
+            line. The picture stays big enough to tell a plate of food from a street,
+            and the note sits under it — where it sits when the memory is read back.
+          */}
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {photos.map((p) => (
-              <div key={p.publicId} className="group relative">
+              <div
+                key={p.publicId}
+                className="border-border bg-card/60 relative flex flex-col gap-1.5 rounded-xl border p-1.5"
+              >
                 <PhotoView src={cldFull(p.url)}>
                   <img
-                    src={cldThumb(p.url, 200)}
+                    src={cldThumb(p.url, 300)}
                     alt=""
-                    width={200}
-                    height={200}
-                    className="border-border bg-muted h-20 w-20 cursor-zoom-in rounded-xl border object-cover"
+                    width={300}
+                    height={300}
+                    className="bg-muted aspect-square w-full cursor-zoom-in rounded-lg object-cover"
                   />
                 </PhotoView>
+                <div className="flex items-center gap-0.5">
+                  <input
+                    value={p.caption ?? ""}
+                    onChange={(e) => setPhotoCaption(p.publicId, e.target.value)}
+                    maxLength={MAX_PHOTO_CAPTION}
+                    placeholder="Cảm nhận riêng…"
+                    aria-label="Cảm nhận riêng cho ảnh này"
+                    className="text-foreground placeholder:text-muted-foreground focus-visible:bg-muted/60 min-w-0 flex-1 rounded-md bg-transparent px-1.5 py-1 text-xs outline-none"
+                  />
+                  {mentionable.map((mem) => (
+                    <button
+                      key={mem.id}
+                      type="button"
+                      onClick={() =>
+                        setPhotoCaption(
+                          p.publicId,
+                          `${p.caption ? `${p.caption} ` : ""}${mentionToken(mem.name)} `,
+                        )
+                      }
+                      aria-label={`Nhắc tên ${mem.name} trong ảnh này`}
+                      className="text-accent hover:bg-accent-soft shrink-0 rounded-md px-1.5 py-1 text-xs font-bold"
+                    >
+                      @
+                    </button>
+                  ))}
+                </div>
                 {/* Always visible, not hover-only: this form is used on a phone
                     more than anywhere else, and there is no hover there. */}
                 <button
@@ -558,6 +665,7 @@ export function MemoryForm({
                   photos,
                   embeds: collectAllEmbeds(),
                   tags,
+                  mentions: mentionIds(),
                 });
               } else {
                 create.mutate({
@@ -568,6 +676,7 @@ export function MemoryForm({
                   photos,
                   embeds: collectAllEmbeds(),
                   tags,
+                  mentions: mentionIds(),
                   locationId: initialLocationId,
                 });
               }

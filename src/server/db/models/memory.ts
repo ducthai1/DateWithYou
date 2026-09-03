@@ -6,6 +6,8 @@ const photoSchema = new Schema(
     publicId: { type: String, required: true },
     width: { type: Number },
     height: { type: Number },
+    /** What this one picture is, in the words of whoever put it here. */
+    caption: { type: String },
   },
   { _id: false },
 );
@@ -44,6 +46,15 @@ const memorySchema = new Schema(
      * midnight appearing on entries whose hour nobody recorded.
      */
     time: { type: String },
+    /*
+     * Members named in any caption, shared or per-photo.
+     *
+     * Stored as ids rather than parsed out of the text on demand: a display
+     * name can change, and a mention that stops resolving is a notification
+     * that silently stops arriving. The text keeps the readable "@Tên"; this is
+     * the part the server acts on.
+     */
+    mentions: { type: [String], default: [] },
     locationId: { type: String },
     geo: {
       lat: { type: Number },
