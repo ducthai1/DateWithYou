@@ -183,7 +183,22 @@ export function SpaceSettings() {
       padding keeps this whole box above the nav, and the button ends inside a
       box that can actually reach its own end.
     */
-    <div className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-4 pt-12 pb-12 md:px-[30px] short:gap-4 short:pt-5 short:pb-6">
+    /*
+      `[&>*]:shrink-0` is load-bearing, not tidiness.
+
+      This box is both a flex column and the thing that scrolls, so flex lays
+      its children out to fit a FIXED height before any scrolling happens. A
+      child's default `min-height: auto` is its content height, so anything
+      whose height is set rather than grown gets squashed to the size of its own
+      text: the "Đăng xuất" button asks for h-11 and was rendered 25px tall,
+      half the height of every other button on the screen. It was the only one
+      hit because it is the one direct child that is a control — the rest sit
+      inside Cards, a level down, where flex cannot reach them.
+
+      On the container rather than on that button, so the next control dropped
+      in here does not have to rediscover this.
+    */
+    <div className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-4 pt-12 pb-12 md:px-[30px] short:gap-4 short:pt-5 short:pb-6 [&>*]:shrink-0">
       <h1 className="text-2xl font-semibold">Cài đặt</h1>
 
       <h2 className="text-lg font-semibold mt-2">Hồ sơ</h2>

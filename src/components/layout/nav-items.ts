@@ -21,8 +21,16 @@ export const NAV_ITEMS: {
   label: string;
   Icon: LucideIcon;
   center?: boolean;
-  /** Kept out of the mobile bottom bar. Still rendered in the desktop sidebar,
-   *  and reachable on mobile from the top bar, so nothing is orphaned. */
+  /*
+   * Kept out of the mobile bottom bar, which holds six destinations — what
+   * fits at 390px.
+   *
+   * Still in the desktop sidebar, and on a phone in the header: either linked
+   * directly there, or in its "Mục khác" sheet, which reads this list. That
+   * sheet exists because the flag used to be documented as "reachable from the
+   * top bar" while two of the three routes carrying it were reachable from
+   * nowhere at all on a phone.
+   */
   mobileHidden?: boolean;
 }[] = [
   // Array order IS the order of the mobile bottom bar, left to right.
@@ -37,11 +45,12 @@ export const NAV_ITEMS: {
   // come back, and a count is only useful where the thumb already is.
   { href: "/activity", label: "Hoạt động", Icon: Bell },
   { href: "/library", label: "Bộ sưu tập", Icon: Library },
-  // Rides already taken. Desktop sidebar only: the bottom bar is full, and this
-  // is a screen people visit to look back rather than one they reach for mid-trip.
+  // Rides already taken: a screen people visit to look back rather than one
+  // they reach for mid-trip, so it gives up its bottom-bar slot and lives in
+  // the header's "Mục khác" sheet on a phone.
   { href: "/rides", label: "Đã đi", Icon: Bike, mobileHidden: true },
-  // Still reachable on mobile from the top bar, so they stay out of the bottom
-  // bar and appear only in the desktop sidebar.
+  // Out of the bottom bar: Cài đặt is linked directly in the mobile header,
+  // Tìm kiếm sits in its "Mục khác" sheet.
   { href: "/search", label: "Tìm kiếm", Icon: Search, mobileHidden: true },
   { href: "/settings", label: "Cài đặt", Icon: Settings, mobileHidden: true },
 ];

@@ -1525,6 +1525,49 @@ theo sự kiện.
 Hai lỗi cùng họ đã sửa kèm: `cancel()` rồi `speak()` **ngay trong cùng một tick** bị Chrome nuốt luôn
 câu (phải `setTimeout(…, 0)`), và hàng đợi bị `paused` thì nhận câu mà không phát (phải `resume()`).
 
+## Flex bóp con: nút `h-11` bị vẽ cao 25px
+
+Cho trang cài đặt tự cuộn (`flex-1 min-h-0 overflow-y-auto`) đã sửa được nút Đăng xuất bị nav che —
+nhưng **đẻ ra lỗi khác ngay tại nút đó**, và mất một hôm mới lộ ra.
+
+Hộp đó vừa là **flex column** vừa là **thứ cuộn**, nên flex xếp các con vào một chiều cao **cố định**
+TRƯỚC khi có chuyện cuộn. `flex-shrink` mặc định là 1, và `min-height: auto` của một flex item bằng
+chiều cao **nội dung** của nó ⇒ thứ nào có chiều cao *được đặt* thay vì *mọc theo nội dung* thì bị bóp
+xuống bằng chữ của chính nó.
+
+```
+đo ở desktop 1280:  Đăng xuất  h=25   ← khai h-11 (44px)
+                    Xoá không gian h=44
+                    Lưu ảnh        h=44
+```
+
+Chỉ mình nó dính vì nó là **con trực tiếp** duy nhất là một control — mọi nút khác nằm trong `Card`, thấp
+hơn một tầng, flex với không tới.
+
+**Sửa ở container, không ở nút:** thêm `[&>*]:shrink-0`. Đặt lên nút thì control tiếp theo thả vào đây
+lại phải tự khám phá lại cái bẫy này.
+
+⚠️ Dấu hiệu nhận biết: `h-*` khai đúng mà DOM ra chiều cao bằng đúng `line-height`. Kiểm bằng
+`getBoundingClientRect()`, đừng tin class. `PageShell` KHÔNG dính vì hộp cuộn của nó chứa một `div`
+block (`space-y-6`), không phải flex.
+
+## `mobileHidden` từng có nghĩa là "không vào được từ điện thoại"
+
+`NAV_ITEMS` đánh dấu `/rides`, `/search`, `/settings` là `mobileHidden` — thanh dưới chỉ chứa 6 đích, là
+số vừa ở 390px. Comment ghi *"vẫn vào được từ top bar, nên không có gì bị mồ côi"*. **Chỉ đúng với
+`/settings`.** Header mobile có Đồng bộ · Bí mật · Cài đặt — không có Đã đi, không có Tìm kiếm. Hai màn
+hình đó là tab trong sidebar desktop và **không có lối vào nào trên điện thoại**, tức thiết bị mà app
+được dùng nhiều nhất.
+
+`mobile-more-menu.tsx` thêm nút "Thêm mục khác" mở `BottomSheet`, và nó **đọc từ `NAV_ITEMS`** chứ không
+gõ tay: `mobileHidden && !IN_HEADER`. Route mới gắn cờ đó từ nay tự hiện ra thay vì lại lặng lẽ mất tích.
+
+Kiểm chiều rộng ở **cả 320px** (khổ từng làm logo bị cắt mất 61px khi header có 4 icon): 4 icon 40px,
+`scrollWidth === clientWidth`, không tràn.
+
+**Luật:** một cờ kiểu "ẩn ở đâu đó" phải kèm **nơi nó xuất hiện thay thế**, và nơi đó phải đọc từ chính
+danh sách gốc. Comment nói "vẫn vào được ở chỗ khác" mà không có code bảo đảm thì chỉ là một lời hứa.
+
 ## Favicon trên Google: index lại trang KHÔNG làm mới logo
 
 Search Console báo thu thập thành công 02:49 ngày 30/08, mà kết quả tìm kiếm vẫn hiện logo cũ. Cả hai

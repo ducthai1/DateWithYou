@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Lock, Settings } from "lucide-react";
 import { NAV_HIDDEN_ON } from "./nav-items";
+import { MobileMoreMenu } from "./mobile-more-menu";
 import { BrandMark } from "./brand-mark";
 import { SyncButton } from "./sync-button";
 
@@ -64,6 +65,10 @@ export function AppHeader() {
         >
           <Settings className="h-5 w-5" />
         </Link>
+        {/* Everything the six-slot bar and these icons leave out. Without it
+            "Đã đi" and "Tìm kiếm" were desktop-sidebar-only — present in the
+            app, absent from every phone. */}
+        <MobileMoreMenu className={ACTION_CLASS(false)} />
       </div>
     </header>
   );
