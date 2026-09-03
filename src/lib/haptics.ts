@@ -29,7 +29,7 @@
  * service-worker push handler and VAPID keys — see the note in CLAUDE.md.
  */
 
-import { unlockAudio } from "@/lib/audio-session";
+import { audioContext, unlockAudio } from "@/lib/audio-session";
 
 /** Milliseconds: [buzz, pause, buzz, …] — the Vibration API's own shape. */
 export type BuzzPattern = number | number[];
@@ -79,35 +79,27 @@ function isIosLike(): boolean {
   return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
 }
 
-let audioCtx: AudioContext | null = null;
-
 /**
  * Prepare the tone while a gesture is still on the stack.
  *
  * An AudioContext created outside a user gesture starts suspended on iOS and
  * cannot be resumed later, so the one chance to make later sounds possible is
- * during a tap the person has already made. Safe to call as often as you like.
+ * during a tap the person has already made. The context itself lives in
+ * audio-session.ts — iOS allows few of them and only one made in a gesture, so
+ * this module borrows rather than making a second. Safe to call as often as
+ * you like.
  */
 export function primeHaptics(): void {
-  if (typeof window === "undefined" || audioCtx) return;
-  const Ctor =
-    window.AudioContext ??
-    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) return;
-  try {
-    audioCtx = new Ctor();
-    void audioCtx.resume();
-  } catch {
-    audioCtx = null;
-  }
+  if (typeof window === "undefined") return;
   // Toggling the switch once here also gets iOS to accept it later in the visit.
   iosSwitch();
-  // Same tap, same one chance: the ringer switch mutes the tone below unless
-  // the page has moved itself into a playback audio session.
+  // Creates the shared context and claims a playback session, both of which
+  // need the gesture this call is inside.
   unlockAudio();
 }
 
 function tone(): boolean {
+  const audioCtx = audioContext();
   if (!audioCtx || audioCtx.state !== "running") return false;
   try {
     const now = audioCtx.currentTime;

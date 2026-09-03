@@ -47,7 +47,8 @@ export function VoiceHapticTestRow() {
     // Everything that needs a gesture behind it happens on this press.
     unlockAudio();
     const buzzResult = buzz([60, 50, 60], { urgent: true });
-    speak(TEST_LINE);
+    // With the chime, so what this plays is what a real instruction plays.
+    speak(TEST_LINE, { chime: true });
 
     /*
      * Read the outcome after the engine has had time to start speaking.

@@ -30,6 +30,80 @@ type AudioSessionNavigator = Navigator & {
   audioSession?: { type: string };
 };
 
+/*
+ * One AudioContext for the whole app, owned here.
+ *
+ * iOS allows very few of them per page and only lets one be created inside a
+ * gesture, so two modules each making their own is a way to end up with none
+ * that works. It used to live in haptics.ts, which needed it for the audible
+ * fallback; that module now asks for this one.
+ */
+let ctx: AudioContext | null = null;
+
+export function audioContext(): AudioContext | null {
+  if (typeof window === "undefined") return ctx;
+  if (ctx) return ctx;
+  const Ctor =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctor) return null;
+  try {
+    ctx = new Ctor();
+    void ctx.resume();
+  } catch {
+    ctx = null;
+  }
+  return ctx;
+}
+
+/**
+ * Two short notes, played before a spoken instruction.
+ *
+ * This is the only real lever on loudness a web page has. `volume = 1` on an
+ * utterance is already the maximum and cannot exceed what the phone is set to,
+ * so a rider on a noisy road who cannot make out the words is not going to be
+ * helped by asking for more. A pure tone can be: it carries through traffic
+ * noise far better than speech at the same level, because the noise is spread
+ * across the spectrum and the tone is not. It does not make the sentence
+ * louder — it makes the rider expecting it, which is most of the difference.
+ *
+ * Descending, two notes, under a fifth of a second: long enough to register,
+ * short enough not to eat the front of the sentence behind it.
+ */
+export function playChime(): boolean {
+  const c = audioContext();
+  if (!c || c.state !== "running") return false;
+  try {
+    const t0 = c.currentTime;
+    // Well above engine and tyre noise, below the range that reads as shrill.
+    [
+      { hz: 1175, at: 0, dur: 0.1 },
+      { hz: 880, at: 0.1, dur: 0.14 },
+    ].forEach(({ hz, at, dur }) => {
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.type = "sine";
+      osc.frequency.value = hz;
+      const start = t0 + at;
+      /*
+       * Shaped, not switched. A square-edged gain change is an audible click,
+       * and a click at this level is the one thing worse than being too quiet.
+       * 0.55 rather than the 0.18 the old confirmation blip used — this has to
+       * survive a street, not a quiet room.
+       */
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.55, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(gain).connect(c.destination);
+      osc.start(start);
+      osc.stop(start + dur + 0.02);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 let silent: HTMLAudioElement | null = null;
 let sessionSet = false;
 let silentPlaying = false;
@@ -66,6 +140,8 @@ function silentWavUrl(): string {
  */
 export function unlockAudio(): void {
   if (typeof window === "undefined") return;
+  // Created here so it happens inside whatever gesture called this.
+  audioContext();
 
   if (!sessionSet) {
     const nav = navigator as AudioSessionNavigator;

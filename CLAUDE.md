@@ -1871,6 +1871,62 @@ mỗi câu chỉ đường sẽ tắt nhạc của người ta. `playback` chỉ
 khác nhau theo phiên bản iOS. Vì vậy có `audioReport()` + ô tự kiểm tra: máy nào vẫn chặn thì **nói ra
 được** thay vì để user đoán app hỏng hay máy đang im lặng.
 
+## iOS: "Thử ngay" nghe được mà chạy thật thì im — hiệu ứng vs cú chạm
+
+Triệu chứng này là một món quà chẩn đoán: nút thử trong Cài đặt **nghe được**, chuyến đi thật thì
+**không**. Tức engine, giọng Việt, phiên âm thanh, khoá `enabled` — tất cả đều đúng. Khác nhau duy nhất
+là **nơi gọi**.
+
+```
+nút thử   : onClick → unlockAudio(); speak(...)      ← TRONG cú chạm
+chuyến đi : onClick → setAutoStartWhenRouted(true)
+             → chờ route về (async)
+             → useEffect thấy isNavigating → speak(...)   ← NGOÀI cú chạm, cách vài giây
+```
+
+Luồng phổ biến nhất là chạm "Bắt đầu đi" → **đợi định tuyến** → `nav.start()` gọi từ trong một effect.
+Lúc đó user activation mà iOS đòi cho **câu đầu tiên của một lượt truy cập** đã hết từ lâu, và engine
+**từ chối trong im lặng** — không lỗi, không sự kiện.
+
+Sửa: tách thành `announceDeparture()` và gọi **từ trong 4 onClick khởi hành**, không từ effect. Effect
+chỉ còn là dự phòng cho luồng không có cú chạm (lời mời được nhận → chạy bằng `setTimeout`).
+
+Và câu nói-thật-trong-cú-chạm đó cũng là câu **mở đường âm thanh** cho mọi lời chỉ đường sau đó, vì
+không một lời nào trong chuyến có thể nằm trong một cử chỉ. (Suy ra: `primeSpeech(" ")` — một dấu cách —
+**không đủ** để mở khoá; phải là chữ thật.)
+
+⚠️ Chỗ nào cú chạm **cũng kích hoạt định tuyến lại** thì đọc **không kèm số**: các con số còn trong state
+là của route CŨ, mà đọc sai quãng đường một cách tự tin còn tệ hơn không đọc.
+
+**Luật:** trên iOS, cái gì phải phát ra tiếng thì phải nằm **trong cùng call stack với cú chạm**. Một
+`useEffect` bắn sau khi state đổi **không** tính là trong cử chỉ, dù nó chạy ngay sau đó.
+
+## Âm lượng giọng đọc: `volume = 1` là hết, đòn bẩy thật là TIẾNG CHUÔNG
+
+Không nâng được nữa: `SpeechSynthesisUtterance.volume` tối đa là 1, và nó **không vượt được âm lượng hệ
+thống**. User bật full máy Android vẫn nghe nhỏ ngoài đường — xin thêm cũng không có.
+
+Đòn bẩy có thật: **một tiếng chuông trước mỗi câu**. Tiếng thuần xuyên qua tiếng ồn giao thông tốt hơn
+tiếng nói ở cùng mức, vì tiếng ồn trải khắp phổ còn tiếng chuông thì không. Nó **không** làm câu nói to
+hơn — nó làm người nghe **đang chờ** câu đó, và đó mới là phần lớn khác biệt.
+
+Đo bằng `OfflineAudioContext` (render thật, không đoán):
+
+| | peak | RMS | mẫu bị clip | nhảy max giữa 2 mẫu |
+|---|---|---|---|---|
+| blip cũ (gain 0.18, 1 nốt) | 0.179 | 0.0377 | 0 | 0.0206 |
+| chuông mới (gain 0.55, 2 nốt) | 0.543 | 0.1115 | 0 | 0.0837 |
+
+**+9,4 dB**, không clip, không đứt sóng. Hai nốt xuống (1175 → 880 Hz) trong 0,24s: đủ để nhận ra, đủ
+ngắn để không ăn mất đầu câu.
+
+Kèm `rate` 1.05 → **1.0**: nhịp nhanh chọn cho một chiếc xe hơi im lặng, sai trên xe máy — chữ bị tiếng
+đường ăn mất là những chữ nói nhanh, và nghe nửa vời một tên đường còn tệ hơn nghe chậm một nhịp.
+
+⚠️ `AudioContext` nay **chỉ một cái cho cả app**, đặt ở `audio-session.ts`. iOS cho rất ít context/trang
+và chỉ cho tạo trong cử chỉ — hai module mỗi bên tự tạo một cái là cách chắc chắn để **không có cái nào
+chạy**. `haptics.ts` nay đi mượn.
+
 ## `setTimeout(utter, 0)` giết đúng câu quan trọng nhất trên iOS
 
 `speak()` luôn `cancel()` rồi `setTimeout(utter, 0)`. Cái timeout đó có lý do thật — Chrome **bỏ luôn**

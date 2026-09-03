@@ -1191,6 +1191,45 @@ export function LocationsPage() {
    * a pocket. Waiting for a route figure would spend it.
    */
   const departureSaid = useRef(false);
+
+  /*
+   * Said from the tap that starts the ride, not from an effect.
+   *
+   * It used to run in an effect on `isNavigating`, and on iOS that is the
+   * difference between working and silent. The self-test in settings speaks
+   * from inside its own onClick and is audible; the ride was not, because the
+   * common path taps "Bắt đầu đi", waits for the route, and only then calls
+   * nav.start() from an effect — by which time the user activation the platform
+   * requires for the first utterance of a visit is long gone, and the engine
+   * refuses without reporting anything. Speaking here puts it back inside the
+   * tap, and that first real utterance is also what opens the audio route for
+   * the turn instructions that follow, none of which can be in a gesture.
+   *
+   * `withNumbers` is false where the tap also triggers a re-route: the figures
+   * still in state belong to the previous route, and a confidently spoken wrong
+   * distance is worse than no distance.
+   */
+  const announceDeparture = useCallback(
+    ({ withNumbers = true }: { withNumbers?: boolean } = {}) => {
+      if (departureSaid.current) return;
+      departureSaid.current = true;
+      unlockAudio();
+      speak(
+        departureSentence({
+          destination: selectedName,
+          metres: withNumbers ? displayDistance : null,
+          seconds: withNumbers ? displayDuration : null,
+          partnerOnTheWay: nav.partnerLocation != null,
+          // Rotates the opener by the day so it varies between rides but never
+          // within one.
+          dayIndex: new Date().getDate(),
+        }),
+        { chime: true },
+      );
+    },
+    [selectedName, displayDistance, displayDuration, nav.partnerLocation],
+  );
+
   useEffect(() => {
     if (!nav.isNavigating) {
       departureSaid.current = false;
@@ -1199,22 +1238,10 @@ export function LocationsPage() {
       releaseAudio();
       return;
     }
-    if (departureSaid.current) return;
-    departureSaid.current = true;
-    unlockAudio();
-    speak(
-      departureSentence({
-        destination: selectedName,
-        metres: displayDistance,
-        seconds: displayDuration,
-        partnerOnTheWay: nav.partnerLocation != null,
-        // Rotates the opener by the day so it varies between rides but never
-        // within one.
-        dayIndex: new Date().getDate(),
-      }),
-    );
-    // The figures are read once, at the start; re-running as they tick down
-    // would say the line again.
+    // Fallback for the paths with no tap behind them — an accepted invite
+    // starts the ride from a timer. iOS may refuse this one; it is still better
+    // than the ride beginning in silence on every other platform.
+    announceDeparture();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.isNavigating]);
 
@@ -2082,7 +2109,7 @@ export function LocationsPage() {
                   variant="outline"
                   className="flex-1 gap-2"
                   onClick={() => {
-                    if (!openSoloPlanner()) { setFocusGeo(null); nav.start(); }
+                    if (!openSoloPlanner()) { announceDeparture(); setFocusGeo(null); nav.start(); }
                   }}
                 >
                   <UserRound className="h-4 w-4" /> Đi 1 mình
@@ -2106,7 +2133,7 @@ export function LocationsPage() {
               <Button
                 className="hidden w-full gap-2 lg:flex"
                 onClick={() => {
-                  if (!openSoloPlanner()) { setFocusGeo(null); nav.start(); }
+                  if (!openSoloPlanner()) { announceDeparture(); setFocusGeo(null); nav.start(); }
                 }}
               >
                 <Play className="h-4 w-4" /> Lên lộ trình
@@ -2756,7 +2783,7 @@ export function LocationsPage() {
                     disabled={routePending || !!routeError}
                     onClick={() => {
                       setTripChoiceOpen(false);
-                      if (!openSoloPlanner()) { setFocusGeo(null); nav.start(); }
+                      if (!openSoloPlanner()) { announceDeparture(); setFocusGeo(null); nav.start(); }
                     }}
                   >
                     {hasTwoMembers ? <UserRound className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -2842,6 +2869,10 @@ export function LocationsPage() {
               // accepted companion trip takes.
               goToLocation(loc.id, loc.geo, waypointGeos.length ? waypointGeos : undefined);
               setPlannedStops([]);
+              // Spoken here, inside the tap, without figures: the re-route
+              // above has not answered yet and the ones in state are the old
+              // route's.
+              announceDeparture({ withNumbers: false });
               setAutoStartWhenRouted(true);
             }}
           >

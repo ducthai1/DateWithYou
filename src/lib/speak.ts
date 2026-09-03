@@ -13,7 +13,7 @@
  * stuck afterwards. `primeSpeech()` gets that out of the way on the first tap.
  */
 
-import { unlockAudio } from "@/lib/audio-session";
+import { playChime, unlockAudio } from "@/lib/audio-session";
 
 const STORAGE_KEY = "dwy:navVoice";
 
@@ -153,25 +153,41 @@ export function hasVietnameseVoice(): boolean {
   return vietnameseVoice() != null;
 }
 
+/*
+ * Replacing rather than queueing is the point: instructions go stale in
+ * seconds, and a queue that reads out the turn before last while the junction
+ * goes past is worse than saying nothing. There is only ever one current
+ * instruction.
+ */
 /**
  * Say one instruction, replacing anything still queued.
  *
- * Replacing rather than queueing is the point: instructions go stale in seconds,
- * and a queue that reads out the turn before last while the junction goes past
- * is worse than saying nothing. There is only ever one current instruction.
+ * `chime` plays two notes first. On a road, that is the difference between
+ * hearing the instruction and hearing that there was one: `volume` is already
+ * at its maximum of 1 and cannot go past what the phone is set to, so the way
+ * to reach someone over traffic is not a louder voice but a cue that makes them
+ * listen for it.
  */
-export function speak(text: string): void {
+export function speak(text: string, { chime = false }: { chime?: boolean } = {}): void {
   const s = synth();
   if (!s || !enabled || !text) return;
   try {
+    if (chime) playChime();
     const busy = s.speaking || s.pending;
     if (busy) s.cancel();
 
     const utter = () => {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "vi-VN";
-      // Slightly brisk: instructions land while there is still time to act.
-      u.rate = 1.05;
+      /*
+       * 1.0, down from 1.05.
+       *
+       * The brisk setting was chosen so an instruction lands while there is
+       * still time to act on it, which is right in a quiet car and wrong on a
+       * motorbike: the words that get lost to road noise are the fast ones, and
+       * a street name half-heard is worse than one heard a beat later.
+       */
+      u.rate = 1;
       u.pitch = 1;
       // Full volume. This is competing with an engine and traffic.
       u.volume = 1;

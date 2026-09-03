@@ -57,7 +57,9 @@ export function useTurnByTurn({
     }
     const step = stepAnnouncer(turns, stateRef.current, userGeo);
     stateRef.current = step.state;
-    if (step.speak) speak(step.speak);
+    // Chime on every instruction: this is the one that has to land while the
+    // rider is moving, with the road making its own noise.
+    if (step.speak) speak(step.speak, { chime: true });
     setView((prev) => ({
       next: step.next,
       metres: step.metres,
