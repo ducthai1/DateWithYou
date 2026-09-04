@@ -372,7 +372,11 @@ function LocationMapViewImpl({
         <button
           type="button"
           onClick={recentre}
-          className="border-border bg-card/95 text-foreground absolute bottom-4 left-1/2 z-[3] flex -translate-x-1/2 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold shadow-xl backdrop-blur-sm"
+          /* Rides above whatever the page has docked at the bottom edge — the
+             pause/end controls during a trip, nothing at all otherwise. Was a
+             flat bottom-4, which put it straight through those buttons. */
+          style={{ bottom: "calc(var(--nav-dock-h, 0px) + 1rem)" }}
+          className="border-border bg-card/95 text-foreground absolute left-1/2 z-[3] flex -translate-x-1/2 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold shadow-xl backdrop-blur-sm"
         >
           <LocateFixed className="text-accent h-4 w-4" />
           Về vị trí của tôi

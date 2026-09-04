@@ -314,6 +314,37 @@ export function LocationsPage() {
    * So their pin shows whenever we know where they are, and goes away for the
    * length of a ride someone chose to take alone.
    */
+  /*
+   * Publish the height of the floating control dock so the map can keep its own
+   * controls clear of it.
+   *
+   * A page-level custom property rather than a prop: the pill lives inside the
+   * map component, the dock is painted over the map by the page, and neither
+   * is an ancestor of the other. This is the same shape of fact as a safe-area
+   * inset — something the page knows and anything drawing near the bottom edge
+   * needs.
+   */
+  const navDockRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const setVar = (h: number) =>
+      document.documentElement.style.setProperty("--nav-dock-h", `${Math.round(h)}px`);
+    const el = navDockRef.current;
+    if (!el) {
+      setVar(0);
+      return;
+    }
+    // Border-box height, not contentRect: the dock carries its own padding plus
+    // the safe-area inset, and the pill has to clear all of it.
+    const measure = () => setVar(el.getBoundingClientRect().height);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      setVar(0);
+    };
+  }, [nav.isNavigating]);
+
   const partnerPin =
     isCompanionTrip || !nav.isNavigating ? nav.partnerLocation : null;
   /*
@@ -1731,8 +1762,13 @@ export function LocationsPage() {
             </div>
             )}
 
-            {/* Floating stop button — always visible over the map */}
-            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4"
+            {/* Floating stop button — always visible over the map.
+                Measured, because the map's own "Về vị trí của tôi" pill sits at
+                the bottom too and was landing on top of these. The height is
+                not a constant to hard-code: the reroute banner, the leg
+                progress row and an error line all come and go from this stack. */}
+            <div ref={navDockRef}
+                 className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4"
                  style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
             >
               {/* Multi-leg progress + per-leg arrival prompt */}

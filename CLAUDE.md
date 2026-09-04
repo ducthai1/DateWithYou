@@ -3134,6 +3134,56 @@ cả. Muốn chắc "đẩy chứ không phải tự hỏi" thì phải nghe ké
 (`Page.addScriptToEvaluateOnNewDocument` bọc `EventSource`) rồi **khẳng định** trên số sự kiện đó.
 
 
+## Badge thông báo trên Android: hệ thống VỨT MÀU, chỉ giữ kênh alpha
+
+Thông báo hiện ra với **ô vuông trắng phau** ở góc trái. Nguyên nhân: `sw.js` dùng
+`badge: "/icon-192.png"` — mà `icon-192.png` là **RGB, không có kênh trong suốt**, mọi điểm ảnh đều
+đục. Android lấy badge làm **mặt nạ**: giữ alpha, vứt màu, rồi tô lại bằng màu hệ thống. Ảnh đục
+toàn phần ⇒ mặt nạ là hình vuông đặc ⇒ ô trắng.
+
+- `icon` là icon lớn bên phải — **màu mè thoải mái**, cái này vẫn hiện đúng.
+- `badge` là icon nhỏ trên thanh trạng thái — **bắt buộc là bóng đổ trên nền trong suốt**, 96×96,
+  glyph chiếm gần hết khung (Material để glyph ~24dp có lề ~2dp).
+- iOS bỏ qua `badge` hoàn toàn và dùng icon app, nên sửa cái này không mất gì bên đó.
+
+Cách kiểm rẻ, không cần điện thoại:
+```python
+a = list(Image.open(f).convert("RGBA").split()[-1].getdata())
+đục = sum(1 for v in a if v > 200) / len(a)     # ~1.0 => Android sẽ vẽ ô vuông
+```
+
+**Không có công cụ dựng SVG thì dùng chính Chrome.** Nạp SVG bằng `data:text/html`, rồi
+`Page.captureScreenshot { omitBackground: true }`. Lưu ý: **`omitBackground` một mình chưa đủ trên
+headless** — phải gọi `Emulation.setDefaultBackgroundColorOverride { color:{r:0,g:0,b:0,a:0} }`
+trước, không thì trang bị tô trắng rồi mới chụp và ảnh ra đục 100%.
+
+## Nút nổi đè nhau: đừng đoán chiều cao, hãy ĐO nó
+
+Nút "Về vị trí của tôi" (`absolute bottom-4`, nằm trong component bản đồ) đè lên thanh Tạm dừng /
+Kết thúc (lớp phủ `absolute inset-x-0 bottom-0`, do trang vẽ đè lên bản đồ). Hai bên **không phải
+tổ tiên của nhau** nên không truyền prop xuống được, và chiều cao thanh **không phải hằng số**:
+banner "đang tính lại đường", dải tiến độ chặng, dòng báo lỗi đều lúc có lúc không.
+
+Cách làm: thanh tự đo mình bằng `ResizeObserver` (dùng `getBoundingClientRect().height` — **không**
+dùng `contentRect`, vì thanh có `p-4` cộng `env(safe-area-inset-bottom)`), rồi công bố
+`--nav-dock-h` lên `documentElement`; nút đọc `bottom: calc(var(--nav-dock-h, 0px) + 1rem)`.
+Cùng dạng dữ kiện với safe-area inset: thứ cả trang biết, và mọi thứ vẽ sát mép dưới đều cần.
+
+Đo được: trước khi sửa nút ở 787–828 chồng lên thanh 784–828 (**41px**) ở cả 390px lẫn 1280px; sau
+khi sửa hở 32px, biến CSS đọc ra 76px.
+
+### Vào được trạng thái dẫn đường để test
+
+Luồng thật: **Chỉ đường → Lên lộ trình → Bắt đầu đi** (không có bước "Đi 1 mình" khi space chỉ có
+một người). Và:
+
+**`element.click()` KHÔNG tạo user activation.** `nav.start()` cần nó (wake lock, âm thanh), nên
+bấm bằng script thì hai bước đầu chạy mà bước cuối im lặng không làm gì. Phải dùng
+`Input.dispatchMouseEvent` cho bước đó. Khi bấm bằng chuột thật thì phải `scrollIntoView` **rồi
+chờ cuộn ổn định mới đọc `getBoundingClientRect`** — đọc trước khi cuộn xong là bấm trượt ra nền,
+và triệu chứng giống hệt "không tìm thấy nút".
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

@@ -147,7 +147,17 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(title, {
       body,
       icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      /*
+       * The badge is the small status-bar icon, and Android throws away its
+       * colours: it keeps only the alpha channel and paints that in the system
+       * tint. icon-192.png has no alpha at all — every pixel opaque — so the
+       * mask was a filled square and the phone drew a blank white block.
+       *
+       * badge-96.png is a silhouette on transparency, which is the only shape
+       * that survives being reduced to a mask. iOS ignores badge entirely and
+       * uses the app icon, so this costs nothing there.
+       */
+      badge: "/badge-96.png",
       // `tag` collapses a repeat instead of stacking; renotify makes the phone
       // buzz again for the replacement rather than updating it silently.
       tag: data.tag || "vivu",
