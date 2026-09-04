@@ -191,7 +191,7 @@ export function ReactionBar({
   const mineLabel = mine ? (REACTION_LABEL[mine.emoji as ReactionEmoji] ?? mine.emoji) : null;
 
   return (
-    <div className="relative flex flex-wrap items-center gap-1.5">
+    <div className="relative flex flex-wrap items-end gap-1.5" onPointerLeave={hoverClose}>
       {/*
         Whose reaction it is, on the reaction. Two emoji ringed in two colours
         told you a pair had reacted but not which was which — the name is the
@@ -207,15 +207,21 @@ export function ReactionBar({
             role="img"
             aria-label={`${name} đã thả ${label}`}
             title={`${name} đã thả ${label}`}
-            className="bg-accent-soft flex h-8 items-center gap-1 rounded-full border-2 pr-2 pl-1.5"
-            // avatarColor is couple-chosen data, not a themed token; fall back
-            // to the accent token so a missing colour still matches the theme.
-            style={{ borderColor: member?.avatarColor ?? "var(--accent)" }}
+            className="flex flex-col items-center"
           >
-            <span className="text-sm leading-none" aria-hidden>
+            <span
+              className="bg-accent-soft grid h-9 w-9 place-items-center rounded-full border-2 text-base leading-none"
+              // avatarColor is couple-chosen data, not a themed token; fall back
+              // to the accent token so a missing colour still matches the theme.
+              style={{ borderColor: member?.avatarColor ?? "var(--accent)" }}
+              aria-hidden
+            >
               {r.emoji}
             </span>
-            <span className="text-foreground/80 max-w-[5rem] truncate text-[10px] font-medium">
+            <span
+              className="border-border bg-card text-foreground/75 -mt-1.5 max-w-[4.5rem] truncate rounded-full border px-1.5 text-[9px] leading-[1.4] font-medium"
+              aria-hidden
+            >
               {name}
             </span>
           </span>
@@ -231,7 +237,7 @@ export function ReactionBar({
         twice and read as a second, separate action; the "+" belongs inside the
         row, where it means "reactions beyond these six".
       */}
-      <div className="relative" onPointerEnter={hoverOpen} onPointerLeave={hoverClose}>
+      <div className="relative">
         <button
           type="button"
           aria-label={mine ? `Bỏ cảm xúc ${mineLabel}` : "Thả tim"}
@@ -239,6 +245,7 @@ export function ReactionBar({
           aria-haspopup="dialog"
           aria-expanded={pickerOpen}
           title={mine ? `${myName}: ${mineLabel} — bấm để gỡ` : "Thả tim · giữ hoặc trỏ vào để chọn cảm xúc khác"}
+          onPointerEnter={hoverOpen}
           onContextMenu={(e) => e.preventDefault()}
           onKeyDown={(e) => {
             // Neither hover nor long-press reaches a keyboard; the arrow keys
@@ -276,34 +283,48 @@ export function ReactionBar({
              */
             toggle((mine?.emoji as ReactionEmoji | undefined) ?? DEFAULT_EMOJI);
           }}
-          className={cn(
-            "inline-flex h-10 items-center justify-center gap-1 rounded-full text-base transition-colors select-none",
-            "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
-            "touch-manipulation active:scale-95",
-            mine ? "bg-accent-soft text-accent pr-2.5 pl-2" : "hover:bg-muted text-muted-foreground w-10 opacity-70",
-          )}
+          className="flex flex-col items-center rounded-2xl outline-none select-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
-          <span aria-hidden>{mine ? mine.emoji : DEFAULT_EMOJI}</span>
+          <span
+            className={cn(
+              "grid h-10 w-10 place-items-center rounded-full text-base transition-colors",
+              "touch-manipulation active:scale-95",
+              mine ? "bg-accent-soft ring-accent/60 ring-2" : "hover:bg-muted text-muted-foreground opacity-70",
+            )}
+            aria-hidden
+          >
+            {mine ? mine.emoji : DEFAULT_EMOJI}
+          </span>
           {mine && (
-            <span className="text-foreground/80 max-w-[5rem] truncate text-[10px] font-medium">
+            <span
+              className="border-border bg-card text-foreground/75 -mt-1.5 max-w-[4.5rem] truncate rounded-full border px-1.5 text-[9px] leading-[1.4] font-medium"
+              aria-hidden
+            >
               {myName}
             </span>
           )}
         </button>
 
-        <ReactionPicker
-          open={pickerOpen}
-          onClose={() => setPickerOpen(false)}
-          bar={bar}
-          chosen={mine?.emoji as ReactionEmoji | undefined}
-          onPick={(emoji) => {
-            toggle(emoji);
-            setPickerOpen(false);
-          }}
-          onPromote={promote}
-          anchorRight={others.length > 0}
-        />
       </div>
+
+      {/*
+        Anchored to the row, not to the button. Hung off the button it slid
+        left as reactions pushed the button rightwards, and ran out past the
+        card's edge — where the card clipped it and ate a reaction whole. The
+        row starts at the card's content edge, so from here it can only ever
+        grow inwards.
+      */}
+      <ReactionPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        bar={bar}
+        chosen={mine?.emoji as ReactionEmoji | undefined}
+        onPick={(emoji) => {
+          toggle(emoji);
+          setPickerOpen(false);
+        }}
+        onPromote={promote}
+      />
     </div>
   );
 }
@@ -329,7 +350,6 @@ function ReactionPicker({
   chosen,
   onPick,
   onPromote,
-  anchorRight,
 }: {
   open: boolean;
   onClose: () => void;
@@ -337,9 +357,6 @@ function ReactionPicker({
   chosen?: ReactionEmoji;
   onPick: (emoji: ReactionEmoji) => void;
   onPromote: (emoji: ReactionEmoji) => void;
-  /** Hang it off the trigger's right edge once reactions have pushed the
-   *  trigger rightwards, or the row runs off the side of the card. */
-  anchorRight: boolean;
 }) {
   const [more, setMore] = useState(false);
   const [coarse, setCoarse] = useState(false);
@@ -432,7 +449,7 @@ function ReactionPicker({
       className={cn(
         "border-border bg-card absolute bottom-full z-50 mb-1 rounded-2xl border p-1.5 shadow-xl",
         "animate-in fade-in slide-in-from-bottom-1 duration-150",
-        anchorRight ? "right-0" : "left-0",
+        "left-0",
         more && "max-w-[19rem]",
       )}
     >
