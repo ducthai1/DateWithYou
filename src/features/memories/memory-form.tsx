@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TEXTAREA_CLASS } from "@/components/ui/textarea";
 import { MentionField } from "@/components/ui/mention-field";
+import { cn } from "@/lib/utils";
 import {
   uploadToCloudinary,
   cloudinaryConfigured,
@@ -557,7 +558,11 @@ export function MemoryForm({
           Thêm ảnh cần cấu hình <code>NEXT_PUBLIC_CLOUDINARY_*</code>.
         </p>
       )}
-      {uploading && <p className="text-muted-foreground text-xs">Đang tải ảnh…</p>}
+      {/* No separate "Đang tải ảnh…" line here. The counter directly above the
+          grid already reads "N ảnh · đang tải M", and this paragraph existed
+          only while uploads ran — so it vanished the moment they finished and
+          took 41px of page with it, shunting the whole grid upward at exactly
+          the moment someone was looking at it. */}
       {(photos.length > 0 || pending.length > 0) && (
         <div ref={photosRef} className="scroll-mt-4 space-y-2">
           <div className="flex items-center justify-between">
@@ -580,15 +585,16 @@ export function MemoryForm({
               </button>
             )}
           </div>
-          {/* 80px rather than 64: at 64 a photo of a place and a photo of a
-              plate of food are the same brown smudge, and the point of the
-              thumbnail is to tell you whether you picked the right one. */}
           {/*
-            A card per photo instead of a bare thumbnail: each one now carries its own
+            A card per photo instead of a bare thumbnail: each one carries its own
             line. The picture stays big enough to tell a plate of food from a street,
             and the note sits under it — where it sits when the memory is read back.
+
+            Four across on anything wider than a phone. Three left a column of
+            empty modal beside every full row; two is right on a phone, where a
+            quarter-width card is too small to tell one photo from another.
           */}
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             {photos.map((p) => (
               <div
                 key={p.publicId}
@@ -640,52 +646,91 @@ export function MemoryForm({
                 </button>
               </div>
             ))}
+            {/*
+              The same card, not a smaller one.
+
+              A photo being uploaded used to be a bare 80px square while a
+              finished one was a full card with its caption box — so the moment
+              an upload landed the grid changed shape under the reader's hands.
+              The frame is drawn up front, caption row and all; the picture is
+              the local file, visible from the first frame, and only the spinner
+              and the bar on top of it say it is still going up.
+            */}
             {pending.map((item) => (
-              <div key={item.id} className="relative">
-                <img
-                  src={item.url}
-                  alt=""
-                  className={`border-border h-20 w-20 rounded-xl border object-cover ${
-                    item.error ? "opacity-40 grayscale" : "opacity-60"
-                  }`}
-                />
-                {item.error ? (
-                  <>
+              <div
+                key={item.id}
+                className="border-border bg-card/60 relative flex flex-col gap-1.5 rounded-xl border p-1.5"
+              >
+                <div className="relative">
+                  <img
+                    src={item.url}
+                    alt=""
+                    className={cn(
+                      "bg-muted aspect-square w-full rounded-lg object-cover",
+                      item.error ? "opacity-40 grayscale" : "opacity-60",
+                    )}
+                  />
+                  {item.error ? (
                     <button
                       type="button"
                       onClick={() => startUpload(item)}
                       aria-label={`Thử tải lại ảnh này. ${item.error}`}
                       title={item.error}
-                      className="bg-card/85 text-destructive absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold"
+                      className="bg-card/85 text-destructive absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-semibold"
                     >
                       <RotateCw className="h-4 w-4" />
                       Thử lại
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => dismissPending(item.id)}
-                      aria-label="Bỏ ảnh này"
-                      className="bg-card text-muted-foreground hover:bg-destructive hover:text-destructive-foreground border-border absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border shadow-sm transition-colors"
+                  ) : (
+                    <>
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <Loader2 className="text-accent h-5 w-5 animate-spin" />
+                      </span>
+                      {/* A number that moves is the difference between "it is
+                          working" and "it is stuck". Ten photos over a phone
+                          connection is a minute of otherwise silent waiting. */}
+                      <span className="bg-card/85 absolute inset-x-1 bottom-1 h-1 overflow-hidden rounded-full">
+                        <span
+                          className="bg-accent block h-full rounded-full transition-[width] duration-200"
+                          style={{ width: `${Math.round(item.progress * 100)}%` }}
+                        />
+                      </span>
+                    </>
+                  )}
+                </div>
+                {/* The real caption control, disabled — so the row is exactly the
+                    height it will be a second from now, rather than an
+                    approximation that shifts when it is swapped in. */}
+                <div className="pointer-events-none flex items-center gap-0.5 opacity-50">
+                  <MentionField
+                    members={mentionable}
+                    value=""
+                    onChange={() => {}}
+                    disabled
+                    placeholder="Cảm nhận riêng…"
+                    aria-hidden
+                    tabIndex={-1}
+                    containerClassName="min-w-0 flex-1"
+                    className="text-foreground placeholder:text-muted-foreground w-full rounded-md bg-transparent px-1.5 py-1 text-xs outline-none"
+                  />
+                  {mentionable.map((mem) => (
+                    <span
+                      key={mem.id}
+                      aria-hidden
+                      className="text-accent shrink-0 rounded-md px-1.5 py-1 text-xs font-bold"
                     >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      <Loader2 className="text-accent h-5 w-5 animate-spin" />
+                      @
                     </span>
-                    {/* A number that moves is the difference between "it is
-                        working" and "it is stuck". Ten photos over a phone
-                        connection is a minute of otherwise silent waiting. */}
-                    <span className="bg-card/85 absolute inset-x-1 bottom-1 h-1 overflow-hidden rounded-full">
-                      <span
-                        className="bg-accent block h-full rounded-full transition-[width] duration-200"
-                        style={{ width: `${Math.round(item.progress * 100)}%` }}
-                      />
-                    </span>
-                  </>
-                )}
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => dismissPending(item.id)}
+                  aria-label="Bỏ ảnh này"
+                  className="bg-card text-muted-foreground hover:bg-destructive hover:text-destructive-foreground border-border absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border shadow-sm transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
             ))}
           </div>

@@ -3507,6 +3507,35 @@ vừa **không tạo tài nguyên thật phải đi dọn**. Ảnh thật đính
 chứng minh được gì — `git stash` bản vá đi và chạy lại là bước bắt buộc.
 
 
+## Ảnh đang tải và ảnh đã xong phải CÙNG MỘT KHUNG
+
+Lưới ảnh trong form kỷ niệm vẽ hai hình dạng khác nhau cho hai trạng thái của **cùng một tấm ảnh**:
+đang tải là ô vuông trần `h-20 w-20`, xong rồi là thẻ đầy đủ có ô cảm nhận. Nên mỗi lần một ảnh
+tải xong, lưới **đổi hình ngay dưới tay người đang nhìn**.
+
+Cách sửa không phải là thêm skeleton mà là **vẽ sẵn đúng cái khung sẽ có**: ảnh lấy từ file trên
+máy (`URL.createObjectURL`) nên hiện ngay từ khung hình đầu tiên, vòng xoay và thanh tiến độ nằm
+đè lên nó, và hàng cảm nhận dùng **chính component thật** ở trạng thái `disabled` — không phải một
+ô nhại lại, vì nhại thì chỉ *gần* đúng chiều cao và vẫn xê dịch lúc tráo.
+
+Đo được (4 ảnh, chặn Cloudinary để trả chậm 5 giây):
+
+| | đang tải | tải xong |
+|---|---|---|
+| kích thước thẻ | 146×182 | 146×182 |
+| vị trí thẻ đầu | top 653 | top 653 |
+
+**Cái bẫy còn lại là ở CHỖ KHÁC.** Lần đo đầu kích thước đứng yên nhưng `top` nhảy 653 → 612: một
+dòng "Đang tải ảnh…" nằm **phía trên** lưới, chỉ tồn tại khi đang tải, nên nó biến mất và kéo cả
+lưới lên 41px. Nội dung của nó đã có sẵn trong dòng đếm ngay trên lưới ("4 ảnh · đang tải 4") ⇒ bỏ.
+
+**Luật:** đo cả `top` chứ không chỉ `width/height`. Một khung đứng yên vẫn giật nếu thứ nằm trên nó
+biến mất — và người dùng chỉ thấy "nó giật", không thấy thủ phạm ở đâu.
+
+Lưới: `grid-cols-2 sm:grid-cols-4`. Ba cột chừa lại một khoảng trống bên phải ở mỗi hàng đầy;
+bốn cột thì kín. Điện thoại giữ 2 — một phần tư bề rộng thì không phân biệt nổi ảnh nào với ảnh nào.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân
