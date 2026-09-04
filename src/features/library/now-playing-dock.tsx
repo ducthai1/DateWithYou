@@ -26,7 +26,22 @@ const PAD = 6;
  *  alone: 1px border each side, the title strip, and the toolbar row. */
 const BORDER = 2;
 const STRIP_H = 24;
+/**
+ * Toolbar height, and the widths it changes at. Declared once and applied as
+ * an explicit height, because the corner-resize anchor computes the panel
+ * height from these — a value that drifted from the CSS would slide the panel.
+ *
+ * Below NARROW_W the four buttons leave the title a few pixels, so the row
+ * splits in two.
+ */
 const BAR_H = 52;
+const BAR_H_NARROW = 84;
+/* 340, not 268: at the 320 default the single row left ~100px for the text and
+   cut "YouTube · 2/3" down to "YouTube · 2…". Above this width the one-row
+   layout has room for the whole line. */
+const NARROW_W = 340;
+const barHeightFor = (w: number) => (w < NARROW_W ? BAR_H_NARROW : BAR_H);
+const AUTONEXT_KEY = "vivu.nowplaying.autonext";
 
 const CORNERS: Array<{ mode: Exclude<DragMode, "move">; className: string; label: string }> = [
   { mode: "nw", className: "top-0 left-0 cursor-nwse-resize", label: "trên trái" },
@@ -78,7 +93,56 @@ export function NowPlayingDock({
   const mediaRef = useRef<HTMLDivElement | null>(null);
   const getFrame = useCallback(() => mediaRef.current?.querySelector("iframe") ?? null, []);
   const controllable = item?.embed.provider === "youtube" && Boolean(item.embed.embedUrl);
-  const playback = useYouTubePlayback(getFrame, controllable, item?.id ?? "");
+
+  /*
+   * Play the next track when this one runs out, if the switch is on. Read
+   * through refs: the handler is held by the frame's message listener for the
+   * life of the track, and a captured value would be the one from whenever the
+   * track started.
+   */
+  const [autoNext, setAutoNext] = useState(false);
+  const autoNextRef = useRef(false);
+  autoNextRef.current = autoNext;
+  const hasNextRef = useRef(hasNext);
+  hasNextRef.current = hasNext;
+  const onNextRef = useRef(onNext);
+  onNextRef.current = onNext;
+  /** Set when the skip was automatic, so the new frame is told to start. */
+  const startWhenReady = useRef(false);
+
+  useEffect(() => {
+    try {
+      setAutoNext(window.localStorage.getItem(AUTONEXT_KEY) === "1");
+    } catch {
+      /* Private mode — the switch just starts off. */
+    }
+  }, []);
+
+  const handleEnded = useCallback(() => {
+    if (!autoNextRef.current || !hasNextRef.current) return;
+    startWhenReady.current = true;
+    onNextRef.current();
+  }, []);
+
+  const playback = useYouTubePlayback(getFrame, controllable, item?.id ?? "", handleEnded);
+
+  useEffect(() => {
+    if (!startWhenReady.current || !playback.ready) return;
+    startWhenReady.current = false;
+    playback.play();
+  }, [playback]);
+
+  const toggleAutoNext = useCallback(() => {
+    setAutoNext((on) => {
+      const next = !on;
+      try {
+        window.localStorage.setItem(AUTONEXT_KEY, next ? "1" : "0");
+      } catch {
+        /* Not remembered, still applies for this session. */
+      }
+      return next;
+    });
+  }, []);
   const aspect = item ? EMBED_ASPECT[item.embed.provider] : null;
   const capH = Math.max(140, Math.round((viewportH || 640) * 0.5));
 
@@ -93,7 +157,7 @@ export function NowPlayingDock({
     storageKey: "vivu.nowplaying.window",
     minWidth: MIN_W,
     maxWidth: MAX_W,
-    heightFor: (w) => BORDER + STRIP_H + mediaHeightFor(w) + BAR_H + PAD,
+    heightFor: (w) => BORDER + STRIP_H + mediaHeightFor(w) + barHeightFor(w) + PAD,
   });
 
   if (!mounted || !box) return null;
@@ -114,8 +178,52 @@ export function NowPlayingDock({
   // A capped vertical clip narrows instead of being cropped.
   const mediaW = aspect && mediaH === capH ? Math.round(capH * aspect) : box.w - PAD * 2;
 
+  const barH = barHeightFor(box.w);
+  const narrow = box.w < NARROW_W;
+
   const skipButton =
     "text-muted-foreground hover:bg-muted hover:text-foreground pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-30 disabled:hover:bg-transparent";
+
+  const info = (
+    <>
+      <span className="bg-accent-soft text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{item?.title}</p>
+        <p className="text-muted-foreground truncate text-xs">
+          {total > 1 ? `${item?.providerLabel} · ${position}/${total}` : item?.providerLabel}
+        </p>
+      </div>
+    </>
+  );
+
+  const controls = (
+    <>
+      <button type="button" onClick={onPrev} disabled={!hasPrev} aria-label="Bài trước" className={skipButton}>
+        <SkipBack className="h-4 w-4" />
+      </button>
+      {/* Only where the frame can actually be driven — a dead play button is
+          worse than no play button. */}
+      {controllable && (
+        <button
+          type="button"
+          onClick={playback.toggle}
+          aria-label={playback.playing ? "Tạm dừng" : "Phát"}
+          aria-pressed={playback.playing}
+          className={cn(skipButton, "bg-accent-soft text-accent hover:bg-accent hover:text-white")}
+        >
+          {playback.playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        </button>
+      )}
+      <button type="button" onClick={onNext} disabled={!hasNext} aria-label="Bài sau" className={skipButton}>
+        <SkipForward className="h-4 w-4" />
+      </button>
+      <button type="button" onClick={onClose} aria-label="Đóng trình phát" className={skipButton}>
+        <X className="h-4 w-4" />
+      </button>
+    </>
+  );
 
   return createPortal(
     <AnimatePresence>
@@ -157,7 +265,10 @@ export function NowPlayingDock({
               role="separator"
               aria-label={`Kéo góc ${c.label} để đổi cỡ`}
               style={{ touchAction: "none" }}
-              className={cn("absolute h-6 w-6", c.className)}
+              /* Above the title strip: that strip is `relative` so it can hold
+                 the switch, which made it paint over both top corners and swallow
+                 their grips. */
+              className={cn("absolute z-10 h-6 w-6", c.className)}
             />
           ))}
 
@@ -169,9 +280,38 @@ export function NowPlayingDock({
           <div
             {...moveProps}
             style={{ touchAction: "none" }}
-            className="flex h-6 cursor-grab items-center justify-center rounded-t-2xl active:cursor-grabbing"
+            /*
+              Laid out like a title bar — grab mark left, control right —
+              rather than a centred sheet grabber. Centred, the mark ran into
+              the label on a narrow panel. Both ends clear the corner grips'
+              24px, so aiming at a corner always resizes.
+            */
+            className="relative flex h-6 cursor-grab items-center justify-between rounded-t-2xl px-7 active:cursor-grabbing"
           >
-            <span className="bg-muted-foreground/30 h-1 w-10 rounded-full" aria-hidden="true" />
+            <span className="bg-muted-foreground/30 h-1 w-8 rounded-full" aria-hidden="true" />
+            {controllable && (
+              <div className="z-20 flex items-center gap-1.5">
+                <span className="text-muted-foreground text-[10px] leading-none font-medium">Tự phát</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={autoNext}
+                  aria-label="Tự phát bài tiếp theo khi hết bài"
+                  onClick={toggleAutoNext}
+                  className={cn(
+                    "focus-visible:ring-ring relative h-[15px] w-[26px] shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
+                    autoNext ? "bg-accent" : "bg-muted-foreground/35",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-[2px] h-[11px] w-[11px] rounded-full bg-white shadow-sm transition-[left] duration-200",
+                      autoNext ? "left-[13px]" : "left-[2px]",
+                    )}
+                  />
+                </button>
+              </div>
+            )}
           </div>
 
           <div
@@ -208,38 +348,21 @@ export function NowPlayingDock({
               empty space beside them still drags the window instead of
               swallowing the gesture.
             */}
-            <div className="pointer-events-none relative z-10 flex items-center gap-1.5 pt-2">
-              <span className="bg-accent-soft text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-                <Icon className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{item.title}</p>
-                <p className="text-muted-foreground truncate text-xs">
-                  {total > 1 ? `${item.providerLabel} · ${position}/${total}` : item.providerLabel}
-                </p>
-              </div>
-              <button type="button" onClick={onPrev} disabled={!hasPrev} aria-label="Bài trước" className={skipButton}>
-                <SkipBack className="h-4 w-4" />
-              </button>
-              {/* Only where the frame can actually be driven — a dead
-                  play button is worse than no play button. */}
-              {controllable && (
-                <button
-                  type="button"
-                  onClick={playback.toggle}
-                  aria-label={playback.playing ? "Tạm dừng" : "Phát"}
-                  aria-pressed={playback.playing}
-                  className={cn(skipButton, "bg-accent-soft text-accent hover:bg-accent hover:text-white")}
-                >
-                  {playback.playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                </button>
+            <div
+              className="pointer-events-none relative z-10 flex items-center pt-2"
+              style={{ height: barH }}
+            >
+              {narrow ? (
+                <div className="flex w-full min-w-0 flex-col gap-1">
+                  <div className="flex min-w-0 items-center gap-1.5">{info}</div>
+                  <div className="flex items-center justify-center gap-1">{controls}</div>
+                </div>
+              ) : (
+                <div className="flex w-full min-w-0 items-center gap-1.5">
+                  {info}
+                  {controls}
+                </div>
               )}
-              <button type="button" onClick={onNext} disabled={!hasNext} aria-label="Bài sau" className={skipButton}>
-                <SkipForward className="h-4 w-4" />
-              </button>
-              <button type="button" onClick={onClose} aria-label="Đóng trình phát" className={skipButton}>
-                <X className="h-4 w-4" />
-              </button>
             </div>
           </div>
         </motion.div>

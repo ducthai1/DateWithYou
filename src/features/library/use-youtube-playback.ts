@@ -16,7 +16,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const YT_ORIGIN = "https://www.youtube.com";
 
-/** Player states the widget reports. Only "playing" needs naming. */
+/** Player states the widget reports. */
+const ENDED = 0;
 const PLAYING = 1;
 
 /** Adds the flag the protocol needs, keeping whatever the stored URL had. */
@@ -37,7 +38,11 @@ export function useYouTubePlayback(
   enabled: boolean,
   /** Changes per track, so a new video starts from an unknown state. */
   trackKey: string,
+  /** Fired when the video runs out — what "play the next one" hangs off. */
+  onEnded?: () => void,
 ) {
+  const endedRef = useRef(onEnded);
+  endedRef.current = onEnded;
   const [playing, setPlaying] = useState(false);
   const [ready, setReady] = useState(false);
   const playingRef = useRef(false);
@@ -79,7 +84,10 @@ export function useYouTubePlayback(
           : typeof (info as { playerState?: number })?.playerState === "number"
             ? (info as { playerState: number }).playerState
             : null;
-      if (state != null) setPlaying(state === PLAYING);
+      if (state != null) {
+        setPlaying(state === PLAYING);
+        if (state === ENDED) endedRef.current?.();
+      }
     };
 
     window.addEventListener("message", onMessage);
@@ -103,18 +111,20 @@ export function useYouTubePlayback(
     };
   }, [enabled, trackKey, getFrame]);
 
-  const toggle = useCallback(() => {
-    const win = getFrame()?.contentWindow;
-    if (!win) return;
-    const next = !playingRef.current;
-    win.postMessage(
-      JSON.stringify({ event: "command", func: next ? "playVideo" : "pauseVideo", args: [] }),
-      YT_ORIGIN,
-    );
-    // Flip now; the confirming state message follows a beat later and the icon
-    // should not wait for a round trip.
-    setPlaying(next);
-  }, [getFrame]);
+  const send = useCallback(
+    (func: "playVideo" | "pauseVideo") => {
+      const win = getFrame()?.contentWindow;
+      if (!win) return;
+      win.postMessage(JSON.stringify({ event: "command", func, args: [] }), YT_ORIGIN);
+      // Flip now; the confirming state message follows a beat later and the
+      // icon should not wait for a round trip.
+      setPlaying(func === "playVideo");
+    },
+    [getFrame],
+  );
 
-  return { playing, ready, toggle };
+  const toggle = useCallback(() => send(playingRef.current ? "pauseVideo" : "playVideo"), [send]);
+  const play = useCallback(() => send("playVideo"), [send]);
+
+  return { playing, ready, toggle, play };
 }
