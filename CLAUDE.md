@@ -3432,9 +3432,18 @@ cắm ở `locations-page.tsx` bằng nút thu nhỏ trong overlay dẫn đườ
 Đo bằng Chrome headless + CDP, **có số**:
 - `canvas.captureStream(4)` → `<video muted playsInline autoplay>` → `play()` chạy được **không cần
   cử chỉ người dùng**: 1 track `live`, `videoWidth` 960, `readyState` 4, `paused` false.
-- `video.requestPictureInPicture()` **không có cử chỉ thì ném `NotAllowedError`**. Nên
-  `autoPictureInPicture = true` (chỉ ăn với PWA đã cài) **không bao giờ đủ một mình** — luôn phải
+- `video.requestPictureInPicture()` **không có cử chỉ thì ném `NotAllowedError`**. Nên luôn phải
   có nút bấm tay. Đây là lý do nút "thu nhỏ" tồn tại, không phải cho đẹp.
+- **SỬA LẠI (2026-09-05, tra tài liệu Chrome):** `autoPictureInPicture` **chỉ ăn với PWA cài trên
+  DESKTOP** (Chrome 73: "applies only to Progressive Web Apps users have installed on Desktop").
+  Trên **Android nó không làm gì cả** — tôi từng ghi là "ăn với PWA đã cài", sai. Auto-PiP kiểu
+  Chrome 134/142 (MediaSession `enterpictureinpicture`) cũng **desktop-only**. Trên Android, cách
+  tự vào PiP duy nhất khi bấm Home là **video đang phát ở chế độ fullscreen** (từ Android O, 2017).
+  Auto-PiP cho Android đang được Chromium làm (commit + flag, 10/2025) nhưng là cho **chuyển tab
+  trong Chrome**, không phải rời app.
+- **iOS:** PiP cho `<video>` có `srcObject` là MediaStream (canvas.captureStream) **vẫn hỏng trong
+  web app cài lên Màn hình chính** — WebKit bug 280627, trạng thái NEW từ 2024-09-30. Safari tab
+  thì đã sửa (Safari 18). Nên khung nhỏ bản đồ **không thể hiện trên iPhone khi đã cài app**.
 
 Không đo được ở đây, phải nói thẳng ra thay vì nhận vơ:
 - **PiP thật thì headless không chạy được** (không có trình quản lý cửa sổ). Chỉ chứng minh được cái
