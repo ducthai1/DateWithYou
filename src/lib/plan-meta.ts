@@ -58,16 +58,19 @@ export function mergeTags(custom: Tag[] | undefined): Tag[] {
 }
 
 /**
- * Text colour that can actually be read on a tag's fill.
+ * Text colour for a tag's fill.
  *
- * The palette is deliberately soft, and white on soft is not a colour choice —
- * it is a legibility one. Measured against these six: white lands between
- * 2.66:1 and 3.90:1, all under the 4.5:1 small text needs, while near-black
- * lands between 4.49:1 and 6.58:1. Chips are 10px in a list, which is exactly
- * where the difference stops being academic.
+ * White by choice: on this palette it is what makes a tag read as a tag rather
+ * than as a word lying in a puddle. Near-black measures better on paper — 4.49
+ * to 6.58 against white's 2.66 to 3.90 — and it was tried; on soft mid-tones it
+ * simply sinks, which is a real legibility problem too, just not one a ratio
+ * catches.
  *
- * Computed rather than fixed, so a dark colour someone adds later gets white
- * back automatically instead of near-black on navy.
+ * The fallback is not a compromise on that, it is a floor: a genuinely pale
+ * fill (a custom pastel yellow, say) leaves white with nothing to sit on at
+ * all, and there dark is not a preference but the only thing visible. Computed
+ * rather than fixed so a colour added later is handled without anyone
+ * remembering this rule exists.
  */
 export function readableInk(background: string): string {
   const hex = background.replace("#", "");
@@ -78,8 +81,9 @@ export function readableInk(background: string): string {
   };
   const L = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
   const onWhite = 1.05 / (L + 0.05);
-  const onBlack = (L + 0.05) / 0.05;
-  return onBlack >= onWhite ? "#1c1917" : "#ffffff";
+  // Below this white stops being thin and starts being absent. The six built-in
+  // tags all sit above it, so they stay white.
+  return onWhite >= 2.5 ? "#ffffff" : "#1c1917";
 }
 
 /** Resolve tag names → colours for calendar dots, using the merged palette. */

@@ -3322,7 +3322,16 @@ bảng nhãn hiện tại:
 Chuẩn cho chữ nhỏ là 4.5:1; chip trong danh sách là 10px. Nên **màu chữ tính từ nền**
 (`readableInk` trong `plan-meta.ts`) chứ không cố định — nhãn màu tối người dùng thêm sau vẫn tự ra
 chữ trắng. Áp cho **cả hai** nơi (chip đọc + chip trong bộ chọn), vì "giống nhau" mới là thứ được
-yêu cầu. Đo lại trong DOM: 5.45–6.58:1.
+yêu cầu.
+
+**ĐẢO LẠI 04/09/2026 — chủ sản phẩm chọn chữ TRẮNG.** Tôi đổi sang chữ đậm vì tỉ số tương phản, và
+người dùng nhìn thật rồi bảo *"màu đen nhìn chìm quá"*. Họ đúng ở chỗ con số không đo được: trên
+nền pastel mềm, chữ đậm **chìm vào nền** — cũng là lỗi đọc được, chỉ là loại mà WCAG không bắt.
+Đây là quyết định thẩm mỹ của chủ sản phẩm sau khi đã nghe số đo, không phải do quên.
+
+`readableInk` nay **mặc định trắng**, chỉ đảo sang đậm khi nền sáng tới mức trắng biến mất hẳn
+(ngưỡng 2.5:1). Sáu nhãn có sẵn: 2.66–3.90:1 ⇒ đều trắng. Nhãn vàng nhạt bịa ra để thử: 1.07:1 ⇒
+tự đảo sang đậm. Cái ngưỡng đó là **sàn an toàn**, không phải chỗ để cãi lại lựa chọn màu.
 
 **Bẫy khi test:** `TagChip` rơi về màu phẳng trong lúc `space.tags` chưa về, nên đo quá sớm là thấy
 "vẫn một màu" và tưởng bản vá hỏng. Chờ palette rồi mới đo.
