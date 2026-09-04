@@ -47,12 +47,15 @@ export function departureSentence({
   metres,
   seconds,
   partnerOnTheWay = false,
+  partnerName,
   dayIndex = 0,
 }: {
   destination?: string | null;
   metres?: number | null;
   seconds?: number | null;
   partnerOnTheWay?: boolean;
+  /** Read aloud, so it is worth being the name they actually go by. */
+  partnerName?: string | null;
   dayIndex?: number;
 }): string {
   const parts: string[] = [OPENERS[Math.abs(dayIndex) % OPENERS.length]];
@@ -73,6 +76,11 @@ export function departureSentence({
     parts.push(`${where.trim()}.`);
   }
 
-  parts.push(partnerOnTheWay ? "Người kia cũng đang trên đường rồi." : "Đi cẩn thận nhé.");
+  const them = partnerName?.trim();
+  parts.push(
+    partnerOnTheWay
+      ? `${them || "Người kia"} cũng đang trên đường rồi.`
+      : "Đi cẩn thận nhé.",
+  );
   return parts.join(" ");
 }

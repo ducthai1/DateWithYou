@@ -5,6 +5,7 @@
 // nay" screen exists — something is waiting, and it took zero effort to find.
 
 import Link from "next/link";
+import { usePartnerName } from "@/features/space/use-partner";
 import { Hourglass, ChevronRight } from "lucide-react";
 import { HomeSection } from "./home-section";
 
@@ -17,6 +18,7 @@ export type CapsuleReady = {
 };
 
 export function CapsuleReadyCard({ capsules }: { capsules: CapsuleReady[] }) {
+  const partnerName = usePartnerName();
   if (capsules.length === 0) return null;
 
   const title =
@@ -33,7 +35,7 @@ export function CapsuleReadyCard({ capsules }: { capsules: CapsuleReady[] }) {
             <p className="text-muted-foreground mt-0.5 truncate text-xs">
               {c.fromSelf
                 ? "Bạn viết, để dành cho hôm nay"
-                : "Người kia để lại cho bạn"}
+                : `${partnerName} để lại cho bạn`}
             </p>
           </li>
         ))}

@@ -68,6 +68,7 @@ function LocationMapViewImpl({
   heading,
   userAvatar,
   partnerAvatar,
+  partnerName = "Người kia",
   onSelect,
   onMapClick,
   onCenterChange,
@@ -96,6 +97,8 @@ function LocationMapViewImpl({
   heading?: number | null;
   userAvatar?: string;
   partnerAvatar?: string;
+  /** What to call them on the map. Falls back only in a space of one. */
+  partnerName?: string;
   onSelect?: (id: string) => void;
   onMapClick?: (geo: LatLng) => void;
   /**
@@ -636,12 +639,15 @@ function LocationMapViewImpl({
               data-lng={partnerLocation.lng}
               className="relative flex items-center justify-center group"
             >
+              {/* Their name, not "Người kia". A space holds two people who
+                  invited each other, so the generic word was the one thing on
+                  this map that read like it was about a stranger. */}
               <span className="absolute -top-6 whitespace-nowrap rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-200 opacity-0 group-hover:opacity-100 group-hover:-translate-y-1">
-                Người kia
+                {partnerName}
               </span>
               <span className="absolute h-12 w-12 animate-ping rounded-full bg-rose-400/30" />
               {partnerAvatar ? (
-                <img src={partnerAvatar} alt="Người kia" className="relative z-10 h-8 w-8 rounded-full border-[2.5px] border-white object-cover shadow-md ring-4 ring-rose-500/30 bg-muted" />
+                <img src={partnerAvatar} alt={partnerName} className="relative z-10 h-8 w-8 rounded-full border-[2.5px] border-white object-cover shadow-md ring-4 ring-rose-500/30 bg-muted" />
               ) : (
                 <span className="relative z-10 block h-5 w-5 rounded-full border-[2.5px] border-white bg-rose-500 shadow ring-4 ring-rose-500/30" />
               )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePartnerName } from "@/features/space/use-partner";
 import { Bell, BellOff, Loader2, Smartphone } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import {
  * looking for the setting and found an empty space.
  */
 export function PushPermissionRow() {
+  const partnerName = usePartnerName();
   const toast = useToast();
   const status = trpc.push.available.useQuery(undefined, { retry: false, staleTime: 30_000 });
   const subscribe = trpc.push.subscribe.useMutation();
@@ -201,7 +203,7 @@ export function PushPermissionRow() {
 
       {status.data?.enabled && status.data.partnerDevices === 0 && (
         <p className="text-xs leading-relaxed text-amber-600">
-          Người kia chưa có máy nào đăng ký nhận thông báo — lời mời bạn gửi sẽ không hiện lên máy họ
+          {partnerName} chưa có máy nào đăng ký nhận thông báo — lời mời bạn gửi sẽ không hiện lên máy họ
           khi họ đóng app. Nhờ họ vào đây bật giúp nhé.
         </p>
       )}

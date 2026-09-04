@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
+import { usePartnerName } from "@/features/space/use-partner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -17,6 +18,8 @@ export function NavigationInviteModal({
   onDecline,
   isPending = false,
 }: NavigationInviteModalProps) {
+  // Space chỉ có hai người, nên người gửi lời mời chính là người kia.
+  const partnerName = usePartnerName();
   return (
     <AnimatePresence>
       <motion.div
@@ -45,7 +48,7 @@ export function NavigationInviteModal({
           </div>
           <div className="text-center space-y-1">
             <h3 className="font-semibold text-lg">Rủ rê nè! 💌</h3>
-            <p className="text-muted-foreground text-sm">Người kia muốn cùng bạn phóng tới…</p>
+            <p className="text-muted-foreground text-sm">{partnerName} muốn cùng bạn phóng tới…</p>
             <p className="font-bold text-accent text-lg">{locationName}</p>
           </div>
           <p className="text-xs text-muted-foreground text-center">

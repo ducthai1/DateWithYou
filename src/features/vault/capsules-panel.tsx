@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePartnerName } from "@/features/space/use-partner";
 import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { authClient } from "@/lib/auth-client";
@@ -15,6 +16,7 @@ import { CapsuleUnlockModal } from "./capsule-unlock-modal";
 import { useToast } from "@/components/ui/toast";
 
 export function CapsulesPanel() {
+  const partnerName = usePartnerName();
   const session = authClient.useSession();
   const user = session.data?.user;
   const utils = trpc.useUtils();
@@ -192,7 +194,7 @@ export function CapsulesPanel() {
                   </div>
 
                   <p className="text-sm text-muted-foreground">
-                    Từ: <span className="font-medium text-foreground">{isCreator ? "Bạn" : "Người kia"}</span>
+                    Từ: <span className="font-medium text-foreground">{isCreator ? "Bạn" : partnerName}</span>
                   </p>
 
                   <div className="mt-4 pt-4 border-t border-border/50">

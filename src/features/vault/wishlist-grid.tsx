@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { usePartnerName } from "@/features/space/use-partner";
 import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 type FilterMode = "all" | "active" | "bought";
 
 export function WishlistGrid() {
+  const partnerName = usePartnerName();
   const [filter, setFilter] = useState<FilterMode>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -293,7 +295,7 @@ export function WishlistGrid() {
                     )}
                     <Badge tone="neutral" className="gap-1 px-1.5 py-0">
                       {w.forWhom === "me" ? <User className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-                      {w.forWhom === "me" ? "Bạn" : "Người kia"}
+                      {w.forWhom === "me" ? "Bạn" : partnerName}
                     </Badge>
                   </div>
                 </div>
@@ -423,7 +425,7 @@ export function WishlistGrid() {
                   className={cn("flex-1 rounded-lg py-1.5 transition-colors outline-none", forWhom === "partner" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
                   onClick={() => setForWhom("partner")}
                 >
-                  Người kia
+                  {partnerName}
                 </button>
               </div>
             </div>

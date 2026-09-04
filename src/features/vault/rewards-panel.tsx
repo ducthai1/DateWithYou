@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { usePartnerName } from "@/features/space/use-partner";
 import { readableFormError } from "@/lib/form-error";
 import { Coins, Gift, ListChecks, Plus, CheckCircle2, History, Ticket } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -22,6 +23,7 @@ const CHIP =
   "inline-flex items-center gap-1 rounded-lg bg-accent-soft px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none touch-manipulation active:scale-95";
 
 export function RewardsPanel() {
+  const partnerName = usePartnerName();
   const toast = useToast();
   const data = trpc.reward.overview.useQuery();
   const utils = trpc.useUtils();
@@ -69,7 +71,7 @@ export function RewardsPanel() {
     return <div className="py-10 text-center"><p className="text-muted-foreground text-sm">Đang tải…</p></div>;
 
   const { tasks, vouchers, balances, recentLogs } = data.data;
-  const label = (b: { isMe: boolean }) => (b.isMe ? "Bạn" : "Người kia");
+  const label = (b: { isMe: boolean }) => (b.isMe ? "Bạn" : partnerName);
   
   function handleComplete(taskId: string, forUserId: string, anchorEl?: HTMLElement | null) {
     complete.mutate({ taskId, forUserId });
@@ -158,7 +160,7 @@ export function RewardsPanel() {
                     <Plus className="h-3.5 w-3.5" />
                   </span>
                   <div className="min-w-0 flex-1 leading-snug">
-                    <span className="font-medium">{isMe ? "Bạn" : "Người kia"}</span> đã nhận{" "}
+                    <span className="font-medium">{isMe ? "Bạn" : partnerName}</span> đã nhận{" "}
                     <span className="text-accent font-semibold">{log.points}đ</span> từ{" "}
                     <span className="text-muted-foreground">&quot;{log.taskTitle}&quot;</span>
                   </div>

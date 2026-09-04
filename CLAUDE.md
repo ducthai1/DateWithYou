@@ -3184,6 +3184,47 @@ chờ cuộn ổn định mới đọc `getBoundingClientRect`** — đọc trư
 và triệu chứng giống hệt "không tìm thấy nút".
 
 
+## Gọi tên người kia, đừng gọi "Người kia"
+
+Space chỉ có hai người **đã mời nhau vào**, nên gọi nhau bằng "Người kia" là cách duy nhất trên
+màn hình khiến người quen nghe như người lạ. Nay dùng tên họ đăng ký (hoặc biệt danh space đặt).
+
+`usePartner()` / `usePartnerName()` trong `src/features/space/use-partner.ts` là nơi duy nhất
+quyết định "ai là người kia".
+
+**Đọc `isSelf` của server, ĐỪNG so với session ở client.** `locations-page` từng làm
+`members.find(m => m.id !== session?.user.id)` — trong khoảng thời gian session chưa về,
+`session?.user.id` là `undefined` nên **thành viên ĐẦU TIÊN, kể cả chính mình, được nhận là người
+kia**. Server đã trả sẵn `isSelf`; dùng nó thì không có khoảng trống đó.
+
+### Chỗ PHẢI giữ chung chung
+
+Không phải quét sạch mọi chỗ. Ba loại phải giữ nguyên:
+- **Fallback** (`m?.name ?? "Người kia"`) — vẫn cần, cho lúc chưa tải xong hoặc space một người.
+- **Tour lần đầu** (`welcome-intro`) — chạy khi có thể chưa có ai trong space.
+- **Trang giới thiệu** cho khách chưa đăng nhập — không có "người kia" nào để gọi tên.
+
+### Đổi chữ thì phải đổi cả dependency array
+
+18 câu trên `locations-page` chuyển sang tên thật, và 4 `useEffect`/`useCallback` đọc tên đó **thiếu
+`partnerName` trong deps**. Không thêm thì tên về muộn hơn lần memo hoá đầu ⇒ câu chữ đóng băng ở
+"Người kia" đúng những lần hiếm, khó lần ra nhất. `npm run lint` bắt được cả 4 — cảnh báo
+`exhaustive-deps` ở đây là lỗi thật, không phải nhiễu.
+
+### Ghi lại: lỗi hydration CÓ SẴN (chưa sửa)
+
+Trong lúc kiểm phát hiện `Hydration failed…` trên `/home`, `/vault`, `/map`. **Đã xác minh không
+phải do thay đổi này**: `git stash` hết rồi chạy lại trên HEAD vẫn y nguyên lỗi đó. Hai nguyên nhân
+console chỉ ra:
+- `<noscript>` là con trực tiếp của `<html>` trong `RootLayout`
+- `<div>` nằm trong `<p>` — `HomeGreeting` bọc `<Skeleton>` (render ra `div`) trong `<p>`
+
+Hệ quả: React vứt HTML dựng sẵn từ server và vẽ lại toàn cây ở client mỗi lần tải trang.
+
+**Luật chung:** thấy lỗi trong lúc test thì phải xác định nó có sẵn hay do mình, bằng cách lùi code
+về HEAD chạy lại — đừng mặc định là mình gây ra, cũng đừng mặc định là không.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

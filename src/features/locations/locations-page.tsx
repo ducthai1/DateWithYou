@@ -102,6 +102,7 @@ const LocationMapView = dynamic(
   },
 );
 import { useNavigationInvitesContext } from "./navigation-invites-context";
+import { usePartner } from "@/features/space/use-partner";
 import { acceptedTripStore, type AcceptedTrip } from "./accepted-trip-store";
 import { LocationForm, type LocationFormValues } from "./location-form";
 import { useToast } from "@/components/ui/toast";
@@ -661,7 +662,14 @@ export function LocationsPage() {
   const members = trpc.space.members.useQuery();
   
   const userAvatar = session?.user.image || undefined;
-  const partnerAvatar = members.data?.find((m) => m.id !== session?.user.id)?.image || undefined;
+  /*
+   * Who the other person is. `isSelf` comes from the server, which knows; the
+   * old comparison against the session id read every member as the partner for
+   * however long the session took to arrive.
+   */
+  const partner = usePartner();
+  const partnerAvatar = partner?.image || undefined;
+  const partnerName = partner?.name?.trim() || "Người kia";
   const hasTwoMembers = (members.data?.length ?? 0) >= 2;
   /* Read from the live list rather than copied into state when the pin was
      picked — one source of truth with what the map is drawing. */
@@ -806,7 +814,7 @@ export function LocationsPage() {
     setAcceptedMessage(
       role === "receiver"
         ? "Cùng xuất phát nào 🛵"
-        : "Yayy! Người kia đồng ý rồi, mình xuất phát thôi 💞",
+        : `Yayy! ${partnerName} đồng ý rồi, mình xuất phát thôi 💞`,
     );
     setTimeout(() => setAcceptedMessage(null), 4000);
     setTimeout(() => {
@@ -837,10 +845,10 @@ export function LocationsPage() {
       });
     } else if (status === "rejected" || status === "expired") {
       setPendingSentInviteId(null);
-      setRejectedMessage("Hí, người kia bận xíu hoặc lỡ tay rồi — rủ lại sau nha 🥺");
+      setRejectedMessage(`Hí, ${partnerName} bận xíu hoặc lỡ tay rồi — rủ lại sau nha 🥺`);
       setTimeout(() => setRejectedMessage(null), 4000);
     }
-  }, [sentInviteStatus.data, pendingSentInviteId]);
+  }, [sentInviteStatus.data, pendingSentInviteId, partnerName]);
 
   // Listen for invite rejection from GlobalInviteListener
   useEffect(() => {
@@ -848,13 +856,13 @@ export function LocationsPage() {
       const customEvent = e as CustomEvent;
       if (customEvent.detail?.id === pendingSentInviteId) {
         setPendingSentInviteId(null);
-        setRejectedMessage("Hí, người kia bận xíu hoặc lỡ tay rồi — rủ lại sau nha 🥺");
+        setRejectedMessage(`Hí, ${partnerName} bận xíu hoặc lỡ tay rồi — rủ lại sau nha 🥺`);
         setTimeout(() => setRejectedMessage(null), 4000);
       }
     };
     window.addEventListener("invite-rejected", handleRejected);
     return () => window.removeEventListener("invite-rejected", handleRejected);
-  }, [pendingSentInviteId]);
+  }, [pendingSentInviteId, partnerName]);
   // Cùng khởi hành: Target a specific saved location to navigate together.
   const handleSendCompanionInvite = (destId: string, destName: string) => {
     // Build the ordered waypoints from the planned stops. A "partner" stop
@@ -873,7 +881,7 @@ export function LocationsPage() {
         return [{
           lat: nav.partnerLocation.lat,
           lng: nav.partnerLocation.lng,
-          name: "Vị trí của người kia",
+          name: `Vị trí của ${partnerName}`,
           type: "partner_location",
           status: "pending",
         }];
@@ -1351,6 +1359,7 @@ export function LocationsPage() {
           metres: withNumbers ? displayDistance : null,
           seconds: withNumbers ? displayDuration : null,
           partnerOnTheWay: isCompanionTrip && nav.partnerLocation != null,
+          partnerName: partner?.name,
           // Rotates the opener by the day so it varies between rides but never
           // within one.
           dayIndex: new Date().getDate(),
@@ -1358,7 +1367,7 @@ export function LocationsPage() {
         { chime: true },
       );
     },
-    [selectedName, displayDistance, displayDuration, isCompanionTrip, nav.partnerLocation],
+    [selectedName, displayDistance, displayDuration, isCompanionTrip, nav.partnerLocation, partner?.name],
   );
 
   useEffect(() => {
@@ -1470,7 +1479,7 @@ export function LocationsPage() {
           }
 
           if (!partnerGeo) {
-            setMidpointError("Người kia chưa mở trang Bản đồ gần đây nên mình chưa biết vị trí của họ. Nhờ người kia mở trang Bản đồ trước nhé.");
+            setMidpointError(`${partnerName} chưa mở trang Bản đồ gần đây nên mình chưa biết đang ở đâu. Nhờ ${partnerName} mở giúp trước nhé.`);
             setIsFindingMidpoint(false);
             return;
           }
@@ -1513,7 +1522,7 @@ export function LocationsPage() {
           setShowMidpointModal(true);
           setIsFindingMidpoint(false);
         } catch {
-          setMidpointError("Lỗi kết nối mạng khi tìm vị trí người kia. Hãy thử lại.");
+          setMidpointError(`Lỗi kết nối mạng khi tìm vị trí của ${partnerName}. Hãy thử lại.`);
           setIsFindingMidpoint(false);
         }
       },
@@ -1527,7 +1536,7 @@ export function LocationsPage() {
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
-  }, [pingLiveLocation, list.data]);
+  }, [pingLiveLocation, list.data, partnerName]);
 
   return (
     <>
@@ -1570,6 +1579,7 @@ export function LocationsPage() {
               heading={shownHeading}
               userAvatar={userAvatar}
               partnerAvatar={partnerAvatar}
+              partnerName={partnerName}
               onSelect={setSelectedId}
               className="min-h-0 rounded-none border-0 shadow-none"
             />
@@ -1657,7 +1667,7 @@ export function LocationsPage() {
                       <div className="flex items-start justify-between gap-1 mb-1">
                         <div className="min-w-0 flex-1">
                           <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block leading-tight">
-                            Người kia
+                            {partnerName}
                           </span>
                           {/* Speed hint below label so it doesn't crowd the badge row */}
                           {nav.partnerConnection !== "stale" && nav.partnerLocation?.speedKmH != null && (
@@ -1718,7 +1728,7 @@ export function LocationsPage() {
                 {/* Traffic Warning Banner */}
                 {showTrafficWarning && (
                   <div className="bg-rose-500 text-white shadow-xl rounded-full px-5 py-2.5 flex items-center gap-2 text-sm font-bold border-2 border-white/20 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-500">
-                    <span className="animate-bounce">🛑</span> Người kia đang dừng xe hoặc kẹt cứng rồi!
+                    <span className="animate-bounce">🛑</span> {partnerName} đang dừng xe hoặc kẹt cứng rồi!
                   </div>
                 )}
               </div>
@@ -1739,7 +1749,7 @@ export function LocationsPage() {
                 offering to send one anyway. */}
             {isCompanionTrip && (
             <div className="absolute right-4 top-[60%] flex flex-col items-center gap-2">
-               <p className="text-[9px] font-semibold text-white/80 bg-black/30 rounded-full px-2 py-0.5 text-center leading-tight backdrop-blur-sm">Gửi cảm xúc<br/>cho người kia:</p>
+               <p className="text-[9px] font-semibold text-white/80 bg-black/30 rounded-full px-2 py-0.5 text-center leading-tight backdrop-blur-sm">Gửi cảm xúc<br/>cho {partnerName}:</p>
                {PING_BUTTONS.map((p) => (
                  <button
                    key={p.action}
@@ -1873,6 +1883,7 @@ export function LocationsPage() {
                 heading={nav.isNavigating ? shownHeading : null}
                 userAvatar={userAvatar}
                 partnerAvatar={partnerAvatar}
+              partnerName={partnerName}
                   onSelect={setSelectedId}
                 onMapClick={handleMapClick}
               />
@@ -1985,7 +1996,7 @@ export function LocationsPage() {
                   isFindingMidpoint && "opacity-50 pointer-events-none"
                 )}
                 onClick={handleFindMidpoint}
-                title={nav.partnerLocation ? "Tìm điểm hẹn ở giữa" : "Cần vị trí của người kia trước"}
+                title={nav.partnerLocation ? "Tìm điểm hẹn ở giữa" : `Cần vị trí của ${partnerName} trước`}
               >
                 {isFindingMidpoint ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -2187,7 +2198,7 @@ export function LocationsPage() {
               open. */}
           {hasTwoMembers && navInvites.isConnected && !nav.partnerLocation && (
             <p className="text-muted-foreground relative z-30 rounded-lg border border-border bg-card/90 px-3 py-1.5 text-center text-xs leading-snug shadow-sm backdrop-blur-sm">
-              Người kia chưa mở Bản đồ nên chưa thấy vị trí.
+              {partnerName} chưa mở Bản đồ nên chưa thấy vị trí.
             </p>
           )}
 
@@ -2614,10 +2625,10 @@ export function LocationsPage() {
                           onKeyDown={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-semibold text-foreground">
-                Người kia đã kết thúc chuyến đi 💔
+                {partnerName} đã kết thúc chuyến đi 💔
               </h3>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                Người kia vừa kết thúc chuyến đi đến{" "}
+                {partnerName} vừa kết thúc chuyến đi đến{" "}
                 <span className="font-medium text-foreground">
                   {navInvites.endedTrip.locationName}
                 </span>
@@ -2716,7 +2727,7 @@ export function LocationsPage() {
                       <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
                         <span>Bạn đi <strong className="text-foreground">{Math.round(r.you / 60)} phút</strong></span>
                         <span>·</span>
-                        <span>Người kia <strong className="text-foreground">{Math.round(r.them / 60)} phút</strong></span>
+                        <span>{partnerName} <strong className="text-foreground">{Math.round(r.them / 60)} phút</strong></span>
                         <span>·</span>
                         <span>
                           {r.gap <= 120 ? "gần như bằng nhau" : `lệch ${Math.round(r.gap / 60)} phút`}
@@ -2805,7 +2816,7 @@ export function LocationsPage() {
                       }}
                     >
                       {sendInvite.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Users className="h-5 w-5" />}
-                      Rủ người kia tới đây!
+                      Rủ {partnerName} tới đây!
                     </Button>
                   </motion.div>
                 </AnimatePresence>
@@ -3056,7 +3067,7 @@ export function LocationsPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground bg-muted/40 border border-border/60 rounded-lg px-3 py-2 leading-snug">
-                  Lên lộ trình chung: Bạn → (đón người kia / điểm dừng) → Đích. Người kia sẽ nhận lời mời và cùng được chỉ đường.
+                  Lên lộ trình chung: Bạn → (đón {partnerName} / điểm dừng) → Đích. {partnerName} sẽ nhận lời mời và cùng được chỉ đường.
                 </p>
                 
                 <TripStopPlanner
@@ -3071,7 +3082,7 @@ export function LocationsPage() {
                 />
 
                 <p className="text-xs text-muted-foreground text-center">
-                  Người kia sẽ nhận được thông báo lộ trình. Khi đồng ý, cả 2 sẽ cùng thấy nhau trên bản đồ.
+                  {partnerName} sẽ nhận được thông báo lộ trình. Khi đồng ý, cả 2 sẽ cùng thấy nhau trên bản đồ.
                 </p>
               </div>
               <div className="flex gap-2 shrink-0 border-t border-border p-4">
@@ -3107,7 +3118,7 @@ export function LocationsPage() {
           >
             <div className="flex items-center gap-3 rounded-2xl bg-card px-5 py-3 shadow-xl border border-border">
               <Loader2 className="h-5 w-5 animate-spin text-accent shrink-0" />
-              <span className="text-sm font-medium flex-1">Đang chờ người kia đồng ý...</span>
+              <span className="text-sm font-medium flex-1">Đang chờ {partnerName} đồng ý...</span>
               <button
                 className="text-muted-foreground hover:text-foreground transition-colors shrink-0 p-1"
                 onClick={() => {
