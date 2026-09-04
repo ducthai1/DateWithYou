@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { readableFormError } from "@/lib/form-error";
 import { TonePicker } from "@/components/theme/tone-picker";
 import { useQueryClient } from "@tanstack/react-query";
@@ -55,33 +55,34 @@ export function SpaceSettings() {
   const toast = useToast();
 
   /*
-   * Nickname, per space.
+   * Nicknames, one per member — theirs as well as your own.
    *
-   * `name` from the members query is already the resolved one — nickname if
-   * there is one, otherwise the account name — so the raw override comes along
-   * separately to tell the field which of the two it is looking at.
+   * The name belongs to the person it describes and both people see the same
+   * one, so this is a list, not a single field. Drafts are keyed by user id and
+   * seeded once each: a background refetch must not pull the text out from
+   * under someone mid-edit.
    */
   const membersQuery = trpc.space.members.useQuery();
-  const self = membersQuery.data?.find((m) => m.isSelf);
-  const selfNickname = self?.nickname ?? null;
-  const selfAccountName = selfNickname ? "" : (self?.name ?? "");
-  const [nickname, setNickname] = useState("");
-  const [nicknameLoaded, setNicknameLoaded] = useState(false);
+  const [nickDraft, setNickDraft] = useState<Record<string, string>>({});
+  const seededNicks = useRef(false);
   useEffect(() => {
-    // Fill once, so a save-in-flight or a background refetch never yanks the
-    // text out from under someone mid-edit.
-    if (nicknameLoaded || !membersQuery.data) return;
-    setNickname(selfNickname ?? "");
-    setNicknameLoaded(true);
-  }, [membersQuery.data, selfNickname, nicknameLoaded]);
+    if (seededNicks.current || !membersQuery.data) return;
+    seededNicks.current = true;
+    setNickDraft(
+      Object.fromEntries(membersQuery.data.map((m) => [m.id, m.nickname ?? ""])),
+    );
+  }, [membersQuery.data]);
 
-  const saveNickname = trpc.space.setMemberProfile.useMutation({
+  const [savingNickFor, setSavingNickFor] = useState<string | null>(null);
+  const saveNickname = trpc.space.setNickname.useMutation({
     onSuccess: () => {
       void utils.space.members.invalidate();
       toast("Đã lưu biệt danh", "success");
     },
     onError: (err) => toast(readableFormError(err.message, "Chưa lưu được biệt danh"), "error"),
+    onSettled: () => setSavingNickFor(null),
   });
+
 
   const allMine = trpc.space.getAllMine.useQuery();
   
@@ -394,34 +395,58 @@ export function SpaceSettings() {
       </Card>
 
       {/* ── BIỆT DANH ──
-          The server has stored one since day one and nothing ever offered to
-          set it, so the field existed and no screen led to it. */}
+          One row per person, because a nickname belongs to whoever it names and
+          either of you may set it — the same shape it takes in a chat, where
+          the name is something the two of you agreed on rather than a private
+          label one side keeps. Both sides read the same value, so a change
+          here is a change there. */}
       <Card className="space-y-3 shadow-sm">
-        <p className="text-accent text-sm font-semibold">Biệt danh trong không gian này</p>
+        <p className="text-accent text-sm font-semibold">Biệt danh</p>
         <p className="text-muted-foreground text-xs">
-          Tên người kia nhìn thấy: trên bản đồ, trong hoạt động, dưới mỗi kỷ niệm. Để trống thì
-          dùng tên tài khoản.
+          Tên hiển thị trong không gian này — trên bản đồ, trong hoạt động, dưới mỗi kỷ niệm. Cả
+          hai đều thấy giống nhau. Để trống thì dùng tên tài khoản.
         </p>
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <Input
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder={selfAccountName || "Tên của bạn"}
-              maxLength={24}
-              aria-label="Biệt danh"
-            />
-          </div>
-          <Button
-            className="shrink-0"
-            disabled={saveNickname.isPending || nickname.trim() === (selfNickname ?? "")}
-            onClick={() =>
-              saveNickname.mutate({ nickname: nickname.trim() })
-            }
-          >
-            Lưu
-          </Button>
-        </div>
+        {(membersQuery.data ?? []).map((m) => {
+          const draft = nickDraft[m.id] ?? "";
+          const đãLưu = m.nickname ?? "";
+          return (
+            <div key={m.id} className="space-y-1.5">
+              <label
+                htmlFor={`nick-${m.id}`}
+                className="text-muted-foreground flex items-center gap-1.5 text-xs"
+              >
+                <span className="text-foreground font-medium">
+                  {m.isSelf ? "Bạn" : m.accountName}
+                </span>
+                {m.nickname && <span>· đang gọi là “{m.nickname}”</span>}
+              </label>
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    id={`nick-${m.id}`}
+                    value={draft}
+                    onChange={(e) =>
+                      setNickDraft((d) => ({ ...d, [m.id]: e.target.value }))
+                    }
+                    placeholder={m.accountName}
+                    maxLength={24}
+                    aria-label={`Biệt danh cho ${m.isSelf ? "bạn" : m.accountName}`}
+                  />
+                </div>
+                <Button
+                  className="shrink-0"
+                  disabled={savingNickFor !== null || draft.trim() === đãLưu}
+                  onClick={() => {
+                    setSavingNickFor(m.id);
+                    saveNickname.mutate({ userId: m.id, nickname: draft.trim() });
+                  }}
+                >
+                  {savingNickFor === m.id ? "Đang lưu…" : "Lưu"}
+                </Button>
+              </div>
+            </div>
+          );
+        })}
       </Card>
 
       <h2 className="text-lg font-semibold mt-2">Không gian chung</h2>

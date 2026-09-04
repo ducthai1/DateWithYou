@@ -392,6 +392,10 @@ export const spaceRouter = router({
         // to know whether it is showing a nickname or the account's own name,
         // and `name` alone cannot say which.
         nickname: o?.nickname ?? null,
+        // The name the account was created with, kept beside the override so a
+        // field can say whose nickname it is editing even when the nickname is
+        // the only thing on screen.
+        accountName: p.name,
         image: p.image,
         avatarEmoji: o?.avatarEmoji ?? null,
         avatarColor: o?.avatarColor ?? null,
@@ -435,10 +439,47 @@ export const spaceRouter = router({
       return { ok: true };
     }),
 
+  /**
+   * A nickname for anyone in this space, including the person setting it.
+   *
+   * Shared, not private: the name lives on the member it describes, so both
+   * people see the same one — the way it works in a chat, where a nickname is
+   * something the two of you agreed on rather than a private label one of you
+   * keeps. Blank clears it and the account's own name comes back.
+   *
+   * Scoped to members of the caller's space, so nobody can rename a stranger.
+   */
+  setNickname: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1),
+        nickname: z.string().trim().max(24),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const space = await SpaceModel.findById(ctx.spaceId).select("members memberProfiles");
+      if (!space) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
+      const members: string[] = space.get("members") ?? [];
+      if (!members.includes(input.userId)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Người này không ở trong không gian" });
+      }
+      const profiles: MemberProfileOverride[] = space.get("memberProfiles") ?? [];
+      const theirs = profiles.find((p) => p.userId === input.userId);
+      const next = profiles.filter((p) => p.userId !== input.userId);
+      // Merge, so setting a nickname never clears their avatar or reaction bar.
+      next.push({ ...theirs, userId: input.userId, nickname: input.nickname || undefined });
+      space.set("memberProfiles", next);
+      await space.save();
+      return { ok: true };
+    }),
+
   setMemberProfile: protectedProcedure
     .input(
       z.object({
-        nickname: z.string().trim().max(24).optional(),
+        // Nickname is NOT here: it belongs to whoever it names, and either
+        // person may set it. setNickname owns that field alone, so there is
+        // never a second path writing it.
         avatarEmoji: z.string().trim().max(8).optional(),
         avatarColor: hexColor.optional(),
         reactionFavourites: z.array(z.enum(REACTION_EMOJIS)).max(REACTION_BAR_SIZE).optional(),

@@ -3481,6 +3481,23 @@ giây, chuột vẫn hover như cũ.
 gọi nó** — người dùng hỏi "đổi biệt danh ở đâu" thì câu trả lời là: không ở đâu cả. Nay Cài đặt có
 ô biệt danh (`avatarEmoji`/`avatarColor` vẫn chưa có lối vào).
 
+**Bổ sung 04/09/2026 — biệt danh là của NGƯỜI ĐƯỢC ĐẶT TÊN, không phải của người đặt.** Bản đầu chỉ
+cho sửa tên của chính mình. Kiểu Messenger: ai trong space cũng đặt được cho ai, và **cả hai cùng
+thấy một giá trị** — vì tên nằm trên `memberProfiles[userId]` của space, không phải nhãn riêng của
+từng người xem.
+
+- Mutation riêng `space.setNickname({ userId, nickname })`, **không nhét vào `setMemberProfile`**:
+  `avatarEmoji`/`avatarColor` là thứ riêng tư của mỗi người, không nên đi chung một cửa với thứ
+  người kia sửa được. `nickname` cũng đã **gỡ khỏi** `setMemberProfile` — một field một đường ghi,
+  không thì lại drift như mọi lần.
+- Chặn theo `space.members`: không đổi được tên người ngoài space.
+- Gộp chứ không ghi đè, nếu không đặt biệt danh sẽ **xoá sạch hàng cảm xúc** của người kia.
+- Để trống = xoá biệt danh, tên tài khoản quay lại. `accountName` trả kèm trong `space.members` để
+  nhãn nói rõ đang đổi tên của ai kể cả khi biệt danh đang che tên thật.
+
+Chưa làm: đẩy thay đổi qua SSE. Bên kia thấy tên mới ở lần tải lại dữ liệu tiếp theo (React Query
+refetch khi quay lại tab), không phải ngay lập tức.
+
 Cách kiểm nhanh một tính năng có thật sự dùng được không:
 ```bash
 grep -rn "tênMutation" src/features/ src/components/   # rỗng = server có, người dùng không tới được
