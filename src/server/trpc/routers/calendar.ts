@@ -16,7 +16,7 @@ import {
   daysBetweenKeys,
 } from "@/lib/date-keys";
 import { TripModel } from "@/server/db/models/trip";
-import { normaliseTripStatus, tripDay, type TripStatus } from "@/lib/trip-status";
+import { tripDay, tripStatus, type TripStatus } from "@/lib/trip-status";
 import { mergeTags, colorsForTags, BUCKET_ORDER, type BucketKey, type Tag } from "@/lib/plan-meta";
 
 type TripLean = {
@@ -150,7 +150,7 @@ export const calendarRouter = router({
             title: t.title as string,
             day: i + 1,
             total,
-            status: normaliseTripStatus(t.status),
+            status: tripStatus(start, end),
             first: i === 0,
             last: i === total - 1,
           };
@@ -288,7 +288,7 @@ export const calendarRouter = router({
                 title: tripDoc.title,
                 day: tripSpan.day,
                 total: tripSpan.total,
-                status: normaliseTripStatus(tripDoc.status),
+                status: tripStatus(tripDoc.startDate, tripDoc.endDate, key),
               }
             : null,
         onThisDay,

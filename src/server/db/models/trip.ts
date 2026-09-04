@@ -16,16 +16,11 @@ const tripSchema = new Schema(
     endDate: { type: String, required: true },   // YYYY-MM-DD
     budget: { type: Number, default: 0 },
     /*
-     * "upcoming" is kept only so documents written before the rename still
-     * validate if they are saved again; nothing produces it any more and the
-     * read path folds it into "planning" (see normaliseTripStatus). Removing it
-     * from the enum would make an old trip unsaveable rather than just renamed.
+     * No `status` field. It is a function of startDate/endDate — see
+     * tripStatus() — so storing one only created a second answer that could
+     * disagree with the first. Documents written before this keep a stray
+     * `status` key; nothing reads it.
      */
-    status: {
-      type: String,
-      enum: ["planning", "active", "completed", "upcoming"],
-      default: "planning",
-    },
     createdBy: { type: String, required: true },
     checklists: [tripChecklistSchema],
   },

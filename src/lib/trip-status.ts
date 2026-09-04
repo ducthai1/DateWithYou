@@ -17,14 +17,27 @@ export const TRIP_STATUSES = ["planning", "active", "completed"] as const;
 export type TripStatus = (typeof TRIP_STATUSES)[number];
 
 /**
- * Trips saved before this existed carry "upcoming", which meant "not started
- * yet" — the same thing "planning" means now. Read-time normalisation rather
- * than a migration: nothing is rewritten until the couple next saves the trip,
- * and an old row is never left showing a status the UI has no word for.
+ * The trip's state, worked out from its own dates.
+ *
+ * Not stored, because it was never really a choice. The dates already say
+ * everything: before them a trip is being prepared, between them it is under
+ * way, after them it is over. Keeping a second field for it meant a trip could
+ * disagree with its own calendar, and somebody had to notice and fix it by
+ * hand — a chore the app invented for itself and then had to apologise for
+ * with a prompt.
+ *
+ * Derived also means it is never stale: a trip becomes "đang đi" at midnight on
+ * the day it starts without anybody opening the app.
  */
-export function normaliseTripStatus(raw: unknown): TripStatus {
-  if (raw === "active" || raw === "completed") return raw;
-  return "planning";
+export function tripStatus(
+  startDate: string,
+  endDate: string,
+  today = todayKey(),
+): TripStatus {
+  const phase = tripPhase(startDate, endDate, today);
+  if (phase === "before") return "planning";
+  if (phase === "during") return "active";
+  return "completed";
 }
 
 export const TRIP_STATUS_META: Record<
@@ -53,10 +66,15 @@ export const TRIP_STATUS_META: Record<
   },
 };
 
-export type TripPhase = "before" | "during" | "after";
+type TripPhase = "before" | "during" | "after";
 
 /** Where today sits relative to the trip's own dates. Pure calendar comparison. */
-export function tripPhase(startDate: string, endDate: string, today = todayKey()): TripPhase {
+/*
+ * Internal now: every caller wants the status, not the phase behind it. Kept
+ * as its own step because "where today sits" and "what to call that" are two
+ * decisions, and folding them together makes both harder to read.
+ */
+function tripPhase(startDate: string, endDate: string, today = todayKey()): TripPhase {
   if (today < startDate) return "before";
   if (today > endDate) return "after";
   return "during";
@@ -80,42 +98,3 @@ export function tripDay(
   return { day, total };
 }
 
-/** Days left until departure. Only meaningful before the trip starts. */
-export function daysUntilTrip(startDate: string, today = todayKey()): number {
-  return daysBetweenKeys(today, startDate);
-}
-
-export type TripNudge = { to: TripStatus; label: string; cta: string };
-
-/**
- * What the dates say that the stored status does not.
- *
- * The app noticing is the whole point; the app *deciding* is not. This returns
- * an offer the couple can take with one tap or ignore forever — a trip put off
- * by a week must not silently mark itself as under way. The wording asks,
- * it does not instruct: this is a travel diary, not a supervisor.
- */
-export function tripNudge(
-  status: TripStatus,
-  startDate: string,
-  endDate: string,
-  today = todayKey(),
-): TripNudge | null {
-  const phase = tripPhase(startDate, endDate, today);
-  if (phase === "during" && status === "planning") {
-    const d = tripDay(startDate, endDate, today);
-    return {
-      to: "active",
-      label:
-        d && d.day === 1 ? "Hôm nay là ngày khởi hành rồi đó" : `Chuyến này đang trong ngày ${d?.day}`,
-      cta: "Bắt đầu hành trình",
-    };
-  }
-  if (phase === "after" && status !== "completed") {
-    return { to: "completed", label: "Chuyến đã qua ngày cuối", cta: "Khép lại chuyến" };
-  }
-  if (phase === "before" && status === "active") {
-    return { to: "planning", label: "Chuyến chưa tới ngày đi", cta: "Về đang chuẩn bị" };
-  }
-  return null;
-}

@@ -2964,14 +2964,23 @@ biết điều nó đã biết*.
 
 Ba luật rút ra:
 
-1. **Field nào suy được từ dữ liệu sẵn có thì đừng hỏi.** `tripPhase()` / `tripDay()` trong
+1. **Field nào suy được từ dữ liệu sẵn có thì đừng hỏi.** `tripStatus()` trong
    `src/lib/trip-status.ts` so ngày, không hỏi ai. Trang chủ hiện khối chuyến khi **hôm nay nằm
    trong khoảng ngày**, KHÔNG chờ ai bật cờ — cặp đôi đang trên đường mà quên bật công tắc chính
    là ca mà màn hình đó phải đúng nhất.
-2. **Nhưng suy ra rồi thì MỜI, đừng tự sửa.** `tripNudge()` chỉ trả về lời mời khi ngày và trạng
-   thái lệch nhau; một chạm là xong, không chạm thì thôi. Chuyến bị dời một tuần là chuyện bình
-   thường, app không có quyền tự đánh dấu "đang đi". Câu chữ phải là *"Bắt đầu hành trình"* chứ
-   không phải mệnh lệnh — cùng luật với voice dẫn đường.
+2. **ĐI HẾT ĐƯỜNG — 04/09/2026 bỏ luôn phần đổi tay.** Bản đầu tôi giữ trạng thái lưu trong DB
+   cộng một lời mời (`tripNudge`) khi ngày và trạng thái lệch nhau. Chủ sản phẩm bảo bỏ hẳn:
+   *"đã chọn khung giờ đi rồi mà"*. Đúng — nửa vời còn tệ hơn cả hai đầu: vẫn có hai nguồn sự
+   thật để lệch, cộng thêm một cơ chế đi hoà giải chúng.
+
+   Nay **không có trường `status` trong DB nữa**. `serialize()` suy từ `startDate`/`endDate` mỗi
+   lần đọc. Không migration: bản ghi cũ còn khoá `status` thừa, không ai đọc tới — đã kiểm bằng
+   cách nhét thẳng vào Mongo một chuyến `status:"completed"` mà ngày đang trong khoảng, đọc ra
+   `active`. Đã gỡ: `trip.setStatus`, `TripStatusChips`, `TripNudgeBar`, `normaliseTripStatus`,
+   `tripNudge`, và cả file `trip-status-control.tsx`.
+
+   Lợi thêm mà bản có-lưu không có: trạng thái **không bao giờ cũ**. Chuyến thành "đang đi" lúc
+   0h ngày khởi hành mà không cần ai mở app.
 3. **Trạng thái trùng nghĩa thì gộp, đừng thêm.** "Lên kế hoạch" và "Sắp đi" đều nghĩa là *chưa đi*
    — một ô cho một phân biệt không ai làm. Bộ mới vẫn 3 giá trị: `planning` / `active` / `completed`.
 

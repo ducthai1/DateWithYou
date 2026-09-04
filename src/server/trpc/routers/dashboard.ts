@@ -1,7 +1,7 @@
 import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { TripModel } from "@/server/db/models/trip";
-import { normaliseTripStatus, tripDay } from "@/lib/trip-status";
+import { tripDay, tripStatus } from "@/lib/trip-status";
 import { SpaceModel } from "@/server/db/models/space";
 import { SpecialDateModel } from "@/server/db/models/special-date";
 import { MemoryModel } from "@/server/db/models/memory";
@@ -249,7 +249,7 @@ export const dashboardRouter = router({
           startDate: { $lte: today },
           endDate: { $gte: today },
         })
-          .select("title startDate endDate status")
+          .select("title startDate endDate")
           .sort({ startDate: 1 })
           .limit(1)
           .lean<TripDoc[]>(),
@@ -347,7 +347,7 @@ export const dashboardRouter = router({
         title: tripDoc.title,
         startDate: tripDoc.startDate,
         endDate: tripDoc.endDate,
-        status: normaliseTripStatus(tripDoc.status),
+        status: tripStatus(tripDoc.startDate, tripDoc.endDate, today),
         day: span?.day ?? 1,
         totalDays: span?.total ?? 1,
         items: mine,

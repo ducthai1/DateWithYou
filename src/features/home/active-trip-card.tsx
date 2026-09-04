@@ -5,8 +5,7 @@ import { Plane } from "lucide-react";
 import { HomeSection } from "./home-section";
 import { PlanRow, type HomePlanItem } from "./today-plans-card";
 import { bucketLabel } from "./home-format";
-import { TripNudgeBar } from "@/features/trips/trip-status-control";
-import { TRIP_STATUS_META, type TripStatus } from "@/lib/trip-status";
+import type { TripStatus } from "@/lib/trip-status";
 
 export type HomeActiveTrip = {
   id: string;
@@ -38,13 +37,14 @@ export type HomeActiveTrip = {
  */
 export function ActiveTripCard({ trip }: { trip: HomeActiveTrip }) {
   const total = trip.items.length;
-  const started = trip.status === "active";
   const remaining = total - trip.doneCount;
 
   return (
     <HomeSection
       Icon={Plane}
-      title={started ? trip.title : `${trip.title} — bắt đầu hôm nay`}
+      /* Today is inside the trip's dates or this card would not be here, so
+         there is no "not started yet" case left to word around. */
+      title={trip.title}
       link={{ href: `/trips/${trip.id}`, label: "Mở chuyến" }}
       highlight
     >
@@ -62,14 +62,7 @@ export function ActiveTripCard({ trip }: { trip: HomeActiveTrip }) {
                 : `${trip.doneCount}/${total} việc hôm nay`}
             </span>
           )}
-          {!started && (
-            <span className="text-muted-foreground text-xs">
-              {TRIP_STATUS_META[trip.status].full}
-            </span>
-          )}
         </div>
-
-        <TripNudgeBar trip={trip} />
 
         {/* Only worth calling out when there is something to pick it out FROM.
             With one item left the line just says the same thing twice, once as

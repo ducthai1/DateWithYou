@@ -9,7 +9,6 @@ import { Modal, ModalHeader } from "@/components/ui/modal";
 import { TripForm } from "./trip-form";
 import { cn } from "@/lib/utils";
 import { TRIP_STATUS_META, tripDay } from "@/lib/trip-status";
-import { TripNudgeBar, TripStatusChips } from "./trip-status-control";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { ToneArt } from "@/components/theme/tone-art";
@@ -173,19 +172,6 @@ export function TripList() {
                         </div>
                       </div>
                     )}
-                    {/* Quick action. Status is the one field a trip changes
-                        several times over its life, and it used to sit three
-                        taps deep in a settings modal. The nudge above it only
-                        appears when the dates and the stored status disagree. */}
-                    <div className="border-border/60 space-y-2 border-t pt-3">
-                      <TripNudgeBar trip={trip} />
-                      <TripStatusChips
-                        tripId={trip.id}
-                        status={trip.status}
-                        size="sm"
-                        className="w-full justify-between"
-                      />
-                    </div>
                   </div>
                 </div>
               </Link>

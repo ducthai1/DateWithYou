@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { ScrollStrip } from "@/components/ui/scroll-strip";
 import Link from "next/link";
 import { ChevronLeft, Settings2 } from "lucide-react";
@@ -8,8 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
-import { tripDay } from "@/lib/trip-status";
-import { TripNudgeBar, TripStatusChips } from "./trip-status-control";
+import { TRIP_STATUS_META, tripDay } from "@/lib/trip-status";
 import { TripItinerary } from "./trip-itinerary";
 import { TripChecklist } from "./trip-checklist";
 import { TripBudget } from "./trip-budget";
@@ -101,19 +101,24 @@ export function TripDetail({ id }: { id: string }) {
       }
     >
       <div className="mx-auto w-full max-w-4xl space-y-5">
-        {/* State of the trip, above the tabs rather than behind the settings
-            button: it is the first thing anyone opening a trip wants to know,
-            and now the first thing they can change. */}
-        <div className="space-y-2">
-          <TripNudgeBar trip={trip} />
-          <div className="flex flex-wrap items-center gap-2">
-            <TripStatusChips tripId={trip.id} status={trip.status} />
-            {trip.status === "active" && day && (
-              <span className="bg-accent text-accent-foreground rounded-full px-3 py-1.5 text-[11px] font-semibold">
-                Ngày {day.day}/{day.total}
-              </span>
+        {/* Where the trip is in its own dates. Nothing to press: it says what
+            the calendar says, and the calendar is what was already chosen. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "rounded-full px-3 py-1.5 text-[11px] font-semibold",
+              trip.status === "active"
+                ? "bg-accent text-accent-foreground"
+                : "bg-muted text-muted-foreground",
             )}
-          </div>
+          >
+            {TRIP_STATUS_META[trip.status].full}
+          </span>
+          {trip.status === "active" && day && (
+            <span className="border-accent/30 text-accent rounded-full border px-3 py-1.5 text-[11px] font-semibold">
+              Ngày {day.day}/{day.total}
+            </span>
+          )}
         </div>
 
         {/*
