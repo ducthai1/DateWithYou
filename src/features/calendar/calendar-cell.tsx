@@ -237,7 +237,7 @@ export const CalendarCell = memo(function CalendarCell({
           >
             {cell.day}
           </span>
-          {summary?.trip?.first && (
+          {summary?.trip?.label && (
             <span className="bg-card/90 text-accent hidden min-w-0 truncate rounded-md px-1.5 py-0.5 text-[9px] font-bold shadow-sm backdrop-blur-sm md:inline-block">
               {summary.trip.title}
             </span>

@@ -3562,6 +3562,29 @@ Lưới: `grid-cols-2 sm:grid-cols-4`. Ba cột chừa lại một khoảng tr�
 bốn cột thì kín. Điện thoại giữ 2 — một phần tư bề rộng thì không phân biệt nổi ảnh nào với ảnh nào.
 
 
+## Nhãn giải thích phải đặt ở ngày ĐẦU TIÊN THẤY ĐƯỢC, không phải ngày đầu thật
+
+Băng chuyến đi trên lịch tháng gắn tên chuyến vào `first: i === 0` — ngày đầu **của chuyến**. Chuyến
+31/08 → 05/09 xem ở tháng 9 thì ngày đầu nằm ngoài lưới ⇒ **không ô nào mang tên**, còn lại đúng một
+vệt hồng đậm vắt qua 5 ô ảnh. Người dùng hỏi *"viên hồng hồng dày đặc gì vậy? bug gì vậy"* — không
+phải vì nó xấu, mà vì **không có gì nói nó là cái gì**.
+
+Tách hai khái niệm:
+- `first` / `last` = hai đầu THẬT của chuyến → quyết định bo tròn. Băng đi từ ngoài lưới vào thì
+  không bo đầu, nhìn ra là "còn tiếp ở tháng trước".
+- `label` = ngày đầu tiên **hiện trong khoảng đang vẽ** → nơi treo tên.
+
+**Luật:** bất cứ dấu hiệu nào vẽ ngang nhiều ô (băng, vệt, khung nối) đều phải có nhãn nằm trong
+tầm nhìn hiện tại. Nhãn treo ở "phần tử đầu tiên" của dữ liệu sẽ biến mất mỗi khi khung nhìn cắt qua
+giữa chừng — và thứ còn lại luôn trông như lỗi hiển thị.
+
+## Badge: đừng THAY chữ trạng thái bằng con số
+
+Pill trên thẻ chuyến đổi thành `NGÀY 5/6` khi đang đi, **thay cho** chữ "ĐANG ĐI". Kết quả: đúng cái
+thẻ mà trạng thái quan trọng nhất lại là cái duy nhất không nói trạng thái. Con số là **thêm vào**,
+không phải thay thế: `ĐANG ĐI · NGÀY 5/6` (đo được 132px, không tràn ảnh bìa).
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

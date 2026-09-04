@@ -104,8 +104,13 @@ export function TripList() {
                           : "bg-card/85 text-foreground/75",
                       )}
                     >
+                      {/* The stage first, always. Swapping it out for the day
+                          counter meant a trip under way said "NGÀY 5/6" and
+                          nothing about being under way — the one card where the
+                          state matters most was the one that stopped saying it.
+                          Both fit: the counter is extra, not a replacement. */}
                       {trip.status === "active" && day
-                        ? `NGÀY ${day.day}/${day.total}`
+                        ? `${TRIP_STATUS_META[trip.status].pill} · NGÀY ${day.day}/${day.total}`
                         : TRIP_STATUS_META[trip.status].pill}
                     </span>
                   </div>

@@ -52,6 +52,8 @@ export type DaySummary = {
     status: TripStatus;
     first: boolean;
     last: boolean;
+    /** Carry the trip's name here — the first of its days visible this month. */
+    label: boolean;
   } | null;
 };
 
@@ -140,6 +142,19 @@ export const calendarRouter = router({
         const start = t.startDate as string;
         const end = t.endDate as string;
         const total = daysBetweenKeys(start, end) + 1;
+        /*
+         * `label` is not `first`.
+         *
+         * A trip that began last month has no first day in this grid, so
+         * hanging the name on the trip's own start day meant a stay spanning
+         * the turn of a month drew a band across five squares and never said
+         * what it was — an unexplained stripe over the artwork, which reads as
+         * a rendering fault rather than a trip. The name goes on the first day
+         * that is actually on screen; the rounded cap still belongs to the real
+         * start, so a band arriving from off-grid still looks like it continues
+         * rather than beginning here.
+         */
+        let labelled = false;
         for (let i = 0; i < total; i++) {
           const key = addDaysKey(start, i);
           if (key < fromKey || key >= toKey) continue;
@@ -153,7 +168,9 @@ export const calendarRouter = router({
             status: tripStatus(start, end),
             first: i === 0,
             last: i === total - 1,
+            label: !labelled,
           };
+          labelled = true;
         }
       }
 
