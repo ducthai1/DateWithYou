@@ -39,23 +39,86 @@ export function PushPermissionRow() {
   const [blocker, setBlocker] = useState<PushBlocker | "loading">("loading");
   const [permission, setPermission] = useState<NotificationPermission | null>(null);
   const [installed, setInstalled] = useState(false);
-  const [subscribed, setSubscribed] = useState(false);
+  /** "checking" until the service worker has actually been asked. */
+  const [subscribed, setSubscribed] = useState<boolean | "checking">("checking");
   const [busy, setBusy] = useState(false);
 
-  const readDevice = useCallback(() => {
-    setBlocker(pushBlocker());
-    setInstalled(isStandalone());
-    setPermission("Notification" in window ? Notification.permission : null);
-    if (!("serviceWorker" in navigator)) return;
-    void navigator.serviceWorker.ready
-      .then((reg) => reg.pushManager?.getSubscription())
-      .then((sub) => setSubscribed(Boolean(sub)))
-      .catch(() => undefined);
-  }, []);
-
-  useEffect(readDevice, [readDevice]);
-
   const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const register = subscribe.mutateAsync;
+
+  /*
+   * Reads the device, and repairs it when permission is already given but the
+   * subscription is gone.
+   *
+   * That combination is the whole iOS complaint. Safari drops a web app's push
+   * subscription across restarts far more readily than Chrome does, so on an
+   * iPhone `getSubscription()` comes back null on a later visit even though
+   * permission was granted in the morning. This used to report that as "not
+   * subscribed" and put the switch back to "Bật thông báo" — asking someone to
+   * re-enable something they never turned off. Android kept its subscription,
+   * so the same code looked correct there.
+   *
+   * Re-subscribing needs no prompt once permission exists, so the repair is
+   * silent. `PushSetup` does the same on load; whichever gets there first, the
+   * other joins the same in-flight call. Reading alone was not enough: the row
+   * read once at mount, before that load-time repair had finished, and never
+   * looked again.
+   */
+  const readDevice = useCallback(async () => {
+    const block = pushBlocker();
+    setBlocker(block);
+    setInstalled(isStandalone());
+    const perm = "Notification" in window ? Notification.permission : null;
+    setPermission(perm);
+    if (!("serviceWorker" in navigator)) return setSubscribed(false);
+    try {
+      /*
+       * `ready` never resolves when no worker ever registers — a private
+       * window, a blocked registration, or dev, where the registration is
+       * deliberately skipped. Waiting forever would park the switch on "đang
+       * kiểm" with nothing to press, which is worse than the wrong label it
+       * replaced. Give up and let the switch be usable: pressing it runs the
+       * same sequence and can show a real error.
+       */
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000)),
+      ]);
+      if (!reg) return setSubscribed(false);
+      const existing = await reg.pushManager?.getSubscription();
+      if (existing) return setSubscribed(true);
+      if (perm !== "granted" || block !== null || !key) return setSubscribed(false);
+
+      const fresh = await ensurePushSubscription(key);
+      await register({
+        endpoint: fresh.endpoint,
+        keys: fresh.keys,
+        userAgent: navigator.userAgent.slice(0, 300),
+      });
+      setSubscribed(true);
+    } catch {
+      // Could not tell, and could not repair. Saying "chưa" is the safe answer:
+      // pressing the switch runs the same sequence with an error to show.
+      setSubscribed(false);
+    }
+  }, [key, register]);
+
+  useEffect(() => {
+    void readDevice();
+  }, [readDevice]);
+
+  /*
+   * An installed app resumes from the background rather than reloading, and on
+   * iOS that is when a dropped subscription shows up. Check again on the way
+   * back in.
+   */
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void readDevice();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [readDevice]);
 
   const enable = async () => {
     if (!key) return;
@@ -83,7 +146,7 @@ export function PushPermissionRow() {
       );
     } finally {
       setBusy(false);
-      readDevice();
+      void readDevice();
     }
   };
 
@@ -103,11 +166,12 @@ export function PushPermissionRow() {
       toast("Không tắt được, thử lại sau nhé", "error");
     } finally {
       setBusy(false);
-      readDevice();
+      void readDevice();
     }
   };
 
-  const on = permission === "granted" && subscribed;
+  const checking = subscribed === "checking";
+  const on = permission === "granted" && subscribed === true;
 
   return (
     <div className="w-full space-y-3">
@@ -155,17 +219,17 @@ export function PushPermissionRow() {
           type="button"
           variant={on ? "outline" : "primary"}
           onClick={() => void (on ? disable() : enable())}
-          disabled={busy || blocker === "loading"}
+          disabled={busy || checking || blocker === "loading"}
           className="gap-2"
         >
-          {busy ? (
+          {busy || checking ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : on ? (
             <BellOff className="h-4 w-4" />
           ) : (
             <Bell className="h-4 w-4" />
           )}
-          {on ? "Tắt thông báo trên máy này" : "Bật thông báo"}
+          {checking ? "Đang kiểm máy này…" : on ? "Tắt thông báo trên máy này" : "Bật thông báo"}
         </Button>
       )}
 
@@ -188,7 +252,9 @@ export function PushPermissionRow() {
                 : "không có"}
         </dd>
         <dt>Máy này đã đăng ký</dt>
-        <dd className="text-foreground font-medium">{subscribed ? "có" : "chưa"}</dd>
+        <dd className="text-foreground font-medium">
+          {checking ? "đang kiểm…" : subscribed ? "có" : "chưa"}
+        </dd>
         <dt>Server gửi được</dt>
         <dd className="text-foreground font-medium">
           {status.isLoading

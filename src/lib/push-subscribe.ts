@@ -37,6 +37,16 @@ export type PushRegistration = {
   keys: { p256dh: string; auth: string };
 };
 
+/*
+ * One operation at a time, shared by every caller.
+ *
+ * Two places ask for this — the silent re-registration on load and the switch
+ * in settings — and they can ask at the same moment. Running twice in parallel
+ * can interleave the unsubscribe/subscribe pair below and leave the server
+ * holding an endpoint the browser has already thrown away.
+ */
+let inFlight: Promise<PushRegistration> | null = null;
+
 /**
  * The subscription for this device, creating one if there is none.
  *
@@ -49,7 +59,14 @@ export type PushRegistration = {
  *
  * Throws if the browser refuses. Callers decide whether that is worth saying.
  */
-export async function ensurePushSubscription(key: string): Promise<PushRegistration> {
+export function ensurePushSubscription(key: string): Promise<PushRegistration> {
+  inFlight ??= subscribeOnce(key).finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+async function subscribeOnce(key: string): Promise<PushRegistration> {
   const wanted = urlBase64ToBytes(key);
   const reg = await navigator.serviceWorker.ready;
 
