@@ -64,9 +64,9 @@ export const TRIP_STATUS_META: Record<
     hint: "Hai đứa đang trên đường — lịch trình hôm nay hiện ở trang chủ.",
   },
   completed: {
-    full: "Đã đi rồi",
-    pill: "ĐÃ ĐI RỒI",
-    hint: "Chuyến đã khép lại, giờ nằm trong kho kỷ niệm.",
+    full: "Đã hoàn thành",
+    pill: "ĐÃ HOÀN THÀNH",
+    hint: "Chuyến đi đã xong, giờ nằm trong kho kỷ niệm.",
   },
 };
 
