@@ -3416,6 +3416,68 @@ Vẽ gì vào canvas thì cửa sổ nổi hiện cái đó. Hai lưu ý khi tri
 khác trước khi kết luận là giới hạn nền tảng.
 
 
+## Vá `.sr-only` xong lại đẻ ra cuộn NGANG — và vì sao
+
+Thêm `relative` cho hộp cuộn đã hết cuộn dọc thừa, nhưng đẻ ra cuộn ngang: trước kia các span
+`.sr-only` **thoát hẳn** ra ngoài nên kéo dài tài liệu theo chiều DỌC; kẹp lại rồi thì chúng vẫn
+ngồi lệch sang phải và đẩy hộp theo chiều NGANG. Đo được: một span `.sr-only` có mép phải ở
+**497px** trên màn 360px.
+
+**Gốc rễ:** span đó nằm trong một ô `truncate` — mà `truncate` là `white-space: nowrap`. Phần tử
+`absolute` không khai `left/top` sẽ đứng ở **vị trí tĩnh**, tức là cuối dòng chữ **không bao giờ
+xuống dòng** ⇒ toạ độ x vượt xa khung.
+
+Sửa hai tầng:
+1. **Gốc:** cho chính ô `truncate` thành `relative`. Containing block của span thành ô đó, mà ô đó
+   đã `overflow: hidden` sẵn (do `truncate`) ⇒ bị cắt tại chỗ.
+2. **Hàng rào:** `overflow-x-hidden` cho hộp cuộn của `PageShell`. Một cột nội dung **không có
+   việc gì phải cuộn ngang**; cái gì rộng hơn nó đều là bug, nên cắt chứ đừng mời người ta cuộn
+   sang xem. Triệu chứng người dùng thấy đúng là *"cuộn ngang qua thì không thấy gì dài đến mức
+   tràn"* — vì thứ gây ra nó rộng 1px và vô hình.
+
+**Luật:** `sr-only` (hay bất kỳ `absolute` nào không khai toạ độ) phải có tổ tiên `relative` ngay
+gần nó. Không thì nó neo vào cả trang và kéo giãn theo hướng khó đoán.
+
+## `tailwind-merge` NUỐT `bg-card` khi thêm class gradient
+
+Thẻ nổi bật ở trang chủ nhìn "chìm" vì nó **không có màu nền nào cả**:
+
+```js
+twMerge("border-border bg-card rounded-xl border p-4", "bg-gradient-to-br from-… to-…")
+// => "border-border rounded-xl border p-4 bg-gradient-to-br from-… to-…"   ← mất bg-card
+```
+
+`bg-card` (background-color) và `bg-gradient-to-br` (background-image) cùng nhóm `bg` với
+tailwind-merge, nên cái sau xoá cái trước. Thẻ còn lại một lớp gradient 10% lơ lửng trên ảnh nền
+trang ⇒ chữ chìm, trong khi thẻ thường bên cạnh vẫn trắng nét.
+
+**Cách sửa:** lớp màu nhấn đi qua `style={{ backgroundImage: ... }}`, không qua class — `cn()`
+không đụng tới nó, `bg-card` giữ nguyên. Kiểm bằng số: `backgroundColor` phải bằng token `--card`
+**và** `backgroundImage !== "none"`.
+
+**Luật:** đừng bao giờ đưa cả `bg-<màu>` lẫn `bg-gradient-*` qua cùng một `cn()`. Muốn có cả hai
+thì một trong hai phải ra khỏi đường gộp class.
+
+## Chỉ hiện khi hover = không tồn tại trên điện thoại
+
+Tên người kia trên bản đồ dùng `opacity-0 group-hover:opacity-100` — với chuột thì thấy, với ngón
+tay thì **không có đường nào chạm tới**. Nay chấm là `<button>`: chạm để bật/tắt tên, tự ẩn sau 4
+giây, chuột vẫn hover như cũ.
+
+**Luật:** mọi thông tin chỉ lộ ra khi `:hover` đều phải có lối vào thứ hai bằng chạm hoặc bàn phím.
+
+## Server làm được không có nghĩa là người dùng tới được
+
+`setMemberProfile` lưu `nickname`, `avatarEmoji`, `avatarColor` **từ đầu**, và **không màn hình nào
+gọi nó** — người dùng hỏi "đổi biệt danh ở đâu" thì câu trả lời là: không ở đâu cả. Nay Cài đặt có
+ô biệt danh (`avatarEmoji`/`avatarColor` vẫn chưa có lối vào).
+
+Cách kiểm nhanh một tính năng có thật sự dùng được không:
+```bash
+grep -rn "tênMutation" src/features/ src/components/   # rỗng = server có, người dùng không tới được
+```
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

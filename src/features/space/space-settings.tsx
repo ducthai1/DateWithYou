@@ -54,6 +54,35 @@ export function SpaceSettings() {
   const utils = trpc.useUtils();
   const toast = useToast();
 
+  /*
+   * Nickname, per space.
+   *
+   * `name` from the members query is already the resolved one — nickname if
+   * there is one, otherwise the account name — so the raw override comes along
+   * separately to tell the field which of the two it is looking at.
+   */
+  const membersQuery = trpc.space.members.useQuery();
+  const self = membersQuery.data?.find((m) => m.isSelf);
+  const selfNickname = self?.nickname ?? null;
+  const selfAccountName = selfNickname ? "" : (self?.name ?? "");
+  const [nickname, setNickname] = useState("");
+  const [nicknameLoaded, setNicknameLoaded] = useState(false);
+  useEffect(() => {
+    // Fill once, so a save-in-flight or a background refetch never yanks the
+    // text out from under someone mid-edit.
+    if (nicknameLoaded || !membersQuery.data) return;
+    setNickname(selfNickname ?? "");
+    setNicknameLoaded(true);
+  }, [membersQuery.data, selfNickname, nicknameLoaded]);
+
+  const saveNickname = trpc.space.setMemberProfile.useMutation({
+    onSuccess: () => {
+      void utils.space.members.invalidate();
+      toast("Đã lưu biệt danh", "success");
+    },
+    onError: (err) => toast(readableFormError(err.message, "Chưa lưu được biệt danh"), "error"),
+  });
+
   const allMine = trpc.space.getAllMine.useQuery();
   
   const [name, setName] = useState("");
@@ -361,6 +390,37 @@ export function SpaceSettings() {
               </p>
             </div>
           </div>
+        </div>
+      </Card>
+
+      {/* ── BIỆT DANH ──
+          The server has stored one since day one and nothing ever offered to
+          set it, so the field existed and no screen led to it. */}
+      <Card className="space-y-3 shadow-sm">
+        <p className="text-accent text-sm font-semibold">Biệt danh trong không gian này</p>
+        <p className="text-muted-foreground text-xs">
+          Tên người kia nhìn thấy: trên bản đồ, trong hoạt động, dưới mỗi kỷ niệm. Để trống thì
+          dùng tên tài khoản.
+        </p>
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <Input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder={selfAccountName || "Tên của bạn"}
+              maxLength={24}
+              aria-label="Biệt danh"
+            />
+          </div>
+          <Button
+            className="shrink-0"
+            disabled={saveNickname.isPending || nickname.trim() === (selfNickname ?? "")}
+            onClick={() =>
+              saveNickname.mutate({ nickname: nickname.trim() })
+            }
+          >
+            Lưu
+          </Button>
         </div>
       </Card>
 

@@ -390,9 +390,16 @@ export function ActivityFeed() {
                                 className="text-accent h-4 w-4 shrink-0"
                                 aria-hidden="true"
                               />
+                              {/* `relative` so the sr-only note below becomes
+                                  this box's problem, not the page's. `truncate`
+                                  means nowrap, so that absolutely positioned
+                                  span takes its static position at the end of a
+                                  line that never wraps — measured 497px into a
+                                  360px screen. Anchored here it is clipped by
+                                  the same overflow that truncates the title. */}
                               <span
                                 className={cn(
-                                  "min-w-0 flex-1 truncate text-sm",
+                                  "relative min-w-0 flex-1 truncate text-sm",
                                   itemNew && "text-foreground font-semibold",
                                 )}
                               >

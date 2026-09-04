@@ -388,6 +388,10 @@ export const spaceRouter = router({
       return {
         id: p.id,
         name: o?.nickname || p.name,
+        // The raw override as well as the resolved name: the settings field has
+        // to know whether it is showing a nickname or the account's own name,
+        // and `name` alone cannot say which.
+        nickname: o?.nickname ?? null,
         image: p.image,
         avatarEmoji: o?.avatarEmoji ?? null,
         avatarColor: o?.avatarColor ?? null,

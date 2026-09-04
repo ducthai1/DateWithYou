@@ -360,6 +360,20 @@ function LocationMapViewImpl({
    * whole style object when it reloads one, and anything set on the previous
    * one goes with it.
    */
+  /*
+   * Whether the partner's name is pinned open.
+   *
+   * Hover cannot be the only way in: a tap has no hover, so on a phone the
+   * label existed and was unreachable. It closes itself after a few seconds so
+   * a name does not sit over the map for the rest of the ride.
+   */
+  const [partnerNameShown, setPartnerNameShown] = useState(false);
+  useEffect(() => {
+    if (!partnerNameShown) return;
+    const t = setTimeout(() => setPartnerNameShown(false), 4000);
+    return () => clearTimeout(t);
+  }, [partnerNameShown]);
+
   const dressStyle = useCallback((target: unknown) => {
     applyEastSeaLabel(target as Parameters<typeof applyEastSeaLabel>[0]);
   }, []);
@@ -633,16 +647,29 @@ function LocationMapViewImpl({
             {/* Carries the position it is drawn at, so where the other person
                 is shown can be read off the page rather than inferred from a
                 map transform. */}
-            <div
+            {/* A button, because on a phone there is no hover to reveal the
+                name with — the label was reachable with a mouse and by no other
+                means. Tapping toggles it; the mouse still gets it on hover. */}
+            <button
+              type="button"
               data-partner-pin=""
               data-lat={partnerLocation.lat}
               data-lng={partnerLocation.lng}
-              className="relative flex items-center justify-center group"
+              aria-label={`Vị trí của ${partnerName}`}
+              aria-pressed={partnerNameShown}
+              onClick={(e) => {
+                e.stopPropagation();
+                setPartnerNameShown((v) => !v);
+              }}
+              className="group relative flex items-center justify-center"
             >
-              {/* Their name, not "Người kia". A space holds two people who
-                  invited each other, so the generic word was the one thing on
-                  this map that read like it was about a stranger. */}
-              <span className="absolute -top-6 whitespace-nowrap rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-200 opacity-0 group-hover:opacity-100 group-hover:-translate-y-1">
+              <span
+                className={cn(
+                  "absolute -top-6 whitespace-nowrap rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-200",
+                  "group-hover:-translate-y-1 group-hover:opacity-100",
+                  partnerNameShown ? "-translate-y-1 opacity-100" : "opacity-0",
+                )}
+              >
                 {partnerName}
               </span>
               <span className="absolute h-12 w-12 animate-ping rounded-full bg-rose-400/30" />
@@ -651,7 +678,7 @@ function LocationMapViewImpl({
               ) : (
                 <span className="relative z-10 block h-5 w-5 rounded-full border-[2.5px] border-white bg-rose-500 shadow ring-4 ring-rose-500/30" />
               )}
-            </div>
+            </button>
           </Marker>
         )}
 

@@ -32,9 +32,25 @@ export function HomeSection({
     <Card
       className={cn(
         "space-y-3",
-        highlight && "border-accent/25 from-gradient-from/10 to-gradient-to/10 bg-gradient-to-br",
+        /*
+         * The tint rides in `style`, not in a class, because
+         * `bg-gradient-to-br` and `bg-card` are the same group to
+         * tailwind-merge — adding the gradient DELETED the card's own surface.
+         * The highlighted card was left with no background colour at all: a
+         * ten-percent wash floating over the page artwork, which is why its
+         * text read as sunk while every plain card beside it stayed crisp.
+         */
+        highlight && "border-accent/25",
         className,
       )}
+      style={
+        highlight
+          ? {
+              backgroundImage:
+                "linear-gradient(to bottom right, color-mix(in srgb, var(--gradient-from) 12%, transparent), color-mix(in srgb, var(--gradient-to) 12%, transparent))",
+            }
+          : undefined
+      }
     >
       <div className="flex items-center gap-2.5">
         <span

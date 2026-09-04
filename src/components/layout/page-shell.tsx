@@ -71,8 +71,16 @@ export function PageShell({
           list scrolled underneath.
 
           One word here clips them, and every other escapee like them.
+
+          `overflow-x-hidden` is the second half. Clipping them vertically left
+          them free to sit far to the RIGHT — an sr-only inside a `truncate`
+          takes its static position at the end of a line that never wraps, which
+          measured 497px into a 360px screen — and the box answered that with a
+          sideways scrollbar over content that plainly is not that wide. A page
+          column has no business scrolling horizontally; anything that wide is a
+          bug, so clip it rather than offer to scroll to it.
         */}
-        <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-[var(--page-gutter)]">
+        <div className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-[var(--page-gutter)]">
           <div
             className={cn(
               "mx-auto w-full max-w-[1400px] space-y-6 pb-6 pt-2",
@@ -96,7 +104,7 @@ export function PageShell({
         // `relative` for the same reason as the header variant above: it makes
         // this box the containing block, so absolutely positioned descendants
         // are clipped here instead of stretching the document.
-        "relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-[var(--page-gutter)]",
+        "relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-[var(--page-gutter)]",
         className,
       )}
     >
