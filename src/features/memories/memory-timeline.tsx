@@ -321,8 +321,17 @@ export function MemoryTimeline() {
                       </div>
                     )}
                     {photoCount > 0 && (
-                      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {m.photos.slice(0, 3).map((p: { url: string; publicId: string }) => (
+                      <div
+                        // Four across AND four taken. The grid and the slice
+                        // have to agree: three thumbnails in a four-column row
+                        // is the empty space on the right that was reported,
+                        // and widening the grid alone would only have made it
+                        // wider. A preview strip is for recognising a memory at
+                        // a glance, not for viewing it — the rest are one tap
+                        // away in the memory itself.
+                        className="mt-2 grid grid-cols-4 gap-2"
+                      >
+                        {m.photos.slice(0, 4).map((p: { url: string; publicId: string }) => (
                           /*
                            * A square crop from Cloudinary, not the original.
                            * These are ~120px on screen and were being fed the

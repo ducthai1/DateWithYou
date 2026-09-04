@@ -40,28 +40,32 @@ export function tripStatus(
   return "completed";
 }
 
+/*
+ * One name per state, and the pill is that name in capitals.
+ *
+ * There used to be a third, shorter set for a segmented control that no longer
+ * exists, and it left the app speaking two vocabularies: a trip called "Đang
+ * trong hành trình" in one place wore "ĐANG ĐI" in another — which reads less
+ * like a stage of a journey than like a fragment someone trimmed to fit.
+ */
 export const TRIP_STATUS_META: Record<
   TripStatus,
-  { full: string; short: string; pill: string; hint: string }
+  { full: string; pill: string; hint: string }
 > = {
   planning: {
     full: "Đang chuẩn bị",
-    // The segmented control sits inside a card that is 360px wide on a phone;
-    // three full labels do not fit, and a wrapped chip reads as broken.
-    short: "Chuẩn bị",
     pill: "ĐANG CHUẨN BỊ",
     hint: "Còn đang lên lịch trình, gom đồ, chốt chỗ ở.",
   },
   active: {
     full: "Đang trong hành trình",
-    short: "Đang đi",
-    pill: "ĐANG ĐI",
+    // Without "Đang", so the badge still fits beside the day counter.
+    pill: "TRONG HÀNH TRÌNH",
     hint: "Hai đứa đang trên đường — lịch trình hôm nay hiện ở trang chủ.",
   },
   completed: {
     full: "Đã đi rồi",
-    short: "Đã đi",
-    pill: "ĐÃ ĐI",
+    pill: "ĐÃ ĐI RỒI",
     hint: "Chuyến đã khép lại, giờ nằm trong kho kỷ niệm.",
   },
 };

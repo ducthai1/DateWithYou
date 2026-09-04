@@ -3634,6 +3634,44 @@ Hai thứ khác lộ ra khi làm:
 dấu = đúng node cũ. So `src` không đủ — một iframe mới cùng `src` vẫn nạp lại từ giây 0.
 
 
+## Lưới và dữ liệu phải khớp nhau, không thì nới lưới chỉ làm khoảng trống to hơn
+
+Người dùng báo thẻ kỷ niệm "3 hình preview làm trống 1 khoảng bên phải". Tôi nới lưới **form** lên
+4 cột — sai chỗ. Lần thứ hai họ nói rõ "ở ngoài", và chỗ thật là thẻ trong danh sách:
+
+```
+className="… sm:grid-cols-3"      ← lưới
+m.photos.slice(0, 3)              ← chỉ lấy 3 ảnh
+```
+
+Đổi lưới thành `grid-cols-4` mà giữ `slice(0, 3)` thì **ô thứ tư trống** — đúng cái khoảng trống họ
+kêu, chỉ là rộng hơn. Phải đổi cả hai.
+
+**Luật:** với lưới cố định số cột, số cột và số phần tử lấy ra là **một quyết định**, nằm hai chỗ.
+Sửa một chỗ luôn tạo ra lỗ hổng.
+
+## Giới hạn phải nói ra, và không được cắt lén
+
+Hai nửa của cùng một chuyện, đều là "hệ thống biết mà không nói":
+- Dòng đếm ghi `30 ảnh` — người dùng tưởng còn thêm được. Nay `30/30 ảnh · đã đủ`.
+- Chọn 40 ảnh khi còn 2 chỗ thì `slice(0, slots)` **im lặng vứt 38 tấm**. Nay báo rõ:
+  *"Chỉ thêm được 2 ảnh nữa (tối đa 30) — 4 ảnh chưa được thêm"*.
+
+**Luật:** mọi chỗ dùng `slice()` để ép về giới hạn đều là một quyết định thay người dùng. Hoặc chặn
+trước, hoặc nói ra sau — không được cắt trong im lặng.
+
+## Một trạng thái, một tên
+
+`TRIP_STATUS_META` từng có ba biến thể chữ: `full`, `short`, `pill`. Sau khi bỏ bộ chọn trạng thái
+thì `short` thành chữ chết, nhưng `pill` vẫn là bộ từ vựng thứ hai — nên một chuyến gọi là
+*"Đang trong hành trình"* ở chỗ này lại đeo *"ĐANG ĐI"* ở chỗ kia. Người dùng nhận xét đúng:
+*"nghe không hợp lý tí nào"* — nó đọc như một mẩu bị cắt cho vừa ô, không phải một giai đoạn của
+chuyến đi.
+
+Nay chỉ còn `full` + `pill`, và pill **là chữ hoa của full** (bỏ "Đang" ở trạng thái đang đi để badge
+còn chỗ cho số ngày): ĐANG CHUẨN BỊ · TRONG HÀNH TRÌNH · ĐÃ ĐI RỒI.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

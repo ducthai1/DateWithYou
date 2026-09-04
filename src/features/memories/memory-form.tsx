@@ -247,7 +247,25 @@ export function MemoryForm({
     if (!files) return;
     setErr(null);
     const slots = Math.max(0, MAX_PHOTOS_PER_MEMORY - photos.length - pending.length);
-    const picked = Array.from(files).slice(0, slots);
+    const chosen = Array.from(files);
+    const picked = chosen.slice(0, slots);
+    /*
+     * Say what was left behind.
+     *
+     * The extras used to be sliced off in silence: someone picking forty photos
+     * got thirty and no word about the other ten, and only found out by
+     * counting. The limit is not the problem — being trimmed without being told
+     * is.
+     */
+    if (chosen.length > picked.length) {
+      const bỏLại = chosen.length - picked.length;
+      toast(
+        slots === 0
+          ? `Kỷ niệm này đã đủ ${MAX_PHOTOS_PER_MEMORY} ảnh — xoá bớt rồi thêm nhé`
+          : `Chỉ thêm được ${picked.length} ảnh nữa (tối đa ${MAX_PHOTOS_PER_MEMORY}) — ${bỏLại} ảnh chưa được thêm`,
+        "error",
+      );
+    }
     if (picked.length === 0) return;
 
     const items: PendingPhoto[] = picked.map((file, i) => ({
@@ -569,7 +587,12 @@ export function MemoryForm({
         <div ref={photosRef} className="scroll-mt-4 space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-xs">
-              {photos.length} ảnh
+              {/* "N/30", not "N": at thirty the bare number reads like a count
+                  that could keep going, and people kept trying to add more. */}
+              {photos.length}/{MAX_PHOTOS_PER_MEMORY} ảnh
+              {photos.length + pending.length >= MAX_PHOTOS_PER_MEMORY
+                ? " · đã đủ"
+                : ""}
               {pending.some((p) => !p.error)
                 ? ` · đang tải ${pending.filter((p) => !p.error).length}`
                 : ""}
