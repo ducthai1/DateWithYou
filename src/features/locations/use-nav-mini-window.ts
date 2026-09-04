@@ -35,9 +35,24 @@ export type MiniWindowOptions = {
   /** Pop the window when the app goes to the background. Off while paused —
    * a stopped trip has nothing to follow, and a window nobody asked for is rude. */
   autoOpen: boolean;
+  /**
+   * Lay the video across the whole viewport instead of parking it at 1px.
+   *
+   * This is the Android path to a window that opens by itself. The only thing
+   * Chrome on Android sends to picture-in-picture when Home is pressed is a
+   * playing video it considers fullscreen — and it grants that to a video that
+   * fills the viewport inside a fullscreen document, which is exactly how a
+   * fullscreen YouTube embed gets there. The page goes fullscreen when the ride
+   * starts; this makes the stream the video that qualifies. It sits behind
+   * everything else, so nothing on screen changes.
+   */
+  immersive?: boolean;
 };
 
-export function useNavMiniWindow(frame: MiniNavFrame, { enabled, autoOpen }: MiniWindowOptions) {
+export function useNavMiniWindow(
+  frame: MiniNavFrame,
+  { enabled, autoOpen, immersive = false }: MiniWindowOptions,
+) {
   const frameRef = useRef(frame);
   frameRef.current = frame;
 
@@ -85,12 +100,14 @@ export function useNavMiniWindow(frame: MiniNavFrame, { enabled, autoOpen }: Min
       video.autoplay = true;
       video.autoPictureInPicture = true;
       /*
-       * Chrome refuses PiP for a video that is `display:none`, so it is a 1px
-       * transparent square instead. Pinned *inside* the viewport on purpose:
-       * a far-off-screen offset is how elements end up widening the page.
+       * Chrome refuses PiP for a video that is `display:none`, so it is either
+       * a 1px transparent square or, in immersive mode, a full-viewport layer
+       * underneath the page. Both pinned *inside* the viewport on purpose: a
+       * far-off-screen offset is how elements end up widening the page.
        */
-      video.style.cssText =
-        "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1";
+      video.style.cssText = immersive
+        ? "position:fixed;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:-1"
+        : "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1";
       video.addEventListener("enterpictureinpicture", () => setActive(true));
       video.addEventListener("leavepictureinpicture", () => setActive(false));
       document.body.appendChild(video);
@@ -109,7 +126,7 @@ export function useNavMiniWindow(frame: MiniNavFrame, { enabled, autoOpen }: Min
 
     if (!timerRef.current) timerRef.current = setInterval(paint, TICK_MS);
     return video;
-  }, [paint]);
+  }, [paint, immersive]);
 
   const open = useCallback(async () => {
     try {

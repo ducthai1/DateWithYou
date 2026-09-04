@@ -746,9 +746,40 @@ export function LocationsPage() {
       pausedTrip,
     ],
   );
+  /*
+   * Fullscreen for the ride, on a phone.
+   *
+   * Not for looks: it is the precondition for the small window opening by
+   * itself on Android. Chrome there sends one thing to picture-in-picture when
+   * Home is pressed — a playing video it counts as fullscreen — and a
+   * full-viewport video inside a fullscreen document counts. So the document
+   * goes fullscreen from the tap that starts the ride (the platform wants a
+   * gesture, and the route's arrival is far too late to still have one), and the
+   * stream behind the map is that video. FullscreenRecovery drops it the moment
+   * the app is looked at again, and it is dropped here when the ride ends.
+   */
+  const [coarsePointer, setCoarsePointer] = useState(false);
+  useEffect(() => {
+    setCoarsePointer(window.matchMedia?.("(pointer: coarse)").matches ?? false);
+  }, []);
+  const immersiveOn = useRef(false);
+  const enterImmersive = useCallback(() => {
+    if (!coarsePointer || !document.fullscreenEnabled || document.fullscreenElement) return;
+    immersiveOn.current = true;
+    document.documentElement.requestFullscreen({ navigationUI: "hide" }).catch(() => {
+      immersiveOn.current = false;
+    });
+  }, [coarsePointer]);
+  useEffect(() => {
+    if (nav.isNavigating || pausedTrip || !immersiveOn.current) return;
+    immersiveOn.current = false;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+  }, [nav.isNavigating, pausedTrip]);
+
   const miniWindow = useNavMiniWindow(miniFrame, {
     enabled: nav.isNavigating || pausedTrip,
     autoOpen: nav.isNavigating && !pausedTrip,
+    immersive: coarsePointer,
   });
 
   // Fetch weather when destination is selected
@@ -2314,7 +2345,7 @@ export function LocationsPage() {
                   variant="outline"
                   className="flex-1 gap-2"
                   onClick={() => {
-                    if (!openSoloPlanner()) { announceDeparture(); setFocusGeo(null); nav.start(); }
+                    if (!openSoloPlanner()) { enterImmersive(); announceDeparture(); setFocusGeo(null); nav.start(); }
                   }}
                 >
                   <UserRound className="h-4 w-4" /> Đi 1 mình
@@ -2338,7 +2369,7 @@ export function LocationsPage() {
               <Button
                 className="hidden w-full gap-2 lg:flex"
                 onClick={() => {
-                  if (!openSoloPlanner()) { announceDeparture(); setFocusGeo(null); nav.start(); }
+                  if (!openSoloPlanner()) { enterImmersive(); announceDeparture(); setFocusGeo(null); nav.start(); }
                 }}
               >
                 <Play className="h-4 w-4" /> Lên lộ trình
@@ -2988,7 +3019,7 @@ export function LocationsPage() {
                     disabled={routePending || !!routeError}
                     onClick={() => {
                       setTripChoiceOpen(false);
-                      if (!openSoloPlanner()) { announceDeparture(); setFocusGeo(null); nav.start(); }
+                      if (!openSoloPlanner()) { enterImmersive(); announceDeparture(); setFocusGeo(null); nav.start(); }
                     }}
                   >
                     {hasTwoMembers ? <UserRound className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -3077,6 +3108,7 @@ export function LocationsPage() {
               // Spoken here, inside the tap, without figures: the re-route
               // above has not answered yet and the ones in state are the old
               // route's.
+              enterImmersive();
               announceDeparture({ withNumbers: false });
               setAutoStartWhenRouted(true);
             }}
