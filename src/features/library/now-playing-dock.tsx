@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChefHat, Music2, SkipBack, SkipForward, Video, X } from "lucide-react";
+import { ChefHat, Music2, Pause, Play, SkipBack, SkipForward, Video, X } from "lucide-react";
 import { EmbedPlayer, EMBED_ASPECT, SPOTIFY_BAR_HEIGHT } from "@/components/ui/embed-player";
 import { cn } from "@/lib/utils";
 import type { MediaListItem } from "./media-card";
 import type { NowPlayingItem } from "./now-playing-context";
 import { useFloatingWindow, type DragMode } from "./use-floating-window";
+import { useYouTubePlayback, withJsApi } from "./use-youtube-playback";
 
 const KIND_ICON: Record<MediaListItem["kind"], typeof Music2> = {
   music: Music2,
@@ -68,6 +69,16 @@ export function NowPlayingDock({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const viewportH = useViewportHeight();
+
+  /*
+   * Play/pause talks to the frame directly, so it needs the frame. Reaching
+   * for it through the media box keeps EmbedPlayer's shape unchanged — it is
+   * used by the cards too, which have nothing to control.
+   */
+  const mediaRef = useRef<HTMLDivElement | null>(null);
+  const getFrame = useCallback(() => mediaRef.current?.querySelector("iframe") ?? null, []);
+  const controllable = item?.embed.provider === "youtube" && Boolean(item.embed.embedUrl);
+  const playback = useYouTubePlayback(getFrame, controllable, item?.id ?? "");
   const aspect = item ? EMBED_ASPECT[item.embed.provider] : null;
   const capH = Math.max(140, Math.round((viewportH || 640) * 0.5));
 
@@ -170,10 +181,18 @@ export function NowPlayingDock({
           >
             {embeddable ? (
               <div
+                ref={mediaRef}
                 className="bg-muted mx-auto overflow-hidden rounded-xl"
                 style={{ width: mediaW, height: mediaH }}
               >
-                <EmbedPlayer data={item.embed} fill />
+                <EmbedPlayer
+                  data={
+                    controllable
+                      ? { ...item.embed, embedUrl: withJsApi(item.embed.embedUrl!, window.location.origin) }
+                      : item.embed
+                  }
+                  fill
+                />
               </div>
             ) : (
               <EmbedPlayer data={item.embed} />
@@ -202,6 +221,19 @@ export function NowPlayingDock({
               <button type="button" onClick={onPrev} disabled={!hasPrev} aria-label="Bài trước" className={skipButton}>
                 <SkipBack className="h-4 w-4" />
               </button>
+              {/* Only where the frame can actually be driven — a dead
+                  play button is worse than no play button. */}
+              {controllable && (
+                <button
+                  type="button"
+                  onClick={playback.toggle}
+                  aria-label={playback.playing ? "Tạm dừng" : "Phát"}
+                  aria-pressed={playback.playing}
+                  className={cn(skipButton, "bg-accent-soft text-accent hover:bg-accent hover:text-white")}
+                >
+                  {playback.playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                </button>
+              )}
               <button type="button" onClick={onNext} disabled={!hasNext} aria-label="Bài sau" className={skipButton}>
                 <SkipForward className="h-4 w-4" />
               </button>
