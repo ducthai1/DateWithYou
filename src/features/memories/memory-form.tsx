@@ -22,6 +22,7 @@ import { appendMention, collectMentions, mentionToken } from "@/lib/mentions";
 import { authClient } from "@/lib/auth-client";
 import { ExternalLink, ImagePlus, Link2, Loader2, Play, RotateCw, X } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
 import { parseEmbed, normalizeUrl, PROVIDER_LABEL, type ParsedEmbed } from "@/lib/embed";
@@ -392,27 +393,15 @@ export function MemoryForm({
           how every form on earth spells "you cannot type here", and people read
           it that way even though both have always been editable. */}
       <div className="flex items-center gap-2">
-        <div className="relative w-[8.25rem] shrink-0">
-          <input
-            type="time"
-            aria-label="Giờ của kỷ niệm (không bắt buộc)"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className="border-border bg-card text-foreground h-11 w-full rounded-xl border pl-3 pr-9 text-sm font-medium shadow-sm outline-none focus:border-accent"
-          />
-          {/* Inside the field, not hanging off its corner. At -right-2 this sat
-              8px beyond the row and pushed past the form's right margin — and
-              the row is now flush with it, so there is nowhere for it to hang. */}
-          {time && (
-            <button
-              type="button"
-              onClick={() => setTime("")}
-              aria-label="Xoá giờ"
-              className="text-muted-foreground hover:text-foreground hover:bg-muted absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-sm"
-            >
-              ×
-            </button>
-          )}
+        {/* The app's own picker, not the browser's.
+            A bare <input type="time"> renders differently on every engine: iOS
+            Safari draws an empty field with no hint at all — a blank white
+            strip nobody reads as "a time goes here" — while Chrome paints
+            "--:--" and its own control on the right. The calendar has used this
+            picker all along; the memory form was the one place still asking the
+            browser to decide what the field looks like. */}
+        <div className="w-[8.25rem] shrink-0">
+          <TimePicker value={time} onChange={setTime} clearable />
         </div>
         <div className="min-w-0 flex-1">
           <DatePicker value={date} onChange={setDate} />

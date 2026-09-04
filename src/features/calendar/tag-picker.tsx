@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { readableInk } from "@/lib/plan-meta";
 import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Plus, Check } from "lucide-react";
@@ -58,9 +59,15 @@ export function TagPicker({
               onClick={() => toggle(t.name)}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
-                on ? "text-white" : "bg-card text-foreground hover:bg-muted",
+                // Ink picked from the fill, same rule the read-side chip uses:
+                // the two must not drift apart again.
+                on ? "" : "bg-card text-foreground hover:bg-muted",
               )}
-              style={on ? { backgroundColor: t.color, borderColor: t.color } : { borderColor: t.color }}
+              style={
+                on
+                  ? { backgroundColor: t.color, borderColor: t.color, color: readableInk(t.color) }
+                  : { borderColor: t.color }
+              }
             >
               {on && <Check className="h-3 w-3" />}
               {TagIcon && <TagIcon className="h-3 w-3" />}

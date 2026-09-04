@@ -3272,6 +3272,62 @@ SVG nạp qua `data:text/html` rồi `Page.captureScreenshot` với
 vẫn là icon của người khác.
 
 
+## Khung bản đồ nổi khi rời app: KHÔNG làm được trên điện thoại
+
+Người dùng nhớ là đã yêu cầu và tưởng đã có. **Chưa từng làm** — kiểm bằng
+`grep -rn "PictureInPicture" src/` (rỗng) và `git log` (không commit nào). Cái đã làm và dễ nhớ
+nhầm: `navigation-context.tsx` giữ dẫn đường sống khi chuyển **trang trong app**, và ping vị trí
+vẫn chạy khi rời tab. Không cái nào là cửa sổ nổi.
+
+**Và cửa sổ nổi thì web không làm được trên điện thoại.** Document Picture-in-Picture chỉ có ở
+Chrome/Edge **máy tính**; Chrome Android, Firefox Android, Safari iOS đều không hỗ trợ. Bong bóng
+nổi của Google Maps là API **native** của Android, không phải web. Đây là giới hạn nền tảng, không
+phải thiếu code.
+
+Thứ tương đương làm được trên điện thoại: **thông báo thường trú** (`registration.showNotification`
+với `tag` cố định + `silent`), cập nhật hướng rẽ + khoảng cách còn lại theo từng bước — Android
+hiện nó trên thanh trạng thái và màn khoá.
+
+**Luật:** người dùng nói "bạn làm rồi mà" thì đi kiểm `grep` + `git log`, đừng tin trí nhớ của mình
+lẫn của họ. Và trước khi hứa một tính năng nền tảng, tra hỗ trợ trình duyệt trước.
+
+## `<input type="time">` render khác nhau ở mỗi engine — đừng để trình duyệt quyết
+
+iOS Safari vẽ ô **trống trơn** khi chưa có giá trị (không có `--:--` nào), Chrome vẽ `--:--` cộng
+control riêng bên phải. Cùng một field, hai bộ mặt, và cái tệ hơn rơi đúng vào điện thoại.
+
+App vốn **đã có** `TimePicker` tự dựng (`--:--` khi rỗng, không control lạ) và lịch dùng nó từ lâu;
+chỉ form kỷ niệm còn dùng input thô. Sửa = dùng lại thứ đã có, không viết thêm.
+
+Hai thứ kèm theo:
+- **Icon sang TRÁI, màu accent** — giống hệt ô ngày. Ô giờ và ô ngày đứng cạnh nhau trả lời một câu
+  hỏi, không nên là ảnh soi gương của nhau, và mép phải để trống cho giá trị.
+- **Nút "Bỏ giờ" nằm trong dropdown**, không phải huy hiệu treo trên field. Không có gì bám ngoài
+  viền thì không có gì tràn lề.
+
+## Màu nhãn: chữ trắng trên màu pastel là 2.66:1, không đọc được
+
+Nhãn ngoài danh sách bị tô phẳng `bg-accent-soft` — sáu nhãn khác nhau trông như một. Màu là **lý do
+tồn tại** của nhãn: nó cho phép liếc mà không cần đọc.
+
+Nhưng chép nguyên style "đã chọn" của bộ chọn thì mang theo cả lỗi của nó. Đo thật, chữ trắng trên
+bảng nhãn hiện tại:
+
+| nền | trắng | đen `#1c1917` |
+|---|---|---|
+| `#c8955a` Ăn uống | **2.66:1** | 6.58:1 |
+| `#7fa882` Du lịch | **2.68:1** | 6.52:1 |
+| `#c2693f` Kỷ niệm | **3.90:1** | 4.49:1 |
+
+Chuẩn cho chữ nhỏ là 4.5:1; chip trong danh sách là 10px. Nên **màu chữ tính từ nền**
+(`readableInk` trong `plan-meta.ts`) chứ không cố định — nhãn màu tối người dùng thêm sau vẫn tự ra
+chữ trắng. Áp cho **cả hai** nơi (chip đọc + chip trong bộ chọn), vì "giống nhau" mới là thứ được
+yêu cầu. Đo lại trong DOM: 5.45–6.58:1.
+
+**Bẫy khi test:** `TagChip` rơi về màu phẳng trong lúc `space.tags` chưa về, nên đo quá sớm là thấy
+"vẫn một màu" và tưởng bản vá hỏng. Chờ palette rồi mới đo.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

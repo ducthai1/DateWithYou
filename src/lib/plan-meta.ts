@@ -57,6 +57,31 @@ export function mergeTags(custom: Tag[] | undefined): Tag[] {
   return [...DEFAULT_TAGS, ...extra];
 }
 
+/**
+ * Text colour that can actually be read on a tag's fill.
+ *
+ * The palette is deliberately soft, and white on soft is not a colour choice —
+ * it is a legibility one. Measured against these six: white lands between
+ * 2.66:1 and 3.90:1, all under the 4.5:1 small text needs, while near-black
+ * lands between 4.49:1 and 6.58:1. Chips are 10px in a list, which is exactly
+ * where the difference stops being academic.
+ *
+ * Computed rather than fixed, so a dark colour someone adds later gets white
+ * back automatically instead of near-black on navy.
+ */
+export function readableInk(background: string): string {
+  const hex = background.replace("#", "");
+  const full = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex;
+  const channel = (i: number) => {
+    const c = parseInt(full.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const L = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+  const onWhite = 1.05 / (L + 0.05);
+  const onBlack = (L + 0.05) / 0.05;
+  return onBlack >= onWhite ? "#1c1917" : "#ffffff";
+}
+
 /** Resolve tag names → colours for calendar dots, using the merged palette. */
 export function colorsForTags(tagNames: string[], palette: Tag[]): string[] {
   const byName = new Map(palette.map((t) => [t.name.toLowerCase(), t.color]));

@@ -7,6 +7,7 @@ import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { cldFull, cldPreview, cldThumb } from "@/lib/cloudinary-url";
 import { trpc } from "@/lib/trpc";
 import { MentionText } from "@/components/ui/mention-text";
+import { TagChip } from "@/components/ui/tag-chip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/modal";
@@ -315,9 +316,7 @@ export function MemoryTimeline() {
                     {(m.tags ?? []).length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {(m.tags as string[]).map((t: string) => (
-                          <span key={t} className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[10px] font-medium">
-                            {t}
-                          </span>
+                          <TagChip key={t} name={t} />
                         ))}
                       </div>
                     )}
@@ -441,7 +440,7 @@ export function MemoryTimeline() {
               {(selectedMemo.tags ?? []).length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {(selectedMemo.tags as string[]).map((t) => (
-                    <span key={t} className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[10px] font-medium">{t}</span>
+                    <TagChip key={t} name={t} />
                   ))}
                 </div>
               )}
