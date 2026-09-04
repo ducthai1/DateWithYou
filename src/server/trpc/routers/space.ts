@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { REACTION_BAR_SIZE, REACTION_EMOJIS, normaliseReactionBar } from "@/lib/reactions";
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { customAlphabet } from "nanoid";
@@ -18,6 +19,8 @@ const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const themePresetKey = z.enum(THEME_PRESET_KEYS as [string, ...string[]]);
 
 type MemberProfileOverride = {
+  /** This member's own reaction bar, in the order they want it. */
+  reactionFavourites?: string[];
   userId: string;
   nickname?: string;
   avatarEmoji?: string;
@@ -388,6 +391,9 @@ export const spaceRouter = router({
         image: p.image,
         avatarEmoji: o?.avatarEmoji ?? null,
         avatarColor: o?.avatarColor ?? null,
+        // Always a full, valid bar — the client should never have to decide
+        // what to show when the stored list is short or holds a retired emoji.
+        reactionBar: normaliseReactionBar(o?.reactionFavourites),
         isSelf: p.id === ctx.userId,
       };
     });
@@ -431,6 +437,7 @@ export const spaceRouter = router({
         nickname: z.string().trim().max(24).optional(),
         avatarEmoji: z.string().trim().max(8).optional(),
         avatarColor: hexColor.optional(),
+        reactionFavourites: z.array(z.enum(REACTION_EMOJIS)).max(REACTION_BAR_SIZE).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -438,8 +445,17 @@ export const spaceRouter = router({
       const space = await SpaceModel.findById(ctx.spaceId).select("memberProfiles");
       if (!space) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
       const profiles: MemberProfileOverride[] = space.get("memberProfiles") ?? [];
+      /*
+       * Merge, not replace.
+       *
+       * This used to push a fresh object built from `input` alone, so saving a
+       * nickname erased the avatar emoji and colour the same person had chosen
+       * earlier — every field this mutation did not happen to carry was
+       * dropped. Each call now edits only what it was given.
+       */
+      const mine = profiles.find((p) => p.userId === ctx.userId);
       const next = profiles.filter((p) => p.userId !== ctx.userId);
-      next.push({ userId: ctx.userId, ...input });
+      next.push({ ...mine, userId: ctx.userId, ...input });
       space.set("memberProfiles", next);
       await space.save();
       return { ok: true };

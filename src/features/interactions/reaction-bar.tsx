@@ -6,6 +6,12 @@ import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/trpc/root";
 import { trpc } from "@/lib/trpc";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import {
+  DEFAULT_REACTION_BAR,
+  REACTION_BAR_SIZE,
+  REACTION_EMOJIS,
+  REACTION_LABEL,
+} from "@/lib/reactions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -26,24 +32,7 @@ export type InteractionMember = RouterOutputs["space"]["members"][number];
 
 type ReactionEmoji = RouterInputs["interaction"]["react"]["emoji"];
 
-/**
- * Mirrors REACTION_EMOJIS on the server. `satisfies` fails the type-check if
- * the two ever drift — the server enum stays the single authority, this array
- * only exists so the picker doesn't have to import Mongoose into the browser.
- */
-const PALETTE = ["❤️", "😍", "🥹", "😂", "🔥", "👏"] as const satisfies readonly ReactionEmoji[];
-
-/** Vietnamese label per emoji — screen readers get words, not codepoints. */
-const EMOJI_LABEL: Record<ReactionEmoji, string> = {
-  "❤️": "Thương",
-  "😍": "Mê quá",
-  "🥹": "Xúc động",
-  "😂": "Cười",
-  "🔥": "Cháy",
-  "👏": "Vỗ tay",
-};
-
-const DEFAULT_EMOJI: ReactionEmoji = "❤️";
+const DEFAULT_EMOJI: ReactionEmoji = DEFAULT_REACTION_BAR[0];
 const LONG_PRESS_MS = 450;
 
 /**
@@ -75,6 +64,26 @@ export function ReactionBar({
   const toast = useToast();
   const utils = trpc.useUtils();
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  /*
+   * This person's own row of six.
+   *
+   * Server-normalised, so it is always six known emojis in their order — the
+   * bar never renders short or with something retired on it.
+   */
+  const bar = (members.find((m) => m.isSelf)?.reactionBar as ReactionEmoji[] | undefined)
+    ?? DEFAULT_REACTION_BAR;
+
+  const setProfile = trpc.space.setMemberProfile.useMutation({
+    onSuccess: () => void utils.space.members.invalidate(),
+  });
+  /** Reaching for something off the row puts it on the row, in front. */
+  const promote = (emoji: ReactionEmoji) => {
+    if (bar[0] === emoji) return;
+    setProfile.mutate({
+      reactionFavourites: [emoji, ...bar.filter((e) => e !== emoji)].slice(0, REACTION_BAR_SIZE),
+    });
+  };
 
   // Long-press opens the picker; the click that follows the press must not also
   // fire the default toggle, so it is suppressed once.
@@ -150,7 +159,7 @@ export function ReactionBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="relative flex flex-wrap items-center gap-1.5">
       {reactions.map((r) => {
         const member = members.find((m) => m.id === r.userId);
         const name = member?.name ?? "Người kia";
@@ -158,7 +167,7 @@ export function ReactionBar({
           <span
             key={r.userId}
             role="img"
-            aria-label={`${name} đã thả ${EMOJI_LABEL[r.emoji as ReactionEmoji] ?? r.emoji}`}
+            aria-label={`${name} đã thả ${REACTION_LABEL[r.emoji as ReactionEmoji] ?? r.emoji}`}
             title={`${name} đã thả ${r.emoji}`}
             className="bg-accent-soft flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm leading-none"
             // avatarColor is couple-chosen data, not a themed token; fall back
@@ -230,26 +239,106 @@ export function ReactionBar({
         <Plus className="h-4 w-4" aria-hidden />
       </button>
 
-      <BottomSheet open={pickerOpen} onClose={() => setPickerOpen(false)}>
+      <ReactionPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        bar={bar}
+        chosen={mine?.emoji as ReactionEmoji | undefined}
+        onPick={(emoji) => {
+          toggle(emoji);
+          setPickerOpen(false);
+        }}
+        onPromote={promote}
+      />
+    </div>
+  );
+}
+
+/**
+ * Choosing a reaction.
+ *
+ * Two shapes for two kinds of hand. A bottom sheet is a touch idiom — it comes
+ * from the edge a thumb can reach — and on a desktop it was a full-width panel
+ * sliding up from the bottom of a 1400px window to offer six emoji. With a
+ * mouse the right shape is the one Facebook settled on: a small row that
+ * appears next to the thing being reacted to, close to the cursor that opened
+ * it.
+ *
+ * The split is on pointer type, not width, which is what the app already uses
+ * to choose between native and custom selects: a bottom sheet is for a thumb,
+ * not for a narrow window.
+ */
+function ReactionPicker({
+  open,
+  onClose,
+  bar,
+  chosen,
+  onPick,
+  onPromote,
+}: {
+  open: boolean;
+  onClose: () => void;
+  bar: ReactionEmoji[];
+  chosen?: ReactionEmoji;
+  onPick: (emoji: ReactionEmoji) => void;
+  onPromote: (emoji: ReactionEmoji) => void;
+}) {
+  const [more, setMore] = useState(false);
+  const [coarse, setCoarse] = useState(false);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setCoarse(window.matchMedia?.("(hover: none) and (pointer: coarse)").matches ?? false);
+  }, []);
+
+  // Every open starts on the row; the extended grid is somewhere you go, not a
+  // state the picker remembers you were in.
+  useEffect(() => {
+    if (!open) setMore(false);
+  }, [open]);
+
+  // Only the popover needs dismissing — the sheet brings its own scrim.
+  useEffect(() => {
+    if (!open || coarse) return;
+    const onDown = (e: MouseEvent) => {
+      if (!popRef.current?.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, coarse, onClose]);
+
+  if (!open) return null;
+
+  const rest = REACTION_EMOJIS.filter((e) => !bar.includes(e));
+  const take = (emoji: ReactionEmoji, fromRest: boolean) => {
+    if (fromRest) onPromote(emoji);
+    onPick(emoji);
+  };
+
+  if (coarse) {
+    return (
+      <BottomSheet open={open} onClose={onClose}>
         <div className="px-4 pt-1 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
           <p className="text-muted-foreground mb-3 text-center text-sm">
-            Gửi một cảm xúc cho khoảnh khắc này
+            {more ? "Chọn để thêm vào hàng của bạn" : "Gửi một cảm xúc cho khoảnh khắc này"}
           </p>
           <div className="grid grid-cols-3 gap-2">
-            {PALETTE.map((emoji) => (
+            {(more ? rest : bar).map((emoji) => (
               <button
                 key={emoji}
                 type="button"
-                aria-label={EMOJI_LABEL[emoji]}
-                aria-pressed={mine?.emoji === emoji}
-                onClick={() => {
-                  toggle(emoji);
-                  setPickerOpen(false);
-                }}
+                aria-label={REACTION_LABEL[emoji]}
+                aria-pressed={chosen === emoji}
+                onClick={() => take(emoji, more)}
                 className={cn(
                   "flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border transition-colors",
-                  "focus-visible:ring-ring/50 outline-none focus-visible:ring-2 touch-manipulation active:scale-95",
-                  mine?.emoji === emoji
+                  "focus-visible:ring-ring/50 touch-manipulation outline-none focus-visible:ring-2 active:scale-95",
+                  chosen === emoji
                     ? "border-accent bg-accent-soft"
                     : "border-border bg-card hover:bg-muted",
                 )}
@@ -257,14 +346,68 @@ export function ReactionBar({
                 <span className="text-xl leading-none" aria-hidden>
                   {emoji}
                 </span>
-                <span className="text-muted-foreground text-[10px]">
-                  {EMOJI_LABEL[emoji]}
-                </span>
+                <span className="text-muted-foreground text-[10px]">{REACTION_LABEL[emoji]}</span>
               </button>
             ))}
+            {!more && (
+              <button
+                type="button"
+                aria-label="Xem thêm cảm xúc"
+                onClick={() => setMore(true)}
+                className="border-border bg-card hover:bg-muted text-muted-foreground flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border transition-colors active:scale-95"
+              >
+                <Plus className="h-5 w-5" aria-hidden />
+                <span className="text-[10px]">Thêm</span>
+              </button>
+            )}
           </div>
         </div>
       </BottomSheet>
+    );
+  }
+
+  return (
+    <div
+      ref={popRef}
+      role="dialog"
+      aria-label="Chọn cảm xúc"
+      className={cn(
+        "border-border bg-card absolute bottom-full left-0 z-50 mb-2 rounded-2xl border p-1.5 shadow-xl",
+        "animate-in fade-in slide-in-from-bottom-1 duration-150",
+        more && "max-w-[19rem]",
+      )}
+    >
+      <div className={cn("flex items-center gap-0.5", more && "flex-wrap")}>
+        {(more ? rest : bar).map((emoji) => (
+          <button
+            key={emoji}
+            type="button"
+            title={REACTION_LABEL[emoji]}
+            aria-label={REACTION_LABEL[emoji]}
+            aria-pressed={chosen === emoji}
+            onClick={() => take(emoji, more)}
+            className={cn(
+              // Grows under the cursor, the way the row it is modelled on does.
+              "inline-flex h-10 w-10 items-center justify-center rounded-full text-2xl leading-none transition-transform",
+              "hover:bg-muted focus-visible:ring-ring/50 outline-none focus-visible:ring-2 hover:scale-125",
+              chosen === emoji && "bg-accent-soft",
+            )}
+          >
+            <span aria-hidden>{emoji}</span>
+          </button>
+        ))}
+        {!more && (
+          <button
+            type="button"
+            title="Xem thêm cảm xúc"
+            aria-label="Xem thêm cảm xúc"
+            onClick={() => setMore(true)}
+            className="text-muted-foreground hover:bg-muted focus-visible:ring-ring/50 ml-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

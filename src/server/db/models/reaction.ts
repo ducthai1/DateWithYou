@@ -1,15 +1,14 @@
 import { Schema, model, models, type InferSchemaType } from "mongoose";
+import { REACTION_EMOJIS } from "@/lib/reactions";
 
 /**
- * The fixed palette a partner may react with.
+ * The palette a partner may react with, from the one list both ends read.
  *
- * Server-authoritative: both the tRPC input enum and the schema enum below are
- * derived from this array, so an emoji outside the set can never be persisted
- * even if a client sends one.
+ * Server-authoritative all the same: the tRPC input enum and the schema enum
+ * below are both derived from it, so an emoji outside the set can never be
+ * persisted even if a client sends one.
  */
-export const REACTION_EMOJIS = ["❤️", "😍", "🥹", "😂", "🔥", "👏"] as const;
-
-export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
+export { REACTION_EMOJIS, type ReactionEmoji } from "@/lib/reactions";
 
 /**
  * Objects a reaction can hang off. Polymorphic from day one so reactions extend

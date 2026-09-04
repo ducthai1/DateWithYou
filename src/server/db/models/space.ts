@@ -42,7 +42,7 @@ const spaceSchema = new Schema(
       default: [],
     },
     memberProfiles: {
-      type: [{ userId: String, nickname: String, avatarEmoji: String, avatarColor: String }],
+      type: [{ userId: String, nickname: String, avatarEmoji: String, avatarColor: String, reactionFavourites: [String] }],
       default: [],
     },
   },

@@ -3328,6 +3328,85 @@ yêu cầu. Đo lại trong DOM: 5.45–6.58:1.
 "vẫn một màu" và tưởng bản vá hỏng. Chờ palette rồi mới đo.
 
 
+## Hai chỗ cuộn trên cùng một trang: thủ phạm là `.sr-only`
+
+Trang Hoạt động cuộn hai tầng — hộp trong cuộn 531px MÀ tài liệu cũng cuộn thêm 378px, nên header
+trôi đi trong khi danh sách cũng trôi. Đo được ở 390×760: `body.scrollHeight = 760` (vừa khít)
+nhưng `html.scrollHeight = 1138`.
+
+**Nguyên nhân:** phần tử `position: absolute` chỉ bị `overflow` cắt khi hộp cắt nằm **giữa nó và
+containing block của nó**. Không có tổ tiên nào định vị ⇒ containing block là chính trang ⇒ hộp
+cuộn nằm ngoài đường đó và **không cắt gì cả**. `.sr-only` chính là dạng đó: `position:absolute`,
+1px, đứng ở vị trí tĩnh sâu trong nội dung đã cuộn. Trang Hoạt động có **15 cái**, mỗi cái kéo dài
+vùng cuộn của `html` xuống tới chỗ nó ngồi.
+
+**Sửa:** thêm `relative` cho hộp cuộn (cả hai biến thể của `PageShell`) và cho khung
+`MainWrapper`. Một chữ, và nó cắt luôn mọi kẻ trốn cùng loại.
+
+Cách truy (làm lại được cho bug tương tự):
+```js
+// 1. có đúng hai chỗ cuộn không
+document.documentElement.scrollHeight - document.documentElement.clientHeight   // > 0 là có
+// 2. ai gây ra: bịt từng con của body rồi đo lại
+for (const c of document.body.children) { c.style.display="none"; đo(); c.style.display=""; }
+// 3. kẻ trốn: absolute mà cha định vị là body
+[...khung.querySelectorAll('*')].filter(e => getComputedStyle(e).position === "absolute"
+  && (e.offsetParent === document.body || e.offsetParent === null))
+```
+
+**Bẫy khi tái hiện:** tài khoản trống thì KHÔNG tràn — phải có dữ liệu thật (10 kỷ niệm) mới lòi.
+Và tràn tăng theo lượng `.sr-only`, nên trang càng dài càng nặng.
+
+## Bottom sheet là idiom của NGÓN TAY, không phải của màn hình hẹp
+
+Bảng chọn cảm xúc dùng `BottomSheet` ở mọi nơi ⇒ trên desktop là một tấm trượt lên từ đáy cửa sổ
+1400px để mời chọn 6 emoji. Nay tách theo **loại con trỏ**, không theo bề rộng — cùng phép thử
+`select.tsx` đã dùng:
+
+```js
+matchMedia("(hover: none) and (pointer: coarse)").matches   // ngón tay -> sheet; chuột -> popover
+```
+
+Popover kiểu Facebook: một dải bo tròn neo ngay trên nút, 6 cảm xúc ưu tiên rồi tới `+`; `+` mở
+18 cái còn lại, chọn cái nào thì cái đó **được ghim lên đầu hàng** và lưu theo từng người
+(`memberProfiles.reactionFavourites`, chuẩn hoá ở server nên hàng luôn đủ 6 và không bao giờ chứa
+emoji đã bỏ).
+
+### Hai bẫy đã sập khi làm
+
+- **Mongoose cache model qua hot-reload.** `models.X ?? model(...)` giữ schema CŨ, nên thêm trường
+  mới thì mutation trả 200 mà **không ghi được gì**. Khởi động lại dev server là hết. Sửa schema
+  xong mà thấy "ghi không vào" thì restart trước khi đi tìm bug.
+- **`setMemberProfile` GHI ĐÈ cả bản ghi.** Nó `push({ userId, ...input })`, nên lưu biệt danh là
+  xoá sạch avatar emoji + màu đã chọn trước đó. Nay gộp với bản cũ. Bug này có sẵn, không phải do
+  thêm trường mới — nhưng thêm trường mới thì nó thành mất dữ liệu thấy được.
+
+**Giới hạn khi test:** headless Chrome ở máy này **không giả lập được** media feature
+`pointer`/`hover` (`Emulation.setEmulatedMedia` gọi xong trang vẫn báo `pointer: fine`). Nhánh cảm
+ứng được kiểm bằng cách chèn `matchMedia` giả qua `Page.addScriptToEvaluateOnNewDocument` — vẫn là
+nhánh thật của component, chỉ là cấp đầu vào bằng tay. Phải nói rõ chỗ này khi báo cáo.
+
+## Khung nổi khi rời app: video PiP LÀM ĐƯỢC, chỉ là không phải Document PiP
+
+Lần trước tôi kết luận "không làm được trên điện thoại" — **đúng một nửa**. Document
+Picture-in-Picture (cửa sổ HTML tuỳ ý) thì đúng là chỉ có trên Chrome/Edge máy tính. Nhưng
+**video PiP thì Android Chrome có**, và có đường vòng đã được dùng thực tế từ Chrome 71:
+
+```
+<canvas> → canvas.captureStream() → gán vào <video> → video.requestPictureInPicture()
+```
+
+Vẽ gì vào canvas thì cửa sổ nổi hiện cái đó. Hai lưu ý khi triển khai:
+- Canvas WebGL của MapLibre cần `preserveDrawingBuffer: true` mới `captureStream` ra hình (có giá
+  về hiệu năng). **Vẽ canvas 2D của riêng mình** (mũi tên rẽ + khoảng cách + ETA) vừa né được
+  chuyện đó vừa đọc được hơn ở kích thước PiP.
+- iOS: `requestPictureInPicture` có cho `<video>` thật, nhưng đường canvas→stream chưa chắc; phải
+  thử trên máy thật.
+
+**Luật:** "API X không hỗ trợ" chưa có nghĩa là "việc đó không làm được". Tìm đường vòng qua API
+khác trước khi kết luận là giới hạn nền tảng.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân
