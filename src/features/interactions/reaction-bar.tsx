@@ -90,9 +90,37 @@ export function ReactionBar({
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
 
+  /*
+   * Hover opens the row on a mouse. Gated on the pointer, not the width: a
+   * touch screen has no hover to give, and long-press is its way in.
+   */
+  const [hoverCapable, setHoverCapable] = useState(false);
+  useEffect(() => {
+    setHoverCapable(window.matchMedia?.("(hover: hover) and (pointer: fine)").matches ?? false);
+  }, []);
+
+  /*
+   * Both delays earn their keep. Opening waits, so crossing the button on the
+   * way somewhere else does not flash the row open. Closing waits, because the
+   * pointer has to cross a gap between the button and the row above it, and
+   * leaving for those few pixels must not count as leaving.
+   */
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverOpen = () => {
+    if (!hoverCapable) return;
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    openTimer.current = setTimeout(() => setPickerOpen(true), 140);
+  };
+  const hoverClose = () => {
+    if (!hoverCapable) return;
+    if (openTimer.current) clearTimeout(openTimer.current);
+    closeTimer.current = setTimeout(() => setPickerOpen(false), 260);
+  };
+
   useEffect(
     () => () => {
-      if (pressTimer.current) clearTimeout(pressTimer.current);
+      for (const t of [pressTimer, openTimer, closeTimer]) if (t.current) clearTimeout(t.current);
     },
     [],
   );
@@ -158,98 +186,124 @@ export function ReactionBar({
     );
   }
 
+  const others = selfId ? reactions.filter((r) => r.userId !== selfId) : reactions;
+  const myName = members.find((m) => m.isSelf)?.name ?? "Bạn";
+  const mineLabel = mine ? (REACTION_LABEL[mine.emoji as ReactionEmoji] ?? mine.emoji) : null;
+
   return (
     <div className="relative flex flex-wrap items-center gap-1.5">
-      {reactions.map((r) => {
+      {/*
+        Whose reaction it is, on the reaction. Two emoji ringed in two colours
+        told you a pair had reacted but not which was which — the name is the
+        part that made it readable at a glance.
+      */}
+      {others.map((r) => {
         const member = members.find((m) => m.id === r.userId);
         const name = member?.name ?? "Người kia";
+        const label = REACTION_LABEL[r.emoji as ReactionEmoji] ?? r.emoji;
         return (
           <span
             key={r.userId}
             role="img"
-            aria-label={`${name} đã thả ${REACTION_LABEL[r.emoji as ReactionEmoji] ?? r.emoji}`}
-            title={`${name} đã thả ${r.emoji}`}
-            className="bg-accent-soft flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm leading-none"
+            aria-label={`${name} đã thả ${label}`}
+            title={`${name} đã thả ${label}`}
+            className="bg-accent-soft flex h-8 items-center gap-1 rounded-full border-2 pr-2 pl-1.5"
             // avatarColor is couple-chosen data, not a themed token; fall back
             // to the accent token so a missing colour still matches the theme.
             style={{ borderColor: member?.avatarColor ?? "var(--accent)" }}
           >
-            {r.emoji}
+            <span className="text-sm leading-none" aria-hidden>
+              {r.emoji}
+            </span>
+            <span className="text-foreground/80 max-w-[5rem] truncate text-[10px] font-medium">
+              {name}
+            </span>
           </span>
         );
       })}
 
-      <button
-        type="button"
-        aria-label={
-          mine
-            ? mine.emoji === DEFAULT_EMOJI
-              ? "Bỏ thả tim"
-              : "Đổi thành thả tim"
-            : "Thả tim"
-        }
-        aria-pressed={mine?.emoji === DEFAULT_EMOJI}
-        onContextMenu={(e) => e.preventDefault()}
-        onPointerDown={() => {
-          longPressed.current = false;
-          pressTimer.current = setTimeout(() => {
-            longPressed.current = true;
-            setPickerOpen(true);
-          }, LONG_PRESS_MS);
-        }}
-        onPointerUp={() => {
-          if (pressTimer.current) clearTimeout(pressTimer.current);
-        }}
-        onPointerLeave={() => {
-          if (pressTimer.current) clearTimeout(pressTimer.current);
-        }}
-        onPointerCancel={() => {
-          if (pressTimer.current) clearTimeout(pressTimer.current);
-        }}
-        onClick={() => {
-          if (longPressed.current) {
+      {/*
+        One control, three ways in: tap sends a heart, hover opens the row on a
+        mouse, long-press opens it on a thumb. The row lives inside this
+        wrapper so moving the pointer up into it counts as still hovering.
+
+        There is no "+" out here any more. That button offered the same picker
+        twice and read as a second, separate action; the "+" belongs inside the
+        row, where it means "reactions beyond these six".
+      */}
+      <div className="relative" onPointerEnter={hoverOpen} onPointerLeave={hoverClose}>
+        <button
+          type="button"
+          aria-label={mine ? `Bỏ cảm xúc ${mineLabel}` : "Thả tim"}
+          aria-pressed={Boolean(mine)}
+          aria-haspopup="dialog"
+          aria-expanded={pickerOpen}
+          title={mine ? `${myName}: ${mineLabel} — bấm để gỡ` : "Thả tim · giữ hoặc trỏ vào để chọn cảm xúc khác"}
+          onContextMenu={(e) => e.preventDefault()}
+          onKeyDown={(e) => {
+            // Neither hover nor long-press reaches a keyboard; the arrow keys
+            // are how a menu button is opened.
+            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              e.preventDefault();
+              setPickerOpen(true);
+            }
+          }}
+          onPointerDown={() => {
             longPressed.current = false;
-            return;
-          }
-          toggle(DEFAULT_EMOJI);
-        }}
-        className={cn(
-          "inline-flex h-10 w-10 items-center justify-center rounded-full text-base transition-colors select-none",
-          "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
-          "touch-manipulation active:scale-95",
-          mine?.emoji === DEFAULT_EMOJI
-            ? "bg-accent-soft text-accent"
-            : "hover:bg-muted text-muted-foreground opacity-70",
-        )}
-      >
-        <span aria-hidden>{DEFAULT_EMOJI}</span>
-      </button>
+            pressTimer.current = setTimeout(() => {
+              longPressed.current = true;
+              setPickerOpen(true);
+            }, LONG_PRESS_MS);
+          }}
+          onPointerUp={() => {
+            if (pressTimer.current) clearTimeout(pressTimer.current);
+          }}
+          onPointerLeave={() => {
+            if (pressTimer.current) clearTimeout(pressTimer.current);
+          }}
+          onPointerCancel={() => {
+            if (pressTimer.current) clearTimeout(pressTimer.current);
+          }}
+          onClick={() => {
+            if (longPressed.current) {
+              longPressed.current = false;
+              return;
+            }
+            /*
+             * Whatever is on the button is what the button undoes. Pressing it
+             * with a reaction already given removes that one rather than
+             * swapping it for a heart — the icon shown is the promise made.
+             */
+            toggle((mine?.emoji as ReactionEmoji | undefined) ?? DEFAULT_EMOJI);
+          }}
+          className={cn(
+            "inline-flex h-10 items-center justify-center gap-1 rounded-full text-base transition-colors select-none",
+            "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
+            "touch-manipulation active:scale-95",
+            mine ? "bg-accent-soft text-accent pr-2.5 pl-2" : "hover:bg-muted text-muted-foreground w-10 opacity-70",
+          )}
+        >
+          <span aria-hidden>{mine ? mine.emoji : DEFAULT_EMOJI}</span>
+          {mine && (
+            <span className="text-foreground/80 max-w-[5rem] truncate text-[10px] font-medium">
+              {myName}
+            </span>
+          )}
+        </button>
 
-      {/* Long-press is not reachable by keyboard, so the picker always has this
-          plain button as an equivalent affordance. */}
-      <button
-        type="button"
-        aria-label="Chọn cảm xúc khác"
-        onClick={() => setPickerOpen(true)}
-        className={cn(
-          "text-muted-foreground hover:bg-muted inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-          "focus-visible:ring-ring/50 outline-none focus-visible:ring-2 touch-manipulation active:scale-95",
-        )}
-      >
-        <Plus className="h-4 w-4" aria-hidden />
-      </button>
-
-      <ReactionPicker
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        bar={bar}
-        chosen={mine?.emoji as ReactionEmoji | undefined}
-        onPick={(emoji) => {
-          toggle(emoji);
-          setPickerOpen(false);
-        }}
-        onPromote={promote}
-      />
+        <ReactionPicker
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          bar={bar}
+          chosen={mine?.emoji as ReactionEmoji | undefined}
+          onPick={(emoji) => {
+            toggle(emoji);
+            setPickerOpen(false);
+          }}
+          onPromote={promote}
+          anchorRight={others.length > 0}
+        />
+      </div>
     </div>
   );
 }
@@ -275,6 +329,7 @@ function ReactionPicker({
   chosen,
   onPick,
   onPromote,
+  anchorRight,
 }: {
   open: boolean;
   onClose: () => void;
@@ -282,6 +337,9 @@ function ReactionPicker({
   chosen?: ReactionEmoji;
   onPick: (emoji: ReactionEmoji) => void;
   onPromote: (emoji: ReactionEmoji) => void;
+  /** Hang it off the trigger's right edge once reactions have pushed the
+   *  trigger rightwards, or the row runs off the side of the card. */
+  anchorRight: boolean;
 }) {
   const [more, setMore] = useState(false);
   const [coarse, setCoarse] = useState(false);
@@ -372,8 +430,9 @@ function ReactionPicker({
       role="dialog"
       aria-label="Chọn cảm xúc"
       className={cn(
-        "border-border bg-card absolute bottom-full left-0 z-50 mb-2 rounded-2xl border p-1.5 shadow-xl",
+        "border-border bg-card absolute bottom-full z-50 mb-1 rounded-2xl border p-1.5 shadow-xl",
         "animate-in fade-in slide-in-from-bottom-1 duration-150",
+        anchorRight ? "right-0" : "left-0",
         more && "max-w-[19rem]",
       )}
     >
