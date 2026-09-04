@@ -43,6 +43,16 @@ const NARROW_W = 340;
 const barHeightFor = (w: number) => (w < NARROW_W ? BAR_H_NARROW : BAR_H);
 const AUTONEXT_KEY = "vivu.nowplaying.autonext";
 
+/** The video id out of a YouTube embed URL, for loading it into a live player. */
+function youtubeVideoId(embedUrl: string | null): string | null {
+  if (!embedUrl) return null;
+  try {
+    return new URL(embedUrl).pathname.match(/\/embed\/([\w-]+)/)?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 const CORNERS: Array<{ mode: Exclude<DragMode, "move">; className: string; label: string }> = [
   { mode: "nw", className: "top-0 left-0 cursor-nwse-resize", label: "trên trái" },
   { mode: "ne", className: "top-0 right-0 cursor-nesw-resize", label: "trên phải" },
@@ -134,23 +144,61 @@ export function NowPlayingDock({
     onNextRef.current();
   }, []);
 
-  const playback = useYouTubePlayback(getFrame, controllable, item?.id ?? "", handleEnded);
+  /*
+   * The frame outlives a track.
+   *
+   * `frameKey` is what the iframe is built from, and it only changes when a
+   * genuinely new frame is needed. An automatic advance keeps the frame and
+   * swaps the video inside it — which is the whole point: a new iframe in a
+   * background tab is a new autoplay decision, and Chrome does not grant one to
+   * a tab nobody is looking at. The player already running holds that
+   * permission, and has already completed its handshake, so it can be told to
+   * load the next video with no timer and no new grant involved.
+   */
+  const [frameKey, setFrameKey] = useState<string | null>(null);
+  /** Which track the player currently holds, frame reuse included. */
+  const loadedTrack = useRef<string | null>(null);
+
+  const playback = useYouTubePlayback(getFrame, controllable, frameKey ?? "", handleEnded);
+
+  useEffect(() => {
+    if (!item) {
+      loadedTrack.current = null;
+      setFrameKey(null);
+      return;
+    }
+    if (loadedTrack.current === item.id) return;
+
+    const auto = endedTrack.current != null && endedTrack.current !== item.id;
+    const videoId = controllable ? youtubeVideoId(item.embed.embedUrl) : null;
+    if (auto && videoId && frameKey && playback.readyFor === frameKey) {
+      playback.loadVideo(videoId);
+      endedTrack.current = null;
+      loadedTrack.current = item.id;
+      return;
+    }
+    // Anything else — a hand-picked track, a different provider, the first
+    // play — gets its own frame.
+    loadedTrack.current = item.id;
+    setFrameKey(item.id);
+  }, [item, controllable, frameKey, playback]);
 
   /*
-   * Worked out once per track and then left alone: the frame is keyed by track,
-   * so changing this string mid-track would reload the video from zero.
+   * Built once per frame. Changing this string would reload the video from the
+   * beginning, since it is also what the frame is keyed by.
    *
-   * A track that arrived because the last one ran out starts itself. Anything
-   * the person picked by hand waits to be pressed.
+   * A frame raised for an automatic advance starts itself; one the person asked
+   * for waits to be pressed.
    */
   const frameEmbed = useMemo(() => {
     if (!item?.embed.embedUrl || !controllable) return item?.embed;
-    const auto = endedTrack.current != null && endedTrack.current !== item.id;
+    const auto = endedTrack.current != null && endedTrack.current !== frameKey;
     return { ...item.embed, embedUrl: withJsApi(item.embed.embedUrl, window.location.origin, auto) };
-    // Deliberately keyed on the track alone — see above.
+    // Keyed on the frame alone — see above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item?.id, controllable]);
+  }, [frameKey, controllable]);
 
+  /* Fallback for the advance that did need a new frame. */
   useEffect(() => {
     const ended = endedTrack.current;
     if (!ended || !playback.readyFor || playback.readyFor === ended) return;
@@ -362,7 +410,7 @@ export function NowPlayingDock({
                   answered, which stopped the handshake before the new one was
                   listening. From there nothing could be told to play.
                 */}
-                <EmbedPlayer key={item.id} data={frameEmbed ?? item.embed} fill />
+                <EmbedPlayer key={frameKey ?? item.id} data={frameEmbed ?? item.embed} fill />
               </div>
             ) : (
               <EmbedPlayer data={item.embed} />

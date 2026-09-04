@@ -51,8 +51,11 @@ export function withJsApi(embedUrl: string, pageOrigin: string, autostart = fals
 export function useYouTubePlayback(
   getFrame: () => HTMLIFrameElement | null,
   enabled: boolean,
-  /** Changes per track, so a new video starts from an unknown state. */
-  trackKey: string,
+  /**
+   * Identifies the *frame*, not the track. A frame outlives a track now: the
+   * next video is loaded into the running player rather than a new iframe.
+   */
+  frameKey: string,
   /** Fired when the video runs out — what "play the next one" hangs off. */
   onEnded?: () => void,
 ) {
@@ -60,22 +63,22 @@ export function useYouTubePlayback(
   endedRef.current = onEnded;
   const [playing, setPlaying] = useState(false);
   /**
-   * Which track the frame has actually answered for — not a bare boolean.
+   * Which frame has actually answered — not a bare boolean.
    *
-   * "Ready" lags a track change by a render, so a caller waiting to start the
-   * next track saw the previous track's readiness and fired at a frame that was
-   * being torn down. Naming the track makes that impossible to confuse.
+   * "Ready" lags a change by a render, so a caller waiting to act saw the
+   * previous frame's readiness and fired at one being torn down. Naming what it
+   * is ready for makes that impossible to confuse.
    */
   const [readyFor, setReadyFor] = useState<string | null>(null);
   const playingRef = useRef(false);
   playingRef.current = playing;
   const readyRef = useRef(false);
-  readyRef.current = readyFor === trackKey;
+  readyRef.current = readyFor === frameKey;
 
   useEffect(() => {
     setPlaying(false);
     setReadyFor(null);
-  }, [trackKey]);
+  }, [frameKey]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -94,7 +97,7 @@ export function useYouTubePlayback(
         return;
       }
       if (!data?.event) return;
-      setReadyFor(trackKey);
+      setReadyFor(frameKey);
       /*
        * State arrives two ways: `onStateChange` carries the number directly,
        * while the periodic `infoDelivery` wraps it in an info object.
@@ -143,7 +146,7 @@ export function useYouTubePlayback(
       frame.removeEventListener("load", onLoad);
       window.removeEventListener("message", onMessage);
     };
-  }, [enabled, trackKey, getFrame]);
+  }, [enabled, frameKey, getFrame]);
 
   const send = useCallback(
     (func: "playVideo" | "pauseVideo") => {
@@ -160,5 +163,26 @@ export function useYouTubePlayback(
   const toggle = useCallback(() => send(playingRef.current ? "pauseVideo" : "playVideo"), [send]);
   const play = useCallback(() => send("playVideo"), [send]);
 
-  return { playing, readyFor, toggle, play };
+  /**
+   * Swap the video inside the running player, which starts it playing.
+   *
+   * This is what keeps a queue moving in a background tab. A fresh iframe there
+   * is a fresh autoplay decision, and Chrome does not grant one to a tab nobody
+   * is looking at; the player already running has that permission and keeps it.
+   * It needs no new handshake either — this frame answered long ago.
+   */
+  const loadVideo = useCallback(
+    (videoId: string) => {
+      const win = getFrame()?.contentWindow;
+      if (!win) return;
+      win.postMessage(
+        JSON.stringify({ event: "command", func: "loadVideoById", args: [videoId] }),
+        YT_ORIGIN,
+      );
+      setPlaying(true);
+    },
+    [getFrame],
+  );
+
+  return { playing, readyFor, toggle, play, loadVideo };
 }
