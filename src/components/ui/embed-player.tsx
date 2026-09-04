@@ -3,6 +3,24 @@
 import { ExternalLink, Play } from "lucide-react";
 import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
 
+/**
+ * Natural shape of each provider's frame, as width ÷ height. `null` means the
+ * embed is an audio bar of fixed height rather than a video box.
+ *
+ * The floating player needs this: it owns its own size, so it has to know what
+ * shape to give the frame instead of inheriting the per-provider heights below.
+ */
+export const EMBED_ASPECT: Record<EmbedProvider, number | null> = {
+  youtube: 16 / 9,
+  spotify: null,
+  tiktok: 9 / 16,
+  instagram: 4 / 5,
+  other: 16 / 9,
+};
+
+/** Spotify's own compact-player height. Anything shorter clips its controls. */
+export const SPOTIFY_BAR_HEIGHT = 152;
+
 export type EmbedData = {
   provider: EmbedProvider;
   url: string;
@@ -15,7 +33,7 @@ export type EmbedData = {
  *  thumbnail/placeholder + play button first, and only mounts the heavy iframe
  *  once the user taps it. Keeps feeds (many cards × many links) light and avoids
  *  navigating away to a detail screen. Non-embeddable links fall back to a card. */
-export function EmbedPlayer({ data }: { data: EmbedData }) {
+export function EmbedPlayer({ data, fill = false }: { data: EmbedData; fill?: boolean }) {
   // No iframe possible (unparsed TikTok short-link, plain links) → link card.
   if (!data.embedUrl) {
     return (
@@ -34,6 +52,23 @@ export function EmbedPlayer({ data }: { data: EmbedData }) {
         </div>
         <ExternalLink className="text-muted-foreground h-4 w-4 shrink-0" />
       </a>
+    );
+  }
+
+  /*
+   * The floating player has already worked out the box from EMBED_ASPECT, so
+   * the frame just fills it. Keeping the provider heights below would make the
+   * window either clip the frame or wrap it in dead space.
+   */
+  if (fill) {
+    return (
+      <iframe
+        src={data.embedUrl}
+        title={data.title ?? PROVIDER_LABEL[data.provider]}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className="h-full w-full border-0"
+      />
     );
   }
 

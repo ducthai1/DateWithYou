@@ -10,7 +10,7 @@ import { Clock, Users, ChefHat, Edit, Play } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { MediaForm } from "./media-form";
-import { useNowPlaying } from "./now-playing-dock";
+import { useNowPlaying, type NowPlayingItem } from "./now-playing-context";
 import { cn } from "@/lib/utils";
 
 export type MediaListItem = {
@@ -32,7 +32,38 @@ export type MediaListItem = {
   } | null;
 };
 
-export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () => void }) {
+/** Maps a list row onto what the floating player needs. Null for rows with no
+ *  link — recipes and games never reach the player. */
+export function toNowPlayingItem(item: MediaListItem): NowPlayingItem | null {
+  if (!item.url) return null;
+  const provider = (item.provider ?? "other") as EmbedProvider;
+  return {
+    id: item.id,
+    kind: item.kind,
+    title: item.title,
+    thumbnailUrl: item.thumbnailUrl,
+    providerLabel: PROVIDER_LABEL[provider],
+    embed: {
+      provider,
+      url: item.url,
+      embedUrl: item.embedUrl,
+      thumbnailUrl: item.thumbnailUrl,
+      title: item.title,
+    },
+  };
+}
+
+export function MediaCard({
+  item,
+  onOpen,
+  queue,
+}: {
+  item: MediaListItem;
+  onOpen?: () => void;
+  /** The list this card sits in, so the player can skip to the next track
+   *  without the library page being mounted any more. */
+  queue?: MediaListItem[];
+}) {
   const toast = useToast();
   const utils = trpc.useUtils();
   const [editing, setEditing] = useState(false);
@@ -94,7 +125,7 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
           </div>
         </button>
       ) : (
-        item.url && <PlayableEmbed item={item} url={item.url} />
+        item.url && <PlayableEmbed item={item} queue={queue} />
       )}
 
       {item.note && <p className="text-muted-foreground text-xs">{item.note}</p>}
@@ -131,7 +162,7 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
  * which meant nothing ever counted as "the one playing" — every visible card
  * looked equally active.
  */
-function PlayableEmbed({ item, url }: { item: MediaListItem; url: string }) {
+function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaListItem[] }) {
   const { playing, start } = useNowPlaying();
   const isPlaying = playing?.id === item.id;
 
@@ -145,20 +176,15 @@ function PlayableEmbed({ item, url }: { item: MediaListItem; url: string }) {
    * the only frame and keeps it alive across the whole app.
    */
   const handleActivate = () => {
-    start({
-      id: item.id,
-      kind: item.kind,
-      title: item.title,
-      thumbnailUrl: item.thumbnailUrl,
-      providerLabel: PROVIDER_LABEL[(item.provider ?? "other") as EmbedProvider],
-      embed: {
-        provider: (item.provider ?? "other") as EmbedProvider,
-        url,
-        embedUrl: item.embedUrl,
-        thumbnailUrl: item.thumbnailUrl,
-        title: item.title,
-      },
-    });
+    /*
+     * The whole visible list goes with it, not just this row. Skip buttons in
+     * the player have to work from any screen, and by then this page is gone.
+     */
+    const list = (queue?.length ? queue : [item])
+      .map(toNowPlayingItem)
+      .filter((q): q is NowPlayingItem => q !== null);
+    const at = list.findIndex((q) => q.id === item.id);
+    start(list, at < 0 ? 0 : at);
   };
 
   return (

@@ -17,7 +17,7 @@ import { PushSetup } from "@/components/layout/push-setup";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
-import { NowPlayingProvider } from "@/features/library/now-playing-dock";
+import { NowPlayingProvider } from "@/features/library/now-playing-context";
 import { NavigationProvider } from "@/features/locations/navigation-context";
 import { NavigationMiniDock } from "@/features/locations/navigation-mini-dock";
 import { THEME_COOKIE_NAME, resolveThemeKey } from "@/lib/theme-presets";

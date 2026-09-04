@@ -72,7 +72,7 @@ export function LibraryPage() {
   });
 
   return (
-    // Provider owns the floating "now playing" dock (see now-playing-dock.tsx)
+    // Provider owns the floating "now playing" player (see now-playing-context.tsx)
     // and is scoped to this page on purpose: the embeds it tracks are
     // cross-origin iframes that get torn down the moment this page unmounts
     // (route navigation), so the dock has nothing left to represent past that
@@ -194,7 +194,7 @@ export function LibraryPage() {
       ) : (
         <StaggerList className="grid gap-3 sm:grid-cols-2">
           {items.map((it) => (
-            <MediaCard key={it.id} item={it} onOpen={() => setRecipe(it)} />
+            <MediaCard key={it.id} item={it} queue={items} onOpen={() => setRecipe(it)} />
           ))}
         </StaggerList>
       )}
