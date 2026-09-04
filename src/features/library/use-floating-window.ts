@@ -11,6 +11,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * frame or squash it.
  */
 
+/** Which corner is being pulled. "move" drags the whole panel. */
+export type DragMode = "move" | "nw" | "ne" | "sw" | "se";
+
 export type WindowBox = {
   /** Outer width in px. */
   w: number;
@@ -29,18 +32,33 @@ export function useFloatingWindow({
   storageKey,
   minWidth,
   maxWidth,
+  heightFor,
 }: {
   storageKey: string;
   minWidth: number;
   maxWidth: number;
+  /**
+   * Panel height for a given width, computed rather than measured.
+   *
+   * A top-corner pull has to hold the bottom edge still, which needs the new
+   * height *before* it is laid out. Reading `offsetHeight` instead lost the
+   * race: `pointerup` arrives before React has flushed the last move's render,
+   * so the read returned the previous height and the bottom edge slid ~28px per
+   * pull — and which corner it hit changed run to run.
+   */
+  heightFor?: (w: number) => number;
 }) {
+  const heightForRef = useRef(heightFor);
+  heightForRef.current = heightFor;
   const boxRef = useRef<HTMLDivElement | null>(null);
   /*
    * Starts null so the server and the first client render agree; the stored
    * box — or a width picked from the viewport — arrives on mount.
    */
   const [box, setBox] = useState<WindowBox | null>(null);
-  const drag = useRef<{ mode: "move" | "size"; px: number; py: number; x: number; y: number; w: number } | null>(null);
+  const drag = useRef<
+    { mode: DragMode; px: number; py: number; x: number; y: number; w: number; h: number; bottom: number } | null
+  >(null);
 
   useEffect(() => {
     const vw = window.innerWidth;
@@ -83,13 +101,24 @@ export function useFloatingWindow({
    * document that started the gesture, which is exactly what this needs.
    */
   const onPointerDown = useCallback(
-    (mode: "move" | "size") => (e: React.PointerEvent) => {
+    (mode: DragMode) => (e: React.PointerEvent) => {
       const el = boxRef.current;
       if (!el || !box) return;
       // Buttons inside the frame keep their clicks.
       if (mode === "move" && (e.target as HTMLElement).closest("button,a,input,select")) return;
       const rect = el.getBoundingClientRect();
-      drag.current = { mode, px: e.clientX, py: e.clientY, x: rect.left, y: rect.top, w: rect.width };
+      drag.current = {
+        mode, px: e.clientX, py: e.clientY,
+        x: rect.left, y: rect.top, w: rect.width, h: rect.height,
+        // The edge a top-corner pull has to hold still.
+        bottom: rect.bottom,
+      };
+      /*
+       * A corner pull needs concrete left/top to anchor the opposite edge
+       * against. Until the first drag the panel is parked by CSS with no
+       * coordinates, so they are taken from where it actually sits.
+       */
+      if (mode !== "move") setBox((cur) => (cur ? { ...cur, x: rect.left, y: rect.top } : cur));
 
       const onMove = (ev: PointerEvent) => {
         const d = drag.current;
@@ -100,15 +129,25 @@ export function useFloatingWindow({
         const h = node.offsetHeight;
         setBox((cur) => {
           if (!cur) return cur;
-          if (d.mode === "size") {
-            const room = window.innerWidth - d.x - MARGIN;
-            return { ...cur, w: clamp(d.w + dx, minWidth, Math.min(maxWidth, room)) };
+          if (d.mode === "move") {
+            return {
+              ...cur,
+              x: clamp(d.x + dx, MARGIN, Math.max(MARGIN, window.innerWidth - d.w - MARGIN)),
+              y: clamp(d.y + dy, MARGIN, Math.max(MARGIN, window.innerHeight - h - MARGIN)),
+            };
           }
-          return {
-            ...cur,
-            x: clamp(d.x + dx, MARGIN, Math.max(MARGIN, window.innerWidth - d.w - MARGIN)),
-            y: clamp(d.y + dy, MARGIN, Math.max(MARGIN, window.innerHeight - h - MARGIN)),
-          };
+          const fromLeft = d.mode === "nw" || d.mode === "sw";
+          const fromTop = d.mode === "nw" || d.mode === "ne";
+          // Pulling a left corner widens leftwards, so the delta flips sign.
+          const room = fromLeft ? d.x + d.w - MARGIN : window.innerWidth - d.x - MARGIN;
+          const w = clamp(fromLeft ? d.w - dx : d.w + dx, minWidth, Math.min(maxWidth, room));
+          /* The edge you are NOT holding stays put. */
+          const x = fromLeft ? d.x + (d.w - w) : d.x;
+          const h1 = heightForRef.current?.(w) ?? h;
+          const y = fromTop
+            ? clamp(d.bottom - h1, MARGIN, Math.max(MARGIN, window.innerHeight - h1 - MARGIN))
+            : d.y;
+          return { w, x, y };
         });
       };
       const onUp = () => {
@@ -158,9 +197,9 @@ export function useFloatingWindow({
     boxRef,
     box,
     reset,
-    /** Spread on the panel: the padding around the frame is the drag surface. */
+    /** Spread on the title strip and the frame's padding. */
     moveProps: { onPointerDown: onPointerDown("move") },
-    /** Spread on the corner grip. */
-    sizeProps: { onPointerDown: onPointerDown("size") },
+    /** Spread on each of the four corner grips. */
+    cornerProps: (corner: Exclude<DragMode, "move">) => ({ onPointerDown: onPointerDown(corner) }),
   };
 }

@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChefHat, GripVertical, Music2, SkipBack, SkipForward, Video, X } from "lucide-react";
+import { ChefHat, Music2, SkipBack, SkipForward, Video, X } from "lucide-react";
 import { EmbedPlayer, EMBED_ASPECT, SPOTIFY_BAR_HEIGHT } from "@/components/ui/embed-player";
 import { cn } from "@/lib/utils";
 import type { MediaListItem } from "./media-card";
 import type { NowPlayingItem } from "./now-playing-context";
-import { useFloatingWindow } from "./use-floating-window";
+import { useFloatingWindow, type DragMode } from "./use-floating-window";
 
 const KIND_ICON: Record<MediaListItem["kind"], typeof Music2> = {
   music: Music2,
@@ -19,22 +19,20 @@ const KIND_ICON: Record<MediaListItem["kind"], typeof Music2> = {
 
 const MIN_W = 180;
 const MAX_W = 640;
-/** Padding around the frame, so the panel's own edge stays visible. */
+/** Inset around the frame, so the panel's own edge stays visible. */
 const PAD = 6;
+/** Fixed parts of the panel's height, so it can be computed from the width
+ *  alone: 1px border each side, the title strip, and the toolbar row. */
+const BORDER = 2;
+const STRIP_H = 24;
+const BAR_H = 52;
 
-/** Pointer capability, not screen width: a small laptop still hovers, a big
- *  tablet still does not. Drives whether the toolbar hides itself. */
-function useCanHover() {
-  const [can, setCan] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
-    setCan(mq.matches);
-    const onChange = () => setCan(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return can;
-}
+const CORNERS: Array<{ mode: Exclude<DragMode, "move">; className: string; label: string }> = [
+  { mode: "nw", className: "top-0 left-0 cursor-nwse-resize", label: "trên trái" },
+  { mode: "ne", className: "top-0 right-0 cursor-nesw-resize", label: "trên phải" },
+  { mode: "sw", className: "bottom-0 left-0 cursor-nesw-resize", label: "dưới trái" },
+  { mode: "se", className: "right-0 bottom-0 cursor-nwse-resize", label: "dưới phải" },
+];
 
 function useViewportHeight() {
   const [h, setH] = useState(0);
@@ -69,12 +67,22 @@ export function NowPlayingDock({
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const canHover = useCanHover();
   const viewportH = useViewportHeight();
-  const { boxRef, box, moveProps, sizeProps } = useFloatingWindow({
+  const aspect = item ? EMBED_ASPECT[item.embed.provider] : null;
+  const capH = Math.max(140, Math.round((viewportH || 640) * 0.5));
+
+  /** The frame's height for a width — the one rule both the layout below and a
+   *  corner pull's bottom-edge anchor read from. */
+  const mediaHeightFor = (w: number) => {
+    const h = aspect ? Math.round((w - PAD * 2) / aspect) : SPOTIFY_BAR_HEIGHT;
+    return aspect && h > capH ? capH : h;
+  };
+
+  const { boxRef, box, moveProps, cornerProps } = useFloatingWindow({
     storageKey: "vivu.nowplaying.window",
     minWidth: MIN_W,
     maxWidth: MAX_W,
+    heightFor: (w) => BORDER + STRIP_H + mediaHeightFor(w) + BAR_H + PAD,
   });
 
   if (!mounted || !box) return null;
@@ -91,21 +99,12 @@ export function NowPlayingDock({
    * narrows to match, so the aspect holds instead of the video getting cropped
    * — the old dock let one grow to 740px and swallow a phone screen whole.
    */
-  const aspect = item ? EMBED_ASPECT[item.embed.provider] : null;
-  const innerW = box.w - PAD * 2;
-  const capH = Math.max(140, Math.round((viewportH || 640) * 0.5));
-  let mediaW = innerW;
-  let mediaH = aspect ? Math.round(innerW / aspect) : SPOTIFY_BAR_HEIGHT;
-  if (aspect && mediaH > capH) {
-    mediaH = capH;
-    mediaW = Math.round(capH * aspect);
-  }
+  const mediaH = mediaHeightFor(box.w);
+  // A capped vertical clip narrows instead of being cropped.
+  const mediaW = aspect && mediaH === capH ? Math.round(capH * aspect) : box.w - PAD * 2;
 
-  /* Hidden until hovered on a mouse, always out on a touch screen — there is
-   * no hover there, so a toolbar that waits for one is a toolbar nobody gets. */
-  const chrome = canHover
-    ? "max-h-0 opacity-0 group-hover:max-h-24 group-hover:opacity-100 group-focus-within:max-h-24 group-focus-within:opacity-100"
-    : "max-h-24 opacity-100";
+  const skipButton =
+    "text-muted-foreground hover:bg-muted hover:text-foreground pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-30 disabled:hover:bg-transparent";
 
   return createPortal(
     <AnimatePresence>
@@ -128,16 +127,45 @@ export function NowPlayingDock({
               aim at to grab or resize the panel goes dead. The frame inside
               has its own rounding, so nothing needs clipping at this level.
             */
-            "group border-border bg-card fixed z-40 rounded-2xl border shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
+            "border-border bg-card fixed z-40 rounded-2xl border shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
             // Parked above the bottom nav until the first drag moves it.
             box.x == null && "right-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6",
           )}
         >
-          {/* The padding is the drag surface: an iframe swallows its own
-              pointer events, so the panel can only be grabbed by its edge. */}
+          {/*
+            Corner grips come first so the toolbar below paints over them, and
+            they are deliberately square and unclipped: a `rounded-*` here
+            clips a grip's own hit area, and the outermost corner — the one
+            people aim at — falls through to the drag surface and moves the
+            panel instead of sizing it.
+          */}
+          {CORNERS.map((c) => (
+            <div
+              key={c.mode}
+              {...cornerProps(c.mode)}
+              role="separator"
+              aria-label={`Kéo góc ${c.label} để đổi cỡ`}
+              style={{ touchAction: "none" }}
+              className={cn("absolute h-6 w-6", c.className)}
+            />
+          ))}
+
+          {/*
+            Title strip: the drag surface, the full width of the panel. It used
+            to be only the thin inset around the frame, which meant hunting for
+            a few pixels of border before the window would move at all.
+          */}
           <div
             {...moveProps}
-            style={{ padding: PAD, touchAction: "none" }}
+            style={{ touchAction: "none" }}
+            className="flex h-6 cursor-grab items-center justify-center rounded-t-2xl active:cursor-grabbing"
+          >
+            <span className="bg-muted-foreground/30 h-1 w-10 rounded-full" aria-hidden="true" />
+          </div>
+
+          <div
+            {...moveProps}
+            style={{ paddingLeft: PAD, paddingRight: PAD, paddingBottom: PAD, touchAction: "none" }}
             className="cursor-grab active:cursor-grabbing"
           >
             {embeddable ? (
@@ -151,67 +179,36 @@ export function NowPlayingDock({
               <EmbedPlayer data={item.embed} />
             )}
 
-            <div className={cn("overflow-hidden transition-all duration-200", chrome)}>
-              <div className="flex items-center gap-1.5 pt-2">
-                <GripVertical className="text-muted-foreground/60 h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="bg-accent-soft text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{item.title}</p>
-                  <p className="text-muted-foreground truncate text-xs">
-                    {total > 1 ? `${item.providerLabel} · ${position}/${total}` : item.providerLabel}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={onPrev}
-                  disabled={!hasPrev}
-                  aria-label="Bài trước"
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:hover:bg-transparent"
-                >
-                  <SkipBack className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={onNext}
-                  disabled={!hasNext}
-                  aria-label="Bài sau"
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:hover:bg-transparent"
-                >
-                  <SkipForward className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  aria-label="Đóng trình phát"
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+            {/*
+              Always out. Hiding it behind a hover made the panel flicker open
+              and shut as the pointer crossed it, and the bar that never hides
+              on its own is YouTube's, inside the frame — not this one.
 
-          {/*
-            Resize grip. Bigger on touch, where there is no cursor to aim with.
-            Deliberately square and unclipped: a `rounded-br` here clipped its
-            own hit area, so the outermost corner — the one people aim at —
-            fell through to the drag surface and moved the panel instead. The
-            square has no background, only the small marker inside it, so it
-            reaching past the rounded corner is invisible.
-          */}
-          <div
-            {...sizeProps}
-            role="separator"
-            aria-label="Kéo để đổi cỡ khung"
-            style={{ touchAction: "none" }}
-            className={cn(
-              "absolute right-0 bottom-0 cursor-se-resize",
-              canHover ? "h-5 w-5 opacity-0 group-hover:opacity-100" : "h-7 w-7 opacity-70",
-            )}
-          >
-            <span className="border-muted-foreground/50 absolute right-1.5 bottom-1.5 h-2 w-2 border-r-2 border-b-2" />
+              `pointer-events-none` on the row with `auto` on its buttons keeps
+              two things true at once: the buttons stay clickable, and the
+              empty space beside them still drags the window instead of
+              swallowing the gesture.
+            */}
+            <div className="pointer-events-none relative z-10 flex items-center gap-1.5 pt-2">
+              <span className="bg-accent-soft text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{item.title}</p>
+                <p className="text-muted-foreground truncate text-xs">
+                  {total > 1 ? `${item.providerLabel} · ${position}/${total}` : item.providerLabel}
+                </p>
+              </div>
+              <button type="button" onClick={onPrev} disabled={!hasPrev} aria-label="Bài trước" className={skipButton}>
+                <SkipBack className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={onNext} disabled={!hasNext} aria-label="Bài sau" className={skipButton}>
+                <SkipForward className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={onClose} aria-label="Đóng trình phát" className={skipButton}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </motion.div>
       )}
