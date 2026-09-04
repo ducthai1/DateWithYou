@@ -105,10 +105,20 @@ export function NowPlayingDock({
   autoNextRef.current = autoNext;
   const hasNextRef = useRef(hasNext);
   hasNextRef.current = hasNext;
+  const itemIdRef = useRef<string | null>(null);
+  itemIdRef.current = item?.id ?? null;
   const onNextRef = useRef(onNext);
   onNextRef.current = onNext;
-  /** Set when the skip was automatic, so the new frame is told to start. */
-  const startWhenReady = useRef(false);
+  /**
+   * Which track ran out, when the skip was automatic.
+   *
+   * Holding the id rather than a flag is what keeps the start on the right
+   * frame: readiness lags a track change by a render, so a plain flag was spent
+   * on the outgoing frame and the new one was never told to play. The next
+   * track's id is not known here, but "any track that is not the one that
+   * ended" is enough.
+   */
+  const endedTrack = useRef<string | null>(null);
 
   useEffect(() => {
     try {
@@ -120,15 +130,16 @@ export function NowPlayingDock({
 
   const handleEnded = useCallback(() => {
     if (!autoNextRef.current || !hasNextRef.current) return;
-    startWhenReady.current = true;
+    endedTrack.current = itemIdRef.current;
     onNextRef.current();
   }, []);
 
   const playback = useYouTubePlayback(getFrame, controllable, item?.id ?? "", handleEnded);
 
   useEffect(() => {
-    if (!startWhenReady.current || !playback.ready) return;
-    startWhenReady.current = false;
+    const ended = endedTrack.current;
+    if (!ended || !playback.readyFor || playback.readyFor === ended) return;
+    endedTrack.current = null;
     playback.play();
   }, [playback]);
 
@@ -328,7 +339,16 @@ export function NowPlayingDock({
                 className="bg-muted mx-auto overflow-hidden rounded-xl"
                 style={{ width: mediaW, height: mediaH }}
               >
+                {/*
+                  Keyed by track, so a change mounts a fresh frame instead of
+                  pointing the old one at a new video. Reusing it left the
+                  previous player's trailing state messages arriving on the
+                  same window — enough to look like the new player had
+                  answered, which stopped the handshake before the new one was
+                  listening. From there nothing could be told to play.
+                */}
                 <EmbedPlayer
+                  key={item.id}
                   data={
                     controllable
                       ? { ...item.embed, embedUrl: withJsApi(item.embed.embedUrl!, window.location.origin) }

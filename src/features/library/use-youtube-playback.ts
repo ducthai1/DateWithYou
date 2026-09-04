@@ -44,15 +44,22 @@ export function useYouTubePlayback(
   const endedRef = useRef(onEnded);
   endedRef.current = onEnded;
   const [playing, setPlaying] = useState(false);
-  const [ready, setReady] = useState(false);
+  /**
+   * Which track the frame has actually answered for — not a bare boolean.
+   *
+   * "Ready" lags a track change by a render, so a caller waiting to start the
+   * next track saw the previous track's readiness and fired at a frame that was
+   * being torn down. Naming the track makes that impossible to confuse.
+   */
+  const [readyFor, setReadyFor] = useState<string | null>(null);
   const playingRef = useRef(false);
   playingRef.current = playing;
   const readyRef = useRef(false);
-  readyRef.current = ready;
+  readyRef.current = readyFor === trackKey;
 
   useEffect(() => {
     setPlaying(false);
-    setReady(false);
+    setReadyFor(null);
   }, [trackKey]);
 
   useEffect(() => {
@@ -72,7 +79,7 @@ export function useYouTubePlayback(
         return;
       }
       if (!data?.event) return;
-      setReady(true);
+      setReadyFor(trackKey);
       /*
        * State arrives two ways: `onStateChange` carries the number directly,
        * while the periodic `infoDelivery` wraps it in an info object.
@@ -92,9 +99,8 @@ export function useYouTubePlayback(
 
     window.addEventListener("message", onMessage);
     /*
-     * The frame drops anything sent before it has booted, and there is no load
-     * event to wait on from the outside, so the handshake repeats until it
-     * answers — then stops.
+     * The frame drops anything sent before it has booted, so the handshake
+     * repeats until it answers — then stops.
      */
     const hello = () => post({ event: "listening", id: 1, channel: "widget" });
     hello();
@@ -104,9 +110,22 @@ export function useYouTubePlayback(
     }, 400);
     const giveUp = setTimeout(() => clearInterval(tick), 15000);
 
+    /*
+     * A frame that navigates has a new player inside that has heard nothing.
+     * Whatever the old one had told us no longer applies, so the handshake
+     * starts over — otherwise the new player sits there listening to nobody.
+     */
+    const onLoad = () => {
+      setReadyFor(null);
+      readyRef.current = false;
+      hello();
+    };
+    frame.addEventListener("load", onLoad);
+
     return () => {
       clearInterval(tick);
       clearTimeout(giveUp);
+      frame.removeEventListener("load", onLoad);
       window.removeEventListener("message", onMessage);
     };
   }, [enabled, trackKey, getFrame]);
@@ -126,5 +145,5 @@ export function useYouTubePlayback(
   const toggle = useCallback(() => send(playingRef.current ? "pauseVideo" : "playVideo"), [send]);
   const play = useCallback(() => send("playVideo"), [send]);
 
-  return { playing, ready, toggle, play };
+  return { playing, readyFor, toggle, play };
 }
