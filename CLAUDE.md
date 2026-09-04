@@ -3225,6 +3225,53 @@ Hệ quả: React vứt HTML dựng sẵn từ server và vẽ lại toàn cây 
 về HEAD chạy lại — đừng mặc định là mình gây ra, cũng đừng mặc định là không.
 
 
+## Tên trên màn hình chính: `short_name` VÀ thẻ của Apple, hai nơi
+
+Cài web về máy thì lối tắt hiện **"Vivu"** — trùng tên một web khác, không phải sản phẩm này. Tên
+lối tắt KHÔNG lấy từ `name` của manifest mà từ:
+
+| Nền tảng | Đọc ở đâu |
+|---|---|
+| Android / Chrome | `manifest.short_name` |
+| iOS / Safari | `<meta name="apple-mobile-web-app-title">` (Next: `metadata.appleWebApp.title`) |
+
+Sửa một chỗ thì nền tảng kia vẫn sai. Cả hai nay đọc `SITE_NAME`, nên không còn bản chép tay để
+lệch nhau. "Vivu No Plan" đúng 12 ký tự — sát ngưỡng cả hai hệ cắt chữ, nên là dạng dài nhất còn
+hiện trọn.
+
+Kiểm bằng `curl`, đừng mở trang bằng mắt: `curl -s localhost:PORT/manifest.webmanifest` và
+`curl -s localhost:PORT/ | grep apple-mobile-web-app-title`. Lưu ý **`/home` trả 307** khi chưa
+đăng nhập — grep vào đó ra rỗng và trông y như thẻ bị thiếu.
+
+## Ô nhập trông như bị khoá: chữ đã sửa, còn NỀN thì chưa
+
+Lần trước sửa màu chữ của `DatePicker` mà **để nguyên `bg-background`**. Trong một thẻ trắng
+(`--card: #ffffff`), `--background: #F8F9FA` là **ô xám** — và ô xám giữa những ô trắng là cách mọi
+form trên đời viết chữ "không nhập được ở đây". Người dùng phải nhắc lần thứ hai.
+
+**Luật:** ô nhập lấy nền theo **bề mặt chứa nó**, không theo nền trang. Trong modal/thẻ thì là
+`bg-card`, giống `Input`/`Textarea`. Kiểm bằng số, đừng bằng mắt:
+
+```js
+getComputedStyle(ô1).backgroundColor === getComputedStyle(ô2).backgroundColor   // các ô cùng hàng
+=== "rgb(255, 255, 255)"                                                        // và bằng nền thẻ
+```
+
+Kèm theo: nút xoá giờ đặt `absolute -top-2 -right-2` **thò ra ngoài hàng 8px** và vượt lề phải của
+form. Nút phụ trợ của một ô phải nằm **trong** ô (`right-1.5 top-1/2 -translate-y-1/2`), chừa
+`pr-9` cho nó — treo ở góc ngoài là mượn chỗ của thứ khác.
+
+## Badge thông báo: dùng CHỮ V của thương hiệu, không phải icon chung chung
+
+Bản đầu tôi vẽ máy bay — đúng kỹ thuật (bóng đổ trên nền trong suốt) nhưng **sai thương hiệu**.
+Logo là chữ **V**, nên badge là chữ V khoét ra khỏi khối bo góc (đục 43%). Cách dựng vẫn như cũ:
+SVG nạp qua `data:text/html` rồi `Page.captureScreenshot` với
+`Emulation.setDefaultBackgroundColorOverride` alpha 0.
+
+**Luật:** icon rút gọn phải rút gọn ĐÚNG dấu hiệu nhận diện. Một glyph đẹp mà không phải logo thì
+vẫn là icon của người khác.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

@@ -97,8 +97,13 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
          * muted grey of whatever surrounded it and read as a disabled field —
          * people assumed the date could not be changed and did not try, even
          * though tapping it has always opened the picker.
+         *
+         * Fixing the text was only half of it: the fill stayed on `background`,
+         * the page's off-white, which inside a white card is still the grey box
+         * that says "not for you". It sits on the card colour now, like every
+         * other field.
          */
-        className="text-foreground w-full justify-start bg-background text-left font-medium hover:border-accent hover:bg-background"
+        className="text-foreground bg-card hover:bg-card w-full justify-start text-left font-medium hover:border-accent"
         onClick={() => setOpen(!open)}
       >
         <CalendarIcon className="mr-2 h-4 w-4 text-accent" />

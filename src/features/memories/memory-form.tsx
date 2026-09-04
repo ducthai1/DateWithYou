@@ -387,31 +387,35 @@ export function MemoryForm({
           ))}
         </div>
       )}
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <DatePicker value={date} onChange={setDate} />
-        </div>
-        {/* Beside the date, not below it: the two answer one question, and the
-            hour is the smaller half of it. Clearable, because "some time that
-            day" is a real answer and the field must be able to go back to it. */}
-        <div className="relative w-[7.5rem] shrink-0">
+      {/* Hour first, then the day. Both on the card's own white rather than the
+          page grey they used to sit on — a filled-grey box among white ones is
+          how every form on earth spells "you cannot type here", and people read
+          it that way even though both have always been editable. */}
+      <div className="flex items-center gap-2">
+        <div className="relative w-[8.25rem] shrink-0">
           <input
             type="time"
             aria-label="Giờ của kỷ niệm (không bắt buộc)"
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            className="border-border bg-background text-foreground h-11 w-full rounded-xl border px-3 text-sm font-medium shadow-sm outline-none focus:border-accent"
+            className="border-border bg-card text-foreground h-11 w-full rounded-xl border pl-3 pr-9 text-sm font-medium shadow-sm outline-none focus:border-accent"
           />
+          {/* Inside the field, not hanging off its corner. At -right-2 this sat
+              8px beyond the row and pushed past the form's right margin — and
+              the row is now flush with it, so there is nowhere for it to hang. */}
           {time && (
             <button
               type="button"
               onClick={() => setTime("")}
               aria-label="Xoá giờ"
-              className="text-muted-foreground hover:text-foreground absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-xs shadow-sm"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-sm"
             >
               ×
             </button>
           )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <DatePicker value={date} onChange={setDate} />
         </div>
       </div>
       <p className="text-muted-foreground -mt-1.5 text-xs">

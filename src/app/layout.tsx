@@ -166,7 +166,9 @@ export const metadata: Metadata = {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   },
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Vivu" },
+  // iOS reads its home-screen label from here, not from the manifest, so the
+  // two have to be set separately or an iPhone install still says "Vivu".
+  appleWebApp: { capable: true, statusBarStyle: "default", title: SITE_NAME },
   formatDetection: { telephone: false },
 };
 

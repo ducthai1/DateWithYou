@@ -9,7 +9,15 @@ import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: SITE_NAME,
-    short_name: "Vivu",
+    /*
+     * The home-screen label, and it has to be the whole name.
+     *
+     * "Vivu" alone belongs to a different site, so an install left people with
+     * a shortcut that named someone else's product. Twelve characters is right
+     * at what Android and iOS show before they truncate, so this is the longest
+     * form that still lands intact — and the one worth spending it on.
+     */
+    short_name: SITE_NAME,
     description: SITE_DESCRIPTION,
     start_url: "/home",
     display: "standalone",

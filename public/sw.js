@@ -153,9 +153,10 @@ self.addEventListener("push", (event) => {
        * tint. icon-192.png has no alpha at all — every pixel opaque — so the
        * mask was a filled square and the phone drew a blank white block.
        *
-       * badge-96.png is a silhouette on transparency, which is the only shape
-       * that survives being reduced to a mask. iOS ignores badge entirely and
-       * uses the app icon, so this costs nothing there.
+       * badge-96.png is the brand's V knocked out of a rounded tile, on
+       * transparency — a shape, which is the only thing that survives being
+       * reduced to a mask. iOS ignores badge entirely and uses the app icon,
+       * so this costs nothing there.
        */
       badge: "/badge-96.png",
       // `tag` collapses a repeat instead of stacking; renotify makes the phone
