@@ -3478,6 +3478,35 @@ grep -rn "tênMutation" src/features/ src/components/   # rỗng = server có, n
 ```
 
 
+## Bấm Lưu giữa lúc đang tải ảnh = mất sạch ảnh
+
+Nút Lưu chỉ khoá theo `!title || create.isPending` — **không biết gì về việc đang tải ảnh**. Bấm
+giữa chừng thì: mutation chạy với `photos` chỉ gồm ảnh đã xong (thường **rỗng**) → `onDone()` đóng
+form → component unmount → các XHR còn bay thành **mồ côi** (`setPhotos` trên component đã chết
+không làm gì cả) → mở lại thấy kỷ niệm **0 ảnh**.
+
+**Cách sửa không phải là khoá nút.** Cú bấm đó có nghĩa là *"giữ cái này lại"*, nên nhớ lấy ý định
+thay vì làm theo nghĩa đen: đặt cờ `saveWhenReady`, hàng đợi tải xong thì tự lưu. Nút đổi chữ thành
+"Xong ảnh là lưu…" để không ai tưởng nó treo.
+
+Một chi tiết dễ bỏ sót: **nếu có ảnh lỗi thì ĐỪNG tự lưu**. `uploading` tính theo
+`pending.some(p => !p.error)` nên nó về false cả khi mọi thứ đều hỏng — tự lưu lúc đó là âm thầm
+vứt đúng những tấm mà người ta bấm Lưu để giữ. Báo cho họ, để ảnh lỗi nằm nguyên đó và vẫn thử lại
+được.
+
+**Luật:** hành động "kết thúc" (lưu / đóng / điều hướng) phải biết về mọi việc đang chạy dở mà nó
+sẽ giết. Kiểm bằng câu hỏi: *bấm cái này lúc X đang chạy thì X đi đâu?*
+
+### Test tải ảnh mà KHÔNG đụng Cloudinary
+
+Chặn ở tầng mạng bằng CDP: `Fetch.enable` với `urlPattern: "*api.cloudinary.com*"`, rồi
+`Fetch.fulfillRequest` trả JSON giả sau 4 giây. Vừa điều khiển được thời điểm để bấm "giữa chừng",
+vừa **không tạo tài nguyên thật phải đi dọn**. Ảnh thật đính vào qua `DOM.setFileInputFiles`.
+
+Đo được: code cũ lưu ra **0 ảnh**, code mới **6/6**. Một bản vá chưa từng thấy test đỏ thì chưa
+chứng minh được gì — `git stash` bản vá đi và chạy lại là bước bắt buộc.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

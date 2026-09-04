@@ -342,6 +342,44 @@ export function MemoryForm({
     setPhotos((p) => p.filter((x) => x.publicId !== publicId));
   }
 
+  /** Save now, with whatever is on the form at this moment. */
+  function submit() {
+    const common = {
+      title,
+      caption: caption || undefined,
+      date: new Date(date),
+      time: time || undefined,
+      photos,
+      embeds: collectAllEmbeds(),
+      tags,
+      mentions: mentionIds(),
+    };
+    if (initialMemory) update.mutate({ id: initialMemory.id, ...common });
+    else create.mutate({ ...common, locationId: initialLocationId });
+  }
+
+  /*
+   * A save that was asked for while photos were still going up.
+   *
+   * Fires the moment the queue drains — except when something failed, because
+   * saving then would drop the failed photos silently and the person pressing
+   * save was trying to keep them. They get told instead, with the failures
+   * still on screen and still retryable.
+   */
+  const [saveWhenReady, setSaveWhenReady] = useState(false);
+  useEffect(() => {
+    if (!saveWhenReady || uploading) return;
+    setSaveWhenReady(false);
+    if (pending.some((p) => p.error)) {
+      toast("Vài ảnh chưa tải lên được — thử lại rồi lưu nhé", "error");
+      return;
+    }
+    submit();
+    // submit() reads the render's own state, which by now holds every photo
+    // that finished; re-running on each of those is exactly what is wanted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveWhenReady, uploading, pending]);
+
   /** Collect all embeds including: saved ones, pending link input, and URLs in caption. */
   function collectAllEmbeds(): { url: string }[] {
     const all = [...embeds];
@@ -671,35 +709,27 @@ export function MemoryForm({
           <Button
             className="flex-1"
             onClick={() => {
-              if (initialMemory) {
-                update.mutate({
-                  id: initialMemory.id,
-                  title,
-                  caption: caption || undefined,
-                  date: new Date(date),
-                  time: time || undefined,
-                  photos,
-                  embeds: collectAllEmbeds(),
-                  tags,
-                  mentions: mentionIds(),
-                });
-              } else {
-                create.mutate({
-                  title,
-                  caption: caption || undefined,
-                  date: new Date(date),
-                  time: time || undefined,
-                  photos,
-                  embeds: collectAllEmbeds(),
-                  tags,
-                  mentions: mentionIds(),
-                  locationId: initialLocationId,
-                });
+              /*
+               * Pressing save mid-upload used to save whatever had finished —
+               * usually nothing — then close the form, orphaning the requests
+               * still in flight and leaving a memory with no photos at all.
+               *
+               * The press means "keep this", so it is remembered rather than
+               * obeyed literally: the uploads finish, then it saves itself.
+               */
+              if (uploading) {
+                setSaveWhenReady(true);
+                return;
               }
+              submit();
             }}
-            disabled={!title || (create.isPending || update.isPending)}
+            disabled={!title || saveWhenReady || create.isPending || update.isPending}
           >
-            {(create.isPending || update.isPending) ? "Đang lưu..." : "Lưu"}
+            {create.isPending || update.isPending
+              ? "Đang lưu..."
+              : saveWhenReady
+                ? "Xong ảnh là lưu…"
+                : "Lưu"}
           </Button>
       </ModalFooter>
     </>
