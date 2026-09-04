@@ -15,7 +15,6 @@ import { MediaForm, type MediaKind } from "./media-form";
 import { MediaCard, type MediaListItem } from "./media-card";
 import { RecipeDetail } from "./recipe-detail";
 import { GamesPanel } from "./games-panel";
-import { NowPlayingProvider } from "./now-playing-dock";
 import { Select } from "@/components/ui/select";
 import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
 import { foldForSearch } from "@/lib/vietnamese-text";
@@ -78,7 +77,6 @@ export function LibraryPage() {
     // cross-origin iframes that get torn down the moment this page unmounts
     // (route navigation), so the dock has nothing left to represent past that
     // point anyway — there is no real playback state to carry across routes.
-    <NowPlayingProvider>
       <PageShell
         className="space-y-4"
         header={
@@ -212,10 +210,8 @@ export function LibraryPage() {
         <RecipeDetail
           item={recipe}
           onClose={() => setRecipe(null)}
-          onReopen={() => setRecipe(recipe)}
         />
       )}
     </PageShell>
-    </NowPlayingProvider>
   );
 }

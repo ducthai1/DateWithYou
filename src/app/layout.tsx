@@ -17,6 +17,7 @@ import { PushSetup } from "@/components/layout/push-setup";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
+import { NowPlayingProvider } from "@/features/library/now-playing-dock";
 import { NavigationProvider } from "@/features/locations/navigation-context";
 import { NavigationMiniDock } from "@/features/locations/navigation-mini-dock";
 import { THEME_COOKIE_NAME, resolveThemeKey } from "@/lib/theme-presets";
@@ -260,6 +261,10 @@ export default async function RootLayout({
             <AppHeader />
             {/* Single SSE connection for the whole app — both GlobalInviteListener
                 and LocationsPage consume this context instead of opening their own. */}
+            {/* Above the router: the library's player must keep playing while
+                someone walks to another tab, and an iframe cannot survive being
+                unmounted. */}
+            <NowPlayingProvider>
             <NavigationInvitesProvider>
               {/* Live navigation is owned here, not by the map page. Mounted
                   inside the map page it was torn down by any route change,
@@ -272,6 +277,7 @@ export default async function RootLayout({
                 <NavigationMiniDock />
               </NavigationProvider>
             </NavigationInvitesProvider>
+            </NowPlayingProvider>
           </MainWrapper>
           <BottomNav />
         </Providers>

@@ -20,7 +20,6 @@ import {
   UPLOAD_CONCURRENCY,
 } from "@/lib/memory-limits";
 import { appendMention, collectMentions, mentionToken } from "@/lib/mentions";
-import { authClient } from "@/lib/auth-client";
 import { ExternalLink, ImagePlus, Link2, Loader2, Play, RotateCw, X } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
@@ -214,14 +213,17 @@ export function MemoryForm({
    * other one" — read from the space rather than assumed, because a personal
    * space has nobody to name and the buttons should not appear there.
    */
-  const { data: session } = authClient.useSession();
   const membersQuery = trpc.space.members.useQuery(undefined, { staleTime: 300_000 });
   const mentionable = useMemo(
     () =>
       (membersQuery.data ?? [])
-        .filter((m) => m.id !== session?.user.id && m.name?.trim())
-        .map((m) => ({ id: m.id, name: m.name as string })),
-    [membersQuery.data, session?.user.id],
+        // `isSelf` comes from the server; comparing against the session read
+        // every member as the partner for as long as the session took to load.
+        .filter((m) => !m.isSelf && m.name?.trim())
+        // accountName rides along so a caption written before a rename still
+        // resolves — dropping it here is what turned old tags into plain text.
+        .map((m) => ({ id: m.id, name: m.name as string, accountName: m.accountName })),
+    [membersQuery.data],
   );
 
   /*

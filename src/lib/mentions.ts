@@ -8,7 +8,13 @@
  * the text is the only version that cannot disagree with what is on screen.
  */
 
-export type MentionMember = { id: string; name: string };
+export type MentionMember = {
+  id: string;
+  /** What to call them now — the nickname if there is one. */
+  name: string;
+  /** The name their account was created with, still valid in older captions. */
+  accountName?: string | null;
+};
 
 /** What gets inserted into the text when someone taps a name. */
 export function mentionToken(name: string): string {
@@ -32,7 +38,13 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export type MentionRange = { start: number; end: number; id: string; name: string };
+export type MentionRange = {
+  start: number;
+  end: number;
+  id: string;
+  /** The member's CURRENT name, whatever name the text used to reach them. */
+  name: string;
+};
 
 /**
  * Where each named member sits in the text, in reading order.
@@ -42,7 +54,14 @@ export type MentionRange = { start: number; end: number; id: string; name: strin
  * a span that does not match the one painted under the caret, and the mismatch
  * would only show up on the names where the two rules disagree.
  *
- * Longest name first, so a person called "An" cannot claim the mention meant
+ * EVERY name a person has ever answered to is matched, not just the current
+ * one. A caption written as "@Thuỳ Mai" does not stop naming her because the
+ * two of them later agreed on "Bé Mai" — it would simply have decayed into a
+ * stray "@" and a run of plain words, which is what happened the first time a
+ * nickname was set. Whoever the text reached, the range reports their name as
+ * it stands today, so a caller can show the current one.
+ *
+ * Longest alias first, so a person called "An" cannot claim the mention meant
  * for "An Nhiên". Case-insensitive because nobody capitalises consistently on
  * a phone, and a mention is worth finding either way.
  *
@@ -53,9 +72,24 @@ export type MentionRange = { start: number; end: number; id: string; name: strin
  */
 export function findMentionRanges(text: string, members: MentionMember[]): MentionRange[] {
   if (!text) return [];
-  const ordered = [...members]
-    .filter((m) => m.id && m.name?.trim())
-    .sort((a, b) => b.name.trim().length - a.name.trim().length);
+
+  type Alias = { id: string; name: string; alias: string };
+  const aliases: Alias[] = [];
+  for (const m of members) {
+    if (!m.id) continue;
+    const name = m.name?.trim();
+    if (!name) continue;
+    const seen = new Set<string>();
+    for (const raw of [name, m.accountName]) {
+      const alias = raw?.trim();
+      if (!alias || seen.has(alias.toLowerCase())) continue;
+      seen.add(alias.toLowerCase());
+      aliases.push({ id: m.id, name, alias });
+    }
+  }
+  // Longest across ALL aliases, not per member: a nickname of one person can be
+  // a prefix of another person's account name.
+  aliases.sort((a, b) => b.alias.length - a.alias.length);
 
   /*
    * Matches are CONSUMED, not just tested.
@@ -69,13 +103,11 @@ export function findMentionRanges(text: string, members: MentionMember[]): Menti
    */
   let rest = text;
   const out: MentionRange[] = [];
-  for (const m of ordered) {
-    const name = m.name.trim();
-    const re = new RegExp(`@${escapeRe(name)}(?![\\p{L}\\p{N}])`, "giu");
+  for (const a of aliases) {
+    const re = new RegExp(`@${escapeRe(a.alias)}(?![\\p{L}\\p{N}])`, "giu");
     let hit: RegExpExecArray | null;
     while ((hit = re.exec(rest)) !== null) {
-      out.push({ start: hit.index, end: hit.index + hit[0].length, id: m.id, name });
-      // Same length of filler, so later offsets and boundaries stay honest.
+      out.push({ start: hit.index, end: hit.index + hit[0].length, id: a.id, name: a.name });
       rest = rest.slice(0, hit.index) + " ".repeat(hit[0].length) + rest.slice(hit.index + hit[0].length);
     }
   }

@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { EmbedPlayer } from "@/components/ui/embed-player";
 import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
 import { Clock, Users, ChefHat, Edit, Play } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
@@ -133,97 +132,60 @@ export function MediaCard({ item, onOpen }: { item: MediaListItem; onOpen?: () =
  * looked equally active.
  */
 function PlayableEmbed({ item, url }: { item: MediaListItem; url: string }) {
-  const { playing, start, stop, setVisible } = useNowPlaying();
-  const [activated, setActivated] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const { playing, start } = useNowPlaying();
   const isPlaying = playing?.id === item.id;
 
+  /*
+   * Hands the frame to the dock instead of mounting one here.
+   *
+   * The iframe used to live in this card, so walking to another tab unmounted
+   * it and the music stopped — and an iframe cannot be moved to a new parent
+   * without reloading, so there was no fix that kept it here. The card now says
+   * what to play and shows that it is playing; the dock above the router owns
+   * the only frame and keeps it alive across the whole app.
+   */
   const handleActivate = () => {
-    setActivated(true);
     start({
       id: item.id,
       kind: item.kind,
       title: item.title,
       thumbnailUrl: item.thumbnailUrl,
       providerLabel: PROVIDER_LABEL[(item.provider ?? "other") as EmbedProvider],
-      onReturn: () =>
-        wrapperRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      embed: {
+        provider: (item.provider ?? "other") as EmbedProvider,
+        url,
+        embedUrl: item.embedUrl,
+        thumbnailUrl: item.thumbnailUrl,
+        title: item.title,
+      },
     });
   };
 
-  // Reports visibility once activated; the provider drops updates for any id
-  // that isn't the current "now playing" item, so this never needs to check
-  // `isPlaying` itself.
-  useEffect(() => {
-    if (!activated) return;
-    const el = wrapperRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setVisible(item.id, entry.isIntersecting),
-      { threshold: 0 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [activated, item.id, setVisible]);
-
-  // Leaving the grid entirely (switch tabs, apply a filter that excludes this
-  // item) really does kill the iframe, unlike a scroll — there is no player
-  // left to return to, so this clears "now playing" instead of leaving the
-  // dock pointed at a card that no longer exists.
-  const isPlayingRef = useRef(isPlaying);
-  isPlayingRef.current = isPlaying;
-  useEffect(() => {
-    return () => {
-      if (isPlayingRef.current) stop(item.id);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.id]);
-
   return (
-    <div ref={wrapperRef}>
-      {activated ? (
-        <EmbedPlayer
-          data={{
-            provider: (item.provider ?? "other") as EmbedProvider,
-            url,
-            embedUrl: item.embedUrl,
-            thumbnailUrl: item.thumbnailUrl,
-            title: item.title,
-          }}
+    <button
+      type="button"
+      onClick={handleActivate}
+      aria-label={isPlaying ? `${item.title} đang phát` : `Phát ${item.title}`}
+      className="group border-border bg-accent-soft focus-visible:ring-ring relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl border focus-visible:outline-none focus-visible:ring-2"
+    >
+      {item.thumbnailUrl && (
+        <img
+          src={item.thumbnailUrl}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
         />
-      ) : (
-        <button
-          type="button"
-          onClick={handleActivate}
-          aria-label={`Phát ${item.title}`}
-          className="group border-border bg-accent-soft relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {item.thumbnailUrl && (
-            <>
-              <img
-                src={item.thumbnailUrl}
-                alt=""
-                loading="lazy"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-              <span aria-hidden="true" className="absolute inset-0 bg-black/20" />
-            </>
-          )}
-          <span
-            className={cn(
-              "text-accent relative z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform group-hover:scale-110",
-              item.thumbnailUrl && "backdrop-blur-sm",
-            )}
-          >
-            <Play className="h-5 w-5 translate-x-0.5" aria-hidden="true" fill="currentColor" />
-          </span>
-        </button>
       )}
-      {isPlaying && (
-        <span className="sr-only" role="status">
-          Đang phát: {item.title}
-        </span>
-      )}
-    </div>
+      <span
+        className={cn(
+          "relative flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm transition-colors",
+          isPlaying
+            ? "bg-accent text-accent-foreground"
+            : "bg-card/90 text-foreground group-hover:bg-card",
+        )}
+      >
+        <Play className="h-3.5 w-3.5" aria-hidden="true" />
+        {isPlaying ? "Đang phát" : "Phát"}
+      </span>
+    </button>
   );
 }

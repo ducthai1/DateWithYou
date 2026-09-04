@@ -3,7 +3,7 @@
 import { ExternalLink, Play } from "lucide-react";
 import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
 
-type EmbedData = {
+export type EmbedData = {
   provider: EmbedProvider;
   url: string;
   embedUrl: string | null;

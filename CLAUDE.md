@@ -3590,6 +3590,50 @@ thẻ mà trạng thái quan trọng nhất lại là cái duy nhất không nó
 không phải thay thế: `ĐANG ĐI · NGÀY 5/6` (đo được 132px, không tràn ảnh bìa).
 
 
+## Đổi biệt danh làm chết mọi tag đã viết trước đó
+
+`findMentionRanges` khớp theo **tên hiện tại** của thành viên. Đặt biệt danh xong, caption cũ viết
+`@Trần Thuỳ Mai` không còn khớp ai ⇒ tụt xuống thành **một dấu @ và mấy chữ thường**.
+
+Sửa: một người có **nhiều tên**, và khớp theo tất cả. `MentionMember` nay mang `accountName` bên
+cạnh `name`, và hàm sắp **theo độ dài của ALIAS, không phải theo từng người** — biệt danh của người
+này có thể là tiền tố tên tài khoản của người kia.
+
+Phần hiển thị chia hai đường có chủ đích:
+- **Đọc lại** (`MentionText`): hiện **tên hiện tại**. Ghi chú tháng trước gọi cô ấy bằng tên cũ thì
+  bây giờ đọc ra tên hai người đang dùng. Chữ lưu trong DB không đổi — chỉ là hiển thị.
+- **Ô nhập** (`MentionField`): hiện **đúng chữ đã gõ**, bắt buộc — lớp phủ phải khớp từng ký tự với
+  textarea bên dưới, đổi chữ là lệch vệt màu.
+
+Kèm theo: chỗ dựng danh sách trong form đang `.map(m => ({ id, name }))` — **vứt mất `accountName`**.
+Thêm một trường vào kiểu thì phải soát mọi chỗ map thủ công, không thì nó im lặng biến mất.
+
+## iframe KHÔNG sống qua việc gỡ trang — và không thể chuyển cha
+
+Nhạc trong Bộ sưu tập tắt ngay khi bấm sang tab khác. `NowPlayingProvider` chỉ bọc **riêng trang
+đó**, và iframe nằm trong thẻ nhạc — chuyển trang là React gỡ, iframe chết. Code cũ thậm chí đã ghi
+chú *"chuyển tab thì thật sự giết iframe"* rồi chấp nhận.
+
+**Không có bản vá nào giữ được iframe ở nguyên chỗ cũ.** Chuyển một `<iframe>` sang cha khác trong
+DOM sẽ **nạp lại từ đầu** — nên muốn phát tiếp thì frame phải nằm ở nơi không bao giờ bị gỡ.
+
+Nay: `NowPlayingProvider` đặt **trên router** (trong `layout.tsx`, cạnh `NavigationProvider`), và
+dock **là trình phát thật** — nó giữ iframe duy nhất. Thẻ nhạc chỉ nói "phát cái gì" và hiện trạng
+thái "Đang phát".
+
+Đánh đổi phải nói rõ: **không còn khung phát lớn ngay trong thẻ**. Đó là hệ quả bắt buộc, không
+phải lựa chọn thẩm mỹ.
+
+Hai thứ khác lộ ra khi làm:
+- Dock đang `hidden lg:block` — **chỉ desktop**. Đúng cái màn hình cần trình phát nổi nhất thì
+  không có. Nay hiện trên cả điện thoại, nằm trên thanh điều hướng.
+- `recipe-detail` cũng đăng ký với dock ⇒ với dock-là-trình-phát thì sẽ thành **hai iframe cùng
+  phát một thứ**. Đã gỡ: modal công thức là khung xem đầy đủ của chính nó, đóng modal là hết.
+
+**Cách kiểm "có thật sự không bị dựng lại":** gắn `dataset` vào iframe rồi chuyển tab, đọc lại. Còn
+dấu = đúng node cũ. So `src` không đủ — một iframe mới cùng `src` vẫn nạp lại từ giây 0.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

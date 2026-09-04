@@ -1,56 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
 import { Modal, ModalHeader, ModalContent } from "@/components/ui/modal";
 import { EmbedPlayer } from "@/components/ui/embed-player";
-import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
+import type { EmbedProvider } from "@/lib/embed";
 import { Clock, Users } from "lucide-react";
 import { PhotoView } from "react-photo-view";
 import type { MediaListItem } from "./media-card";
-import { useNowPlaying } from "./now-playing-dock";
 
 export function RecipeDetail({
   item,
   onClose,
-  onReopen,
 }: {
   item: MediaListItem;
   onClose: () => void;
-  /** Re-open this same recipe's modal — wired to the mini dock's "return". */
-  onReopen: () => void;
 }) {
   const r = item.recipe;
-  const hasEmbed = !!item.url;
-  const { start, setVisible } = useNowPlaying();
-
   /*
-   * There is no separate "press play" gesture inside this modal (unlike the
-   * grid cards — see media-card.tsx) because the modal itself already is the
-   * recipe's full view: opening it is the only deliberate action a user takes
-   * before seeing the embed, so it doubles as the "start" signal.
+   * No hand-off to the floating player.
    *
-   * Closing it is treated as "left full view", the modal equivalent of an
-   * inline card scrolling off-screen — it is literally the only way this
-   * recipe's player can leave view, since there is no scrollable inline
-   * embed for recipes to begin with.
+   * A recipe's video plays inside this modal, which is its only full view, so
+   * closing the modal is the end of it. Registering it with the dock as well
+   * would mount a second frame of the same thing, both playing at once.
    */
-  useEffect(() => {
-    if (!hasEmbed) return;
-    start({
-      id: item.id,
-      kind: item.kind,
-      title: item.title,
-      thumbnailUrl: item.thumbnailUrl ?? r?.coverImage ?? null,
-      providerLabel: PROVIDER_LABEL[(item.provider ?? "other") as EmbedProvider],
-      onReturn: onReopen,
-    });
-    setVisible(item.id, true);
-    return () => setVisible(item.id, false);
-    // Re-running on every onReopen/start identity change would re-fire the
-    // "start" signal for the same still-open modal; only the item actually
-    // changing (a different recipe opened) should do that.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.id, hasEmbed]);
 
   return (
     <Modal size="xl" open onClose={onClose}>

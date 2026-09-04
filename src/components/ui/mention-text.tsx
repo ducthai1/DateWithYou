@@ -10,7 +10,8 @@ import { findMentionRanges, type MentionMember } from "@/lib/mentions";
  * than only sitting on a tinted pill the way they must while being typed.
  *
  * Same ranges as the editor uses, so a name that highlights while being written
- * cannot come back plain when it is read.
+ * cannot come back plain when it is read — including after a rename, which used
+ * to leave an old caption showing a stray "@" in front of ordinary words.
  */
 export function MentionText({
   text,
@@ -34,7 +35,13 @@ export function MentionText({
         data-mention=""
         className="text-accent bg-accent-soft/60 rounded-[5px] px-1 font-semibold [-webkit-box-decoration-break:clone] [box-decoration-break:clone]"
       >
-        {text.slice(r.start, r.end)}
+        {/* The name as it stands today, not the one the caption was typed with.
+            Reading is where a rename should have already happened: a note that
+            named her last month should read with the name the two of them use
+            now. The stored words are untouched — this is display only, and the
+            editor still shows exactly what was written, because there the
+            highlight has to line up with the characters underneath it. */}
+        {`@${r.name}`}
       </span>,
     );
     at = r.end;
