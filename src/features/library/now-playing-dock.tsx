@@ -186,15 +186,45 @@ export function NowPlayingDock({
 
   const info = (
     <>
-      <span className="bg-accent-soft text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-        <Icon className="h-4 w-4" aria-hidden="true" />
-      </span>
+      {/* Dropped on a narrow panel: it carries no information the frame above
+          does not, and the switch beside the name needs those 38px more than
+          decoration does — with it there, "YouTube · 1/3" was being cut. */}
+      {!narrow && (
+        <span className="bg-accent-soft text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item?.title}</p>
         <p className="text-muted-foreground truncate text-xs">
           {total > 1 ? `${item?.providerLabel} · ${position}/${total}` : item?.providerLabel}
         </p>
       </div>
+      {/* Beside the track name, centred against its two lines — not up on the
+          title strip, which exists to drag the window and nothing else. */}
+      {controllable && (
+        <div className="pointer-events-auto flex shrink-0 items-center gap-1.5">
+          <span className="text-muted-foreground text-[10px] leading-none font-medium">Tự phát</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoNext}
+            aria-label="Tự phát bài tiếp theo khi hết bài"
+            onClick={toggleAutoNext}
+            className={cn(
+              "focus-visible:ring-ring relative h-[15px] w-[26px] shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
+              autoNext ? "bg-accent" : "bg-muted-foreground/35",
+            )}
+          >
+            <span
+              className={cn(
+                "absolute top-[2px] h-[11px] w-[11px] rounded-full bg-white shadow-sm transition-[left] duration-200",
+                autoNext ? "left-[13px]" : "left-[2px]",
+              )}
+            />
+          </button>
+        </div>
+      )}
     </>
   );
 
@@ -280,38 +310,11 @@ export function NowPlayingDock({
           <div
             {...moveProps}
             style={{ touchAction: "none" }}
-            /*
-              Laid out like a title bar — grab mark left, control right —
-              rather than a centred sheet grabber. Centred, the mark ran into
-              the label on a narrow panel. Both ends clear the corner grips'
-              24px, so aiming at a corner always resizes.
-            */
-            className="relative flex h-6 cursor-grab items-center justify-between rounded-t-2xl px-7 active:cursor-grabbing"
+            /* Nothing but the drag surface. Controls belong beside the track
+               name below, where the eye already is. */
+            className="flex h-6 cursor-grab items-center justify-center rounded-t-2xl active:cursor-grabbing"
           >
-            <span className="bg-muted-foreground/30 h-1 w-8 rounded-full" aria-hidden="true" />
-            {controllable && (
-              <div className="z-20 flex items-center gap-1.5">
-                <span className="text-muted-foreground text-[10px] leading-none font-medium">Tự phát</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={autoNext}
-                  aria-label="Tự phát bài tiếp theo khi hết bài"
-                  onClick={toggleAutoNext}
-                  className={cn(
-                    "focus-visible:ring-ring relative h-[15px] w-[26px] shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
-                    autoNext ? "bg-accent" : "bg-muted-foreground/35",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "absolute top-[2px] h-[11px] w-[11px] rounded-full bg-white shadow-sm transition-[left] duration-200",
-                      autoNext ? "left-[13px]" : "left-[2px]",
-                    )}
-                  />
-                </button>
-              </div>
-            )}
+            <span className="bg-muted-foreground/30 h-1 w-10 rounded-full" aria-hidden="true" />
           </div>
 
           <div
