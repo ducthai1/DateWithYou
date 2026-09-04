@@ -56,7 +56,23 @@ export function PageShell({
           <div className="mx-auto w-full max-w-[1400px]">{header}</div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[var(--page-gutter)]">
+        {/*
+          `relative` is load-bearing, not decoration.
+
+          An absolutely positioned descendant is clipped by an overflow box only
+          when that box lies between it and its CONTAINING block — and with no
+          positioned ancestor, the containing block is the page itself. The
+          `.sr-only` spans the app uses for screen readers are exactly that:
+          position:absolute, one pixel, sitting at their static position deep
+          inside the scrolled content. Unclipped, each one stretched the
+          document down to where it sat, so the page grew a SECOND scrollbar
+          outside this box — the activity feed carries fifteen of them and grew
+          378px of phantom page, which is why its header slid away while the
+          list scrolled underneath.
+
+          One word here clips them, and every other escapee like them.
+        */}
+        <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-[var(--page-gutter)]">
           <div
             className={cn(
               "mx-auto w-full max-w-[1400px] space-y-6 pb-6 pt-2",
@@ -77,7 +93,10 @@ export function PageShell({
       className={cn(
         gutterCls,
         // Also inside MainWrapper's frame, so this one scrolls itself.
-        "min-h-0 flex-1 overflow-y-auto overscroll-contain px-[var(--page-gutter)]",
+        // `relative` for the same reason as the header variant above: it makes
+        // this box the containing block, so absolutely positioned descendants
+        // are clipped here instead of stretching the document.
+        "relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-[var(--page-gutter)]",
         className,
       )}
     >

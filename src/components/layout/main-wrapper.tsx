@@ -53,7 +53,9 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
        * that scrolls. The fix for such a page is to scroll inside its own box,
        * the way PageShell does; then this padding does its job again.
        */
-      !hidden && "flex h-[100dvh] flex-col overflow-y-auto",
+      // `relative` so anything absolutely positioned inside is clipped by this
+      // frame rather than by the page — see the note in PageShell.
+      !hidden && "relative flex h-[100dvh] flex-col overflow-y-auto",
       !hidden && "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0",
       !hidden && (isCollapsed ? "md:pl-28" : "md:pl-72")
     )}>
