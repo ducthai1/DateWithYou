@@ -56,9 +56,13 @@ export function useFloatingWindow({
    * box — or a width picked from the viewport — arrives on mount.
    */
   const [box, setBox] = useState<WindowBox | null>(null);
-  const drag = useRef<
-    { mode: DragMode; px: number; py: number; x: number; y: number; w: number; h: number; bottom: number } | null
-  >(null);
+  const drag = useRef<{
+    mode: DragMode;
+    px: number; py: number;
+    x: number; y: number; w: number; h: number; bottom: number;
+    /** Who holds the pointer, so it can be handed back — see onUp. */
+    handle: HTMLElement; pointerId: number;
+  } | null>(null);
 
   useEffect(() => {
     const vw = window.innerWidth;
@@ -90,15 +94,18 @@ export function useFloatingWindow({
   );
 
   /*
-   * The drag listens on `window`, not on the handle, and does not use
-   * `setPointerCapture`.
+   * Movement comes from `window` listeners; the release is guarded three ways.
    *
-   * Capture was tried first and dropped the gesture: `pointerdown` arrived,
-   * `pointermove` never did. Window listeners are also the only thing that
-   * survives the pointer crossing the iframe — a frame swallows its own
-   * pointer events, and a drag that dies the moment the cursor passes over the
-   * video is no drag at all. A held mouse button keeps events coming to the
-   * document that started the gesture, which is exactly what this needs.
+   * Window listeners are what survives the pointer crossing the iframe — a
+   * frame swallows its own pointer events, and a drag that dies the moment the
+   * cursor passes over the video is no drag at all.
+   *
+   * But a button released *outside* the viewport fires no `pointerup` on the
+   * page at all, so the panel used to keep following the cursor until the next
+   * click. Hence: `setPointerCapture`, which makes the browser deliver that
+   * release anyway; a `buttons === 0` check on every move, which ends the drag
+   * the instant a cursor comes back in with nothing held; and `blur`, for the
+   * release that happens in another window entirely.
    */
   const onPointerDown = useCallback(
     (mode: DragMode) => (e: React.PointerEvent) => {
@@ -112,6 +119,7 @@ export function useFloatingWindow({
         x: rect.left, y: rect.top, w: rect.width, h: rect.height,
         // The edge a top-corner pull has to hold still.
         bottom: rect.bottom,
+        handle: e.currentTarget as HTMLElement, pointerId: e.pointerId,
       };
       /*
        * A corner pull needs concrete left/top to anchor the opposite edge
@@ -124,6 +132,12 @@ export function useFloatingWindow({
         const d = drag.current;
         const node = boxRef.current;
         if (!d || !node) return;
+        // Nothing held any more: the release happened where the page could not
+        // see it. Stop here rather than dragging on to the cursor.
+        if (ev.buttons === 0) {
+          onUp();
+          return;
+        }
         const dx = ev.clientX - d.px;
         const dy = ev.clientY - d.py;
         const h = node.offsetHeight;
@@ -150,19 +164,41 @@ export function useFloatingWindow({
           return { w, x, y };
         });
       };
-      const onUp = () => {
+      function onUp() {
+        const d = drag.current;
+        if (!d) return;
         drag.current = null;
+        /*
+         * Hand the pointer back explicitly. The browser releases capture on
+         * `pointerup`, but the whole point of capture here is the release that
+         * happens where no `pointerup` reaches the page — and a capture left
+         * held routes every later pointer event to this element, which killed
+         * both the next drag and every button in the panel.
+         */
+        try {
+          if (d.handle.hasPointerCapture?.(d.pointerId)) d.handle.releasePointerCapture(d.pointerId);
+        } catch {
+          /* Already released. */
+        }
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
         window.removeEventListener("pointercancel", onUp);
+        window.removeEventListener("blur", onUp);
         setBox((cur) => {
           if (cur) persist(cur);
           return cur;
         });
-      };
+      }
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
+      window.addEventListener("blur", onUp);
+      /* Makes the browser deliver the release even outside the viewport. */
+      try {
+        drag.current.handle.setPointerCapture(e.pointerId);
+      } catch {
+        /* No capture available — the guards above still end the drag. */
+      }
       e.preventDefault();
     },
     [box, minWidth, maxWidth, persist],
