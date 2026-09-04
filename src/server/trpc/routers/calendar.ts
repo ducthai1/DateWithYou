@@ -12,11 +12,9 @@ import {
   dayRangeUtc,
   dateKeyFromDate,
   monthDayOf,
-  addDaysKey,
-  daysBetweenKeys,
 } from "@/lib/date-keys";
 import { TripModel } from "@/server/db/models/trip";
-import { tripDay, tripStatus, type TripStatus } from "@/lib/trip-status";
+import { tripDay, tripStatus } from "@/lib/trip-status";
 import { mergeTags, colorsForTags, BUCKET_ORDER, type BucketKey, type Tag } from "@/lib/plan-meta";
 
 type TripLean = {
@@ -38,23 +36,6 @@ export type DaySummary = {
   plans: { title: string; color: string; done: boolean }[];
   special: { title: string; icon: string | null } | null;
   thumbnailUrl: string | null;
-  /**
-   * The trip this day belongs to, if any. `first`/`last` mark the ends so the
-   * grid can draw one continuous band across the stay instead of a separate
-   * badge on each square — a five-day trip should look like five days away,
-   * not like five unrelated appointments.
-   */
-  trip: {
-    id: string;
-    title: string;
-    day: number;
-    total: number;
-    status: TripStatus;
-    first: boolean;
-    last: boolean;
-    /** Carry the trip's name here — the first of its days visible this month. */
-    label: boolean;
-  } | null;
 };
 
 export const calendarRouter = router({
@@ -69,7 +50,7 @@ export const calendarRouter = router({
       const { fromKey, toKey } = monthKeyRange(year, month);
       const mm = String(month).padStart(2, "0");
 
-      const [plans, memories, visited, specials, trips, space] = await Promise.all([
+      const [plans, memories, visited, specials, space] = await Promise.all([
         PlanItemModel.find({ spaceId: ctx.spaceId, date: { $gte: fromKey, $lt: toKey } })
           .select("date status tags title")
           .lean(),
@@ -84,16 +65,6 @@ export const calendarRouter = router({
           .select("visitedAt")
           .lean(),
         SpecialDateModel.find({ spaceId: ctx.spaceId }).select("title date recurYearly icon").lean(),
-        // Trips overlapping this month. Overlap, not containment: a trip that
-        // starts in March and ends in April has to band both grids.
-        TripModel.find({
-          spaceId: ctx.spaceId,
-          startDate: { $lt: toKey },
-          endDate: { $gte: fromKey },
-        })
-          .select("title startDate endDate status")
-          .sort({ startDate: 1 })
-          .lean(),
         SpaceModel.findById(ctx.spaceId).select("tags anniversaryDate").lean<{
           tags?: Tag[];
           anniversaryDate?: Date;
@@ -112,7 +83,6 @@ export const calendarRouter = router({
           plans: [],
           special: null,
           thumbnailUrl: null,
-          trip: null,
         });
 
       for (const p of plans) {
@@ -131,49 +101,6 @@ export const calendarRouter = router({
           });
         }
       }
-      /*
-       * Walk each trip day by day rather than tagging only the endpoints, so a
-       * stay reads as one stretch across the grid. Trips are sorted by start
-       * date and a later one does not overwrite a day an earlier one claimed,
-       * which keeps two overlapping stays from flickering between each other
-       * depending on collection order.
-       */
-      for (const t of trips) {
-        const start = t.startDate as string;
-        const end = t.endDate as string;
-        const total = daysBetweenKeys(start, end) + 1;
-        /*
-         * `label` is not `first`.
-         *
-         * A trip that began last month has no first day in this grid, so
-         * hanging the name on the trip's own start day meant a stay spanning
-         * the turn of a month drew a band across five squares and never said
-         * what it was — an unexplained stripe over the artwork, which reads as
-         * a rendering fault rather than a trip. The name goes on the first day
-         * that is actually on screen; the rounded cap still belongs to the real
-         * start, so a band arriving from off-grid still looks like it continues
-         * rather than beginning here.
-         */
-        let labelled = false;
-        for (let i = 0; i < total; i++) {
-          const key = addDaysKey(start, i);
-          if (key < fromKey || key >= toKey) continue;
-          const d = get(key);
-          if (d.trip) continue;
-          d.trip = {
-            id: String(t._id),
-            title: t.title as string,
-            day: i + 1,
-            total,
-            status: tripStatus(start, end),
-            first: i === 0,
-            last: i === total - 1,
-            label: !labelled,
-          };
-          labelled = true;
-        }
-      }
-
       for (const m of memories) {
         const d = get(dateKeyFromDate(m.date as Date));
         d.memoryCount++;

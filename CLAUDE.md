@@ -3562,21 +3562,26 @@ Lưới: `grid-cols-2 sm:grid-cols-4`. Ba cột chừa lại một khoảng tr�
 bốn cột thì kín. Điện thoại giữ 2 — một phần tư bề rộng thì không phân biệt nổi ảnh nào với ảnh nào.
 
 
-## Nhãn giải thích phải đặt ở ngày ĐẦU TIÊN THẤY ĐƯỢC, không phải ngày đầu thật
+## Tự thêm tính năng không ai xin — và nó bị đọc thành bug
 
-Băng chuyến đi trên lịch tháng gắn tên chuyến vào `first: i === 0` — ngày đầu **của chuyến**. Chuyến
-31/08 → 05/09 xem ở tháng 9 thì ngày đầu nằm ngoài lưới ⇒ **không ô nào mang tên**, còn lại đúng một
-vệt hồng đậm vắt qua 5 ô ảnh. Người dùng hỏi *"viên hồng hồng dày đặc gì vậy? bug gì vậy"* — không
-phải vì nó xấu, mà vì **không có gì nói nó là cái gì**.
+Tôi tự thêm "băng chuyến đi" lên lưới lịch tháng: một vệt màu accent vắt ngang các ngày của một
+chuyến. **Không ai yêu cầu.** Người dùng nhìn thấy và hỏi *"viên hồng hồng dày đặc gì vậy? bug gì
+vậy fix đi"* — rồi khi tôi sửa cho nó có nhãn, câu trả lời là: **bỏ hẳn đi, nó làm xấu cái lịch**.
 
-Tách hai khái niệm:
-- `first` / `last` = hai đầu THẬT của chuyến → quyết định bo tròn. Băng đi từ ngoài lưới vào thì
-  không bo đầu, nhìn ra là "còn tiếp ở tháng trước".
-- `label` = ngày đầu tiên **hiện trong khoảng đang vẽ** → nơi treo tên.
+Hai sai lầm nối nhau, và cái thứ hai tệ hơn:
+1. Thêm thứ không được xin vào một màn hình đã xong.
+2. Lúc bị báo là "bug", tôi **cho rằng nó thiếu lời giải thích** rồi đi làm nhãn cho nó — tức là
+   xây thêm lên trên thứ lẽ ra phải gỡ. Người dùng phải nói lần thứ hai.
 
-**Luật:** bất cứ dấu hiệu nào vẽ ngang nhiều ô (băng, vệt, khung nối) đều phải có nhãn nằm trong
-tầm nhìn hiện tại. Nhãn treo ở "phần tử đầu tiên" của dữ liệu sẽ biến mất mỗi khi khung nhìn cắt qua
-giữa chừng — và thứ còn lại luôn trông như lỗi hiển thị.
+**Luật:** khi người dùng gọi một thứ mình tự thêm là "bug", câu hỏi đầu tiên là *"họ có xin cái này
+không?"* — nếu không thì mặc định là **gỡ**, không phải là cải tiến. Và mỗi commit một việc: tôi gộp
+việc gỡ-badge (họ có xin) với việc sửa-băng (họ không xin) vào một commit, nên nhìn như tôi lẫn hai
+chuyện — họ phải hỏi lại *"bạn nhầm lẫn gì không?"*.
+
+Đã gỡ khỏi `calendar.monthSummary` (truy vấn `TripModel`, trường `trip` trong `DaySummary`, vòng
+rải băng) và khỏi `calendar-cell.tsx` (vệt, nhãn tên, phần thêm vào `aria-label`). **Vẫn giữ**
+nhãn "Ngày n/m · tên chuyến" khi MỞ một ngày ra (`calendar.dayDetail` → `calendar-day-hero`) — đó
+là chỗ khác, không phải vệt trên lưới.
 
 ## Badge: đừng THAY chữ trạng thái bằng con số
 
