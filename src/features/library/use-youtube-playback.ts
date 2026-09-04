@@ -20,13 +20,28 @@ const YT_ORIGIN = "https://www.youtube.com";
 const ENDED = 0;
 const PLAYING = 1;
 
-/** Adds the flag the protocol needs, keeping whatever the stored URL had. */
-export function withJsApi(embedUrl: string, pageOrigin: string): string {
+/**
+ * Adds the flags the protocol needs, keeping whatever the stored URL had.
+ *
+ * `autostart` asks the player to begin on its own, and it is what makes the
+ * queue keep moving while the tab is in the background. Telling the next frame
+ * to play means a message, and a message means the handshake has completed —
+ * which runs on a timer, and a hidden tab has its timers cut to one a second
+ * and then one a minute. The track would sit loaded and silent until the tab
+ * came back, which is exactly when the queued play arrived. Letting the frame
+ * start itself needs no message at all.
+ */
+export function withJsApi(embedUrl: string, pageOrigin: string, autostart = false): string {
   try {
     const u = new URL(embedUrl);
     u.searchParams.set("enablejsapi", "1");
     // YouTube wants to know who is talking to it; without this it warns.
     if (pageOrigin) u.searchParams.set("origin", pageOrigin);
+    if (autostart) {
+      u.searchParams.set("autoplay", "1");
+      // Phones otherwise take a video full-screen the moment it starts.
+      u.searchParams.set("playsinline", "1");
+    }
     return u.toString();
   } catch {
     return embedUrl;

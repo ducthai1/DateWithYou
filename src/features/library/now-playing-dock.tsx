@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChefHat, Music2, Pause, Play, SkipBack, SkipForward, Video, X } from "lucide-react";
@@ -135,6 +135,21 @@ export function NowPlayingDock({
   }, []);
 
   const playback = useYouTubePlayback(getFrame, controllable, item?.id ?? "", handleEnded);
+
+  /*
+   * Worked out once per track and then left alone: the frame is keyed by track,
+   * so changing this string mid-track would reload the video from zero.
+   *
+   * A track that arrived because the last one ran out starts itself. Anything
+   * the person picked by hand waits to be pressed.
+   */
+  const frameEmbed = useMemo(() => {
+    if (!item?.embed.embedUrl || !controllable) return item?.embed;
+    const auto = endedTrack.current != null && endedTrack.current !== item.id;
+    return { ...item.embed, embedUrl: withJsApi(item.embed.embedUrl, window.location.origin, auto) };
+    // Deliberately keyed on the track alone — see above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id, controllable]);
 
   useEffect(() => {
     const ended = endedTrack.current;
@@ -347,15 +362,7 @@ export function NowPlayingDock({
                   answered, which stopped the handshake before the new one was
                   listening. From there nothing could be told to play.
                 */}
-                <EmbedPlayer
-                  key={item.id}
-                  data={
-                    controllable
-                      ? { ...item.embed, embedUrl: withJsApi(item.embed.embedUrl!, window.location.origin) }
-                      : item.embed
-                  }
-                  fill
-                />
+                <EmbedPlayer key={item.id} data={frameEmbed ?? item.embed} fill />
               </div>
             ) : (
               <EmbedPlayer data={item.embed} />
