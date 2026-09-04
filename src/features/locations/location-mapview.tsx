@@ -623,7 +623,15 @@ function LocationMapViewImpl({
             latitude={partnerLocation.lat}
             style={{ zIndex: 9 }}
           >
-            <div className="relative flex items-center justify-center group">
+            {/* Carries the position it is drawn at, so where the other person
+                is shown can be read off the page rather than inferred from a
+                map transform. */}
+            <div
+              data-partner-pin=""
+              data-lat={partnerLocation.lat}
+              data-lng={partnerLocation.lng}
+              className="relative flex items-center justify-center group"
+            >
               <span className="absolute -top-6 whitespace-nowrap rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold shadow-sm backdrop-blur-sm transition-all duration-200 opacity-0 group-hover:opacity-100 group-hover:-translate-y-1">
                 Người kia
               </span>

@@ -302,6 +302,21 @@ export function LocationsPage() {
   const handledInviteRef = useRef<string | null>(null);
   const nav = useNavigation();
   /*
+   * Where to draw the other person.
+   *
+   * Two different questions were being answered by one flag. Riding together is
+   * what decides whether their route, HUD and meeting flare belong on screen —
+   * gating those on it is what stopped a solo ride from wearing the two-person
+   * interface. But simply showing where they are is not that: it is the
+   * ordinary state of a shared map, and gating it the same way meant a couple
+   * who both had the map open still each saw an empty one.
+   *
+   * So their pin shows whenever we know where they are, and goes away for the
+   * length of a ride someone chose to take alone.
+   */
+  const partnerPin =
+    isCompanionTrip || !nav.isNavigating ? nav.partnerLocation : null;
+  /*
    * When the current ride started, so it can be written to the history.
    *
    * A ref rather than state: nothing renders from it, and it must survive the
@@ -523,6 +538,18 @@ export function LocationsPage() {
    * navigating, and a coarse fix from the last few minutes answers that. Denial
    * is silent — the map keeps its default and search biases to that instead.
    */
+  /*
+   * Opening this page is what shares a position — which is what the app has
+   * always said, and never did. Presence stays on while the map is open and
+   * goes off on the way out; navigation, when it starts, takes over with its
+   * own faster loop.
+   */
+  const setPresence = nav.setPresence;
+  useEffect(() => {
+    setPresence(true);
+    return () => setPresence(false);
+  }, [setPresence]);
+
   const askedForFix = useRef(false);
   useEffect(() => {
     if (askedForFix.current || !navigator.geolocation) return;
@@ -1505,7 +1532,7 @@ export function LocationsPage() {
               onCenterChange={setMapCenter}
               userAccuracyM={nav.accuracyM}
               userGeo={shownUser}
-              partnerLocation={isCompanionTrip ? nav.partnerLocation : null}
+              partnerLocation={partnerPin}
               partnerPingAction={navInvites.partnerPingAction}
               userPingAction={nav.userPingAction}
               followGeo={nav.snappedGeo ?? nav.userGeo}
@@ -1803,7 +1830,7 @@ export function LocationsPage() {
                 onCenterChange={setMapCenter}
                 userAccuracyM={nav.accuracyM}
                 userGeo={liveUser}
-                partnerLocation={isCompanionTrip ? nav.partnerLocation : null}
+                partnerLocation={partnerPin}
                 partnerPingAction={navInvites.partnerPingAction}
                 userPingAction={nav.userPingAction}
                 followGeo={nav.isNavigating ? (nav.snappedGeo ?? nav.userGeo) : null}
@@ -2118,7 +2145,11 @@ export function LocationsPage() {
             and the map is fixed — so this had no flow position of its own and
             painted straight over the search box on a phone.
           */}
-          {hasTwoMembers && !nav.partnerLocation && (
+          {/* Only once the stream is up. Until then we have not asked anybody
+              anything, and saying they are not there is a guess — which is how
+              this line came to be shown to two people who both had the map
+              open. */}
+          {hasTwoMembers && navInvites.isConnected && !nav.partnerLocation && (
             <p className="text-muted-foreground relative z-30 rounded-lg border border-border bg-card/90 px-3 py-1.5 text-center text-xs leading-snug shadow-sm backdrop-blur-sm">
               Người kia chưa mở Bản đồ nên chưa thấy vị trí.
             </p>

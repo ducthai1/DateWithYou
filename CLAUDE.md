@@ -3082,6 +3082,58 @@ không phân biệt hoa thường, và đừng tin câu "đã sạch" của chí
 liệt kê những cái KHÔNG khớp mẫu để biết mình vừa bỏ sót ai.
 
 
+## "Người kia chưa mở Bản đồ" — bốn lớp của cùng một lỗi
+
+Cả hai đã mở bản đồ, mà mỗi người vẫn thấy một bản đồ trống và một câu báo rằng người kia chưa mở.
+Không phải một bug, mà là **bốn chốt chặn nối tiếp**, mỗi cái tự nó đủ để gây ra đúng triệu chứng:
+
+| # | Chốt | Hậu quả |
+|---|---|---|
+| 1 | Vòng ping có `if (!isNavigating) return` | Mở bản đồ **không ghi gì**; chỉ bấm dẫn đường mới ghi |
+| 2 | Trang bản đồ lấy 1 fix rồi để trong state | Vị trí có sẵn nhưng **không gửi đi đâu** |
+| 3 | Chỉ biết người kia qua **phản hồi của chính mình** | Máy nào ngừng ghi thì cũng ngừng nghe |
+| 4 | `partnerLocation={isCompanionTrip ? … : null}` | Có dữ liệu vẫn **cố ý không vẽ** trừ khi đang đi chung |
+
+**Câu chữ trong app chính là hợp đồng.** "Người kia chưa mở Bản đồ nên chưa thấy vị trí" đã nói
+rõ *mở bản đồ là chia sẻ*. Code chưa bao giờ làm thế. Sửa ở đây là **thực hiện đúng lời đã hứa**,
+không phải mở rộng phạm vi thu thập vị trí.
+
+### Ba luật rút ra
+
+1. **Đừng chỉ học được về người khác qua phản hồi cho hành động của mình.** Luồng SSE đã đọc bảng
+   `livelocations` mỗi giây rồi **vứt vị trí đi**, chỉ lấy "cái chọc". Nay nó đẩy vị trí — và chỉ
+   khi `updatedAt` đổi, không thì mỗi giây một gói cho người đang ngồi yên.
+2. **Một cờ đừng trả lời hai câu hỏi.** `isCompanionTrip` vừa quyết định "có vẽ tuyến/HUD của người
+   kia không" (đúng — đây là thứ đã sửa bug *đi 1 mình mà hiện UI 2 người*), vừa quyết định "có
+   biết người kia ở đâu không" (sai). Tách ra: chấm hiện khi biết vị trí, **và biến mất trong suốt
+   chuyến ai đó chọn đi một mình**. Sửa kiểu gỡ luôn `isCompanionTrip` là tái tạo bug cũ.
+3. **Rời tab không phải là biến mất.** Tab ẩn bị bóp còn ~1 nhịp/phút, mà cửa sổ tươi là 5 phút nên
+   vẫn sống. Thứ phải thêm là **ping ngay khi quay lại** (`visibilitychange`), đừng bắt người ta
+   chờ hết chu kỳ mới được nhìn thấy. Đo được: quay lại tab → ghi nhận lại trong dưới 3 giây.
+
+Nhịp: dẫn đường 2.5s (độ chính xác cao), **chỉ mở bản đồ 15s** với fix thô, cache 30s — đủ giữ
+trong hạn 5 phút mà không đánh thức GPS liên tục trong túi quần.
+
+### Kiểu của context phải SUY RA từ hook
+
+`NavigationInvitesContextValue` là bản chép tay của thứ hook trả về, nên thêm gì vào hook cũng vô
+hình ở context cho tới khi nhớ ra phải sửa hai nơi — đúng chỗ vị trí người kia đi tới rồi tắc.
+Nay `type … = ReturnType<typeof useNavigationInvites>`.
+
+### Kiểm thử 2 người: MỘT trình duyệt là MỘT người
+
+Bài học đắt nhất buổi này. Mở 2 tab rồi `Network.setCookie` cho từng tab ⇒ **cookie dùng chung cả
+profile**, tab sau ghi đè tab trước, **cả hai tab thành cùng một người**. Test chạy xanh/đỏ đều vô
+nghĩa. Phải dùng `Target.createBrowserContext` (kho cookie riêng, như hai máy). Kèm theo:
+`Browser.grantPermissions` **bắt buộc** truyền `browserContextId`, không thì cấp cho ngữ cảnh mặc
+định và trang mới vẫn bị từ chối GPS.
+
+Và: **dòng in ra không phải là khẳng định.** Hai dòng `console.log` in `null` từng nằm giữa một
+loạt dấu ✓ khiến bản chạy trông như đã chứng minh phần thời gian thực — trong khi nó chưa kiểm gì
+cả. Muốn chắc "đẩy chứ không phải tự hỏi" thì phải nghe ké đúng kết nối SSE của app
+(`Page.addScriptToEvaluateOnNewDocument` bọc `EventSource`) rồi **khẳng định** trên số sự kiện đó.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

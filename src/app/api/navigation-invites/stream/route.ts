@@ -4,6 +4,7 @@ import { connectToDatabase } from "@/server/db/connect";
 import { SpaceModel } from "@/server/db/models/space";
 import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
 import { LiveLocationModel } from "@/server/db/models/live-location";
+import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
 
 /**
  * SSE endpoint for navigation invites.
@@ -90,6 +91,7 @@ export async function GET(req: NextRequest) {
       let lastSentStatus: string | null = null;
       
       // Track the partner's last ping action time to avoid duplicate pushes
+      let lastPartnerLocAt = 0;
       let lastPartnerPingAt = 0;
       // Track the last "trip ended" invite we notified about (push once).
       let lastEndedId: string | null = null;
@@ -195,16 +197,56 @@ export async function GET(req: NextRequest) {
             }
           }
 
-          // 3. Check for recent partner pings (within the last 10 seconds)
-          const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+          // 3. The partner's own position, and any ping riding on it.
+          const fiveMinsAgo = new Date(Date.now() - PARTNER_FIX_FRESH_MS);
           const partnerLoc = await LiveLocationModel.findOne({
             spaceId,
             userId: { $ne: userId },
             updatedAt: { $gt: fiveMinsAgo }
           })
-            .select("pingAction updatedAt")
-            .lean<{ pingAction: string | null; updatedAt: Date }>();
-          
+            .select("userId lat lng heading speedKmH accuracy batteryLevel pingAction updatedAt")
+            .lean<{
+              userId: string; lat: number; lng: number; heading: number | null;
+              speedKmH: number | null; accuracy: number | null; batteryLevel: number | null;
+              pingAction: string | null; updatedAt: Date;
+            }>();
+
+          /*
+           * Push the position, not just the poke.
+           *
+           * This stream already read this row every second and threw the
+           * position away, so each side could only learn where the other was
+           * from the reply to its OWN write — which meant a phone that had
+           * stopped writing (screen off, tab in the background, simply not
+           * navigating) also stopped hearing. Two people could both be sharing
+           * and each see an empty map.
+           *
+           * Only on change: the row is rewritten every few seconds while
+           * someone moves, and re-sending an unchanged position would put a
+           * message on the wire every second for a partner sitting still.
+           */
+          if (partnerLoc) {
+            const ms = partnerLoc.updatedAt.getTime();
+            if (ms > lastPartnerLocAt) {
+              lastPartnerLocAt = ms;
+              send("partner-location", {
+                userId: partnerLoc.userId,
+                lat: partnerLoc.lat,
+                lng: partnerLoc.lng,
+                heading: partnerLoc.heading,
+                speedKmH: partnerLoc.speedKmH,
+                accuracy: partnerLoc.accuracy,
+                batteryLevel: partnerLoc.batteryLevel,
+                updatedAt: partnerLoc.updatedAt.toISOString(),
+              });
+            }
+          } else if (lastPartnerLocAt !== 0) {
+            // Their last fix aged out of the window: say so once, so the other
+            // screen can stop claiming to know where they are.
+            lastPartnerLocAt = 0;
+            send("partner-gone", { ts: Date.now() });
+          }
+
           if (partnerLoc && partnerLoc.pingAction) {
             const updatedAtMs = partnerLoc.updatedAt.getTime();
             // Repeat-suppression invariant: a ping is emitted at most once per

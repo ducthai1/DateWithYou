@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LatLng } from "@/lib/maps";
 import { trpc } from "@/lib/trpc";
+import { useNavigationInvitesContext } from "./navigation-invites-context";
 import type { Maneuver } from "@/lib/maneuver-vi";
 /* Geometry lives in its own module so it can be checked without React — see
  * route-geometry.ts. The windowed match there is 9x cheaper than the full scan
@@ -9,6 +10,13 @@ import { cumulativeMetres, remainingAlongRoute, SNAP_MAX_M } from "@/lib/route-g
 
 /** How long the emotion buttons stay refused after one is sent. */
 const PING_COOLDOWN_MS = 2500;
+/*
+ * Presence cadence. Slower than navigation on purpose: this only has to keep a
+ * row inside the five-minute freshness window and say roughly where someone is,
+ * and it runs whenever the map is open — including on a phone in a pocket.
+ */
+const PRESENCE_PING_MS = 15_000;
+const PRESENCE_FIX_MAX_AGE_MS = 30_000;
 
 /** Why a ping did or did not go out — the UI needs the distinction. */
 export type PingResult = "sent" | "too-soon" | "no-location";
@@ -66,6 +74,14 @@ export type LiveNavigation = {
    */
   accuracyM: number | null;
   isNavigating: boolean;
+  /**
+   * Whether this screen is announcing "we are both around".
+   *
+   * Separate from isNavigating: opening the map shares a coarse position on a
+   * slow cadence, which is what the app has always told people it does.
+   */
+  presenceOn: boolean;
+  setPresence: (on: boolean) => void;
   /** Latest live position (null until the first fix). */
   userGeo: LatLng | null;
   /** Device heading in degrees (0 = north, 90 = east). null when unavailable. */
@@ -162,6 +178,29 @@ export function useLiveNavigation(options?: {
   // silently vanishing (which would look like they reconnected).
   const [everHadPartner, setEverHadPartner] = useState(false);
 
+  /*
+   * The partner's position as pushed over the stream.
+   *
+   * Before this, the only way to learn where they were was the reply to our own
+   * write — so a phone that had stopped writing also stopped hearing, and two
+   * people who had both opened the map could each be looking at an empty one.
+   * The stream already read that row every second; now it says what it read.
+   */
+  const { partnerLive } = useNavigationInvitesContext();
+  useEffect(() => {
+    if (!partnerLive) return;
+    setPartnerLocation((prev) => {
+      const next = { ...partnerLive, pingAction: null, updatedAt: new Date(partnerLive.updatedAt) };
+      // An older push must not overwrite a newer answer from our own ping.
+      if (prev && prev.updatedAt.getTime() >= next.updatedAt.getTime()) return prev;
+      return next;
+    });
+    setEverHadPartner(true);
+  }, [partnerLive]);
+
+  /** Last coarse fix taken for presence; the navigation watch wins when running. */
+  const presenceGeoRef = useRef<LatLng | null>(null);
+
   // Store the latest data in a ref so the interval doesn't get cleared on every GPS update
   const pingPayloadRef = useRef({
     userGeo,
@@ -241,7 +280,10 @@ export function useLiveNavigation(options?: {
   // partner's HUD/route appears within a second of starting — not up to 5s later.
   const sendLivePing = useCallback(async () => {
     const p = pingPayloadRef.current;
-    if (!p.userGeo) return;
+    // The navigation watch when it is running, otherwise the coarse fix taken
+    // for presence — either is a real position and either is worth sharing.
+    const geo = p.userGeo ?? presenceGeoRef.current;
+    if (!geo) return;
     let batteryLevel = null;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -252,8 +294,8 @@ export function useLiveNavigation(options?: {
     }
     pingLiveLocation.mutate(
       {
-        lat: p.userGeo.lat,
-        lng: p.userGeo.lng,
+        lat: geo.lat,
+        lng: geo.lng,
         heading: p.heading,
         speedKmH: p.speedKmH,
         accuracy: p.accuracyM,
@@ -275,6 +317,71 @@ export function useLiveNavigation(options?: {
   }, []);
   const sendLivePingRef = useRef(sendLivePing);
   sendLivePingRef.current = sendLivePing;
+
+  /*
+   * "I have the map open."
+   *
+   * Sharing used to begin only when someone pressed start, yet the app told
+   * them the opposite — "Người kia chưa mở Bản đồ nên chưa thấy vị trí" says
+   * plainly that opening the map is what shares. It never did: the map took a
+   * single fix, kept it in local state, and sent nothing. Both people could
+   * have the map open and each be told the other had not.
+   *
+   * So the map page turns this on while it is mounted. The fix is coarse and
+   * cached — this is "we are both around", not turn-by-turn — and navigation,
+   * when it starts, takes over with its own high-accuracy watch.
+   */
+  const [presenceOn, setPresenceOn] = useState(false);
+
+  const readCoarseFix = useCallback(
+    () =>
+      new Promise<void>((resolve) => {
+        if (!navigator.geolocation) return resolve();
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            presenceGeoRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            resolve();
+          },
+          () => resolve(),
+          // Low power on purpose, and a cache long enough that a person sitting
+          // still costs one GPS wake per cycle at most.
+          { enableHighAccuracy: false, timeout: 10_000, maximumAge: PRESENCE_FIX_MAX_AGE_MS },
+        );
+      }),
+    [],
+  );
+
+  const sendPresencePing = useCallback(async () => {
+    await readCoarseFix();
+    sendLivePingRef.current();
+  }, [readCoarseFix]);
+  const sendPresencePingRef = useRef(sendPresencePing);
+  sendPresencePingRef.current = sendPresencePing;
+
+  useEffect(() => {
+    // Navigation has its own faster loop; two would just write over each other.
+    if (!presenceOn || isNavigating || isOffline) return;
+    void sendPresencePingRef.current();
+    const id = setInterval(() => void sendPresencePingRef.current(), PRESENCE_PING_MS);
+    return () => clearInterval(id);
+  }, [presenceOn, isNavigating, isOffline]);
+
+  /*
+   * Coming back to the tab re-announces us at once.
+   *
+   * A hidden tab has its timers throttled to roughly one a minute, which the
+   * five-minute freshness window absorbs — but the moment someone looks at the
+   * screen again they should not be waiting out a cycle to be seen.
+   */
+  useEffect(() => {
+    const onShow = () => {
+      if (document.visibilityState !== "visible") return;
+      if (isNavigating) sendLivePingRef.current();
+      else if (presenceOn) void sendPresencePingRef.current();
+    };
+    document.addEventListener("visibilitychange", onShow);
+    return () => document.removeEventListener("visibilitychange", onShow);
+  }, [isNavigating, presenceOn]);
 
   const watchId = useRef<number | null>(null);
   const wakeLock = useRef<WakeLockLike | null>(null);
@@ -508,6 +615,9 @@ export function useLiveNavigation(options?: {
 
   return {
     isNavigating,
+    /** Turn on while a screen that means "we are both around" is open. */
+    setPresence: setPresenceOn,
+    presenceOn,
     userGeo,
     heading,
     speedKmH,

@@ -38,6 +38,17 @@ export type InviteResponse = {
  * does zero work until there's a real event. The native `EventSource` API
  * handles automatic reconnection on network failures.
  */
+export type PartnerLive = {
+  userId: string;
+  lat: number;
+  lng: number;
+  heading: number | null;
+  speedKmH: number | null;
+  accuracy: number | null;
+  batteryLevel: number | null;
+  updatedAt: string;
+};
+
 export function useNavigationInvites() {
   const [incomingInvite, setIncomingInvite] = useState<IncomingInvite | null>(
     null,
@@ -45,6 +56,15 @@ export function useNavigationInvites() {
   const [inviteResponse, setInviteResponse] =
     useState<InviteResponse | null>(null);
   const [partnerPingAction, setPartnerPingAction] = useState<string | null>(null);
+  /*
+   * Where the partner is, pushed by the server rather than fetched.
+   *
+   * It lives on this hook because the tab has exactly one stream and this is
+   * what owns it. useLiveNavigation reads it from the context above it and
+   * folds it into its own partner state — so a screen learns the other person
+   * moved without having written anything itself.
+   */
+  const [partnerLive, setPartnerLive] = useState<PartnerLive | null>(null);
   // Set when the partner ends a shared trip — drives the "stop too?" prompt.
   const [endedTrip, setEndedTrip] = useState<{ id: string; locationName: string } | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -84,6 +104,18 @@ export function useNavigationInvites() {
         /* ignore malformed */
       }
     });
+
+    es.addEventListener("partner-location", (e) => {
+      try {
+        setPartnerLive(JSON.parse(e.data) as PartnerLive);
+      } catch {
+        /* ignore malformed */
+      }
+    });
+
+    // Their last fix aged out. Clearing beats leaving a pin at a place they
+    // have not been for five minutes.
+    es.addEventListener("partner-gone", () => setPartnerLive(null));
 
     es.addEventListener("ping", (e) => {
       try {
@@ -141,6 +173,8 @@ export function useNavigationInvites() {
     inviteResponse,
     /** The real-time ping action from partner. Reset automatically. */
     partnerPingAction,
+    /** The partner's last known position, pushed over the stream. */
+    partnerLive,
     /** Set when the partner ends a shared trip (null = none). */
     endedTrip,
     isConnected,

@@ -16,18 +16,16 @@ import {
   type ReactNode,
 } from "react";
 import { useNavigationInvites } from "./use-navigation-invites";
-import type { IncomingInvite, InviteResponse } from "./use-navigation-invites";
 
-interface NavigationInvitesContextValue {
-  incomingInvite: IncomingInvite | null;
-  inviteResponse: InviteResponse | null;
-  partnerPingAction: string | null;
-  endedTrip: { id: string; locationName: string } | null;
-  isConnected: boolean;
-  clearIncoming: () => void;
-  clearResponse: () => void;
-  clearEndedTrip: () => void;
-}
+/*
+ * Derived from the hook, not written out beside it.
+ *
+ * This was a hand-kept copy of the same shape, so anything added to the hook
+ * was invisible here until someone remembered to add it twice — which is
+ * exactly how the partner's live position reached the tab and stopped at this
+ * line.
+ */
+type NavigationInvitesContextValue = ReturnType<typeof useNavigationInvites>;
 
 const NavigationInvitesContext =
   createContext<NavigationInvitesContextValue | null>(null);
