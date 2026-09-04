@@ -3014,6 +3014,74 @@ Thêm hai chuyện về môi trường:
   trước khi chụp.
 
 
+## Mention nhìn ra là mention: vì sao KHÔNG dùng contenteditable
+
+Yêu cầu: tên trong caption phải hiện màu, và xoá thì xoá nguyên tên chứ không từng chữ.
+
+**`<textarea>` không tô màu được một phần chữ của chính nó** — không nhét được phần tử nào vào
+trong. Có đúng ba đường:
+
+| Cách | Được | Mất |
+|---|---|---|
+| `contenteditable` + chip `contenteditable="false"` | chip thật, xoá nguyên khối | **gõ tiếng Việt** |
+| Lớp phủ: vẽ vệt màu SAU một ô nhập trong suốt | ô nhập vẫn là ô nhập thật | vệt chỉ là nền, không đổi màu chữ |
+| Trình soạn thảo (Lexical/Tiptap/Slate) | đủ thứ | nặng, và vẫn dính đúng lỗi IME bên dưới |
+
+**Chọn lớp phủ, và lý do là bộ gõ tiếng Việt.** Telex/UniKey soạn một chữ qua nhiều phím và **tự
+xử lý Backspace giữa chừng**; mỗi lần React vẽ lại một vùng `contenteditable` là node văn bản mà
+IME đang giữ biến mất ⇒ tài liệu ghi nhận **mất dấu, đảo dấu, con trỏ nhảy về đầu ô**. Không ai gõ
+nổi "kỷ niệm" trong đó. `<textarea>` thật giữ nguyên IME, bàn phím điện thoại, dán, hoàn tác.
+
+**Chữ vẫn hiện, chỉ có nền là của lớp dưới — và đây là lý do ĐO ĐƯỢC, không phải phỏng đoán:**
+- Lo ban đầu "lớp nền không bám kịp lúc đang soạn" là **SAI**: đo bằng `Input.imeSetComposition`
+  thấy nó bám từng bước `k → ky → kyr → kỷ`.
+- Cái chặn thật là **`caret-color` hỏng trên iOS Safari** (không nhận màu đặt, không cập nhật khi
+  CSS đổi lúc đang gõ). Muốn tô màu chữ thì phải cho chữ của ô nhập trong suốt, mà `caret-color`
+  mặc định là `currentColor` ⇒ **con trỏ tàng hình trên iPhone**. Đổi một chút màu lấy việc người
+  ta không thấy mình đang gõ ở đâu là lỗ vốn.
+- Nên: trong ô nhập là **vệt nền**; ở phần ĐỌC (`MentionText`) không có ô nhập nào bên dưới nên
+  chữ mang màu accent + in đậm thoải mái.
+
+### Xoá nguyên tên mà KHÔNG tự sửa chuỗi
+
+`onKeyDown` chỉ **chọn** cả tên rồi **để trình duyệt tự xoá** vùng chọn — không `preventDefault`,
+không `setState` tay. Nhờ vậy `Ctrl+Z` vẫn hoàn tác được và thay đổi vẫn đi qua `onChange` như mọi
+lần gõ khác. Tự cắt chuỗi rồi set lại là giết luôn undo stack của trình duyệt.
+
+**Phải bỏ qua khi `isComposing`.** Telex gửi Backspace như một phần của việc viết chữ; nuốt phím đó
+là làm hỏng việc gõ chứ không phải xoá nhầm.
+
+### Hai lớp phải khớp TUYỆT ĐỐI, và cái bẫy 6px
+
+Lớp vẽ và ô nhập dùng **chung một chuỗi class** (`TEXTAREA_CLASS`), vì lệch một chút là vệt màu
+trôi khỏi tên khi caption xuống dòng.
+
+Bẫy đã sập: **`<textarea>` mặc định là `inline-block`**, nên thẻ bọc nó cao hơn chính nó **6px**
+(khoảng đệm dòng bên dưới). Lớp vẽ căng theo thẻ bọc ⇒ cao hơn ô nhập ⇒ mọi vệt ở dòng sau lệch
+dần. Thêm `block` là hết. Cách kiểm rẻ và chắc:
+
+```js
+Math.abs(back.scrollHeight - ta.scrollHeight) <= 1     // xuống dòng giống hệt
+["fontFamily","fontSize","lineHeight","letterSpacing","padding","borderWidth","whiteSpace"]
+  .filter(k => getComputedStyle(ta)[k] !== getComputedStyle(back)[k])   // phải rỗng
+```
+
+Lớp vẽ giữ nguyên `background` của caller (nó mới là lớp sơn nền thật), chỉ bỏ màu chữ và màu
+viền; ô nhập nằm trên với `bg-transparent`.
+
+### `data-mention` — mốc để bám, đừng bám vào class
+
+Cả hai nơi đánh dấu tên đều gắn `data-mention`. Trước đó test lọc theo `className.includes(...)`,
+đổi một lớp Tailwind là test báo "0 vệt" cho tính năng chạy hoàn hảo.
+
+### Dọn dữ liệu test: better-auth HẠ THƯỜNG HOÁ email
+
+Lần dọn đầu in ra **"còn sót: 0"** trong khi **18 tài khoản test vẫn nằm nguyên trong DB** — regex
+của tôi có `mA|fB|pA` mà email lưu xuống là `ma...`, `fb...`, `pa...`. Lọc email thì **luôn**
+không phân biệt hoa thường, và đừng tin câu "đã sạch" của chính mình: đếm lại tổng số user và
+liệt kê những cái KHÔNG khớp mẫu để biết mình vừa bỏ sót ai.
+
+
 ### Link Maps: 4 lỗi làm link từ ĐIỆN THOẠI lệch, link desktop thì chuẩn
 
 User báo: "link từ máy tính chuẩn 100%, link điện thoại lệch khá xa". Đúng, và vì 4 nguyên nhân

@@ -6,6 +6,7 @@ import { ImagePlus } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { cldFull, cldPreview, cldThumb } from "@/lib/cloudinary-url";
 import { trpc } from "@/lib/trpc";
+import { MentionText } from "@/components/ui/mention-text";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/modal";
@@ -306,7 +307,11 @@ export function MemoryTimeline() {
                         {m.time ? ` · ${m.time}` : ""}
                       </p>
                     </div>
-                    {m.caption && <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">{m.caption}</p>}
+                    {m.caption && (
+                      <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
+                        <MentionText text={m.caption} members={members} />
+                      </p>
+                    )}
                     {(m.tags ?? []).length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {(m.tags as string[]).map((t: string) => (
@@ -428,7 +433,11 @@ export function MemoryTimeline() {
                 })}
                 {selectedMemo.time ? ` · lúc ${selectedMemo.time}` : ""}
               </p>
-              {selectedMemo.caption && <p className="text-sm">{selectedMemo.caption}</p>}
+              {selectedMemo.caption && (
+                <p className="text-sm">
+                  <MentionText text={selectedMemo.caption} members={members} />
+                </p>
+              )}
               {(selectedMemo.tags ?? []).length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {(selectedMemo.tags as string[]).map((t) => (
@@ -479,7 +488,7 @@ export function MemoryTimeline() {
                         </PhotoView>
                         {p.caption && (
                           <figcaption className="text-muted-foreground px-0.5 text-xs leading-snug">
-                            {p.caption}
+                            <MentionText text={p.caption} members={members} />
                           </figcaption>
                         )}
                       </figure>

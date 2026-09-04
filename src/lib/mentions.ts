@@ -15,13 +15,32 @@ export function mentionToken(name: string): string {
   return `@${name.trim()}`;
 }
 
+/**
+ * The text with a name added at the end, ready to keep typing after.
+ *
+ * Only adds the separating space when there is not already whitespace there —
+ * tapping the chip after a sentence that already ends in a space used to leave
+ * two, which then showed up in the saved caption.
+ */
+export function appendMention(text: string, name: string): string {
+  const lead = !text || /\s$/.test(text) ? "" : " ";
+  return `${text}${lead}${mentionToken(name)} `;
+}
+
 /** Escapes a name so a regex built from it matches it literally. */
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+export type MentionRange = { start: number; end: number; id: string; name: string };
+
 /**
- * Ids of the members named anywhere in the text.
+ * Where each named member sits in the text, in reading order.
+ *
+ * The highlight layer and the Backspace handler both read this. They have to:
+ * if one of them worked out the boundaries on its own, a key press would delete
+ * a span that does not match the one painted under the caret, and the mismatch
+ * would only show up on the names where the two rules disagree.
  *
  * Longest name first, so a person called "An" cannot claim the mention meant
  * for "An Nhiên". Case-insensitive because nobody capitalises consistently on
@@ -32,9 +51,8 @@ function escapeRe(s: string): string {
  * here, since \w would treat "ệ" as a non-word character and match halfway
  * through a name.
  */
-export function collectMentions(text: string, members: MentionMember[]): string[] {
+export function findMentionRanges(text: string, members: MentionMember[]): MentionRange[] {
   if (!text) return [];
-  const found = new Set<string>();
   const ordered = [...members]
     .filter((m) => m.id && m.name?.trim())
     .sort((a, b) => b.name.trim().length - a.name.trim().length);
@@ -46,16 +64,25 @@ export function collectMentions(text: string, members: MentionMember[]): string[
    * "@An Nhiên" is a space, which passes the boundary check, so "An" matched
    * inside "An Nhiên" and both people were notified. Blanking each match before
    * looking for the next name is what stops a shorter name being found inside a
-   * longer one that already claimed it.
+   * longer one that already claimed it — and the filler is the same length, so
+   * every offset recorded here still points at the original string.
    */
   let rest = text;
+  const out: MentionRange[] = [];
   for (const m of ordered) {
-    const re = new RegExp(`@${escapeRe(m.name.trim())}(?![\\p{L}\\p{N}])`, "giu");
-    if (re.test(rest)) {
-      found.add(m.id);
+    const name = m.name.trim();
+    const re = new RegExp(`@${escapeRe(name)}(?![\\p{L}\\p{N}])`, "giu");
+    let hit: RegExpExecArray | null;
+    while ((hit = re.exec(rest)) !== null) {
+      out.push({ start: hit.index, end: hit.index + hit[0].length, id: m.id, name });
       // Same length of filler, so later offsets and boundaries stay honest.
-      rest = rest.replace(re, (hit) => " ".repeat(hit.length));
+      rest = rest.slice(0, hit.index) + " ".repeat(hit[0].length) + rest.slice(hit.index + hit[0].length);
     }
   }
-  return [...found];
+  return out.sort((a, b) => a.start - b.start);
+}
+
+/** Ids of the members named anywhere in the text. */
+export function collectMentions(text: string, members: MentionMember[]): string[] {
+  return [...new Set(findMentionRanges(text, members).map((r) => r.id))];
 }

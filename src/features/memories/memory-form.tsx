@@ -5,7 +5,8 @@ import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { TEXTAREA_CLASS } from "@/components/ui/textarea";
+import { MentionField } from "@/components/ui/mention-field";
 import {
   uploadToCloudinary,
   cloudinaryConfigured,
@@ -17,7 +18,7 @@ import {
   MAX_PHOTO_CAPTION,
   UPLOAD_CONCURRENCY,
 } from "@/lib/memory-limits";
-import { collectMentions, mentionToken } from "@/lib/mentions";
+import { appendMention, collectMentions, mentionToken } from "@/lib/mentions";
 import { authClient } from "@/lib/auth-client";
 import { ExternalLink, ImagePlus, Link2, Loader2, Play, RotateCw, X } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -362,11 +363,14 @@ export function MemoryForm({
     <>
       <ModalContent className="space-y-5">
         <Input placeholder="Tiêu đề (vd: Lần đầu đi Đà Lạt)" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <Textarea
+      <MentionField
+        multiline
+        members={mentionable}
         placeholder="Kể lại cảm xúc, chi tiết (tuỳ chọn)"
         value={caption}
-        onChange={(e) => setCaption(e.target.value)}
+        onChange={setCaption}
         rows={3}
+        className={TEXTAREA_CLASS}
       />
       {mentionable.length > 0 && (
         <div className="-mt-3 flex flex-wrap items-center gap-1.5">
@@ -375,7 +379,7 @@ export function MemoryForm({
             <button
               key={m.id}
               type="button"
-              onClick={() => setCaption((c) => `${c ? `${c} ` : ""}${mentionToken(m.name)} `)}
+              onClick={() => setCaption((c) => appendMention(c, m.name))}
               className="border-border text-accent hover:bg-accent-soft rounded-full border px-2 py-0.5 text-xs font-medium"
             >
               {mentionToken(m.name)}
@@ -569,23 +573,22 @@ export function MemoryForm({
                   />
                 </PhotoView>
                 <div className="flex items-center gap-0.5">
-                  <input
+                  <MentionField
+                    members={mentionable}
                     value={p.caption ?? ""}
-                    onChange={(e) => setPhotoCaption(p.publicId, e.target.value)}
+                    onChange={(next) => setPhotoCaption(p.publicId, next)}
                     maxLength={MAX_PHOTO_CAPTION}
                     placeholder="Cảm nhận riêng…"
                     aria-label="Cảm nhận riêng cho ảnh này"
-                    className="text-foreground placeholder:text-muted-foreground focus-visible:bg-muted/60 min-w-0 flex-1 rounded-md bg-transparent px-1.5 py-1 text-xs outline-none"
+                    containerClassName="min-w-0 flex-1"
+                    className="text-foreground placeholder:text-muted-foreground focus-visible:bg-muted/60 w-full rounded-md bg-transparent px-1.5 py-1 text-xs outline-none"
                   />
                   {mentionable.map((mem) => (
                     <button
                       key={mem.id}
                       type="button"
                       onClick={() =>
-                        setPhotoCaption(
-                          p.publicId,
-                          `${p.caption ? `${p.caption} ` : ""}${mentionToken(mem.name)} `,
-                        )
+                        setPhotoCaption(p.publicId, appendMention(p.caption ?? "", mem.name))
                       }
                       aria-label={`Nhắc tên ${mem.name} trong ảnh này`}
                       className="text-accent hover:bg-accent-soft shrink-0 rounded-md px-1.5 py-1 text-xs font-bold"
