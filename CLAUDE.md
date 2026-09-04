@@ -3424,6 +3424,39 @@ Vẽ gì vào canvas thì cửa sổ nổi hiện cái đó. Hai lưu ý khi tri
 **Luật:** "API X không hỗ trợ" chưa có nghĩa là "việc đó không làm được". Tìm đường vòng qua API
 khác trước khi kết luận là giới hạn nền tảng.
 
+### Đã dựng thật — những chỗ đo được và những chỗ không
+
+Code: `src/features/locations/nav-mini-canvas.ts` (vẽ) + `use-nav-mini-window.ts` (ống PiP),
+cắm ở `locations-page.tsx` bằng nút thu nhỏ trong overlay dẫn đường.
+
+Đo bằng Chrome headless + CDP, **có số**:
+- `canvas.captureStream(4)` → `<video muted playsInline autoplay>` → `play()` chạy được **không cần
+  cử chỉ người dùng**: 1 track `live`, `videoWidth` 960, `readyState` 4, `paused` false.
+- `video.requestPictureInPicture()` **không có cử chỉ thì ném `NotAllowedError`**. Nên
+  `autoPictureInPicture = true` (chỉ ăn với PWA đã cài) **không bao giờ đủ một mình** — luôn phải
+  có nút bấm tay. Đây là lý do nút "thu nhỏ" tồn tại, không phải cho đẹp.
+
+Không đo được ở đây, phải nói thẳng ra thay vì nhận vơ:
+- **PiP thật thì headless không chạy được** (không có trình quản lý cửa sổ). Chỉ chứng minh được cái
+  ống dẫn, không chứng minh được cửa sổ. Phải thử máy thật.
+- **`document.visibilityState` trong headless luôn là `visible`**, kể cả khi đã mở tab khác rồi
+  `json/activate` sang đó. Nên mọi khẳng định kiểu "khi ẩn thì X" **không kiểm chứng được bằng
+  headless** — đừng viết như thể đã đo.
+
+Ba cái bẫy khi viết vòng lặp vẽ:
+- **Dùng `setInterval`, KHÔNG dùng `requestAnimationFrame`.** rAF không chạy khi tài liệu bị ẩn —
+  tức là đúng lúc cửa sổ nổi cần vẽ nhất. (Đây là hành vi theo spec, *không phải* thứ tôi đo được ở
+  đây — xem trên.)
+- Chrome từ chối PiP cho `<video>` đang `display:none` ⇒ để nó là ô 1px trong suốt. Và **ghim trong
+  vùng nhìn** (`left:0;top:0`), đừng `left:-9999px`: đẩy phần tử ra xa ngoài màn hình đúng là cách
+  đã đẻ ra bug cuộn ngang ở mục `.sr-only` bên dưới.
+- Dữ liệu vẽ để trong `ref`, vòng lặp đọc ref. Cho state React vào dependency của vòng lặp thì mỗi
+  lần GPS nhảy là dựng lại `setInterval`.
+
+**Vẽ lại, không chụp lại.** Khung nổi vẽ đường đi + mũi tên rẽ + khoảng cách bằng canvas 2D của
+mình, hướng-đi-lên. Ở cỡ PiP thì chữ trên tile bản đồ không đọc nổi, nên chụp map là vừa tốn
+`preserveDrawingBuffer` vừa ra thứ vô dụng.
+
 
 ## Vá `.sr-only` xong lại đẻ ra cuộn NGANG — và vì sao
 
@@ -3769,3 +3802,200 @@ hàng rào cứu, không phải map xong.
 - **Đừng nói app này chỉ dành cho các cặp đôi.** Bạn bè, anh chị em, người ở
   cùng đều dùng. Một không gian hiện giới hạn **hai người** — nói thật điều đó,
   đừng hứa nhóm đông.
+
+
+## `pkill -f` / `pgrep -f` tự giết chính shell đang gọi nó
+
+Dọn tiến trình test bằng `pkill -f "remote-debugging-port=9333"` → **shell chết ngay, exit 144**, và
+việc dọn dẹp không hề xảy ra. Lý do: `-f` khớp **toàn bộ dòng lệnh**, mà dòng lệnh của chính con
+bash đang chạy có chứa chuỗi đó. Nó tự khớp chính mình. Tôi dính đúng bẫy này **hai lần trong một
+phiên** vì lần đầu chỉ thấy "exit 144" mà không hiểu.
+
+Cách đúng — lọc theo **tên tiến trình**, rồi mới lọc tiếp bằng chuỗi:
+
+```bash
+PIDS=$(ps -eo pid,comm,args --no-headers | awk '$2=="chrome" && /remote-debugging-port=934/ {print $1}')
+for P in $PIDS; do kill "$P" 2>/dev/null; done
+```
+
+`$2=="chrome"` loại được con bash/awk, vì `comm` của chúng không phải `chrome`.
+
+Kèm luật cũ vẫn còn nguyên giá trị: **chỉ giết tiến trình do chính phiên này bật lên.** Trên máy này
+có nhiều dev server của nhiều repo cùng chạy — kiểm `readlink /proc/<pid>/cwd` để biết nó thuộc repo
+nào trước khi đụng vào. `next dev` của repo khác không phải việc của mình.
+
+
+## Cửa sổ nổi: `overflow-hidden` + góc bo LÀM CHẾT vùng bấm ở góc
+
+Trình phát nổi cần kéo được và giãn được, nên góc dưới-phải là tay nắm và viền quanh là chỗ
+để kéo di chuyển (iframe tự ăn hết pointer event của nó, không kéo được từ giữa khung).
+
+Tôi thêm `overflow-hidden` vào panel để bo tròn cái tay nắm cho đẹp. Hậu quả **đo được**:
+`document.elementsFromPoint()` tại điểm cách góc 3px trả về **nội dung trang phía dưới**, không
+phải panel — dù `getBoundingClientRect()` của panel vẫn phủ đúng điểm đó. `overflow: hidden` cộng
+`border-radius` **cắt cả vùng hit test của các phần tử con** theo hình bo, nên mấy pixel sát mỗi
+góc thành vùng chết. Kéo và giãn cùng ngừng hoạt động, mà DOM trông vẫn đúng.
+
+Cùng một cơ chế, ở quy mô nhỏ hơn: cho `rounded-br-2xl` lên chính tay nắm thì góc cực của nó rơi
+xuống lớp kéo-di-chuyển bên dưới ⇒ **nhắm vào góc để giãn thì cửa sổ lại bị dời đi**.
+
+**Luật:** panel nổi thì bo góc bằng `rounded-*` **và không** `overflow-hidden`; tay nắm để **vuông,
+không bo**. Tay nắm trong suốt (chỉ có dấu nhỏ bên trong) nên nó chờm ra ngoài góc bo không ai thấy.
+Khung con nào cần bo thì tự bo lấy.
+
+Kèm hai điều nữa của cùng cái cửa sổ này:
+- **Kéo phải nghe trên `window`, không dùng `setPointerCapture`.** Với capture, `pointerdown` tới
+  nhưng `pointermove` **không bao giờ tới** (đo được). Nghe trên `window` cũng là cách duy nhất sống
+  được khi con trỏ đi ngang qua iframe — iframe ăn hết event của nó, kéo tới đó là đứt.
+- **Chiều cao theo provider không được lọt vào cửa sổ nổi.** `EmbedPlayer` cứng 740px cho TikTok,
+  152px cho Spotify. Trong cửa sổ nổi thì **cửa sổ sở hữu cái hộp**: thêm `fill` cho iframe điền hết
+  hộp, và tính hộp từ `EMBED_ASPECT`. Chặn cao ở nửa màn hình rồi **thu hẹp bề ngang cho khớp tỉ lệ**
+  — đừng cắt hình. Không làm vậy thì một clip dọc phủ gần hết màn hình điện thoại.
+
+
+## Tailwind v4 tự bọc `hover:` trong `@media (hover: hover)` — và headless ở đây báo `hover: none`
+
+Luật sinh ra trông như thế này (đọc từ CSS đã biên dịch của dev server):
+
+```css
+.group-hover\:max-h-24 { &:is(:where(.group):hover *) { @media (hover: hover) { max-height: ... } } }
+```
+
+Hai hệ quả:
+- **Máy cảm ứng không bao giờ ăn `group-hover:`** — nên UI kiểu "hiện khi hover" phải có nhánh riêng
+  cho cảm ứng (`matchMedia("(hover: hover) and (pointer: fine)")` trong JS), nếu không thì trên điện
+  thoại thanh công cụ **không bao giờ hiện ra**.
+- **Chrome headless trên máy này báo `(hover: hover)` = false**, và `Emulation.setEmulatedMedia`
+  **không ép được** (đã thử `hover:hover`, `hover:hover + pointer:fine`, `any-hover:hover` — cả ba
+  vẫn ra false). Nên **không test xanh được chiều "hover vào thì hiện"** ở đây.
+
+Cách kiểm trung thực, không nhận vơ: (1) ép nhánh JS bằng cách stub `window.matchMedia` rồi đo trạng
+thái **thu lại** (`max-height` = 0) — cái này đo được; (2) grep CSS đã biên dịch để chứng minh luật
+mở ra **có tồn tại**; (3) nói rõ ra rằng chiều mở phải thử trên máy thật. Stub `window.matchMedia`
+**không** đổi cách trình duyệt tính media query trong CSS — nó chỉ đổi nhánh JS.
+
+
+## `element.click()` lách qua lớp che; chuột thật thì không
+
+Bài test bấm "phát" bằng `el.click()` nên **đi xuyên qua** một `fixed inset-0 z-50` (modal chào mừng)
+và vẫn xanh — trong khi người dùng thật thì không bấm được gì. Đến bước kéo bằng chuột thật mới lộ.
+
+**Luật:** trước khi khẳng định một thứ "bấm được", đo `document.elementFromPoint(x, y)` tại đúng điểm
+đó và kiểm nó nằm trong phần tử mình nghĩ. `elementsFromPoint` in ra cả chồng, đọc phát ra ngay ai
+đang che ai. Test nào chỉ dùng `.click()` thì chỉ chứng minh được handler chạy, **không** chứng minh
+được người dùng với tới.
+
+
+## Dọn dữ liệu test: `userId` của better-auth là ObjectId, không phải string
+
+`deleteMany({ userId: { $in: ids } })` với `ids` là mảng **string** xoá được **0** dòng `session` và
+`account`, trong khi `user`/`spaces` xoá đúng — vì `spaceId`/`createdBy` lưu string còn better-auth
+lưu `userId` dạng **ObjectId**. Không ai báo lỗi, chỉ là mỗi lượt test bỏ lại một cặp session+account
+mồ côi.
+
+Cách chắc ăn: quét theo **"userId không còn trong bảng user"** thay vì so danh sách id:
+
+```js
+const alive = new Set((await db.collection("user").find({}, { projection: { _id: 1 } }).toArray()).map(u => String(u._id)));
+const orphan = rows.filter(r => !alive.has(String(r.userId)));
+```
+
+Và **in ra số mồ côi tìm được**, đừng chỉ in số đã xoá — số 0 im lặng là cách một lỗi dọn dẹp sống sót.
+
+
+## Đổi dữ liệu mà tái dùng cùng thẻ `iframe`: message của tài liệu CŨ vẫn bay tới
+
+Trình phát nổi đổi bài bằng cách đổi `src` của **cùng một** `<iframe>`. Hậu quả đo được với
+YouTube thật: player cũ **vẫn gửi nốt** vài message trạng thái (`…0, 1, 3`) trên đúng cửa sổ đó.
+Code của tôi coi "nhận được message nào cũng nghĩa là player đã trả lời" ⇒ **dừng bắt tay trước khi
+player mới kịp nghe**, và player chưa nghe thì không nhận được lệnh nào. Triệu chứng: bài mới nạp
+xong, nằm im ở ảnh chờ, không lỗi, không log.
+
+**Luật:** khung nhúng khác origin thì **key theo từng bản ghi** (`<EmbedPlayer key={item.id} …>`) —
+đổi bài là dựng khung mới, cửa sổ cũ chết theo, hết message lạc. Kèm bắt tay lại trên sự kiện
+`load` của khung cho ca nó tự nạp lại vì lý do khác.
+
+Và **đừng lấy "có message" làm dấu hiệu sẵn sàng**. Dấu hiệu phải gắn với *danh tính* của thứ đang
+chờ, xem mục dưới.
+
+
+## Cờ "sẵn sàng" kiểu bool bị TIÊU vào đúng thứ đang bị tháo
+
+Chuỗi tự phát bài kế: bài hết → `onNext()` → chờ khung mới sẵn sàng → gửi lệnh phát.
+
+Viết bằng bool thì sai: trạng thái "sẵn sàng" **chậm hơn việc đổi bài một vòng render**, nên ngay
+sau `onNext()` hiệu ứng chờ nhìn thấy `ready === true` **của bài cũ**, tiêu cờ, và bắn lệnh phát vào
+khung đang bị tháo. Khung mới không bao giờ được gọi.
+
+```ts
+// SAI — bool không phân biệt được sẵn sàng CHO CÁI GÌ
+const [ready, setReady] = useState(false);
+if (chờPhát.current && ready) { chờPhát.current = false; play(); }
+
+// ĐÚNG — nêu tên thứ nó sẵn sàng cho
+const [readyFor, setReadyFor] = useState<string | null>(null);
+if (bàiVừaHết.current && readyFor && readyFor !== bàiVừaHết.current) { …; play(); }
+```
+
+**Luật:** cờ chờ bắc qua một lần đổi đối tượng thì phải mang **id của đối tượng**, không phải
+boolean. Không biết id của cái sắp tới thì lưu id của cái vừa xong và điều kiện là "khác cái đó".
+
+
+## Giao thức widget của YouTube — số liệu đã đo, khỏi đoán lại
+
+Đo bằng iframe YouTube thật (`enablejsapi=1&origin=<origin trang>`), không stub:
+
+- Bắt tay: gửi `{"event":"listening","id":1,"channel":"widget"}` → nhận `initialDelivery` rồi
+  `onReady`. Gửi lại lần nữa thì nhận `alreadyInitialized` (vô hại).
+- Lệnh: `{"event":"command","func":"playVideo","args":[]}` — **KHÔNG cần** `id`/`channel`, đã thử cả
+  hai kiểu, kiểu không kèm vẫn chạy.
+- Trạng thái về theo **hai** dạng: `onStateChange` có `info` là **số**, còn `infoDelivery` có
+  `info.playerState`. Rất nhiều `infoDelivery` **không** có `playerState` (chỉ `currentTime`,
+  `videoBytesLoaded`…) ⇒ phải bỏ qua, đừng coi là đổi trạng thái.
+- Mã trạng thái gặp thật: `-1` chưa bắt đầu · `0` **hết bài** · `1` đang phát · `3` đang tải ·
+  `5` đã nạp sẵn.
+- `playVideo` từ trang cha **có** ăn khi trang đã từng có cử chỉ người dùng (sticky activation) và
+  iframe có `allow="autoplay"` — kể cả cho khung vừa dựng của bài kế.
+- Muốn dựng cảnh "hết bài" thật để test: gửi `{"event":"command","func":"seekTo","args":[<gần cuối>, true]}`.
+
+
+## Công cụ đo của mình làm sai kết quả đo
+
+Để xem app gửi gì cho iframe, tôi bọc `HTMLIFrameElement.prototype.contentWindow` bằng `Proxy`.
+Kết quả: hook trong app so `e.source !== win` (với `win` lấy từ `contentWindow`) — **Proxy khác
+identity với window thật** nên mọi message bị loại, và tôi đọc ra kết luận sai là "app không nhận
+được gì".
+
+**Luật:** khi tiêm công cụ đo, **không được đổi identity của đối tượng mà code đang so sánh**. Nếu
+buộc phải bọc thì đo ở tầng khác (nghe `message` ở window là đủ), và luôn tự hỏi *phép đo này có
+thể tự tạo ra triệu chứng không* trước khi tin nó.
+
+Bẫy thứ hai cùng buổi: **cửa sổ đo lệch**. Tôi reset mảng thu trạng thái *sau* khi sự việc đã xảy
+ra rồi mới đo 7 giây tiếp ⇒ ra rỗng, báo trượt một tính năng đang chạy đúng. Cách chắc: thu **cả
+chuỗi** rồi tìm mốc (`indexOf(0)`) và xét phần sau mốc, đừng dựa vào việc reset đúng lúc.
+
+
+## Dọn dữ liệu test: khớp theo TÊN MIỀN, đừng đoán dạng phần trước @
+
+Hàm dọn của tôi khớp `^[a-z]{2}\d+@example\.com$`. Lần sau tôi đặt email `rx<pid>a@` và `rx<pid>b@`
+(thêm chữ ở cuối để phân biệt hai người) ⇒ **bỏ sót 8 tài khoản** cùng 5 kỷ niệm và 7 reaction, mà
+báo cáo vẫn in "0 tài khoản test".
+
+**Luật:** dọn thì khớp **`@example.com`** (cả domain là của test), không khớp dạng phần trước `@` —
+dạng đó tôi tự đặt và tự đổi mỗi lần. Và **in ra cả danh sách GIỮ LẠI**, không chỉ danh sách xoá:
+nhìn thấy `GIỮ: local@gmail.com` là bằng chứng không đụng tới dữ liệu thật.
+
+
+## Push subscription: chỉ có ĐÚNG hai đường bị xoá
+
+Tra hết code, đừng điều tra lại từ đầu:
+
+- `src/server/lib/push.ts:134` — sau **một lần gửi thật** mà endpoint trả **404/410** (đã chết) hoặc
+  **403** (sai khoá VAPID). Mọi lỗi khác chỉ `console.error`, **không** xoá.
+- `src/server/trpc/routers/push.ts:84` — người dùng chủ động bấm "Tắt thông báo".
+
+Không có cron, không TTL index, không job dọn nào khác. Nên "tự dưng tắt" **luôn** là một trong hai
+ca trên. Phân biệt bằng log: ca 403 in riêng dòng
+`push: VAPID key mismatch for endpoint, dropping` — nghĩa là cặp khoá VAPID đã đổi **sau** khi máy
+đăng ký, và khi đó **mọi máy đăng ký bằng khoá cũ chết cùng lúc**.
+
