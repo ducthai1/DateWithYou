@@ -12,11 +12,13 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { List as ListIcon, Volume2, VolumeX, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, Loader2, LocateOff, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
+import { List as ListIcon, Volume2, VolumeX, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, Loader2, LocateOff, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, PictureInPicture2, Pencil, Play, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { type LegInfo } from "./use-live-navigation";
 import { useTurnByTurn } from "./use-turn-by-turn";
+import { useNavMiniWindow } from "./use-nav-mini-window";
+import type { MiniNavFrame } from "./nav-mini-canvas";
 import { ManeuverArrowIcon } from "./maneuver-arrow-icon";
 import { maneuverArrow, maneuverLabel, fmtMetresVi } from "@/lib/maneuver-vi";
 import { isVoiceEnabled, setVoiceEnabled, speak } from "@/lib/speak";
@@ -711,6 +713,42 @@ export function LocationsPage() {
     userGeo: nav.userGeo,
     active: nav.isNavigating,
     arrival: arrivalContext,
+  });
+
+  /*
+   * The floating window redraws the turn ahead rather than mirroring the map,
+   * so it reads at a size where tiles and street labels would not.
+   */
+  const miniFrame = useMemo<MiniNavFrame>(
+    () => ({
+      route: activeLeg?.geometry?.coordinates ?? null,
+      geo: nav.snappedGeo ?? nav.userGeo,
+      heading: nav.snappedHeading ?? nav.heading,
+      turnArrow: turn.next ? maneuverArrow(turn.next.type) : null,
+      turnLabel: turn.next ? maneuverLabel(turn.next) : null,
+      turnMetres: turn.metres ?? null,
+      remainingMeters: nav.remainingMeters,
+      remainingSeconds: nav.remainingSeconds,
+      destination: selectedName ?? null,
+      paused: pausedTrip,
+    }),
+    [
+      activeLeg,
+      nav.snappedGeo,
+      nav.userGeo,
+      nav.snappedHeading,
+      nav.heading,
+      nav.remainingMeters,
+      nav.remainingSeconds,
+      turn.next,
+      turn.metres,
+      selectedName,
+      pausedTrip,
+    ],
+  );
+  const miniWindow = useNavMiniWindow(miniFrame, {
+    enabled: nav.isNavigating || pausedTrip,
+    autoOpen: nav.isNavigating && !pausedTrip,
   });
 
   // Fetch weather when destination is selected
@@ -1830,6 +1868,18 @@ export function LocationsPage() {
                 </p>
               )}
               <div className="flex w-full max-w-sm gap-2">
+                {miniWindow.supported && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label={miniWindow.active ? "Đóng khung nhỏ" : "Thu nhỏ thành khung nổi"}
+                    title={miniWindow.active ? "Đóng khung nhỏ" : "Thu nhỏ thành khung nổi"}
+                    className="bg-white/90 shadow-lg backdrop-blur-sm"
+                    onClick={() => void (miniWindow.active ? miniWindow.close() : miniWindow.open())}
+                  >
+                    <PictureInPicture2 className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="flex-1 gap-2 bg-white/90 shadow-lg backdrop-blur-sm"
