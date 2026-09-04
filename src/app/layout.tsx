@@ -14,6 +14,7 @@ import { RegisterMapCache } from "@/components/layout/register-map-cache";
 import { WarmMapAssets } from "@/components/layout/warm-map-assets";
 import { PrimeHaptics } from "@/components/layout/prime-haptics";
 import { PushSetup } from "@/components/layout/push-setup";
+import { FullscreenRecovery } from "@/components/layout/fullscreen-recovery";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
@@ -254,6 +255,7 @@ export default async function RootLayout({
               page in the app — the tRPC provider lives in <Providers>, and a
               hook outside it has nothing to read. */}
           <PushSetup />
+          <FullscreenRecovery />
           <AppBackdrop />
           <SideNav />
           {/* Offset for the bottom nav on mobile, for the sidebar on desktop. */}
