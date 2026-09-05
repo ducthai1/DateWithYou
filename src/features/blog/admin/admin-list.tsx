@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
-import { useSession } from "@/lib/auth-client";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { CATEGORY_LABEL } from "@/features/blog/post-card";
@@ -20,7 +19,6 @@ import { CategoryManager } from "@/features/blog/admin/category-manager";
 export function BlogAdminList() {
   const toast = useToast();
   const utils = trpc.useUtils();
-  const { data: session } = useSession();
   const list = trpc.blog.adminList.useQuery(undefined, { retry: false });
   const cats = trpc.blog.categories.useQuery().data ?? [];
   const labelOf = (slug: string) => cats.find((c) => c.slug === slug)?.name ?? CATEGORY_LABEL[slug] ?? slug;
@@ -53,15 +51,9 @@ export function BlogAdminList() {
           </>
         ) : (
           <div className="text-muted-foreground space-y-2 text-sm">
-            <p>Tài khoản này chưa có quyền quản trị blog.</p>
-            <p>
-              Bạn đang đăng nhập bằng:{" "}
-              <code className="text-foreground bg-muted rounded px-1.5 py-0.5 text-xs">
-                {session?.user?.email ?? "(không đọc được email)"}
-              </code>
-            </p>
+            <p className="text-foreground font-medium">Chưa có quyền quản trị blog</p>
             <p className="text-xs leading-relaxed">
-              Kiểm tra: email trên có nằm <strong>y hệt</strong> trong biến{" "}
+              Kiểm tra: email bạn đang đăng nhập có nằm <strong>y hệt</strong> trong biến{" "}
               <code>ADMIN_EMAILS</code> không (đúng ký tự, phân cách bằng dấu phẩy). Nếu vừa đặt trên
               Vercel, cần <strong>Redeploy</strong> thì biến mới có hiệu lực.
             </p>
