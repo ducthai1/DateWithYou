@@ -60,6 +60,7 @@ export function BlogAdminList() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
+      <div className="border-border bg-card rounded-3xl border p-5 shadow-sm sm:p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-foreground text-2xl font-bold">Quản lý blog</h1>
@@ -75,7 +76,7 @@ export function BlogAdminList() {
           Chưa có bài nào. Bấm “Viết bài” để bắt đầu.
         </p>
       ) : (
-        <ul className="divide-border border-border divide-y rounded-2xl border">
+        <ul className="divide-border divide-y">
           {posts.map((p) => (
             <li key={p.id} className="flex items-center gap-3 p-3">
               <div className="min-w-0 flex-1">
@@ -117,6 +118,7 @@ export function BlogAdminList() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }

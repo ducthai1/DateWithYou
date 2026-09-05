@@ -134,7 +134,7 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-      <div className="space-y-4">
+      <div className="border-border bg-card space-y-4 rounded-3xl border p-5 shadow-sm sm:p-6">
         <div>
           <label className={label}>Tiêu đề</label>
           <input
@@ -184,6 +184,7 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
           </label>
         </div>
 
+        <div className="border-border bg-card space-y-5 rounded-2xl border p-4 shadow-sm">
         <div>
           <label className={label}>Ảnh bìa</label>
           {v.coverImage ? (
@@ -257,6 +258,7 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
             />
           </div>
         </details>
+        </div>
       </aside>
     </div>
   );

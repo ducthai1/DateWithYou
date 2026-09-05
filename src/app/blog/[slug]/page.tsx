@@ -94,7 +94,7 @@ export default async function ArticlePage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <ViewBeacon slug={post.slug} />
 
-      <nav className="text-muted-foreground mb-5 text-sm">
+      <nav className="text-muted-foreground mb-4 text-sm">
         <Link href="/blog" className="hover:text-accent">
           Blog
         </Link>
@@ -102,6 +102,9 @@ export default async function ArticlePage({
         <span>{CATEGORY_LABEL[post.category] ?? post.category}</span>
       </nav>
 
+      {/* One paper card on the app's backdrop, the same way every app screen
+          puts its content on a surface over the ambient art. */}
+      <div className="border-border bg-card rounded-3xl border p-5 shadow-sm sm:p-8">
       <header className="mb-6">
         <span className="text-accent text-sm font-semibold">
           {CATEGORY_LABEL[post.category] ?? post.category}
@@ -138,6 +141,7 @@ export default async function ArticlePage({
           ))}
         </div>
       )}
+      </div>
 
       {related.length > 0 && (
         <section className="border-border mt-12 border-t pt-8">
