@@ -94,6 +94,10 @@ export function DayPhotos({
                     <PhotoView src={cldFull(p.url)}>
                       <Photo
                         variant="thumb"
+                        // 160 CSS px, doubled by Cloudinary on a retina screen — enough
+                        // for a 3–4 column cell, and the same URL the week hero's strip
+                        // uses, so a photo seen there is already in the cache here.
+                        size={160}
                         src={p.url}
                         className="aspect-square w-full cursor-zoom-in rounded-lg"
                       />

@@ -152,7 +152,9 @@ export function CalendarDayHero({
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
             {photos.slice(1).map((p) => (
               <PhotoView key={p.publicId} src={cldFull(p.url)}>
-                <Photo variant="thumb" size={80} src={p.url} className="h-20 w-20 shrink-0 cursor-zoom-in rounded-xl" />
+                {/* Same size as the day's grid on purpose: one URL, fetched
+                    once, drawn in both places from the browser cache. */}
+                <Photo variant="thumb" size={160} src={p.url} className="h-20 w-20 shrink-0 cursor-zoom-in rounded-xl" />
               </PhotoView>
             ))}
           </div>
