@@ -38,11 +38,13 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogIndexPage() {
-  const [featured, popular, recent] = await Promise.all([
+  const [featured, popular, recent, cats] = await Promise.all([
     publicCaller.blog.featured({ limit: 1 }),
     publicCaller.blog.popular({ limit: 5 }),
     publicCaller.blog.list({ page: 1, pageSize: 12 }),
+    publicCaller.blog.categories(),
   ]);
+  const labelOf = (slug: string) => cats.find((c) => c.slug === slug)?.name ?? CATEGORY_LABEL[slug] ?? slug;
   const hero = featured[0] ?? recent.items[0] ?? null;
   const rest = recent.items.filter((p) => p.slug !== hero?.slug);
 
@@ -87,7 +89,7 @@ export default async function BlogIndexPage() {
                 </div>
                 <div className="flex flex-col justify-center gap-3 p-6">
                   <span className="text-accent text-xs font-semibold">
-                    {CATEGORY_LABEL[hero.category] ?? hero.category} · Nổi bật
+                    {labelOf(hero.category)} · Nổi bật
                   </span>
                   <h2 className="text-foreground text-2xl font-bold leading-tight group-hover:text-accent">
                     {hero.title}
@@ -99,7 +101,7 @@ export default async function BlogIndexPage() {
 
             <div className="grid gap-5 sm:grid-cols-2">
               {rest.map((post, i) => (
-                <ArticleCard key={post.slug} post={post} priority={i < 2} />
+                <ArticleCard key={post.slug} post={post} priority={i < 2} categoryLabel={labelOf(post.category)} />
               ))}
             </div>
 

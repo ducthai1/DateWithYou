@@ -68,10 +68,12 @@ export default async function ArticlePage({
   const post = await getPost(slug);
   if (!post) notFound();
 
-  const [popular, more] = await Promise.all([
+  const [popular, more, cats] = await Promise.all([
     publicCaller.blog.popular({ limit: 4 }),
-    publicCaller.blog.list({ category: post.category as never, page: 1, pageSize: 4 }),
+    publicCaller.blog.list({ category: post.category, page: 1, pageSize: 4 }),
+    publicCaller.blog.categories(),
   ]);
+  const labelOf = (slug: string) => cats.find((c) => c.slug === slug)?.name ?? CATEGORY_LABEL[slug] ?? slug;
   const related = more.items.filter((p) => p.slug !== post.slug).slice(0, 3);
 
   const { html: bodyHtml, toc } = withHeadingAnchors(post.body);
@@ -98,7 +100,7 @@ export default async function ArticlePage({
           Blog
         </Link>
         <span className="px-1.5">/</span>
-        <span>{CATEGORY_LABEL[post.category] ?? post.category}</span>
+        <span>{labelOf(post.category)}</span>
       </nav>
 
       {toc.length >= 3 && (
@@ -116,14 +118,14 @@ export default async function ArticlePage({
         </nav>
       )}
 
-      <ArticleView post={{ ...post, body: bodyHtml }} />
+      <ArticleView post={{ ...post, body: bodyHtml }} categoryLabel={labelOf(post.category)} />
 
       {related.length > 0 && (
         <section className="border-border mt-12 border-t pt-8">
           <h2 className="text-foreground mb-4 text-lg font-bold">Bài viết liên quan</h2>
           <div className="grid gap-5 sm:grid-cols-3">
             {related.map((p) => (
-              <ArticleCard key={p.slug} post={p} />
+              <ArticleCard key={p.slug} post={p} categoryLabel={labelOf(p.category)} />
             ))}
           </div>
         </section>

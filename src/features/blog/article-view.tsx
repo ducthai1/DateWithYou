@@ -23,12 +23,12 @@ export type ArticleViewPost = {
  * renders in a Server Component (the public page) and inside a client one (the
  * preview) alike.
  */
-export function ArticleView({ post }: { post: ArticleViewPost }) {
+export function ArticleView({ post, categoryLabel }: { post: ArticleViewPost; categoryLabel?: string }) {
   return (
     <div className="border-border bg-card rounded-3xl border p-5 shadow-sm sm:p-8">
       <header className="mb-6">
         <span className="text-accent text-sm font-semibold">
-          {CATEGORY_LABEL[post.category] ?? post.category}
+          {categoryLabel ?? CATEGORY_LABEL[post.category] ?? post.category}
         </span>
         <h1 className="text-foreground mt-1 text-3xl font-bold leading-tight sm:text-4xl [font-family:var(--font-display)]">
           {post.title}

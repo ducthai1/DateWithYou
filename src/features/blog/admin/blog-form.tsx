@@ -9,11 +9,8 @@ import { cldThumb } from "@/lib/cloudinary-url";
 import { readableFormError } from "@/lib/form-error";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
-import { CATEGORY_LABEL } from "@/features/blog/post-card";
 import { BlogEditor } from "./blog-editor";
 import { ImagePlus, Loader2, X, CalendarClock, Eye } from "lucide-react";
-
-const CATEGORIES = ["tin-tuc", "tinh-nang", "meo-hay", "cap-nhat"] as const;
 
 export type BlogFormValues = {
   id?: string;
@@ -22,7 +19,7 @@ export type BlogFormValues = {
   excerpt: string;
   body: string;
   coverImage: string;
-  category: (typeof CATEGORIES)[number];
+  category: string;
   tags: string[];
   featured: boolean;
   status: "draft" | "published";
@@ -100,6 +97,7 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
   const router = useRouter();
   const toast = useToast();
   const utils = trpc.useUtils();
+  const cats = trpc.blog.categories.useQuery().data ?? [];
   const [v, setV] = useState<BlogFormValues>(initial ?? EMPTY);
   const [slugTouched, setSlugTouched] = useState(Boolean(initial?.slug));
   const [tagInput, setTagInput] = useState("");
@@ -296,9 +294,9 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
 
         <div>
           <label className={label}>Danh mục</label>
-          <select className={field} value={v.category} onChange={(e) => set("category", e.target.value as BlogFormValues["category"])}>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{CATEGORY_LABEL[c] ?? c}</option>
+          <select className={field} value={v.category} onChange={(e) => set("category", e.target.value)}>
+            {(cats.length ? cats : [{ slug: v.category || "tin-tuc", name: v.category || "tin-tuc" }]).map((c) => (
+              <option key={c.slug} value={c.slug}>{c.name}</option>
             ))}
           </select>
         </div>

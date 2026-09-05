@@ -31,7 +31,15 @@ function viDate(d: string | Date | null): string {
  * thumbnail size (Cloudinary resizes; no client image component pulled in), so
  * a list of these ships no JavaScript.
  */
-export function ArticleCard({ post, priority = false }: { post: PostCard; priority?: boolean }) {
+export function ArticleCard({
+  post,
+  priority = false,
+  categoryLabel,
+}: {
+  post: PostCard;
+  priority?: boolean;
+  categoryLabel?: string;
+}) {
   return (
     <Link
       href={`/blog/${post.slug}`}
@@ -50,7 +58,7 @@ export function ArticleCard({ post, priority = false }: { post: PostCard; priori
           <div className="from-accent-soft to-muted h-full w-full bg-gradient-to-br" />
         )}
         <span className="bg-card/90 text-accent absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm">
-          {CATEGORY_LABEL[post.category] ?? post.category}
+          {categoryLabel ?? CATEGORY_LABEL[post.category] ?? post.category}
         </span>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">

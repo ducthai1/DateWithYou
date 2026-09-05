@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, adminProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { BlogPostModel } from "@/server/db/models/blog-post";
+import { BlogCategoryModel } from "@/server/db/models/blog-category";
 import { slugify } from "@/lib/slug";
 
 /**
@@ -14,7 +15,39 @@ import { slugify } from "@/lib/slug";
  * returned verbatim — the render side owns how it looks, not this router.
  */
 
-const CATEGORIES = ["tin-tuc", "tinh-nang", "meo-hay", "cap-nhat"] as const;
+/** Seeded once if the category collection is empty, so the blog always has some. */
+const DEFAULT_CATEGORIES = [
+  { slug: "tin-tuc", name: "Tin tức" },
+  { slug: "tinh-nang", name: "Tính năng" },
+  { slug: "meo-hay", name: "Mẹo hay" },
+  { slug: "cap-nhat", name: "Cập nhật" },
+];
+
+type CategoryDoc = { slug: string; name: string; order?: number };
+
+/** Insert the defaults the first time — idempotent and race-safe: slug is
+ *  unique, so a duplicate insert from a concurrent request is ignored. */
+async function ensureDefaultCategories() {
+  const count = await BlogCategoryModel.estimatedDocumentCount();
+  if (count > 0) return;
+  await BlogCategoryModel.insertMany(
+    DEFAULT_CATEGORIES.map((c, i) => ({ ...c, order: i })),
+    { ordered: false },
+  ).catch(() => {
+    /* Another request seeded them first — fine. */
+  });
+}
+
+/** A category slug no other category holds — suffixes -2, -3… on collision. */
+async function uniqueCategorySlug(base: string): Promise<string> {
+  const root = slugify(base) || "danh-muc";
+  for (let n = 0; n < 50; n++) {
+    const candidate = n === 0 ? root : `${root}-${n + 1}`;
+    const clash = await BlogCategoryModel.findOne({ slug: candidate }).select("_id").lean();
+    if (!clash) return candidate;
+  }
+  return `${root}-${Date.now()}`;
+}
 
 /** The filter every public query shares: published AND its time has come. A
  *  post scheduled for the future is published in the DB but stays hidden until
@@ -88,7 +121,7 @@ const postInput = z.object({
   excerpt: z.string().trim().max(400).default(""),
   body: z.string().max(200_000).default(""),
   coverImage: z.string().url().max(2000).optional().or(z.literal("")),
-  category: z.enum(CATEGORIES).default("tin-tuc"),
+  category: z.string().trim().min(1).max(40).default("tin-tuc"),
   tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
   featured: z.boolean().default(false),
   status: z.enum(["draft", "published"]).default("draft"),
@@ -111,7 +144,15 @@ async function uniqueSlug(base: string, exceptId?: string): Promise<string> {
 
 export const blogRouter = router({
   // ── Public ──────────────────────────────────────────────────────────────
-  categories: publicProcedure.query(() => CATEGORIES),
+  categories: publicProcedure.query(async () => {
+    await connectToDatabase();
+    await ensureDefaultCategories();
+    const rows = await BlogCategoryModel.find()
+      .select("slug name order")
+      .sort({ order: 1, name: 1 })
+      .lean<CategoryDoc[]>();
+    return rows.map((c) => ({ slug: c.slug, name: c.name, order: c.order ?? 0 }));
+  }),
 
   /** Every published slug, for the sitemap. Two fields only. */
   sitemap: publicProcedure.query(async () => {
@@ -130,7 +171,7 @@ export const blogRouter = router({
   list: publicProcedure
     .input(
       z.object({
-        category: z.enum(CATEGORIES).optional(),
+        category: z.string().trim().min(1).max(40).optional(),
         tag: z.string().trim().min(1).max(30).optional(),
         page: z.number().int().min(1).default(1),
         pageSize: z.number().int().min(1).max(24).default(9),
@@ -286,6 +327,51 @@ export const blogRouter = router({
     .mutation(async ({ input }) => {
       await connectToDatabase();
       await BlogPostModel.findByIdAndDelete(input.id);
+      return { ok: true };
+    }),
+
+  // ── Admin: categories ───────────────────────────────────────────────────
+  categoryCreate: adminProcedure
+    .input(z.object({ name: z.string().trim().min(1).max(60) }))
+    .mutation(async ({ input }) => {
+      await connectToDatabase();
+      await ensureDefaultCategories();
+      const slug = await uniqueCategorySlug(input.name);
+      const top = await BlogCategoryModel.findOne().sort({ order: -1 }).select("order").lean<{ order?: number }>();
+      const doc = await BlogCategoryModel.create({ slug, name: input.name, order: (top?.order ?? 0) + 1 });
+      return { slug: doc.slug, name: doc.name, order: doc.order };
+    }),
+
+  categoryUpdate: adminProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        name: z.string().trim().min(1).max(60).optional(),
+        order: z.number().int().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      await connectToDatabase();
+      const patch: Record<string, unknown> = {};
+      if (input.name !== undefined) patch.name = input.name;
+      if (input.order !== undefined) patch.order = input.order;
+      const doc = await BlogCategoryModel.findOneAndUpdate({ slug: input.slug }, patch, { new: true }).lean<CategoryDoc>();
+      if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
+      return { slug: doc.slug, name: doc.name, order: doc.order ?? 0 };
+    }),
+
+  categoryRemove: adminProcedure
+    .input(z.object({ slug: z.string() }))
+    .mutation(async ({ input }) => {
+      await connectToDatabase();
+      const inUse = await BlogPostModel.countDocuments({ category: input.slug });
+      if (inUse > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `Còn ${inUse} bài đang thuộc danh mục này. Đổi danh mục các bài đó trước khi xoá.`,
+        });
+      }
+      await BlogCategoryModel.deleteOne({ slug: input.slug });
       return { ok: true };
     }),
 });

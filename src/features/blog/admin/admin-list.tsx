@@ -6,7 +6,8 @@ import { useSession } from "@/lib/auth-client";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { CATEGORY_LABEL } from "@/features/blog/post-card";
-import { Pencil, Plus, Trash2, ExternalLink, Loader2, Eye, Clock } from "lucide-react";
+import { Pencil, Plus, Trash2, ExternalLink, Loader2, Eye, Clock, Tags } from "lucide-react";
+import { CategoryManager } from "@/features/blog/admin/category-manager";
 
 /**
  * The admin post list, and the gate for the whole admin section.
@@ -21,6 +22,8 @@ export function BlogAdminList() {
   const utils = trpc.useUtils();
   const { data: session } = useSession();
   const list = trpc.blog.adminList.useQuery(undefined, { retry: false });
+  const cats = trpc.blog.categories.useQuery().data ?? [];
+  const labelOf = (slug: string) => cats.find((c) => c.slug === slug)?.name ?? CATEGORY_LABEL[slug] ?? slug;
   const remove = trpc.blog.remove.useMutation({
     onSuccess: () => {
       utils.blog.adminList.invalidate();
@@ -83,6 +86,15 @@ export function BlogAdminList() {
         </Link>
       </div>
 
+      <details className="border-border mb-4 rounded-2xl border p-3 text-sm">
+        <summary className="text-muted-foreground flex cursor-pointer items-center gap-1.5 font-medium">
+          <Tags className="h-4 w-4" /> Quản lý danh mục
+        </summary>
+        <div className="mt-3">
+          <CategoryManager />
+        </div>
+      </details>
+
       {posts.length === 0 ? (
         <p className="text-muted-foreground rounded-2xl border border-dashed border-border p-10 text-center">
           Chưa có bài nào. Bấm “Viết bài” để bắt đầu.
@@ -105,7 +117,7 @@ export function BlogAdminList() {
                     {badge.text}
                   </span>
                   {p.featured && <span className="text-accent text-[11px] font-semibold">★ Nổi bật</span>}
-                  <span className="text-muted-foreground text-xs">{CATEGORY_LABEL[p.category] ?? p.category}</span>
+                  <span className="text-muted-foreground text-xs">{labelOf(p.category)}</span>
                 </div>
                 <p className="text-foreground mt-0.5 truncate font-medium">{p.title}</p>
                 <p className="text-muted-foreground truncate text-xs">
