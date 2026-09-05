@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
+import { useSession } from "@/lib/auth-client";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { CATEGORY_LABEL } from "@/features/blog/post-card";
@@ -18,6 +19,7 @@ import { Pencil, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
 export function BlogAdminList() {
   const toast = useToast();
   const utils = trpc.useUtils();
+  const { data: session } = useSession();
   const list = trpc.blog.adminList.useQuery(undefined, { retry: false });
   const remove = trpc.blog.remove.useMutation({
     onSuccess: () => {
@@ -47,10 +49,20 @@ export function BlogAdminList() {
             </Link>
           </>
         ) : (
-          <p className="text-muted-foreground">
-            Tài khoản này không có quyền quản trị blog. Nhờ chủ web thêm email của bạn vào{" "}
-            <code className="text-xs">ADMIN_EMAILS</code>.
-          </p>
+          <div className="text-muted-foreground space-y-2 text-sm">
+            <p>Tài khoản này chưa có quyền quản trị blog.</p>
+            <p>
+              Bạn đang đăng nhập bằng:{" "}
+              <code className="text-foreground bg-muted rounded px-1.5 py-0.5 text-xs">
+                {session?.user?.email ?? "(không đọc được email)"}
+              </code>
+            </p>
+            <p className="text-xs leading-relaxed">
+              Kiểm tra: email trên có nằm <strong>y hệt</strong> trong biến{" "}
+              <code>ADMIN_EMAILS</code> không (đúng ký tự, phân cách bằng dấu phẩy). Nếu vừa đặt trên
+              Vercel, cần <strong>Redeploy</strong> thì biến mới có hiệu lực.
+            </p>
+          </div>
         )}
       </div>
     );
