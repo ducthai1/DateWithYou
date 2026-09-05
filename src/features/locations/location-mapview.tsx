@@ -33,6 +33,44 @@ const MAP_STYLE_DAY = "https://tiles.openfreemap.org/styles/liberty";
 // Ho Chi Minh City centre.
 const DEFAULT_CENTER = { longitude: 106.7009, latitude: 10.7769, zoom: 12 };
 
+/**
+ * Open where the map was last looking, not on the default city.
+ *
+ * Every visit used to start on Saigon: tiles for a city the couple may never
+ * have been to were fetched and drawn, and only then did the camera jump to
+ * where they actually are and fetch again. Remembering the last centre puts the
+ * first tiles requested in the right place, so the first paint is the map they
+ * want. Zoom is clamped: a ride ends at zoom 18.5, and opening the app on a
+ * single street corner is not a useful start.
+ */
+const LAST_VIEW_KEY = "vivu.map.lastView";
+function readLastView(): typeof DEFAULT_CENTER {
+  if (typeof window === "undefined") return DEFAULT_CENTER;
+  try {
+    const raw = window.localStorage.getItem(LAST_VIEW_KEY);
+    if (!raw) return DEFAULT_CENTER;
+    const v = JSON.parse(raw) as Partial<typeof DEFAULT_CENTER>;
+    if (
+      typeof v.longitude !== "number" || typeof v.latitude !== "number" || typeof v.zoom !== "number" ||
+      !Number.isFinite(v.longitude) || !Number.isFinite(v.latitude) || !Number.isFinite(v.zoom)
+    ) return DEFAULT_CENTER;
+    return { longitude: v.longitude, latitude: v.latitude, zoom: Math.min(16, Math.max(10, v.zoom)) };
+  } catch {
+    return DEFAULT_CENTER;
+  }
+}
+function rememberView(map: { getCenter(): { lng: number; lat: number }; getZoom(): number }) {
+  try {
+    const c = map.getCenter();
+    window.localStorage.setItem(
+      LAST_VIEW_KEY,
+      JSON.stringify({ longitude: c.lng, latitude: c.lat, zoom: Math.min(16, Math.max(10, map.getZoom())) }),
+    );
+  } catch {
+    /* Storage full or unavailable — the default is still there next time. */
+  }
+}
+
 export type MapPin = {
   id: string;
   name: string;
@@ -129,6 +167,8 @@ function LocationMapViewImpl({
 }) {
   const mapRef = useRef<MapRef>(null);
   useEffect(() => () => onMapInstance?.(null), [onMapInstance]);
+  // Read once, at mount — this component is client-only (`ssr: false`).
+  const [initialView] = useState(readLastView);
 
   // Track manual map interactions to suspend auto-tracking
   const [isUserInteracting, setIsUserInteracting] = useState(false);
@@ -414,7 +454,7 @@ function LocationMapViewImpl({
       />
       <Map
         ref={mapRef}
-        initialViewState={DEFAULT_CENTER}
+        initialViewState={initialView}
         onStyleData={(e) => dressStyle(e.target)}
         onLoad={(e) => {
           // Deliberately does NOT report a centre. The map opens on a fixed
@@ -432,9 +472,12 @@ function LocationMapViewImpl({
         }}
         onIdle={() => setDrawn(true)}
         onMoveEnd={(e) => {
-          // Only a move the person made. Programmatic camera work — flying to
-          // a pin, following a live position, fitting a route — also ends here,
-          // and letting those set the bias would put it back where it was.
+          // Every move, programmatic ones included: following a ride is exactly
+          // what puts the camera where the couple actually is.
+          rememberView(e.target);
+          // The search bias, though, only from a move the person made. Flying
+          // to a pin, following a live position, fitting a route — letting
+          // those set the bias would put it back where it was.
           if (!e.originalEvent) return;
           const c = e.target.getCenter();
           onCenterChange?.({ lat: c.lat, lng: c.lng });
