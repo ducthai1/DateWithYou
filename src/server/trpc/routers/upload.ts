@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { v2 as cloudinary } from "cloudinary";
-import { protectedProcedure, router } from "@/server/trpc/trpc";
+import { protectedProcedure, adminProcedure, router } from "@/server/trpc/trpc";
 import { env } from "@/lib/env";
 
 /**
@@ -55,6 +55,27 @@ export const uploadRouter = router({
     const folder = `${ROOT_FOLDER}/${ctx.spaceId}`;
     const signature = cloudinary.utils.api_sign_request({ folder, timestamp }, apiSecret);
 
+    return { apiKey, timestamp, folder, signature };
+  }),
+
+  /**
+   * The same signed upload, but for blog images: gated to an admin and folded
+   * into a "blog" folder instead of a couple's space, since posts are public
+   * content and not space-scoped.
+   */
+  signBlog: adminProcedure.mutation(() => {
+    const apiKey = env.CLOUDINARY_API_KEY;
+    const apiSecret = env.CLOUDINARY_API_SECRET;
+    if (!apiKey || !apiSecret) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "Server chưa cấu hình CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET nên chưa tải ảnh lên được.",
+      });
+    }
+    const timestamp = nowSeconds();
+    const folder = "blog";
+    const signature = cloudinary.utils.api_sign_request({ folder, timestamp }, apiSecret);
     return { apiKey, timestamp, folder, signature };
   }),
 });

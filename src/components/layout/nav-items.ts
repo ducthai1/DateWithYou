@@ -85,7 +85,16 @@ export const NAV_HIDDEN_ON = [
  * `includes` cannot cover them.
  */
 export function isPublicChrome(pathname: string): boolean {
-  return NAV_HIDDEN_ON.includes(pathname) || pathname === "/blog" || pathname.startsWith("/blog/");
+  return (
+    NAV_HIDDEN_ON.includes(pathname) ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/") ||
+    // The blog admin: authenticated, but its own surface — no app nav, and no
+    // space required (posts are not space-scoped). Its pages guard themselves
+    // by calling an adminProcedure, which is what actually authorises.
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/")
+  );
 }
 
 // Where every successful login lands. Must be a SpaceGuard-protected feature
