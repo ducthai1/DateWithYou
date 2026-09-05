@@ -4,7 +4,7 @@ import { WaxSeal } from "./wax-seal";
 
 // Romantic serif faces loaded in layout.tsx. Applied inline so the app-wide
 // `font-serif` (Inter) is untouched — only this letter opts into real serifs.
-const DISPLAY = "var(--font-display), ui-serif, Georgia, serif";
+const DISPLAY = "var(--font-capsule), ui-serif, Georgia, serif";
 const LETTER = "var(--font-letter), ui-serif, Georgia, serif";
 
 const WINE = "#7a1325";

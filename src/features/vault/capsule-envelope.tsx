@@ -3,7 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { WaxSeal } from "./wax-seal";
 
-const DISPLAY = "var(--font-display), ui-serif, Georgia, serif";
+const DISPLAY = "var(--font-capsule), ui-serif, Georgia, serif";
 const GOLD = "#c8a24c";
 
 // Fluid sizing: clamps between 220px and 300px so envelope never overflows

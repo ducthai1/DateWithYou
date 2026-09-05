@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display, Lora } from "next/font/google";
+import { Inter, Playfair_Display, Lora, Baloo_2 } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import "react-photo-view/dist/react-photo-view.css";
@@ -30,11 +30,21 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-// Romantic serif pair used by the Time Capsule letter (display title + body).
-// Vietnamese subset so accented glyphs render correctly. Loaded globally as CSS
-// vars but applied only where opted in — the app-wide `font-serif` stays Inter.
-const playfair = Playfair_Display({
+// Rounded, friendly display sans with a Vietnamese subset — the app's heading
+// and brand face. A warm counterpart to the Inter body: a couple's diary should
+// read playful, not corporate. (Baloo 2, the rounded face several GrowX sites use;
+// next/font self-hosts it at build, so there is no runtime Google request.)
+const baloo = Baloo_2({
   variable: "--font-display",
+  subsets: ["latin", "vietnamese"],
+  weight: ["500", "600", "700", "800"],
+});
+
+// Romantic serif kept for the Time Capsule letter (title). That letter is a
+// deliberately formal, heartfelt surface — a rounded display face reads as
+// playful there — so it keeps Playfair while the rest of the app moves to Baloo.
+const playfair = Playfair_Display({
+  variable: "--font-capsule",
   subsets: ["latin", "vietnamese"],
   weight: ["500", "600", "700"],
 });
@@ -239,7 +249,7 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://tiles.openfreemap.org" />
         <AppleSplashLinks />
       </head>
-      <body className={`${inter.variable} ${playfair.variable} ${lora.variable} antialiased`}>
+      <body className={`${inter.variable} ${baloo.variable} ${playfair.variable} ${lora.variable} antialiased`}>
         {/* These three touch only browser APIs — no tRPC, no query cache — so
             they can sit outside the providers. Anything that calls a tRPC hook
             cannot: see PushSetup below. */}
