@@ -73,6 +73,8 @@ export function useNavMiniWindow(
   const videoRef = useRef<VideoWithPip | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const workerRef = useRef<Worker | null>(null);
+  /** The capture track, so each paint can push its frame explicitly. */
+  const trackRef = useRef<(MediaStreamTrack & { requestFrame?: () => void }) | null>(null);
   /** The map crop, re-taken when the frame changes, reused between ticks. */
   const mapSnapRef = useRef<HTMLCanvasElement | null>(null);
   const snappedForRef = useRef<MiniNavFrame | null>(null);
@@ -151,6 +153,14 @@ export function useNavMiniWindow(
     ctx.scale(dpr, dpr);
     drawMiniNav(ctx, { ...f, map: mapSnapRef.current });
     ctx.restore();
+    /*
+     * Push the frame ourselves. A frame-rate capture only emits when the
+     * browser gets round to compositing the canvas, and a hidden tab may not
+     * get round to it at all — the small window then opened black with a
+     * spinner and stayed that way. An explicit frame per paint does not depend
+     * on the compositor.
+     */
+    trackRef.current?.requestFrame?.();
   }, [snapMap]);
 
   const startTicker = useCallback(() => {
@@ -214,10 +224,13 @@ export function useNavMiniWindow(
     const video = videoRef.current;
     if (!video.srcObject) {
       const canvas = canvasRef.current;
+      // 0: frames are pushed by paint() via requestFrame, not sampled by the browser.
       const stream = (canvas as HTMLCanvasElement & { captureStream?: (fps: number) => MediaStream })
-        .captureStream?.(FPS);
+        .captureStream?.(0);
       if (!stream) return null;
+      trackRef.current = stream.getVideoTracks()[0] ?? null;
       video.srcObject = stream;
+      paint();
     }
     if (video.paused) await video.play().catch(() => {});
 
@@ -225,10 +238,31 @@ export function useNavMiniWindow(
     return video;
   }, [paint, immersive, startTicker]);
 
+  /**
+   * A frame has to exist before the window is asked for. Requested on a video
+   * with nothing decoded yet, Android opened a black 16:9 window with a spinner
+   * — the default shape, because it did not know the video's size either.
+   */
+  const waitForFrame = useCallback(
+    (video: HTMLVideoElement) =>
+      new Promise<void>((resolve) => {
+        if (video.readyState >= 2 && video.videoWidth > 0) return resolve();
+        const done = () => {
+          video.removeEventListener("loadeddata", done);
+          resolve();
+        };
+        video.addEventListener("loadeddata", done);
+        paint();
+        setTimeout(done, 1500);
+      }),
+    [paint],
+  );
+
   const open = useCallback(async () => {
     try {
       const video = await ensurePipe();
       if (!video) return false;
+      await waitForFrame(video);
       if (typeof video.webkitSetPresentationMode === "function" && !document.pictureInPictureEnabled) {
         video.webkitSetPresentationMode("picture-in-picture");
         setActive(true);
@@ -239,7 +273,7 @@ export function useNavMiniWindow(
     } catch {
       return false;
     }
-  }, [ensurePipe]);
+  }, [ensurePipe, waitForFrame]);
 
   const close = useCallback(async () => {
     try {
@@ -288,6 +322,7 @@ export function useNavMiniWindow(
       video.remove();
       videoRef.current = null;
     }
+    trackRef.current = null;
     canvasRef.current = null;
     mapSnapRef.current = null;
     snappedForRef.current = null;
