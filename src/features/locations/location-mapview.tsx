@@ -110,7 +110,6 @@ function LocationMapViewImpl({
   onSelect,
   onMapClick,
   onCenterChange,
-  onMapInstance,
   attribution = true,
   className,
 }: {
@@ -149,9 +148,6 @@ function LocationMapViewImpl({
    * back to no bias at all, which returns matches from the whole country.
    */
   onCenterChange?: (center: LatLng) => void;
-  /** The MapLibre instance once loaded, null on unmount. The floating
-   *  navigation window crops its background out of this map. */
-  onMapInstance?: (map: import("maplibre-gl").Map | null) => void;
   /**
    * Draw MapLibre's own attribution control. Off for thumbnail-sized maps.
    *
@@ -166,7 +162,6 @@ function LocationMapViewImpl({
   className?: string;
 }) {
   const mapRef = useRef<MapRef>(null);
-  useEffect(() => () => onMapInstance?.(null), [onMapInstance]);
   // Read once, at mount — this component is client-only (`ssr: false`).
   const [initialView] = useState(readLastView);
 
@@ -468,7 +463,6 @@ function LocationMapViewImpl({
           // The sea carries its Vietnamese name, in the position the base map
           // chose for that label rather than a plate guessing at it.
           dressStyle(e.target);
-          onMapInstance?.(e.target);
         }}
         onIdle={() => setDrawn(true)}
         onMoveEnd={(e) => {

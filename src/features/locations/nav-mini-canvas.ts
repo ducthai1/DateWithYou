@@ -18,12 +18,6 @@ export type MiniNavFrame = {
   remainingSeconds: number | null;
   destination: string | null;
   paused: boolean;
-  /**
-   * The real map, cropped around the rider, already sized to this canvas.
-   * When present it is the background and carries its own route line and
-   * marker; the drawn route below is the fallback for when it is not.
-   */
-  map?: CanvasImageSource | null;
 };
 
 /*
@@ -38,18 +32,26 @@ export const ANCHOR_Y = 340;
 const TURN_CARD_BOTTOM = 92;
 const FORWARD_PX = ANCHOR_Y - TURN_CARD_BOTTOM;
 
+/*
+ * A light palette, so the window reads as a map in daylight rather than a dark
+ * screen. The first version drew a route on a near-black ground and looked
+ * broken — "đen xì". Nothing here captures the real map (that needs
+ * preserveDrawingBuffer, which slows the live map); it is a clean schematic:
+ * pale ground, faint side streets, a blue route, a turn card and an ETA card.
+ */
 const IN = {
-  ground: "#0b1220",
-  panel: "rgba(9,14,26,0.92)",
-  edge: "rgba(148,163,184,0.22)",
-  road: "#38bdf8",
-  roadCase: "#0e2a47",
-  behind: "#334155",
-  ink: "#f8fafc",
-  muted: "#94a3b8",
-  distance: "#7dd3fc",
-  warn: "#fbbf24",
-  rider: "#ffffff",
+  ground: "#eef1f6",
+  grid: "#dfe4ec",
+  panel: "rgba(255,255,255,0.96)",
+  edge: "rgba(15,23,42,0.10)",
+  road: "#2f74ff",
+  roadCase: "#ffffff",
+  behind: "#c2cad6",
+  ink: "#0f172a",
+  muted: "#64748b",
+  distance: "#1d4ed8",
+  warn: "#c2410c",
+  rider: "#2f74ff",
 };
 
 /** "200 m" / "4,2 km" — the written form, not the spoken one the voice uses. */
@@ -98,8 +100,8 @@ const TURN_DEG: Partial<Record<ManeuverArrow, number>> = {
 function drawArrow(ctx: CanvasRenderingContext2D, kind: ManeuverArrow, size: number) {
   const s = size;
   ctx.save();
-  ctx.strokeStyle = IN.ink;
-  ctx.fillStyle = IN.ink;
+  ctx.strokeStyle = "#0f172a";
+  ctx.fillStyle = "#0f172a";
   ctx.lineWidth = Math.max(3, s * 0.13);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -113,7 +115,7 @@ function drawArrow(ctx: CanvasRenderingContext2D, kind: ManeuverArrow, size: num
     ctx.fill();
     ctx.beginPath();
     ctx.arc(0, -s * 0.12, s * 0.1, 0, Math.PI * 2);
-    ctx.fillStyle = IN.panel;
+    ctx.fillStyle = "#ffffff";
     ctx.fill();
     ctx.restore();
     return;
@@ -231,9 +233,23 @@ function drawRoute(ctx: CanvasRenderingContext2D, frame: MiniNavFrame) {
   ctx.beginPath();
   ctx.rect(0, 0, MINI_W, MINI_H);
   ctx.clip();
-  stroke(0, nearest, IN.behind, 6);
-  stroke(nearest, pts.length - 1, IN.roadCase, 13);
-  stroke(nearest, pts.length - 1, frame.paused ? IN.behind : IN.road, 8);
+  // Faint side streets, rotated with travel, so the route sits on something
+  // that reads as a map instead of empty ground.
+  ctx.strokeStyle = IN.grid;
+  ctx.lineWidth = 7;
+  ctx.lineCap = "round";
+  const gx = Math.cos(h + Math.PI / 2), gy = Math.sin(h + Math.PI / 2);
+  for (let k = -3; k <= 3; k++) {
+    const ox = gx * k * 78, oy = gy * k * 78;
+    ctx.beginPath();
+    ctx.moveTo(MINI_W / 2 + ox - gy * 600, ANCHOR_Y - oy - gx * 600);
+    ctx.lineTo(MINI_W / 2 + ox + gy * 600, ANCHOR_Y - oy + gx * 600);
+    ctx.stroke();
+  }
+  // The route: a white casing under a blue line, dimmed for the part behind.
+  stroke(0, nearest, IN.behind, 7);
+  stroke(nearest, pts.length - 1, IN.roadCase, 15);
+  stroke(nearest, pts.length - 1, frame.paused ? IN.behind : IN.road, 9);
   ctx.restore();
 }
 
@@ -247,19 +263,25 @@ function drawRider(ctx: CanvasRenderingContext2D) {
   ctx.lineTo(-10, 11);
   ctx.closePath();
   ctx.fillStyle = IN.rider;
-  ctx.strokeStyle = IN.ground;
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 3;
   ctx.fill();
   ctx.stroke();
   ctx.restore();
 }
 
 function drawTurnCard(ctx: CanvasRenderingContext2D, frame: MiniNavFrame) {
+  ctx.save();
+  ctx.shadowColor = "rgba(15,23,42,0.18)";
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 3;
   roundRect(ctx, 10, 10, MINI_W - 20, TURN_CARD_BOTTOM - 20, 16);
   ctx.fillStyle = IN.panel;
   ctx.fill();
+  ctx.restore();
   ctx.strokeStyle = IN.edge;
   ctx.lineWidth = 1;
+  roundRect(ctx, 10, 10, MINI_W - 20, TURN_CARD_BOTTOM - 20, 16);
   ctx.stroke();
 
   if (frame.turnArrow) {
@@ -289,11 +311,17 @@ function drawTurnCard(ctx: CanvasRenderingContext2D, frame: MiniNavFrame) {
 }
 
 function drawFooter(ctx: CanvasRenderingContext2D, frame: MiniNavFrame) {
+  ctx.save();
+  ctx.shadowColor = "rgba(15,23,42,0.18)";
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 3;
   roundRect(ctx, 10, MINI_H - 66, MINI_W - 20, 56, 16);
   ctx.fillStyle = IN.panel;
   ctx.fill();
+  ctx.restore();
   ctx.strokeStyle = IN.edge;
   ctx.lineWidth = 1;
+  roundRect(ctx, 10, MINI_H - 66, MINI_W - 20, 56, 16);
   ctx.stroke();
 
   const bits: string[] = [];
@@ -319,31 +347,8 @@ export function drawMiniNav(ctx: CanvasRenderingContext2D, frame: MiniNavFrame) 
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
 
-  if (frame.map) {
-    /*
-     * The map itself, not a sketch of it. The first version drew only the
-     * route on a dark ground and it read as a broken screen — "đen xì". The
-     * crop is centred on the rider by whoever captured it, and the map already
-     * carries the route line and the rider's marker, so nothing is drawn twice.
-     */
-    try {
-      ctx.drawImage(frame.map, 0, 0, MINI_W, MINI_H);
-    } catch {
-      drawRoute(ctx, frame);
-      drawRider(ctx);
-    }
-    // A soft vignette so the cards read against any map colour.
-    const g = ctx.createLinearGradient(0, 0, 0, MINI_H);
-    g.addColorStop(0, "rgba(11,18,32,0.35)");
-    g.addColorStop(0.25, "rgba(11,18,32,0)");
-    g.addColorStop(0.8, "rgba(11,18,32,0)");
-    g.addColorStop(1, "rgba(11,18,32,0.4)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, MINI_W, MINI_H);
-  } else {
-    drawRoute(ctx, frame);
-    drawRider(ctx);
-  }
+  drawRoute(ctx, frame);
+  drawRider(ctx);
   drawTurnCard(ctx, frame);
   drawFooter(ctx, frame);
 

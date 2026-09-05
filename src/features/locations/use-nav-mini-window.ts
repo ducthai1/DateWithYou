@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import type { Map as MapLibreMap } from "maplibre-gl";
-import { ANCHOR_Y, drawMiniNav, MINI_H, MINI_W, type MiniNavFrame } from "./nav-mini-canvas";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { drawMiniNav, MINI_H, MINI_W, type MiniNavFrame } from "./nav-mini-canvas";
 
 /**
  * A floating turn card that survives leaving the app, the way a map app's
@@ -31,9 +30,6 @@ const TICK_MS = 1000 / FPS;
  */
 const TICKER_SRC = `let t=null;onmessage=e=>{clearInterval(t);if(e.data>0)t=setInterval(()=>postMessage(0),e.data)}`;
 
-/** Map crop: 1 canvas px = this many CSS px of the map. */
-const MAP_SCALE = 1;
-
 type VideoWithPip = HTMLVideoElement & {
   autoPictureInPicture?: boolean;
   webkitSupportsPresentationMode?: (mode: string) => boolean;
@@ -46,8 +42,6 @@ export type MiniWindowOptions = {
   /** Pop the window when the app goes to the background. Off while paused —
    * a stopped trip has nothing to follow, and a window nobody asked for is rude. */
   autoOpen: boolean;
-  /** The live navigation map, to crop the window's background out of. */
-  mapRef?: RefObject<MapLibreMap | null>;
   /**
    * Lay the video across the whole viewport instead of parking it at 1px.
    *
@@ -64,7 +58,7 @@ export type MiniWindowOptions = {
 
 export function useNavMiniWindow(
   frame: MiniNavFrame,
-  { enabled, autoOpen, immersive = false, mapRef }: MiniWindowOptions,
+  { enabled, autoOpen, immersive = false }: MiniWindowOptions,
 ) {
   const frameRef = useRef(frame);
   frameRef.current = frame;
@@ -75,9 +69,6 @@ export function useNavMiniWindow(
   const workerRef = useRef<Worker | null>(null);
   /** The capture track, so each paint can push its frame explicitly. */
   const trackRef = useRef<(MediaStreamTrack & { requestFrame?: () => void }) | null>(null);
-  /** The map crop, re-taken when the frame changes, reused between ticks. */
-  const mapSnapRef = useRef<HTMLCanvasElement | null>(null);
-  const snappedForRef = useRef<MiniNavFrame | null>(null);
   const [active, setActive] = useState(false);
   const [supported, setSupported] = useState(false);
 
@@ -90,68 +81,14 @@ export function useNavMiniWindow(
     );
   }, []);
 
-  /**
-   * Crops the live map around the rider into the snapshot canvas.
-   *
-   * `redraw()` first, synchronously: without `preserveDrawingBuffer` a WebGL
-   * canvas is blank the moment the browser has composited it, and in a hidden
-   * tab MapLibre's own rAF-driven render never runs at all. Forcing one frame
-   * and copying it in the same task is what makes the copy come out with a
-   * map on it instead of black — and it also keeps the map current while
-   * hidden, which its own loop cannot.
-   */
-  const snapMap = useCallback((f: MiniNavFrame): boolean => {
-    const map = mapRef?.current;
-    if (!map || !f.geo) return false;
-    try {
-      map.redraw();
-      const src = map.getCanvas();
-      const dpr = src.width / Math.max(1, src.clientWidth);
-      const p = map.project([f.geo.lng, f.geo.lat]);
-      const k = dpr * MAP_SCALE;
-      let snap = mapSnapRef.current;
-      if (!snap) {
-        snap = document.createElement("canvas");
-        snap.width = MINI_W * 2;
-        snap.height = MINI_H * 2;
-        mapSnapRef.current = snap;
-      }
-      const ctx = snap.getContext("2d");
-      if (!ctx) return false;
-      ctx.clearRect(0, 0, snap.width, snap.height);
-      // Rider lands at the canvas anchor: the crop starts that far up-left of them.
-      ctx.drawImage(
-        src,
-        p.x * dpr - (MINI_W / 2) * k,
-        p.y * dpr - ANCHOR_Y * k,
-        MINI_W * k,
-        MINI_H * k,
-        0,
-        0,
-        snap.width,
-        snap.height,
-      );
-      return true;
-    } catch {
-      return false;
-    }
-  }, [mapRef]);
-
   const paint = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    const f = frameRef.current;
-    // The map is re-cropped only when the frame moved on; the HUD repaints
-    // every tick over the same crop.
-    if (snappedForRef.current !== f) {
-      snappedForRef.current = f;
-      if (!snapMap(f)) mapSnapRef.current = null;
-    }
     const dpr = canvas.width / MINI_W;
     ctx.save();
     ctx.scale(dpr, dpr);
-    drawMiniNav(ctx, { ...f, map: mapSnapRef.current });
+    drawMiniNav(ctx, frameRef.current);
     ctx.restore();
     /*
      * Push the frame ourselves. A frame-rate capture only emits when the
@@ -161,7 +98,7 @@ export function useNavMiniWindow(
      * on the compositor.
      */
     trackRef.current?.requestFrame?.();
-  }, [snapMap]);
+  }, []);
 
   const startTicker = useCallback(() => {
     if (timerRef.current || workerRef.current) return;
@@ -324,8 +261,6 @@ export function useNavMiniWindow(
     }
     trackRef.current = null;
     canvasRef.current = null;
-    mapSnapRef.current = null;
-    snappedForRef.current = null;
   }, [enabled, close, stopTicker]);
 
   useEffect(
