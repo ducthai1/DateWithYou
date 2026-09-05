@@ -65,7 +65,13 @@ export function EmbedPlayer({ data, fill = false }: { data: EmbedData; fill?: bo
       <iframe
         src={data.embedUrl}
         title={data.title ?? PROVIDER_LABEL[data.provider]}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        /* No picture-in-picture on purpose. Fullscreen stays — the web view
+           is small and people want to see the video big — but the fullscreen
+           video that Android floats into PiP on Home is what left the installed
+           app frozen on its splash. Denying PiP to the frame removes that path;
+           the trade-off is that YouTube audio does not keep playing once the
+           tab is hidden (it never truly did — only PiP kept it, at that cost). */
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
         allowFullScreen
         className="h-full w-full border-0"
       />
@@ -78,7 +84,7 @@ export function EmbedPlayer({ data, fill = false }: { data: EmbedData; fill?: bo
         <iframe
           src={data.embedUrl}
           title={data.title ?? "YouTube"}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
           allowFullScreen
           loading="lazy"
           className="h-full w-full border-0"
@@ -91,7 +97,7 @@ export function EmbedPlayer({ data, fill = false }: { data: EmbedData; fill?: bo
       <iframe
         src={data.embedUrl}
         title={data.title ?? "Spotify"}
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen"
         loading="lazy"
         className="w-full rounded-xl border-0"
         style={{ height: 152 }}

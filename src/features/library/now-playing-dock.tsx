@@ -19,7 +19,9 @@ const KIND_ICON: Record<MediaListItem["kind"], typeof Music2> = {
 };
 
 const MIN_W = 180;
-const MAX_W = 640;
+/* Wider ceiling so the window can be pulled up to a comfortable size on a
+   tablet or a desktop; on a phone it is still clamped to the viewport. */
+const MAX_W = 900;
 /** Inset around the frame, so the panel's own edge stays visible. */
 const PAD = 6;
 /** Fixed parts of the panel's height, so it can be computed from the width
@@ -218,7 +220,7 @@ export function NowPlayingDock({
     });
   }, []);
   const aspect = item ? EMBED_ASPECT[item.embed.provider] : null;
-  const capH = Math.max(140, Math.round((viewportH || 640) * 0.5));
+  const capH = Math.max(140, Math.round((viewportH || 640) * 0.62));
 
   /** The frame's height for a width — the one rule both the layout below and a
    *  corner pull's bottom-edge anchor read from. */
