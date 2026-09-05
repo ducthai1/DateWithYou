@@ -99,6 +99,20 @@ export const blogRouter = router({
   // ── Public ──────────────────────────────────────────────────────────────
   categories: publicProcedure.query(() => CATEGORIES),
 
+  /** Every published slug, for the sitemap. Two fields only. */
+  sitemap: publicProcedure.query(async () => {
+    await connectToDatabase();
+    const rows = await BlogPostModel.find({ status: "published" })
+      .select("slug publishedAt updatedAt")
+      .sort({ publishedAt: -1 })
+      .limit(1000)
+      .lean<{ slug: string; publishedAt?: Date; updatedAt?: Date }[]>();
+    return rows.map((r) => ({
+      slug: r.slug,
+      lastModified: (r.updatedAt ?? r.publishedAt ?? null) as Date | null,
+    }));
+  }),
+
   list: publicProcedure
     .input(
       z.object({
@@ -160,16 +174,22 @@ export const blogRouter = router({
     .input(z.object({ slug: z.string().trim().min(1) }))
     .query(async ({ input }) => {
       await connectToDatabase();
-      // One atomic read-and-count: a view is counted only for a post that
-      // exists and is published, and the returned doc is the pre-increment one
-      // (fine — the reader does not see their own +1).
-      const doc = await BlogPostModel.findOneAndUpdate(
-        { slug: input.slug, status: "published" },
-        { $inc: { viewCount: 1 } },
-        { new: false },
-      ).lean<PostDoc>();
+      // A plain read: the page renders this statically (ISR), so counting a
+      // view here would count once per revalidate, not once per reader. The
+      // count is done by recordView, called from the page after it loads.
+      const doc = await BlogPostModel.findOne({ slug: input.slug, status: "published" }).lean<PostDoc>();
       if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
       return full(doc);
+    }),
+
+  recordView: publicProcedure
+    .input(z.object({ slug: z.string().trim().min(1) }))
+    .mutation(async ({ input }) => {
+      await connectToDatabase();
+      // Only a published post earns a view; a bad slug is a silent no-op, not
+      // an error — a view beacon has nowhere to show one.
+      await BlogPostModel.updateOne({ slug: input.slug, status: "published" }, { $inc: { viewCount: 1 } });
+      return { ok: true };
     }),
 
   // ── Admin (ADMIN_EMAILS) ────────────────────────────────────────────────

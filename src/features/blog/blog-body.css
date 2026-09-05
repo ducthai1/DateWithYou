@@ -1,0 +1,81 @@
+/*
+ * The article body, rendered from the editor's HTML verbatim.
+ *
+ * Every rule here is a DEFAULT the author's inline styles can beat — no
+ * `!important` anywhere. These are the lessons the GrowX CMS sites paid for:
+ * reformatting the author's content is how it stops matching what they wrote.
+ */
+.blog-body {
+  color: #1f2937;
+  line-height: 1.75;
+  font-size: 1.02rem;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.blog-body > * + * {
+  margin-top: 1rem;
+}
+.blog-body h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 2rem;
+}
+.blog-body h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+}
+.blog-body a {
+  color: #c2410c;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.blog-body ul,
+.blog-body ol {
+  padding-left: 1.4rem;
+}
+.blog-body ul { list-style: disc; }
+.blog-body ol { list-style: decimal; }
+.blog-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+}
+.blog-body blockquote {
+  border-left: 3px solid #e7d9c9;
+  padding-left: 1rem;
+  color: #57534e;
+  font-style: italic;
+}
+.blog-body pre {
+  background: #f5f5f4;
+  border-radius: 0.5rem;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  font-size: 0.9rem;
+}
+.blog-body code {
+  background: #f5f5f4;
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.9em;
+}
+
+/* An empty paragraph is a blank line the author left in the editor. Browsers
+   collapse it to zero height; TinyMCE/TipTap serialise each extra Enter as
+   <p></p>. Give it a line's height so the spacing survives. `1lh` on new
+   browsers, an em fallback for older iOS Safari. */
+.blog-body p:empty {
+  min-height: 1.4em;
+  min-height: 1lh;
+}
+
+/* Editors that write colour as a CSS variable rather than the `color` property
+   (TipTap does this) leave the text black without a rule that reads the
+   variable back. Kept ahead of need, so a coloured word pasted from the editor
+   is not silently dropped to black. */
+.blog-body [style*="--color"],
+.blog-body .color {
+  color: var(--color);
+}
