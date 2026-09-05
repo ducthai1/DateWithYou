@@ -782,6 +782,84 @@ export function LocationsPage() {
     overlayMap.current = m;
   }, []);
 
+  /*
+   * The ride, written down, so a relaunch can offer it back.
+   *
+   * Tapping the small window on Android brought the installed app back through
+   * its launcher intent: a cold start, at start_url, with the ride gone. That is
+   * outside this page's control; what is in it is remembering which ride was
+   * on, and offering to pick it up. Only the destination is kept — the route is
+   * fetched again, as it would be for any start.
+   */
+  const RIDE_KEY = "vivu.ride.active";
+  const wasNavigating = useRef(false);
+  useEffect(() => {
+    if (nav.isNavigating && selectedId) {
+      wasNavigating.current = true;
+      try {
+        window.localStorage.setItem(RIDE_KEY, JSON.stringify({ locationId: selectedId, startedAt: Date.now() }));
+      } catch {
+        /* Not remembered; the ride itself is unaffected. */
+      }
+    } else if (!nav.isNavigating && !pausedTrip && wasNavigating.current) {
+      // Ended on purpose — a transition, not the initial "not navigating".
+      wasNavigating.current = false;
+      try {
+        window.localStorage.removeItem(RIDE_KEY);
+      } catch {
+        /* nothing to clear */
+      }
+    }
+  }, [nav.isNavigating, pausedTrip, selectedId]);
+
+  const [resumable, setResumable] = useState<{ locationId: string; name: string } | null>(null);
+  useEffect(() => {
+    if (nav.isNavigating || pausedTrip || !list.data) return;
+    try {
+      const raw = window.localStorage.getItem(RIDE_KEY);
+      if (!raw) return setResumable(null);
+      const rec = JSON.parse(raw) as { locationId?: string; startedAt?: number };
+      // Three hours: long enough for any ride, short enough that a forgotten
+      // record does not greet someone a week later.
+      if (!rec.locationId || !rec.startedAt || Date.now() - rec.startedAt > 3 * 3600_000) {
+        window.localStorage.removeItem(RIDE_KEY);
+        return setResumable(null);
+      }
+      const loc = list.data.find((l) => l.id === rec.locationId);
+      setResumable(loc ? { locationId: loc.id, name: loc.name } : null);
+    } catch {
+      setResumable(null);
+    }
+  }, [nav.isNavigating, pausedTrip, list.data]);
+
+  /*
+   * Through refs: `announceDeparture` is declared further down (it needs
+   * state that is), and `goToLocation` is a plain function that would
+   * otherwise change this callback's dependencies on every render.
+   */
+  const startRefs = useRef<{
+    announce: ((o?: { withNumbers?: boolean }) => void) | null;
+    goTo: ((id: string, geo: { lat: number; lng: number }) => void) | null;
+  }>({ announce: null, goTo: null });
+  const resumeRide = useCallback(() => {
+    const loc = list.data?.find((l) => l.id === resumable?.locationId);
+    if (!loc?.geo) return;
+    setResumable(null);
+    enterImmersive();
+    startRefs.current.goTo?.(loc.id, loc.geo);
+    startRefs.current.announce?.({ withNumbers: false });
+    setAutoStartWhenRouted(true);
+  }, [list.data, resumable, enterImmersive]);
+
+  const dismissResume = useCallback(() => {
+    setResumable(null);
+    try {
+      window.localStorage.removeItem(RIDE_KEY);
+    } catch {
+      /* nothing to clear */
+    }
+  }, []);
+
   const miniWindow = useNavMiniWindow(miniFrame, {
     enabled: nav.isNavigating || pausedTrip,
     autoOpen: nav.isNavigating && !pausedTrip,
@@ -1445,6 +1523,8 @@ export function LocationsPage() {
     },
     [selectedName, displayDistance, displayDuration, isCompanionTrip, nav.partnerLocation, partner?.name],
   );
+  startRefs.current.announce = announceDeparture;
+  startRefs.current.goTo = goToLocation;
 
   useEffect(() => {
     if (!nav.isNavigating) {
@@ -1616,9 +1696,9 @@ export function LocationsPage() {
 
   return (
     <>
-      {/* Mounted once on purpose: LocationMapView renders twice on this page
-          (fullscreen navigation plus the layout behind it), so a celebration
-          triggered from inside it fired twice. */}
+      {/* Mounted once on purpose, outside the map: when LocationMapView
+          rendered twice on this page, a celebration triggered from inside it
+          fired twice. */}
       <MeetingFlare
         userGeo={nav.userGeo}
         partnerLocation={isCompanionTrip ? nav.partnerLocation : null}
@@ -1626,44 +1706,47 @@ export function LocationsPage() {
         partnerAvatar={partnerAvatar}
       />
 
+      {/* A ride that was cut off — by the app being relaunched — offered back. */}
+      {resumable && !nav.isNavigating && (
+        <div
+          role="status"
+          className="pointer-events-auto fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-[45] flex items-center gap-2 rounded-2xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm sm:inset-x-auto sm:left-1/2 sm:w-[28rem] sm:-translate-x-1/2"
+        >
+          <Navigation className="text-accent h-5 w-5 shrink-0" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">Chuyến đi tới {resumable.name} bị ngắt</p>
+            <p className="text-muted-foreground text-xs">App vừa mở lại. Đi tiếp từ chỗ bạn đang đứng?</p>
+          </div>
+          <Button size="default" className="shrink-0" onClick={resumeRide}>Tiếp tục</Button>
+          <button
+            type="button"
+            aria-label="Bỏ, không đi tiếp"
+            onClick={dismissResume}
+            className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* ── Fullscreen navigation overlay ── */}
       {nav.isNavigating && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black">
-          {/* Map fills the entire viewport */}
-          <div className="relative flex-1">
-            {/* The emotion buttons sit on THIS overlay, and the overlay covers the
-                map that used to be the only one given the ping props — so every
-                tap during a journey drew its bubble on a map nobody could see.
-                Both directions were silent: your own tap showed nothing, and the
-                partner's ping arrived over SSE with nowhere to land. */}
-            <LocationMapView
-              pins={pins}
-              routeGeometry={routeGeometry}
-              legGeometries={legGeometries}
-              currentLegIndex={currentLegIndex}
-              partnerRouteGeometry={partnerRouteGeometry}
-              selectedId={selectedId}
-              focusGeo={focusGeo}
-              draftGeo={draftGeo}
-              onCenterChange={setMapCenter}
-              userAccuracyM={nav.accuracyM}
-              userGeo={shownUser}
-              partnerLocation={partnerPin}
-              partnerPingAction={navInvites.partnerPingAction}
-              userPingAction={nav.userPingAction}
-              followGeo={nav.snappedGeo ?? nav.userGeo}
-              heading={shownHeading}
-              userAvatar={userAvatar}
-              partnerAvatar={partnerAvatar}
-              partnerName={partnerName}
-              onSelect={setSelectedId}
-              onMapInstance={onOverlayMap}
-              className="min-h-0 rounded-none border-0 shadow-none"
-            />
+        /*
+          A HUD over the map, not a screen of its own.
 
+          This used to be an opaque black layer that mounted a second
+          LocationMapView while the one behind it was unmounted. Starting a
+          ride therefore built a whole new map — WebGL context, style, tiles —
+          and the screen sat black for four or five seconds while it did. The
+          one map now stays mounted underneath and is lifted above the page
+          chrome for the ride (see #map-view); this layer only holds the
+          controls, and lets touches through to the map everywhere else.
+        */
+        <div className="pointer-events-none fixed inset-0 z-50 flex flex-col">
+          <div className="relative flex-1">
             {/* ── Navigation HUD: distance + ETA + Speed ── */}
             <div
-              className="absolute inset-x-0 top-0 flex items-center justify-center p-3"
+              className="pointer-events-auto absolute inset-x-0 top-0 flex items-center justify-center p-3"
               style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
             >
               <div className="flex w-full max-w-md flex-col items-center gap-2">
@@ -1825,7 +1908,7 @@ export function LocationsPage() {
                 solo trip there is nobody on the other end, and these sat there
                 offering to send one anyway. */}
             {isCompanionTrip && (
-            <div className="absolute right-4 top-[60%] flex flex-col items-center gap-2">
+            <div className="pointer-events-auto absolute right-4 top-[60%] flex flex-col items-center gap-2">
                <p className="text-[9px] font-semibold text-white/80 bg-black/30 rounded-full px-2 py-0.5 text-center leading-tight backdrop-blur-sm">Gửi cảm xúc<br/>cho {partnerName}:</p>
                {PING_BUTTONS.map((p) => (
                  <button
@@ -1855,7 +1938,7 @@ export function LocationsPage() {
                 not a constant to hard-code: the reroute banner, the leg
                 progress row and an error line all come and go from this stack. */}
             <div ref={navDockRef}
-                 className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4"
+                 className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4"
                  style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
             >
               {/* Multi-leg progress + per-leg arrival prompt */}
@@ -1948,36 +2031,40 @@ export function LocationsPage() {
         `position: fixed; inset: 0` resolving to a 0x0 box, so the page went
         blank either way. Out here nothing about the column can reach it.
       */}
-      {!nav.isNavigating && (
-              <div
-                id="map-view"
-                className="fixed inset-0 z-0"
-              >
-              <LocationMapView
-                pins={pins}
-                routeGeometry={routeGeometry}
-                legGeometries={legGeometries}
-                currentLegIndex={currentLegIndex}
-                partnerRouteGeometry={partnerRouteGeometry}
-                selectedId={selectedId}
-                focusGeo={focusGeo}
-                draftGeo={draftGeo}
-                onCenterChange={setMapCenter}
-                userAccuracyM={nav.accuracyM}
-                userGeo={liveUser}
-                partnerLocation={partnerPin}
-                partnerPingAction={navInvites.partnerPingAction}
-                userPingAction={nav.userPingAction}
-                followGeo={nav.isNavigating ? (nav.snappedGeo ?? nav.userGeo) : null}
-                heading={nav.isNavigating ? shownHeading : null}
-                userAvatar={userAvatar}
-                partnerAvatar={partnerAvatar}
-              partnerName={partnerName}
-                  onSelect={setSelectedId}
-                onMapClick={handleMapClick}
-              />
-            </div>
-      )}
+      <div
+        id="map-view"
+        /*
+          Lifted above the page chrome for the ride (the bottom nav sits at
+          z-48). The same element either way — a ride must not rebuild the map.
+        */
+        className={nav.isNavigating ? "fixed inset-0 z-[49]" : "fixed inset-0 z-0"}
+      >
+        <LocationMapView
+          pins={pins}
+          routeGeometry={routeGeometry}
+          legGeometries={legGeometries}
+          currentLegIndex={currentLegIndex}
+          partnerRouteGeometry={partnerRouteGeometry}
+          selectedId={selectedId}
+          focusGeo={focusGeo}
+          draftGeo={draftGeo}
+          onCenterChange={nav.isNavigating ? undefined : setMapCenter}
+          userAccuracyM={nav.accuracyM}
+          userGeo={nav.isNavigating ? shownUser : liveUser}
+          partnerLocation={partnerPin}
+          partnerPingAction={navInvites.partnerPingAction}
+          userPingAction={nav.userPingAction}
+          followGeo={nav.isNavigating ? (nav.snappedGeo ?? nav.userGeo) : null}
+          heading={nav.isNavigating ? shownHeading : null}
+          userAvatar={userAvatar}
+          partnerAvatar={partnerAvatar}
+          partnerName={partnerName}
+          onSelect={setSelectedId}
+          onMapClick={nav.isNavigating ? undefined : handleMapClick}
+          onMapInstance={onOverlayMap}
+          className={nav.isNavigating ? "min-h-0 rounded-none border-0 shadow-none" : undefined}
+        />
+      </div>
 
       {/* The way back to the tools once the column has been folded away.
           Kept mounted and faded in behind the column's exit — appearing at full
