@@ -18,14 +18,25 @@ export type MiniNavFrame = {
   remainingSeconds: number | null;
   destination: string | null;
   paused: boolean;
+  /**
+   * The real map, cropped around the rider, already sized to this canvas.
+   * When present it is the background and carries its own route line and
+   * marker; the drawn route below is the fallback for when it is not.
+   */
+  map?: CanvasImageSource | null;
 };
 
-export const MINI_W = 480;
-export const MINI_H = 270;
+/*
+ * Portrait, like a phone held upright and like the map apps' own small window.
+ * Landscape gave the road ahead ~100px; this gives it ~250.
+ */
+export const MINI_W = 270;
+export const MINI_H = 480;
 
 /** Where the rider sits on the canvas: low, so most of the frame is road ahead. */
-const ANCHOR_Y = 190;
-const FORWARD_PX = ANCHOR_Y - 84;
+export const ANCHOR_Y = 340;
+const TURN_CARD_BOTTOM = 92;
+const FORWARD_PX = ANCHOR_Y - TURN_CARD_BOTTOM;
 
 const IN = {
   ground: "#0b1220",
@@ -244,7 +255,7 @@ function drawRider(ctx: CanvasRenderingContext2D) {
 }
 
 function drawTurnCard(ctx: CanvasRenderingContext2D, frame: MiniNavFrame) {
-  roundRect(ctx, 10, 10, MINI_W - 20, 70, 16);
+  roundRect(ctx, 10, 10, MINI_W - 20, TURN_CARD_BOTTOM - 20, 16);
   ctx.fillStyle = IN.panel;
   ctx.fill();
   ctx.strokeStyle = IN.edge;
@@ -253,32 +264,32 @@ function drawTurnCard(ctx: CanvasRenderingContext2D, frame: MiniNavFrame) {
 
   if (frame.turnArrow) {
     ctx.save();
-    ctx.translate(48, 45);
-    drawArrow(ctx, frame.turnArrow, 44);
+    ctx.translate(42, 41);
+    drawArrow(ctx, frame.turnArrow, 40);
     ctx.restore();
   }
 
-  const left = frame.turnArrow ? 82 : 26;
+  const left = frame.turnArrow ? 72 : 24;
   if (frame.turnMetres != null) {
-    ctx.font = "700 30px system-ui, sans-serif";
+    ctx.font = "700 26px system-ui, sans-serif";
     ctx.fillStyle = frame.turnMetres <= 40 ? IN.warn : IN.distance;
     ctx.textBaseline = "alphabetic";
-    ctx.fillText(frame.turnMetres <= 40 ? "Ngay bây giờ" : shortMetres(frame.turnMetres), left, 44);
+    ctx.fillText(frame.turnMetres <= 40 ? "Ngay bây giờ" : shortMetres(frame.turnMetres), left, 42);
   }
   if (frame.turnLabel) {
-    ctx.font = "500 17px system-ui, sans-serif";
+    ctx.font = "500 14px system-ui, sans-serif";
     ctx.fillStyle = IN.ink;
-    ctx.fillText(ellipsis(ctx, frame.turnLabel, MINI_W - left - 30), left, frame.turnMetres != null ? 68 : 52);
+    ctx.fillText(ellipsis(ctx, frame.turnLabel, MINI_W - left - 22), left, frame.turnMetres != null ? 64 : 48);
   }
   if (frame.turnMetres == null && !frame.turnLabel) {
-    ctx.font = "500 18px system-ui, sans-serif";
+    ctx.font = "500 15px system-ui, sans-serif";
     ctx.fillStyle = IN.muted;
-    ctx.fillText("Đang bám tuyến đường…", left, 52);
+    ctx.fillText("Đang bám tuyến đường…", left, 48);
   }
 }
 
 function drawFooter(ctx: CanvasRenderingContext2D, frame: MiniNavFrame) {
-  roundRect(ctx, 10, MINI_H - 58, MINI_W - 20, 48, 16);
+  roundRect(ctx, 10, MINI_H - 66, MINI_W - 20, 56, 16);
   ctx.fillStyle = IN.panel;
   ctx.fill();
   ctx.strokeStyle = IN.edge;
@@ -288,22 +299,16 @@ function drawFooter(ctx: CanvasRenderingContext2D, frame: MiniNavFrame) {
   const bits: string[] = [];
   if (frame.remainingMeters != null) bits.push(`còn ${shortMetres(frame.remainingMeters)}`);
   if (frame.remainingSeconds != null) bits.push(shortDuration(frame.remainingSeconds));
-  ctx.font = "700 19px system-ui, sans-serif";
+  ctx.font = "700 17px system-ui, sans-serif";
   ctx.fillStyle = IN.ink;
   const line = bits.join(" · ") || "Đang tính…";
-  ctx.fillText(line, 26, MINI_H - 26);
+  ctx.fillText(line, 22, MINI_H - 36);
 
   if (frame.destination) {
-    const used = ctx.measureText(line).width;
-    ctx.font = "500 15px system-ui, sans-serif";
+    // Its own line: 270px has no room beside the figures.
+    ctx.font = "500 12px system-ui, sans-serif";
     ctx.fillStyle = IN.muted;
-    const room = MINI_W - 26 - 26 - used - 16;
-    if (room > 60) {
-      const label = ellipsis(ctx, frame.destination, room);
-      ctx.textAlign = "right";
-      ctx.fillText(label, MINI_W - 26, MINI_H - 27);
-      ctx.textAlign = "left";
-    }
+    ctx.fillText(ellipsis(ctx, frame.destination, MINI_W - 44), 22, MINI_H - 19);
   }
 }
 
@@ -314,19 +319,42 @@ export function drawMiniNav(ctx: CanvasRenderingContext2D, frame: MiniNavFrame) 
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
 
-  drawRoute(ctx, frame);
-  drawRider(ctx);
+  if (frame.map) {
+    /*
+     * The map itself, not a sketch of it. The first version drew only the
+     * route on a dark ground and it read as a broken screen — "đen xì". The
+     * crop is centred on the rider by whoever captured it, and the map already
+     * carries the route line and the rider's marker, so nothing is drawn twice.
+     */
+    try {
+      ctx.drawImage(frame.map, 0, 0, MINI_W, MINI_H);
+    } catch {
+      drawRoute(ctx, frame);
+      drawRider(ctx);
+    }
+    // A soft vignette so the cards read against any map colour.
+    const g = ctx.createLinearGradient(0, 0, 0, MINI_H);
+    g.addColorStop(0, "rgba(11,18,32,0.35)");
+    g.addColorStop(0.25, "rgba(11,18,32,0)");
+    g.addColorStop(0.8, "rgba(11,18,32,0)");
+    g.addColorStop(1, "rgba(11,18,32,0.4)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, MINI_W, MINI_H);
+  } else {
+    drawRoute(ctx, frame);
+    drawRider(ctx);
+  }
   drawTurnCard(ctx, frame);
   drawFooter(ctx, frame);
 
   if (frame.paused) {
-    roundRect(ctx, MINI_W / 2 - 66, 92, 132, 28, 14);
+    roundRect(ctx, MINI_W / 2 - 66, TURN_CARD_BOTTOM + 8, 132, 28, 14);
     ctx.fillStyle = "rgba(251,191,36,0.95)";
     ctx.fill();
     ctx.font = "700 15px system-ui, sans-serif";
     ctx.fillStyle = "#1c1917";
     ctx.textAlign = "center";
-    ctx.fillText("ĐANG TẠM DỪNG", MINI_W / 2, 111);
+    ctx.fillText("ĐANG TẠM DỪNG", MINI_W / 2, TURN_CARD_BOTTOM + 27);
     ctx.textAlign = "left";
   }
   ctx.restore();

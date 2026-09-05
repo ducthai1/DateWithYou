@@ -776,10 +776,17 @@ export function LocationsPage() {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
   }, [nav.isNavigating, pausedTrip]);
 
+  /* The navigation overlay's own map, for the window to crop its background from. */
+  const overlayMap = useRef<import("maplibre-gl").Map | null>(null);
+  const onOverlayMap = useCallback((m: import("maplibre-gl").Map | null) => {
+    overlayMap.current = m;
+  }, []);
+
   const miniWindow = useNavMiniWindow(miniFrame, {
     enabled: nav.isNavigating || pausedTrip,
     autoOpen: nav.isNavigating && !pausedTrip,
     immersive: coarsePointer,
+    mapRef: overlayMap,
   });
 
   // Fetch weather when destination is selected
@@ -1650,6 +1657,7 @@ export function LocationsPage() {
               partnerAvatar={partnerAvatar}
               partnerName={partnerName}
               onSelect={setSelectedId}
+              onMapInstance={onOverlayMap}
               className="min-h-0 rounded-none border-0 shadow-none"
             />
 
