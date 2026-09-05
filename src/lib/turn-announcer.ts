@@ -54,7 +54,14 @@ const LANE_KEEPING = new Set([9, 16, 22, 23, 24, 25]);
  * is a decision even when the name is familiar.
  */
 export function announceableTurns(maneuvers: Maneuver[] | null): Maneuver[] {
-  const real = (maneuvers ?? []).filter((m) => isRealTurn(m.type) || (m.type >= 4 && m.type <= 6));
+  // Drop the roundabout EXIT (type 27): the roundabout ENTER (26) already says
+  // "vào vòng xuyến, ra lối thứ N" -- the whole instruction in one breath. The exit
+  // manoeuvre sits a few metres later on the circle, so keeping it made guidance
+  // fire twice in a row and talk over itself (the "đọc rất nhiều, ngắt nhau" heard
+  // mid-roundabout).
+  const real = (maneuvers ?? []).filter(
+    (m) => (isRealTurn(m.type) || (m.type >= 4 && m.type <= 6)) && m.type !== 27,
+  );
   const kept: Maneuver[] = [];
   for (const m of real) {
     const street = m.streetNames.filter(Boolean)[0] ?? null;

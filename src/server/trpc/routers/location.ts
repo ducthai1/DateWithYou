@@ -135,6 +135,7 @@ type ParsedLeg = {
     streetNames: string[];
     distanceMeters: number;
     speedLimitKmh: number | null;
+    roundaboutExitCount: number | null;
     lng: number;
     lat: number;
   }>;
@@ -151,6 +152,7 @@ type RawLeg = {
     time?: number;
     begin_shape_index?: number;
     speed_limit?: number;
+    roundabout_exit_count?: number;
   }>;
 };
 
@@ -187,6 +189,8 @@ function parseLeg(leg: RawLeg): ParsedLeg {
           streetNames: m.street_names ?? [],
           distanceMeters: Math.round((m.length ?? 0) * 1000),
           speedLimitKmh: typeof m.speed_limit === "number" ? Math.round(m.speed_limit) : null,
+          roundaboutExitCount:
+            typeof m.roundabout_exit_count === "number" ? m.roundabout_exit_count : null,
           lng: at[0],
           lat: at[1],
           alongRouteMeters: typeof i === "number" && cum[i] != null ? Math.round(cum[i]) : null,

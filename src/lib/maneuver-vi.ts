@@ -42,6 +42,12 @@ export type Maneuver = {
    * line is still better than nothing.
    */
   alongRouteMeters?: number | null;
+  /**
+   * For a roundabout-enter manoeuvre (type 26): which exit to take, 1-based,
+   * as the router counts them. Absent for every other manoeuvre — and for a
+   * roundabout the router did not count — then it is the plain "vào vòng xuyến".
+   */
+  roundaboutExitCount?: number | null;
 };
 
 /** Which way, as a person would say it. */
@@ -172,38 +178,57 @@ export function maneuverStreet(m: Maneuver): string | null {
  */
 export const IMMINENT_M = 40;
 
-export function maneuverSentence(m: Maneuver, metres: number): string {
+/** Vietnamese ordinals for roundabout exits; 1 and 4 are irregular. */
+const EXIT_ORDINALS: Record<number, string> = {
+  1: "thứ nhất", 2: "thứ hai", 3: "thứ ba", 4: "thứ tư", 5: "thứ năm",
+  6: "thứ sáu", 7: "thứ bảy", 8: "thứ tám", 9: "thứ chín",
+};
+
+/** "vào vòng xuyến, ra lối thứ ba" — or the plain form when no exit was counted. */
+function roundaboutPhrase(n?: number | null): string {
+  if (!n || n < 1) return "vào vòng xuyến";
+  return `vào vòng xuyến, ra lối ${EXIT_ORDINALS[n] ?? `thứ ${n}`}`;
+}
+
+/**
+ * The core of the instruction — the verb and where it leads — without the
+ * distance or the softener. A roundabout says which exit to take; everything
+ * else says the verb and the street it turns onto.
+ */
+function maneuverCore(m: Maneuver): string {
+  if (m.type === 26) return roundaboutPhrase(m.roundaboutExitCount);
   const verb = maneuverVerb(m.type);
   const street = maneuverStreet(m);
-  const onto = street ? ` vào ${street}` : "";
+  return street ? `${verb} vào ${street}` : verb;
+}
+
+/** Whether the core carries a detail (a street, or a counted roundabout exit). */
+function maneuverHasDetail(m: Maneuver): boolean {
+  return m.type === 26 ? !!m.roundaboutExitCount : !!maneuverStreet(m);
+}
+
+export function maneuverSentence(m: Maneuver, metres: number): string {
   if (m.type >= 4 && m.type <= 6) {
     // "Đã tới đích" is what a system says. This is the end of someone's ride.
     return metres <= IMMINENT_M ? "Tới rồi!" : `Còn ${fmtMetresVi(metres)} là tới đích`;
   }
+  const core = maneuverCore(m);
   if (metres <= IMMINENT_M) {
     /*
-     * "Rẽ phải vào Pasteur nha", not "Rẽ phải ngay vào Pasteur".
-     *
-     * This is a guide, not a dispatcher. "Ngay" adds urgency the junction
-     * already has, and a bare imperative at the moment someone is committing to
-     * a turn lands as being ordered about — which is a small thing once and a
-     * tiring thing over a whole ride.
-     *
-     * The softener goes at the END so the words that matter still come first:
-     * by the time "nha" arrives the rider already knows which way to go. Which
-     * particle depends on whether there is a street to name, because "chếch
-     * phải nha" alone is thinner than "chếch phải nào".
+     * "Rẽ phải vào Pasteur nha", not "Rẽ phải ngay vào Pasteur". A guide, not a
+     * dispatcher: the softener goes at the END so the words that matter come
+     * first. Which particle depends on whether the core names a detail (a
+     * street, or which roundabout exit) — "chếch phải nha" alone is thinner
+     * than "chếch phải nào".
      */
-    const head = `${verb.charAt(0).toUpperCase()}${verb.slice(1)}`;
-    return onto ? `${head}${onto} nha` : `${head} nào`;
+    const head = `${core.charAt(0).toUpperCase()}${core.slice(1)}`;
+    return maneuverHasDetail(m) ? `${head} nha` : `${head} nào`;
   }
-  return `Sau ${fmtMetresVi(metres)} ${verb}${onto}`;
+  return `Sau ${fmtMetresVi(metres)} ${core}`;
 }
 
 /** Short form for the banner, which has the distance in its own column. */
 export function maneuverLabel(m: Maneuver): string {
-  const verb = maneuverVerb(m.type);
-  const street = maneuverStreet(m);
-  const label = `${verb.charAt(0).toUpperCase()}${verb.slice(1)}`;
-  return street ? `${label} vào ${street}` : label;
+  const core = maneuverCore(m);
+  return `${core.charAt(0).toUpperCase()}${core.slice(1)}`;
 }

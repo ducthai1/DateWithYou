@@ -1231,8 +1231,18 @@ export function LocationsPage() {
       legArmedRef.current = false;
       setLegArrived(true);
       buzz([120, 80, 120], { urgent: true });
+      // Say it, don't only buzz: reaching a waypoint in silence left riders unsure
+      // the stop had even registered. The final leg's arrival is the announcer's job
+      // (it names the place), so only the intermediate stops speak here.
+      const legTotal = legGeometries.length;
+      if (currentLegIndex < legTotal - 1) {
+        speak(
+          `Đã tới điểm dừng ${currentLegIndex + 1}. Nghỉ chút rồi đi tiếp chặng ${currentLegIndex + 2} nha`,
+          { chime: true },
+        );
+      }
     }
-  }, [nav.remainingMeters, legGeometries, legArrived]);
+  }, [nav.remainingMeters, legGeometries, legArrived, currentLegIndex]);
 
   // Confirm the current stop and start the next leg. Re-routes the next leg from
   // the rider's current position so only its two end points drive the new route.
@@ -2104,7 +2114,7 @@ export function LocationsPage() {
       <div
         className={cn(
           "mx-auto w-full max-w-[1400px] px-4 pt-2 pb-6 md:px-[30px]",
-          "lg:mx-0 lg:flex lg:h-[100dvh] lg:flex-col lg:overflow-hidden lg:px-4 lg:pb-4 lg:pt-4",
+          "lg:mx-0 lg:flex lg:h-[100dvh] lg:flex-col lg:overflow-hidden lg:px-4 lg:pb-4 lg:pt-4 lg:pointer-events-none",
           // 21rem, not 27: next to a 288px app sidebar the wider column left
           // less than half the screen for the map.
           "lg:max-w-[21rem] xl:max-w-[23rem]",
@@ -2143,6 +2153,7 @@ export function LocationsPage() {
       <div
         className={cn(
           "sticky top-2 z-40 mb-2 flex shrink-0 flex-col gap-y-2 rounded-2xl border border-border bg-card/90 px-3 py-2 shadow-lg backdrop-blur-xl sm:mb-4 sm:px-4 sm:py-3 lg:static lg:mb-2 lg:py-2",
+          panelOpen && "lg:pointer-events-auto",
         )}
       >
         {/* Desktop: title + Thu gọn on the first row */}
@@ -2476,7 +2487,7 @@ export function LocationsPage() {
             on desktop, where it is simply the right-hand column. */}
         <MapSheet
           count={(list.data ?? []).length}
-          className={cn("order-2 lg:order-none", !listOpen && "lg:hidden")}
+          className={cn("order-2 lg:order-none", panelOpen && "lg:pointer-events-auto", !listOpen && "lg:hidden")}
           // No `raiseTo` any more: the add/edit form is its own dialog, so the
           // sheet no longer has to be dragged up to reveal it.
           collapseSignal={sheetCollapseTick}
