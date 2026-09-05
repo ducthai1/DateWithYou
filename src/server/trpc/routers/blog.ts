@@ -16,6 +16,13 @@ import { slugify } from "@/lib/slug";
 
 const CATEGORIES = ["tin-tuc", "tinh-nang", "meo-hay", "cap-nhat"] as const;
 
+/** The filter every public query shares: published AND its time has come. A
+ *  post scheduled for the future is published in the DB but stays hidden until
+ *  then, so scheduling needs no cron — the clock in this filter does it. */
+function liveFilter(extra: Record<string, unknown> = {}) {
+  return { status: "published", publishedAt: { $lte: new Date() }, ...extra };
+}
+
 /** The columns a list row needs — never the body. */
 const CARD_FIELDS = "slug title excerpt coverImage category tags featured viewCount publishedAt";
 
@@ -80,6 +87,8 @@ const postInput = z.object({
   tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
   featured: z.boolean().default(false),
   status: z.enum(["draft", "published"]).default("draft"),
+  // An explicit publish time — omit to publish now; a future time schedules.
+  publishedAt: z.coerce.date().optional(),
   metaTitle: z.string().trim().max(200).optional(),
   metaDescription: z.string().trim().max(400).optional(),
 });
@@ -102,7 +111,7 @@ export const blogRouter = router({
   /** Every published slug, for the sitemap. Two fields only. */
   sitemap: publicProcedure.query(async () => {
     await connectToDatabase();
-    const rows = await BlogPostModel.find({ status: "published" })
+    const rows = await BlogPostModel.find(liveFilter())
       .select("slug publishedAt updatedAt")
       .sort({ publishedAt: -1 })
       .limit(1000)
@@ -124,7 +133,7 @@ export const blogRouter = router({
     )
     .query(async ({ input }) => {
       await connectToDatabase();
-      const filter: Record<string, unknown> = { status: "published" };
+      const filter: Record<string, unknown> = liveFilter();
       if (input.category) filter.category = input.category;
       if (input.tag) filter.tags = input.tag;
       const skip = (input.page - 1) * input.pageSize;
@@ -150,7 +159,7 @@ export const blogRouter = router({
     .input(z.object({ limit: z.number().int().min(1).max(6).default(3) }).optional())
     .query(async ({ input }) => {
       await connectToDatabase();
-      const rows = await BlogPostModel.find({ status: "published", featured: true })
+      const rows = await BlogPostModel.find(liveFilter({ featured: true }))
         .select(CARD_FIELDS)
         .sort({ publishedAt: -1 })
         .limit(input?.limit ?? 3)
@@ -162,7 +171,7 @@ export const blogRouter = router({
     .input(z.object({ limit: z.number().int().min(1).max(10).default(5) }).optional())
     .query(async ({ input }) => {
       await connectToDatabase();
-      const rows = await BlogPostModel.find({ status: "published" })
+      const rows = await BlogPostModel.find(liveFilter())
         .select(CARD_FIELDS)
         .sort({ viewCount: -1, publishedAt: -1 })
         .limit(input?.limit ?? 5)
@@ -177,7 +186,7 @@ export const blogRouter = router({
       // A plain read: the page renders this statically (ISR), so counting a
       // view here would count once per revalidate, not once per reader. The
       // count is done by recordView, called from the page after it loads.
-      const doc = await BlogPostModel.findOne({ slug: input.slug, status: "published" }).lean<PostDoc>();
+      const doc = await BlogPostModel.findOne(liveFilter({ slug: input.slug })).lean<PostDoc>();
       if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
       return full(doc);
     }),
@@ -188,7 +197,7 @@ export const blogRouter = router({
       await connectToDatabase();
       // Only a published post earns a view; a bad slug is a silent no-op, not
       // an error — a view beacon has nowhere to show one.
-      await BlogPostModel.updateOne({ slug: input.slug, status: "published" }, { $inc: { viewCount: 1 } });
+      await BlogPostModel.updateOne(liveFilter({ slug: input.slug }), { $inc: { viewCount: 1 } });
       return { ok: true };
     }),
 
@@ -222,7 +231,7 @@ export const blogRouter = router({
       ...input,
       slug,
       coverImage: input.coverImage || undefined,
-      publishedAt: input.status === "published" ? new Date() : undefined,
+      publishedAt: input.status === "published" ? (input.publishedAt ?? new Date()) : undefined,
       authorId: ctx.userId,
       authorName: ctx.userEmail,
     });
@@ -242,8 +251,12 @@ export const blogRouter = router({
       if (input.coverImage !== undefined) patch.coverImage = input.coverImage || undefined;
       if (status !== undefined) {
         patch.status = status;
-        // Stamp publishedAt the first time it goes public; keep it thereafter.
-        if (status === "published" && !current.publishedAt) patch.publishedAt = new Date();
+        // Publishing with no explicit date stamps now, first time only; an explicit
+        // publishedAt (carried in `rest`) reschedules — a future time hides it
+        // until then, a past time makes it live at once.
+        if (status === "published" && input.publishedAt === undefined && !current.publishedAt) {
+          patch.publishedAt = new Date();
+        }
       }
       const doc = await BlogPostModel.findByIdAndUpdate(id, patch, { new: true }).lean<PostDoc>();
       if (!doc) throw new TRPCError({ code: "NOT_FOUND" });

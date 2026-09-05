@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { CATEGORY_LABEL } from "@/features/blog/post-card";
 import { BlogEditor } from "./blog-editor";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2, X, CalendarClock, Eye } from "lucide-react";
 
 const CATEGORIES = ["tin-tuc", "tinh-nang", "meo-hay", "cap-nhat"] as const;
 
@@ -28,6 +28,8 @@ export type BlogFormValues = {
   status: "draft" | "published";
   metaTitle: string;
   metaDescription: string;
+  /** ISO publish time; a future time = scheduled. Absent on a fresh draft. */
+  publishedAt?: string;
 };
 
 const EMPTY: BlogFormValues = {
@@ -38,6 +40,12 @@ const EMPTY: BlogFormValues = {
 
 const field = "border-border focus:border-accent w-full rounded-lg border bg-card px-3 py-2 text-sm outline-none";
 const label = "text-foreground mb-1 block text-sm font-medium";
+
+/** A Date as the local "YYYY-MM-DDTHH:mm" a <input type=datetime-local> wants. */
+function toLocalInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 /** Pick one image and upload it through the admin-signed Cloudinary flow. */
 function useBlogImageUpload() {
@@ -96,6 +104,10 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
   const [slugTouched, setSlugTouched] = useState(Boolean(initial?.slug));
   const [tagInput, setTagInput] = useState("");
   const [coverBusy, setCoverBusy] = useState(false);
+  const [schedule, setSchedule] = useState(() => {
+    const d = initial?.publishedAt ? new Date(initial.publishedAt) : null;
+    return d && d.getTime() > Date.now() ? toLocalInput(d) : "";
+  });
   const pickImage = useBlogImageUpload();
   const pickImages = useBlogImagesUpload();
   const isEdit = Boolean(v.id);
@@ -114,7 +126,7 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
   const update = trpc.blog.update.useMutation();
 
   const submit = useCallback(
-    async (status: "draft" | "published") => {
+    async (status: "draft" | "published", publishedAt?: string) => {
       if (!v.title.trim()) return toast("Cần có tiêu đề", "error");
       const payload = {
         title: v.title.trim(),
@@ -126,6 +138,7 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
         tags: v.tags,
         featured: v.featured,
         status,
+        publishedAt: publishedAt ? new Date(publishedAt) : undefined,
         metaTitle: v.metaTitle.trim() || undefined,
         metaDescription: v.metaDescription.trim() || undefined,
       };
@@ -136,7 +149,12 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
           await create.mutateAsync(payload);
         }
         await utils.blog.adminList.invalidate();
-        toast(status === "published" ? "Đã đăng bài ✓" : "Đã lưu nháp ✓", "success");
+        const scheduled =
+          status === "published" && !!publishedAt && new Date(publishedAt).getTime() > Date.now();
+        toast(
+          scheduled ? "Đã lên lịch đăng ✓" : status === "published" ? "Đã đăng bài ✓" : "Đã lưu nháp ✓",
+          "success",
+        );
         router.push("/admin/blog");
       } catch (e) {
         toast(readableFormError(e instanceof Error ? e.message : "", "Không lưu được"), "error");
@@ -205,6 +223,43 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
               Lưu nháp
             </Button>
           </div>
+          <details className="text-sm">
+            <summary className="text-muted-foreground flex cursor-pointer items-center gap-1.5">
+              <CalendarClock className="h-4 w-4" /> Hẹn giờ đăng
+            </summary>
+            <div className="mt-2 space-y-2">
+              <input
+                type="datetime-local"
+                aria-label="Thời gian đăng"
+                className={field}
+                value={schedule}
+                onChange={(e) => setSchedule(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={saving || !schedule}
+                onClick={() => void submit("published", schedule)}
+              >
+                Đặt lịch đăng
+              </Button>
+              <p className="text-muted-foreground text-xs">
+                Chọn thời gian trong tương lai — bài tự hiện công khai đúng lúc đó. Thời điểm đã qua thì đăng ngay.
+              </p>
+            </div>
+          </details>
+
+          {isEdit && v.id && (
+            <a
+              href={`/admin/blog/${v.id}/preview`}
+              target="_blank"
+              rel="noopener"
+              className="text-muted-foreground hover:text-accent inline-flex items-center gap-1.5 text-sm"
+            >
+              <Eye className="h-4 w-4" /> Xem trước
+            </a>
+          )}
+
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input type="checkbox" aria-label="Đánh dấu nổi bật" checked={v.featured} onChange={(e) => set("featured", e.target.checked)} />
             Đánh dấu nổi bật
@@ -216,7 +271,6 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
           <label className={label}>Ảnh bìa</label>
           {v.coverImage ? (
             <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={cldThumb(v.coverImage, 480)} alt="" className="aspect-[16/9] w-full rounded-lg object-cover" />
               <button
                 type="button"

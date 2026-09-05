@@ -6,7 +6,7 @@ import { useSession } from "@/lib/auth-client";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { CATEGORY_LABEL } from "@/features/blog/post-card";
-import { Pencil, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { Pencil, Plus, Trash2, ExternalLink, Loader2, Eye, Clock } from "lucide-react";
 
 /**
  * The admin post list, and the gate for the whole admin section.
@@ -89,30 +89,42 @@ export function BlogAdminList() {
         </p>
       ) : (
         <ul className="divide-border divide-y">
-          {posts.map((p) => (
+          {posts.map((p) => {
+            const scheduled =
+              p.status === "published" && !!p.publishedAt && new Date(p.publishedAt).getTime() > Date.now();
+            const badge = scheduled
+              ? { text: "Đã lên lịch", cls: "bg-amber-100 text-amber-700" }
+              : p.status === "published"
+                ? { text: "Đã đăng", cls: "bg-emerald-100 text-emerald-700" }
+                : { text: "Nháp", cls: "bg-muted text-muted-foreground" };
+            return (
             <li key={p.id} className="flex items-center gap-3 p-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span
-                    className={
-                      p.status === "published"
-                        ? "rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"
-                        : "bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                    }
-                  >
-                    {p.status === "published" ? "Đã đăng" : "Nháp"}
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badge.cls}`}>
+                    {badge.text}
                   </span>
                   {p.featured && <span className="text-accent text-[11px] font-semibold">★ Nổi bật</span>}
                   <span className="text-muted-foreground text-xs">{CATEGORY_LABEL[p.category] ?? p.category}</span>
                 </div>
                 <p className="text-foreground mt-0.5 truncate font-medium">{p.title}</p>
-                <p className="text-muted-foreground truncate text-xs">/blog/{p.slug} · {p.viewCount} lượt xem</p>
+                <p className="text-muted-foreground truncate text-xs">
+                  /blog/{p.slug} · {p.viewCount} lượt xem
+                  {scheduled && p.publishedAt && (
+                    <span className="ml-1 inline-flex items-center gap-1 text-amber-700">
+                      <Clock className="h-3 w-3" /> {new Date(p.publishedAt).toLocaleString("vi-VN")}
+                    </span>
+                  )}
+                </p>
               </div>
               {p.status === "published" && (
                 <Link href={`/blog/${p.slug}`} target="_blank" aria-label="Xem bài" title="Xem" className="text-muted-foreground hover:bg-muted flex h-9 w-9 items-center justify-center rounded-lg">
                   <ExternalLink className="h-4 w-4" />
                 </Link>
               )}
+              <Link href={`/admin/blog/${p.id}/preview`} target="_blank" aria-label="Xem trước" title="Xem trước" className="text-muted-foreground hover:bg-muted flex h-9 w-9 items-center justify-center rounded-lg">
+                <Eye className="h-4 w-4" />
+              </Link>
               <Link href={`/admin/blog/${p.id}`} aria-label="Sửa" title="Sửa" className="text-muted-foreground hover:bg-muted flex h-9 w-9 items-center justify-center rounded-lg">
                 <Pencil className="h-4 w-4" />
               </Link>
@@ -127,7 +139,8 @@ export function BlogAdminList() {
                 onConfirm={() => remove.mutate({ id: p.id })}
               />
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
       </div>

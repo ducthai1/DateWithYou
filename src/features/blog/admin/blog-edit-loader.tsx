@@ -39,6 +39,7 @@ export function BlogEditLoader({ id }: { id: string }) {
     status: p.status,
     metaTitle: p.metaTitle,
     metaDescription: p.metaDescription,
+    publishedAt: p.publishedAt ? new Date(p.publishedAt).toISOString() : undefined,
   };
   return <BlogForm initial={initial} />;
 }
