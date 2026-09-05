@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { NAV_HIDDEN_ON, POST_LOGIN_REDIRECT } from "./nav-items";
+import { isPublicChrome, POST_LOGIN_REDIRECT } from "./nav-items";
 import { useSession } from "@/lib/auth-client";
 
 /**
@@ -23,7 +23,7 @@ const AUTH_ROUTES = ["/sign-in", "/sign-up"];
 export function SpaceGuard() {
   const pathname = usePathname();
   const router = useRouter();
-  const needsSpace = !NAV_HIDDEN_ON.includes(pathname);
+  const needsSpace = !isPublicChrome(pathname);
   const { data: session, isPending: sessionPending } = useSession();
   const userId = session?.user?.id;
 

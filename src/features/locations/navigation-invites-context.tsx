@@ -15,6 +15,8 @@ import {
   useContext,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
+import { isPublicChrome } from "@/components/layout/nav-items";
 import { useNavigationInvites } from "./use-navigation-invites";
 
 /*
@@ -35,8 +37,11 @@ export function NavigationInvitesProvider({
 }: {
   children: ReactNode;
 }) {
-  // Single hook call = single EventSource connection for the whole app tree.
-  const value = useNavigationInvites();
+  // Single hook call = single EventSource connection for the whole app tree —
+  // and none at all on the public marketing surface, where there is no session
+  // to authorise the stream.
+  const pathname = usePathname();
+  const value = useNavigationInvites(!isPublicChrome(pathname));
 
   return (
     <NavigationInvitesContext.Provider value={value}>

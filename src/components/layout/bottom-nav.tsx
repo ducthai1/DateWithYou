@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS, NAV_HIDDEN_ON } from "./nav-items";
+import { NAV_ITEMS, isPublicChrome } from "./nav-items";
 import { UnreadBadge, unreadLabel, useUnreadActivity } from "@/features/activity/unread-badge";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 export function BottomNav() {
   const pathname = usePathname();
   const unreadActivity = useUnreadActivity();
-  if (NAV_HIDDEN_ON.includes(pathname)) return null;
+  if (isPublicChrome(pathname)) return null;
 
   return (
     <nav data-app-chrome

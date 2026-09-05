@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PanelLeftClose, PanelLeftOpen, Lock, Dices, Settings } from "lucide-react";
-import { NAV_ITEMS, NAV_HIDDEN_ON } from "./nav-items";
+import { NAV_ITEMS, isPublicChrome } from "./nav-items";
 import { UnreadBadge, unreadLabel, useUnreadActivity } from "@/features/activity/unread-badge";
 import { BrandMark } from "./brand-mark";
 import { useSidebar } from "./sidebar-context";
@@ -16,7 +16,7 @@ export function SideNav() {
   const { isCollapsed, toggleSidebar, ready } = useSidebar();
   const unreadActivity = useUnreadActivity();
 
-  if (NAV_HIDDEN_ON.includes(pathname)) return null;
+  if (isPublicChrome(pathname)) return null;
 
   return (
     <aside

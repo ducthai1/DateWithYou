@@ -49,7 +49,14 @@ export type PartnerLive = {
   updatedAt: string;
 };
 
-export function useNavigationInvites() {
+/**
+ * @param enabled  Open the stream only where it is needed. The public marketing
+ *   surface (landing, feature pages, blog) has no invites and no session, so a
+ *   guest there would otherwise open an EventSource that the server rejects and
+ *   the browser then retries on a back-off — pure waste on a page built to be
+ *   light. Defaults to true so every existing caller is unchanged.
+ */
+export function useNavigationInvites(enabled = true) {
   const [incomingInvite, setIncomingInvite] = useState<IncomingInvite | null>(
     null,
   );
@@ -160,11 +167,12 @@ export function useNavigationInvites() {
   /** Dismiss the partner-ended-trip prompt (after the user decides). */
   const clearEndedTrip = useCallback(() => setEndedTrip(null), []);
 
-  // Connect on mount, disconnect on unmount.
+  // Connect on mount, disconnect on unmount — but only where enabled.
   useEffect(() => {
+    if (!enabled) return;
     connect();
     return () => disconnect();
-  }, [connect, disconnect]);
+  }, [enabled, connect, disconnect]);
 
   return {
     /** The latest pending invite targeting this user (null = none). */

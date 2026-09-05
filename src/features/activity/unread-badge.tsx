@@ -1,6 +1,8 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
+import { usePathname } from "next/navigation";
+import { isPublicChrome } from "@/components/layout/nav-items";
 import { cn } from "@/lib/utils";
 
 /**
@@ -10,7 +12,12 @@ import { cn } from "@/lib/utils";
  * disagree — one number, two places that draw it.
  */
 export function useUnreadActivity() {
+  // Not on the public surface. The nav that draws this badge is hidden there,
+  // but the hook still runs (rules of hooks) — so gate the query itself, or a
+  // guest on the blog fires activity.unreadCount for a space they do not have.
+  const pathname = usePathname();
   const q = trpc.activity.unreadCount.useQuery(undefined, {
+    enabled: !isPublicChrome(pathname),
     // A failed badge must never surface as an error: the link it decorates
     // still works. Degrade to "no badge" rather than retrying in a loop.
     retry: false,

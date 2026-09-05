@@ -78,6 +78,16 @@ export const NAV_HIDDEN_ON = [
   "/reset-password",
 ];
 
+/**
+ * True where the app chrome (nav, welcome intro) is hidden and no space is
+ * required — the public marketing surface. Same as NAV_HIDDEN_ON but also
+ * matches the blog, whose detail URLs are dynamic (/blog/<slug>) so an exact
+ * `includes` cannot cover them.
+ */
+export function isPublicChrome(pathname: string): boolean {
+  return NAV_HIDDEN_ON.includes(pathname) || pathname === "/blog" || pathname.startsWith("/blog/");
+}
+
 // Where every successful login lands. Must be a SpaceGuard-protected feature
 // route so the guard runs the "has a space? → stay in : → /onboarding"
 // branch in one place — no auth flow re-implements that check.

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search, Settings } from "lucide-react";
-import { NAV_HIDDEN_ON } from "./nav-items";
+import { isPublicChrome } from "./nav-items";
 import { MobileMoreMenu } from "./mobile-more-menu";
 import { BrandMark } from "./brand-mark";
 import { SyncButton } from "./sync-button";
@@ -23,7 +23,7 @@ const ACTION_CLASS = (active: boolean) =>
  */
 export function AppHeader() {
   const pathname = usePathname();
-  if (NAV_HIDDEN_ON.includes(pathname)) return null;
+  if (isPublicChrome(pathname)) return null;
 
   return (
     <header data-app-chrome
