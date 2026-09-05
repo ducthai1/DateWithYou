@@ -79,3 +79,42 @@
 .blog-body .color {
   color: var(--color);
 }
+
+/* Tables authored in the editor. Header row gets a tint; cells keep hairline
+   borders. width:100% so a small table fills the column instead of hugging left. */
+.blog-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.blog-body th,
+.blog-body td {
+  border: 1px solid #e7e5e4;
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+.blog-body th {
+  background: #f5f5f4;
+  font-weight: 600;
+}
+
+/* Highlighted text. The editor writes the colour inline as background-color;
+   these are just the shape defaults it can't carry. */
+.blog-body mark {
+  padding: 0.05em 0.15em;
+  border-radius: 0.2rem;
+}
+
+/* Embedded YouTube. The extension renders <div data-youtube-video><iframe>…;
+   force a 16:9 responsive frame regardless of the width/height attributes. */
+.blog-body div[data-youtube-video] {
+  margin-top: 1rem;
+}
+.blog-body div[data-youtube-video] iframe {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 0.75rem;
+}

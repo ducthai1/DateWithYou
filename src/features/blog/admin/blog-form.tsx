@@ -62,6 +62,32 @@ function useBlogImageUpload() {
   }, [signBlog]);
 }
 
+/** Pick one or more images and upload them through the admin-signed Cloudinary flow. */
+function useBlogImagesUpload() {
+  const signBlog = trpc.upload.signBlog.useMutation();
+  return useCallback((): Promise<string[]> => {
+    return new Promise((resolve) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.multiple = true;
+      input.onchange = async () => {
+        const files = Array.from(input.files ?? []);
+        if (!files.length) return resolve([]);
+        try {
+          const ups = await Promise.all(
+            files.map((f) => uploadToCloudinary(f, { sign: () => signBlog.mutateAsync() })),
+          );
+          resolve(ups.map((u) => u.url));
+        } catch {
+          resolve([]);
+        }
+      };
+      input.click();
+    });
+  }, [signBlog]);
+}
+
 export function BlogForm({ initial }: { initial?: BlogFormValues }) {
   const router = useRouter();
   const toast = useToast();
@@ -71,6 +97,7 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
   const [tagInput, setTagInput] = useState("");
   const [coverBusy, setCoverBusy] = useState(false);
   const pickImage = useBlogImageUpload();
+  const pickImages = useBlogImagesUpload();
   const isEdit = Boolean(v.id);
 
   const set = useCallback(<K extends keyof BlogFormValues>(k: K, val: BlogFormValues[K]) => {
@@ -163,7 +190,7 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
 
         <div>
           <label className={label}>Nội dung</label>
-          <BlogEditor value={v.body} onChange={(html) => set("body", html)} onInsertImage={pickImage} />
+          <BlogEditor value={v.body} onChange={(html) => set("body", html)} onInsertImages={pickImages} />
         </div>
       </div>
 
