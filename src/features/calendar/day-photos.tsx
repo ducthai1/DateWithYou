@@ -4,6 +4,8 @@ import { ImagePlus, Pencil, Trash2 } from "lucide-react";
 import { readableFormError } from "@/lib/form-error";
 import { PhotoView } from "react-photo-view";
 import { trpc } from "@/lib/trpc";
+import { cldFull } from "@/lib/cloudinary-url";
+import { Photo } from "@/components/ui/photo";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { useToast } from "@/components/ui/toast";
 
@@ -89,11 +91,11 @@ export function DayPhotos({
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {m.photos.map((p) => (
                   <div key={p.publicId} className="group relative">
-                    <PhotoView src={p.url}>
-                      <img
+                    <PhotoView src={cldFull(p.url)}>
+                      <Photo
+                        variant="thumb"
                         src={p.url}
-                        alt=""
-                        className="aspect-square w-full cursor-zoom-in rounded-lg object-cover"
+                        className="aspect-square w-full cursor-zoom-in rounded-lg"
                       />
                     </PhotoView>
                     <ConfirmButton

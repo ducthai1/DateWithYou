@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, memo } from "react";
+import { cldThumb } from "@/lib/cloudinary-url";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GridCell } from "@/lib/date-keys";
@@ -164,9 +165,12 @@ export const CalendarCell = memo(function CalendarCell({
           renders unfaded. A real memory should never lose to a placeholder. */}
       {summary?.thumbnailUrl && cell.inMonth && (
         <img
-          src={summary.thumbnailUrl}
+          /* A month is up to 31 of these. Fed the original upload each, that
+             was the single heaviest thing the calendar did. */
+          src={cldThumb(summary.thumbnailUrl, 160)}
           alt=""
           loading="lazy"
+          decoding="async"
           className="absolute inset-0 z-0 h-full w-full object-cover"
         />
       )}

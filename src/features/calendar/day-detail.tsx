@@ -16,6 +16,8 @@ import { DayPhotos, type DayMemory } from "./day-photos";
 import { PlanItemForm, type EditableItem } from "./plan-item-form";
 import type { DayItem } from "./plan-item-card";
 import { PhotoView } from "react-photo-view";
+import { cldFull } from "@/lib/cloudinary-url";
+import { Photo } from "@/components/ui/photo";
 
 function formatDay(key: string): string {
   const [y, m, d] = key.split("-").map(Number);
@@ -101,8 +103,8 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
                     {detail.data.onThisDay.map((m) => (
                       <div key={m.id} className="flex shrink-0 items-center gap-1.5 text-xs">
                         {m.thumbnailUrl && (
-                          <PhotoView src={m.thumbnailUrl}>
-                            <img src={m.thumbnailUrl} alt="" className="h-8 w-8 cursor-zoom-in rounded-md object-cover" />
+                          <PhotoView src={cldFull(m.thumbnailUrl)}>
+                            <Photo variant="thumb" size={32} src={m.thumbnailUrl} className="h-8 w-8 cursor-zoom-in rounded-md" />
                           </PhotoView>
                         )}
                         <span className="text-foreground">{m.title} <span className="text-muted-foreground">({m.year})</span></span>

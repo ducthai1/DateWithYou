@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { readableFormError } from "@/lib/form-error";
 import { ImagePlus } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
-import { cldFull, cldPreview, cldThumb } from "@/lib/cloudinary-url";
+import { cldFull } from "@/lib/cloudinary-url";
 import { trpc } from "@/lib/trpc";
 import { MentionText } from "@/components/ui/mention-text";
 import { TagChip } from "@/components/ui/tag-chip";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/modal";
 import { PhotoView } from "react-photo-view";
+import { Photo } from "@/components/ui/photo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmbedPlayer } from "@/components/ui/embed-player";
@@ -338,15 +339,12 @@ export function MemoryTimeline() {
                            * full upload — three multi-megabyte phone photos per
                            * card, for a strip of thumbnails.
                            */
-                          <img
+                          <Photo
                             key={p.publicId}
-                            src={cldThumb(p.url)}
+                            variant="thumb"
+                            src={p.url}
                             alt={m.title}
-                            loading="lazy"
-                            decoding="async"
-                            width={400}
-                            height={400}
-                            className="bg-muted aspect-square w-full rounded-lg object-cover"
+                            className="aspect-square w-full rounded-lg"
                           />
                         ))}
                       </div>
@@ -481,17 +479,18 @@ export function MemoryTimeline() {
                          paragraph written about all of them. */
                       <figure key={p.publicId} className="space-y-1">
                         <PhotoView src={cldFull(p.url)}>
-                          <img
-                            src={cldPreview(p.url)}
+                          <Photo
+                            variant="preview"
+                            src={p.url}
                             alt={p.caption || selectedMemo.title}
-                            loading="lazy"
-                            decoding="async"
                             style={
                               p.width && p.height
                                 ? { aspectRatio: `${p.width} / ${p.height}` }
-                                : undefined
+                                // Unknown shape: hold a 4:3 box rather than
+                                // collapsing to zero and jumping open on load.
+                                : { aspectRatio: "4 / 3" }
                             }
-                            className="bg-muted w-full cursor-zoom-in rounded-lg object-cover"
+                            className="w-full cursor-zoom-in rounded-lg"
                           />
                         </PhotoView>
                         {p.caption && (

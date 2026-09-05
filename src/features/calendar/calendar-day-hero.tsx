@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 import { PhotoView } from "react-photo-view";
+import { cldFull } from "@/lib/cloudinary-url";
+import { Photo } from "@/components/ui/photo";
 import Link from "next/link";
 import { CalendarHeart, ChevronRight, Plane, Plus, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -63,8 +65,8 @@ export function CalendarDayHero({
       {/* ── Cover ── */}
       <div className="relative h-40">
         {cover ? (
-          <PhotoView src={cover.url}>
-            <img src={cover.url} alt="" className="h-full w-full cursor-zoom-in object-cover" />
+          <PhotoView src={cldFull(cover.url)}>
+            <Photo variant="preview" width={1000} priority src={cover.url} className="h-full w-full cursor-zoom-in" />
           </PhotoView>
         ) : (
           <div className="relative h-full w-full">
@@ -132,8 +134,8 @@ export function CalendarDayHero({
               {data.onThisDay.map((m) => (
                 <div key={m.id} className="flex shrink-0 items-center gap-1.5 text-xs">
                   {m.thumbnailUrl && (
-                    <PhotoView src={m.thumbnailUrl}>
-                      <img src={m.thumbnailUrl} alt="" className="h-8 w-8 cursor-zoom-in rounded-md object-cover" />
+                    <PhotoView src={cldFull(m.thumbnailUrl)}>
+                      <Photo variant="thumb" size={32} src={m.thumbnailUrl} className="h-8 w-8 cursor-zoom-in rounded-md" />
                     </PhotoView>
                   )}
                   <span className="text-foreground whitespace-nowrap">
@@ -149,12 +151,8 @@ export function CalendarDayHero({
         {photos.length > 1 && (
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
             {photos.slice(1).map((p) => (
-              <PhotoView key={p.publicId} src={p.url}>
-                <img
-                  src={p.url}
-                  alt=""
-                  className="h-20 w-20 shrink-0 cursor-zoom-in rounded-xl object-cover"
-                />
+              <PhotoView key={p.publicId} src={cldFull(p.url)}>
+                <Photo variant="thumb" size={80} src={p.url} className="h-20 w-20 shrink-0 cursor-zoom-in rounded-xl" />
               </PhotoView>
             ))}
           </div>
