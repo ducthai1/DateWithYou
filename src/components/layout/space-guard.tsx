@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { isPublicChrome, POST_LOGIN_REDIRECT } from "./nav-items";
+import { isPublicChrome, isAdminRoute, POST_LOGIN_REDIRECT } from "./nav-items";
 import { useSession } from "@/lib/auth-client";
 
 /**
@@ -23,7 +23,8 @@ const AUTH_ROUTES = ["/sign-in", "/sign-up"];
 export function SpaceGuard() {
   const pathname = usePathname();
   const router = useRouter();
-  const needsSpace = !isPublicChrome(pathname);
+  // Admin shows app chrome but is not space-scoped, so it is exempt too.
+  const needsSpace = !isPublicChrome(pathname) && !isAdminRoute(pathname);
   const { data: session, isPending: sessionPending } = useSession();
   const userId = session?.user?.id;
 

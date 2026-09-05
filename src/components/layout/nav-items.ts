@@ -88,13 +88,19 @@ export function isPublicChrome(pathname: string): boolean {
   return (
     NAV_HIDDEN_ON.includes(pathname) ||
     pathname === "/blog" ||
-    pathname.startsWith("/blog/") ||
-    // The blog admin: authenticated, but its own surface — no app nav, and no
-    // space required (posts are not space-scoped). Its pages guard themselves
-    // by calling an adminProcedure, which is what actually authorises.
-    pathname === "/admin" ||
-    pathname.startsWith("/admin/")
+    pathname.startsWith("/blog/")
   );
+}
+
+/**
+ * The blog admin (`/admin`, `/admin/*`). Authenticated and shown INSIDE the
+ * app shell — it keeps the sidebar/header so there is always a way back to the
+ * app and to Cài đặt (which holds Đăng xuất). But its content is not
+ * space-scoped, so it must NOT require a couple space: SpaceGuard treats it as
+ * exempt, and the pages themselves authorise by calling an adminProcedure.
+ */
+export function isAdminRoute(pathname: string): boolean {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
 // Where every successful login lands. Must be a SpaceGuard-protected feature

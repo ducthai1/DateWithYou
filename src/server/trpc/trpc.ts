@@ -59,6 +59,12 @@ const ADMIN_EMAILS = new Set(
     .filter(Boolean),
 );
 
+/** True when this email is on the blog-admin allowlist (case-insensitive). */
+export function isBlogAdmin(email: string | null | undefined): boolean {
+  const e = email?.toLowerCase();
+  return !!e && ADMIN_EMAILS.has(e);
+}
+
 /**
  * Requires a logged-in user whose email is in ADMIN_EMAILS.
  *
@@ -69,7 +75,7 @@ const ADMIN_EMAILS = new Set(
  */
 export const adminProcedure = authedProcedure.use(async ({ ctx, next }) => {
   const email = ctx.userEmail?.toLowerCase();
-  if (!email || !ADMIN_EMAILS.has(email)) throw new TRPCError({ code: "FORBIDDEN" });
+  if (!isBlogAdmin(email)) throw new TRPCError({ code: "FORBIDDEN" });
   return next({ ctx: { userId: ctx.userId, userEmail: email } });
 });
 

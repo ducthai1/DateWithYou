@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure, adminProcedure } from "@/server/trpc/trpc";
+import { router, publicProcedure, authedProcedure, adminProcedure, isBlogAdmin } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { BlogPostModel } from "@/server/db/models/blog-post";
 import { BlogCategoryModel } from "@/server/db/models/blog-category";
@@ -153,6 +153,10 @@ export const blogRouter = router({
       .lean<CategoryDoc[]>();
     return rows.map((c) => ({ slug: c.slug, name: c.name, order: c.order ?? 0 }));
   }),
+
+  /** Whether the signed-in user may manage the blog — lets the app show the
+   *  admin link only to admins, without leaking the allowlist to the client. */
+  amIAdmin: authedProcedure.query(({ ctx }) => isBlogAdmin(ctx.userEmail)),
 
   /** Every published slug, for the sitemap. Two fields only. */
   sitemap: publicProcedure.query(async () => {

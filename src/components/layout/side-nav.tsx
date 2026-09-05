@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen, Lock, Dices, Settings } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Lock, Dices, Settings, Newspaper } from "lucide-react";
 import { NAV_ITEMS, isPublicChrome } from "./nav-items";
+import { trpc } from "@/lib/trpc";
 import { UnreadBadge, unreadLabel, useUnreadActivity } from "@/features/activity/unread-badge";
 import { BrandMark } from "./brand-mark";
 import { useSidebar } from "./sidebar-context";
@@ -15,6 +16,8 @@ export function SideNav() {
   const pathname = usePathname();
   const { isCollapsed, toggleSidebar, ready } = useSidebar();
   const unreadActivity = useUnreadActivity();
+  const isAdmin =
+    trpc.blog.amIAdmin.useQuery(undefined, { enabled: !isPublicChrome(pathname), retry: false }).data ?? false;
 
   if (isPublicChrome(pathname)) return null;
 
@@ -119,6 +122,29 @@ export function SideNav() {
       </div>
 
       <div className="flex shrink-0 flex-col gap-1 p-4 short:p-3">
+        {isAdmin && (
+          <Link
+            href="/admin/blog"
+            className={cn(
+              "group flex shrink-0 items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 short:py-1.5",
+              pathname.startsWith("/admin")
+                ? "bg-accent-soft font-medium text-accent shadow-sm"
+                : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
+              isCollapsed ? "justify-center px-0" : "gap-3",
+            )}
+            title={isCollapsed ? "Quản lý Blog" : undefined}
+          >
+            <Newspaper className={cn("shrink-0", isCollapsed ? "h-[22px] w-[22px]" : "h-5 w-5")} />
+            <span
+              className={cn(
+                "overflow-hidden whitespace-nowrap transition-all duration-300",
+                isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100",
+              )}
+            >
+              Quản lý Blog
+            </span>
+          </Link>
+        )}
         <Link
           href="/settings"
           className={cn(

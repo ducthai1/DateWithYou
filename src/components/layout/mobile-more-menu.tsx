@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Lock, MoreHorizontal } from "lucide-react";
+import { Lock, MoreHorizontal, Newspaper } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { NAV_ITEMS } from "./nav-items";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 
 /**
@@ -40,10 +41,12 @@ const EXTRA = [{ href: "/vault", label: "Bí mật", Icon: Lock }];
 export function MobileMoreMenu({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const isAdmin = trpc.blog.amIAdmin.useQuery(undefined, { retry: false }).data ?? false;
 
   const items = [
     ...NAV_ITEMS.filter((it) => it.mobileHidden && !IN_HEADER.includes(it.href)),
     ...EXTRA,
+    ...(isAdmin ? [{ href: "/admin/blog", label: "Quản lý Blog", Icon: Newspaper }] : []),
   ];
   if (items.length === 0) return null;
 

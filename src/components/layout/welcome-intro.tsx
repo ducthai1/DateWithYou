@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "./brand-mark";
-import { NAV_ITEMS, isPublicChrome } from "./nav-items";
+import { NAV_ITEMS, isPublicChrome, isAdminRoute } from "./nav-items";
 
 const SEEN_KEY = "dwy:welcomeSeen";
 
@@ -35,7 +35,7 @@ export function WelcomeIntro() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (isPublicChrome(pathname)) return;
+    if (isPublicChrome(pathname) || isAdminRoute(pathname)) return;
     try {
       if (!localStorage.getItem(SEEN_KEY)) setOpen(true);
     } catch {
