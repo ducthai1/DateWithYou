@@ -4008,3 +4008,35 @@ ca trên. Phân biệt bằng log: ca 403 in riêng dòng
 `push: VAPID key mismatch for endpoint, dropping` — nghĩa là cặp khoá VAPID đã đổi **sau** khi máy
 đăng ký, và khi đó **mọi máy đăng ký bằng khoá cũ chết cùng lúc**.
 
+
+## Cửa sổ nhỏ trên Android — cái gì ĐÃ CHẠY trên máy thật (05/09/2026)
+
+Kết luận đo bằng tay trên Android của user, không phải suy luận nữa:
+
+- **Video phủ toàn viewport nằm trong tài liệu fullscreen → bấm Home → Chrome tự đưa vào PiP.**
+  Đây là điều kiện "effectively fullscreen" của Chromium (cách embed YouTube fullscreen được PiP dù
+  nó fullscreen một `div`). Xin `documentElement.requestFullscreen()` **ngay trong tap** "Bắt đầu
+  đi" (route về là hết cử chỉ), video canvas-stream `position:fixed;inset:0;z-index:-1` sau bản đồ.
+  `autoPictureInPicture` không liên quan gì (desktop-only).
+- **Nhạc YouTube:** user tự bấm fullscreen embed → Home → PiP hệ thống của Chrome, video của YouTube
+  vẫn phát. Không cần code. Nhưng quay về app bị **treo splash WebAPK** (xem dưới).
+
+Ba lỗi lần đầu, và vì sao:
+- **Đen xì:** vẽ tuyến trên nền tối đọc như màn hỏng. Phải cắt **ảnh bản đồ thật** quanh vị trí. Mẹo:
+  `map.redraw()` đồng bộ rồi `drawImage(map.getCanvas())` **trong cùng task** — không cần
+  `preserveDrawingBuffer`, và tab ẩn thì vòng render rAF của MapLibre chết, chỉ redraw thủ công mới
+  ra khung mới.
+- **Lag:** timer main-thread trong tab ẩn bị bóp còn 1 tick/giây. Vòng vẽ chạy bằng **timer trong
+  Worker** (không bị bóp), 12 fps, chỉ cắt lại ảnh bản đồ khi frame đổi.
+- **Ngang:** PiP lấy tỉ lệ theo kích thước nội tại của video → canvas 270×480 cho khung dọc.
+
+## Splash WebAPK treo sau khi quay về từ PiP
+
+Splash của WebAPK có **hai lớp**: lớp dưới host browser để hiện nhanh, lớp **trên** để "che nội dung
+web tới khi trang tải xong". Quay về từ PiP (video hết / bấm khung) thì trang đã tải từ lâu → không
+có tín hiệu "tải xong" mới → lớp trên treo mãi, phải kill app. Thoát fullscreen lúc hiện lại
+**không đủ** (đã thử, user vẫn treo). Đang thử: **reload** khi quay về mà fullscreen thuộc một
+`<iframe>` (chỉ trong app đã cài) — reload sinh tín hiệu tải xong mới. Chưa xác nhận.
+Câu hỏi chẩn đoán còn mở: có treo khi chạy trong **tab Chrome thường** (không cài) không? Nếu không
+⇒ chắc chắn là lớp splash WebAPK.
+
