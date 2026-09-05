@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { isStandalone } from "@/lib/push-subscribe";
 
 /**
  * Leaves fullscreen the moment the app is looked at again.
@@ -21,9 +22,20 @@ export function FullscreenRecovery() {
   useEffect(() => {
     const leave = () => {
       if (document.visibilityState !== "visible") return;
-      if (!document.fullscreenElement) return;
-      document.exitFullscreen().catch(() => {
-        /* Already out, or not allowed right now — nothing else to do. */
+      const el = document.fullscreenElement;
+      if (!el) return;
+      /*
+       * Fullscreen owned by an embedded frame — a YouTube clip the person put
+       * fullscreen, sent to PiP, then came back from — is the case that still
+       * left the installed app on its splash after the exit alone. That splash
+       * is a WebAPK layer that covers the web contents "till the page has
+       * finished loading", and a page that loaded long ago never sends that
+       * again. A reload does. The clip is already gone at this point, so the
+       * reload costs nothing that was still playing.
+       */
+      const fromEmbed = el.tagName === "IFRAME";
+      document.exitFullscreen().catch(() => undefined).finally(() => {
+        if (fromEmbed && isStandalone()) window.location.reload();
       });
     };
     document.addEventListener("visibilitychange", leave);
