@@ -23,6 +23,11 @@ function liveFilter(extra: Record<string, unknown> = {}) {
   return { status: "published", publishedAt: { $lte: new Date() }, ...extra };
 }
 
+/** Escape a user string so it is a literal inside a RegExp. */
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /** The columns a list row needs — never the body. */
 const CARD_FIELDS = "slug title excerpt coverImage category tags featured viewCount publishedAt";
 
@@ -175,6 +180,19 @@ export const blogRouter = router({
         .select(CARD_FIELDS)
         .sort({ viewCount: -1, publishedAt: -1 })
         .limit(input?.limit ?? 5)
+        .lean<PostDoc[]>();
+      return rows.map(card);
+    }),
+
+  search: publicProcedure
+    .input(z.object({ q: z.string().trim().min(1).max(80), limit: z.number().int().min(1).max(20).default(12) }))
+    .query(async ({ input }) => {
+      await connectToDatabase();
+      const rx = new RegExp(escapeRegex(input.q), "i");
+      const rows = await BlogPostModel.find(liveFilter({ $or: [{ title: rx }, { excerpt: rx }, { tags: rx }] }))
+        .select(CARD_FIELDS)
+        .sort({ publishedAt: -1 })
+        .limit(input.limit)
         .lean<PostDoc[]>();
       return rows.map(card);
     }),

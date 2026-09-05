@@ -6,6 +6,7 @@ import { publicCaller } from "@/server/caller";
 import { ArticleCard, CATEGORY_LABEL } from "@/features/blog/post-card";
 import { ViewBeacon } from "@/features/blog/view-beacon";
 import { ArticleView } from "@/features/blog/article-view";
+import { withHeadingAnchors } from "@/features/blog/toc";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import "@/features/blog/blog-body.css";
 
@@ -73,6 +74,8 @@ export default async function ArticlePage({
   ]);
   const related = more.items.filter((p) => p.slug !== post.slug).slice(0, 3);
 
+  const { html: bodyHtml, toc } = withHeadingAnchors(post.body);
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -98,7 +101,22 @@ export default async function ArticlePage({
         <span>{CATEGORY_LABEL[post.category] ?? post.category}</span>
       </nav>
 
-      <ArticleView post={post} />
+      {toc.length >= 3 && (
+        <nav aria-label="Mục lục" className="border-border bg-card mb-4 rounded-2xl border p-4 shadow-sm">
+          <p className="text-foreground mb-2 text-sm font-semibold">Mục lục</p>
+          <ul className="space-y-1 text-sm">
+            {toc.map((h) => (
+              <li key={h.id} className={h.level === 3 ? "ml-4" : ""}>
+                <a href={`#${h.id}`} className="text-muted-foreground hover:text-accent">
+                  {h.text}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+
+      <ArticleView post={{ ...post, body: bodyHtml }} />
 
       {related.length > 0 && (
         <section className="border-border mt-12 border-t pt-8">

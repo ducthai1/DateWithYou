@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { publicCaller } from "@/server/caller";
 import { ArticleCard, CATEGORY_LABEL } from "@/features/blog/post-card";
 import { SITE_NAME } from "@/lib/site";
@@ -53,6 +54,12 @@ export default async function BlogIndexPage() {
           Chuyện của Vivu No Plan
         </h1>
         <p className="text-muted-foreground mt-2 max-w-2xl">{DESCRIPTION}</p>
+        <Link
+          href="/blog/tim-kiem"
+          className="border-border bg-card hover:border-accent/40 text-muted-foreground mt-4 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm shadow-sm"
+        >
+          <Search className="h-4 w-4" /> Tìm bài viết
+        </Link>
       </header>
 
       {recent.items.length === 0 ? (

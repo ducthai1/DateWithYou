@@ -118,3 +118,10 @@
   border: 0;
   border-radius: 0.75rem;
 }
+
+/* Anchored headings (table of contents) shouldn't sit flush against the top
+   when jumped to. */
+.blog-body h2,
+.blog-body h3 {
+  scroll-margin-top: 5rem;
+}
