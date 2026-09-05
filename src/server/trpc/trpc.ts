@@ -5,6 +5,7 @@ import superjson from "superjson";
 import { auth } from "@/server/auth/auth";
 import { connectToDatabase } from "@/server/db/connect";
 import { SpaceModel } from "@/server/db/models/space";
+import { env } from "@/lib/env";
 
 /**
  * tRPC context resolves the logged-in user from the session cookie.
@@ -25,7 +26,11 @@ export async function createTRPCContext(opts: FetchCreateContextFnOptions) {
     if (match) activeSpaceId = decodeURIComponent(match[1]);
   }
 
-  return { userId: session?.user?.id ?? null, activeSpaceId };
+  return {
+    userId: session?.user?.id ?? null,
+    userEmail: session?.user?.email ?? null,
+    activeSpaceId,
+  };
 }
 
 export type TRPCContext = Awaited<ReturnType<typeof createTRPCContext>>;
@@ -42,6 +47,30 @@ export const createCallerFactory = t.createCallerFactory;
 export const authedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.userId) throw new TRPCError({ code: "UNAUTHORIZED" });
   return next({ ctx: { userId: ctx.userId } });
+});
+
+/** The set of blog admins, from ADMIN_EMAILS (comma-separated). Compared
+ *  case-insensitively — better-auth lowercases stored emails, but a config
+ *  value pasted by hand may not. */
+const ADMIN_EMAILS = new Set(
+  (env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+/**
+ * Requires a logged-in user whose email is in ADMIN_EMAILS.
+ *
+ * Blog posts are not space-scoped (they are public content), so this does NOT
+ * extend protectedProcedure — it authorises on identity alone. An empty
+ * ADMIN_EMAILS means nobody passes, which is the safe default before the var
+ * is set.
+ */
+export const adminProcedure = authedProcedure.use(async ({ ctx, next }) => {
+  const email = ctx.userEmail?.toLowerCase();
+  if (!email || !ADMIN_EMAILS.has(email)) throw new TRPCError({ code: "FORBIDDEN" });
+  return next({ ctx: { userId: ctx.userId, userEmail: email } });
 });
 
 /**

@@ -37,6 +37,9 @@ const serverEnvSchema = z.object({
   // Phase 5 — Cloudinary asset cleanup (server only)
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
+  // Comma-separated emails allowed into the blog admin. Empty = nobody is an
+  // admin (safe default); set it to your own address to manage posts.
+  ADMIN_EMAILS: z.string().optional(),
 });
 
 export const env = serverEnvSchema.parse(process.env);
