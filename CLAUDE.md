@@ -4040,3 +4040,37 @@ có tín hiệu "tải xong" mới → lớp trên treo mãi, phải kill app. T
 Câu hỏi chẩn đoán còn mở: có treo khi chạy trong **tab Chrome thường** (không cài) không? Nếu không
 ⇒ chắc chắn là lớp splash WebAPK.
 
+
+## Xem video test của user: cách làm, và 4 điều video 1p49s dạy (05/09/2026)
+
+**Cách xem video:** `ffmpeg -vf "fps=1,drawtext=text='%{eif\\:t\\:d}s'…"` cắt 1 khung/giây có in số giây,
+rồi `tile=3x2` ghép 6 khung một tấm → 109 khung thành 19 tấm, `Read` từng tấm. Số giây in trên khung
+là thứ cho phép nói "ở 9–13s màn đen" thay vì "hơi lâu". Xong việc thì xoá thư mục khung.
+
+**Điều 1 — bắt đầu chuyến đen 5 giây vì dựng bản đồ THỨ HAI.** Overlay dẫn đường `bg-black` mount
+một `LocationMapView` mới trong khi bản đồ chính bị `!nav.isNavigating &&` gỡ đi ⇒ WebGL context
+mới, style mới, tile mới, rồi camera nhảy. Sửa: **một bản đồ sống suốt**, khi đi thì nâng `z-[49]`
+(nav dock ở z-48) và đổi props (follow/heading) trên **cùng thẻ**; overlay `pointer-events-none`
+trong suốt, từng cụm nút `pointer-events-auto`. Kiểm bằng cách đóng `dataset.probe` lên canvas
+trước khi bắt đầu, sau khi bắt đầu vẫn là thẻ đó.
+
+**Điều 2 — Android bấm vào khung PiP để "quay lại app" = RELAUNCH WebAPK.** Splash 5–9s (user
+phải Home rồi mở lại), rồi cold start tại `start_url` ⇒ trạng thái chuyến đi/nhạc mất sạch. Đây là
+Chrome/WebAPK, ngoài tầm trang. Trong tầm: ghi chuyến đang đi vào `localStorage`
+(`vivu.ride.active`, 3 giờ), mở lại thì banner "Tiếp tục" chạy đúng đường start như một cú bấm.
+Chưa làm cho nhạc (hàng đợi + bài) — hướng tương tự.
+
+**Điều 3 — khung PiP đen + vòng xoay 16:9** = video chưa có frame nào lúc xin PiP. `captureStream(fps)`
+chỉ phát frame khi trình duyệt composite canvas, tab ẩn có thể không bao giờ. Dùng
+`captureStream(0)` + `track.requestFrame()` sau mỗi lần vẽ, và chờ `readyState ≥ 2 && videoWidth > 0`
+trước `requestPictureInPicture()`.
+
+**Điều 4 — mở lại app là vẽ Sài Gòn rồi mới nhảy về Pleiku.** `initialViewState` cứng
+`DEFAULT_CENTER`. Nhớ tâm + zoom (kẹp 10–16) ở mỗi `moveEnd` kể cả move lập trình — chính follow
+camera là thứ đưa bản đồ tới chỗ user ở — và đọc lại làm khung khởi tạo.
+
+**Bẫy khi test luồng dẫn đường headless:** space **một người** thì sheet đưa thẳng "Lên lộ trình",
+không có "Đi một mình / Đồng hành" như trong video của user (space hai người). Và
+`elementFromPoint` ở dev trúng `NEXTJS-PORTAL` — lọc nó ra trước khi kết luận nút không nhận chạm;
+điểm giữa màn khi đang bám theo là **marker vị trí**, không phải canvas — dời điểm đo ra góc.
+
