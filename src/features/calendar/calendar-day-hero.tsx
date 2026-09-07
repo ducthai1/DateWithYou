@@ -5,7 +5,7 @@ import { PhotoView } from "react-photo-view";
 import { cldFull } from "@/lib/cloudinary-url";
 import { Photo } from "@/components/ui/photo";
 import Link from "next/link";
-import { CalendarHeart, ChevronRight, Plane, Plus, Sparkles } from "lucide-react";
+import { CalendarHeart, ChevronRight, Plane, Plus, Sparkles, Flower2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { colorsForTags, mergeTags } from "@/lib/plan-meta";
@@ -120,6 +120,18 @@ export function CalendarDayHero({
           <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-pink-100 to-rose-100 px-3 py-2.5 dark:from-pink-950/40 dark:to-rose-950/40">
             {SpecialIcon && <SpecialIcon className="h-5 w-5 shrink-0 text-pink-600" />}
             <span className="text-sm font-bold text-pink-800 dark:text-pink-200">{special.title}</span>
+          </div>
+        )}
+
+        {/* The gently-worded day. Its own soft banner rather than sharing the
+            special-date one: an anniversary and this are different things, and
+            this sentence is already written for whoever is reading it. */}
+        {data?.cycle && (
+          <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-rose-50 to-pink-50 px-3 py-2.5 dark:from-rose-950/30 dark:to-pink-950/30">
+            <Flower2 className="h-5 w-5 shrink-0 text-rose-400" aria-hidden="true" />
+            <span className="text-sm font-medium text-rose-800 dark:text-rose-200">
+              {data.cycle.label}
+            </span>
           </div>
         )}
 

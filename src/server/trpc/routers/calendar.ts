@@ -13,6 +13,10 @@ import {
   dateKeyFromDate,
   monthDayOf,
 } from "@/lib/date-keys";
+import { CycleLogModel } from "@/server/db/models/cycle-log";
+import { resolveMemberProfiles } from "@/server/auth/member-profiles";
+import { predictNextStart } from "@/lib/cycle-prediction";
+import { cycleDayLabel } from "@/lib/cycle-copy";
 import { TripModel } from "@/server/db/models/trip";
 import { tripDay, tripStatus } from "@/lib/trip-status";
 import { mergeTags, colorsForTags, BUCKET_ORDER, type BucketKey, type Tag } from "@/lib/plan-meta";
@@ -36,6 +40,14 @@ export type DaySummary = {
   plans: { title: string; color: string; done: boolean }[];
   special: { title: string; icon: string | null } | null;
   thumbnailUrl: string | null;
+  /**
+   * The one gently-worded day, when it falls in this month.
+   *
+   * Separate from `special` rather than reusing it: a real anniversary on the
+   * same date must not be replaced, and the wording here is chosen per reader
+   * while a special date reads the same to both.
+   */
+  cycle: { label: string } | null;
 };
 
 export const calendarRouter = router({
@@ -50,7 +62,7 @@ export const calendarRouter = router({
       const { fromKey, toKey } = monthKeyRange(year, month);
       const mm = String(month).padStart(2, "0");
 
-      const [plans, memories, visited, specials, space] = await Promise.all([
+      const [plans, memories, visited, specials, space, cycleLog, [viewer]] = await Promise.all([
         PlanItemModel.find({ spaceId: ctx.spaceId, date: { $gte: fromKey, $lt: toKey } })
           .select("date status tags title")
           .lean(),
@@ -69,6 +81,11 @@ export const calendarRouter = router({
           tags?: Tag[];
           anniversaryDate?: Date;
         }>(),
+        CycleLogModel.findOne({ spaceId: ctx.spaceId })
+          .select("periodStarts")
+          .lean<{ periodStarts?: string[] }>(),
+        // Who is asking — the label is written for the reader, not the couple.
+        resolveMemberProfiles([ctx.userId]),
       ]);
 
       const palette = mergeTags(space?.tags);
@@ -83,6 +100,7 @@ export const calendarRouter = router({
           plans: [],
           special: null,
           thumbnailUrl: null,
+          cycle: null,
         });
 
       for (const p of plans) {
@@ -128,6 +146,17 @@ export const calendarRouter = router({
           get(key).special ??= { title: "Ngày kỷ niệm", icon: "heart" };
         }
       }
+      /*
+       * The gentle day, from the same pure prediction the vault panel and the
+       * reminder read — one date, three surfaces, no chance of them disagreeing.
+       *
+       * At most one day is ever marked: predictNextStart always answers with
+       * the next start on or after today, so a month either contains it or not.
+       */
+      const prediction = predictNextStart(cycleLog?.periodStarts ?? []);
+      if (prediction && prediction.nextStart.slice(0, 7) === `${year}-${mm}`) {
+        get(prediction.nextStart).cycle = { label: cycleDayLabel(viewer?.gender ?? null) };
+      }
       return days;
     }),
 
@@ -141,7 +170,7 @@ export const calendarRouter = router({
       const { from, to } = dayRangeUtc(key);
       const md = monthDayOf(key);
 
-      const [plans, memories, visited, specials, recent, tripDoc] = await Promise.all([
+      const [plans, memories, visited, specials, recent, tripDoc, cycleLog, [viewer]] = await Promise.all([
         PlanItemModel.find({ spaceId: ctx.spaceId, date: key }).lean(),
         MemoryModel.find({ spaceId: ctx.spaceId, date: { $gte: from, $lt: to } })
           // date/tags/embeds ride along so the day view can open a memory for
@@ -173,7 +202,13 @@ export const calendarRouter = router({
           // Typed explicitly: inside Promise.all the lean() result widens into a
           // union with the array-returning finds and every field falls off it.
           .lean<TripLean | null>(),
+        CycleLogModel.findOne({ spaceId: ctx.spaceId })
+          .select("periodStarts")
+          .lean<{ periodStarts?: string[] }>(),
+        resolveMemberProfiles([ctx.userId]),
       ]);
+      // Same prediction the grid marked; this only asks whether it is this day.
+      const cyclePrediction = predictNextStart(cycleLog?.periodStarts ?? []);
 
       const tripSpan = tripDoc ? tripDay(tripDoc.startDate, tripDoc.endDate, key) : null;
 
@@ -236,6 +271,10 @@ export const calendarRouter = router({
               }
             : null,
         onThisDay,
+        cycle:
+          cyclePrediction && cyclePrediction.nextStart === key
+            ? { label: cycleDayLabel(viewer?.gender ?? null) }
+            : null,
       };
     }),
 });

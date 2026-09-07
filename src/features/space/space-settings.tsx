@@ -74,6 +74,14 @@ export function SpaceSettings() {
   }, [membersQuery.data]);
 
   const [savingNickFor, setSavingNickFor] = useState<string | null>(null);
+  // Your own gender only — the router refuses to set it for anybody else.
+  const myGender = (membersQuery.data ?? []).find((m) => m.isSelf)?.gender ?? null;
+  const saveGender = trpc.profile.setGender.useMutation({
+    onSuccess: () => {
+      void utils.space.members.invalidate();
+      void utils.profile.me.invalidate();
+    },
+  });
   const saveNickname = trpc.space.setNickname.useMutation({
     onSuccess: () => {
       void utils.space.members.invalidate();
@@ -447,6 +455,42 @@ export function SpaceSettings() {
             </div>
           );
         })}
+      </Card>
+
+      {/* ── GIỚI TÍNH ──
+          Your own row only, unlike nickname: this one describes you, and the
+          app uses it for nothing except wording messages addressed to you. It
+          is asked rather than detected because no sign-in provider reports it —
+          Google's scopes carry name, email and picture and stop there. */}
+      <Card className="space-y-3 shadow-sm">
+        <p className="text-accent text-sm font-semibold">Giới tính của bạn</p>
+        <p className="text-muted-foreground text-xs">
+          Chỉ dùng để app nhắc và nói chuyện đúng giọng với bạn. Người kia tự chọn phần của họ.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              { value: "male", label: "Nam" },
+              { value: "female", label: "Nữ" },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              disabled={saveGender.isPending}
+              aria-pressed={myGender === o.value}
+              onClick={() => saveGender.mutate({ gender: o.value })}
+              className={cn(
+                "rounded-xl border px-3 py-2.5 text-sm transition-colors disabled:opacity-50",
+                myGender === o.value
+                  ? "border-accent bg-accent-soft/50 text-accent font-medium"
+                  : "border-border hover:bg-muted",
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       </Card>
 
       <h2 className="text-lg font-semibold mt-2">Không gian chung</h2>

@@ -1,12 +1,25 @@
 import "server-only";
 import mongoose, { Types } from "mongoose";
 import { connectToDatabase } from "@/server/db/connect";
+import { asGender, type Gender } from "@/lib/gender";
+
+// Re-exported so server callers keep one import site for the pair.
+export { asGender, type Gender };
 
 export type MemberProfile = {
   id: string;
   name: string;
   image: string | null;
+  /**
+   * Null until they have actually been asked.
+   *
+   * Nothing may be inferred here — not from the display name, not from the
+   * email, and Google's OIDC scopes never carry it. An unanswered gender must
+   * degrade to neutral wording rather than a guess.
+   */
+  gender: Gender | null;
 };
+
 
 /**
  * Resolve display name + avatar for member user ids. Better Auth stores users in
@@ -25,7 +38,7 @@ export async function resolveMemberProfiles(
   const docs = await mongoose.connection
     .collection("user")
     .find({ _id: { $in: objectIds } })
-    .project({ name: 1, image: 1, email: 1 })
+    .project({ name: 1, image: 1, email: 1, gender: 1 })
     .toArray();
   const byId = new Map(docs.map((d) => [String(d._id), d]));
   return userIds.map((id) => {
@@ -34,6 +47,7 @@ export async function resolveMemberProfiles(
       id,
       name: (d?.name as string) || (d?.email as string)?.split("@")[0] || "Người kia",
       image: (d?.image as string) ?? null,
+      gender: asGender(d?.gender),
     };
   });
 }

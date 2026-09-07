@@ -40,6 +40,11 @@ const serverEnvSchema = z.object({
   // Comma-separated emails allowed into the blog admin. Empty = nobody is an
   // admin (safe default); set it to your own address to manage posts.
   ADMIN_EMAILS: z.string().optional(),
+
+  // Shared secret Vercel Cron sends as `Authorization: Bearer <secret>`.
+  // Unset means the reminder endpoint refuses every request — fail closed, so
+  // a missing variable can never turn it into a public trigger.
+  CRON_SECRET: z.string().optional(),
 });
 
 export const env = serverEnvSchema.parse(process.env);

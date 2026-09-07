@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -9,6 +10,7 @@ import { authClient } from "@/lib/auth-client";
 import { POST_LOGIN_REDIRECT } from "@/components/layout/nav-items";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 const GoogleIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24">
@@ -48,6 +50,12 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Asked here because it cannot be derived later: no sign-in provider reports
+  // it. Google sign-ups skip this form entirely, so GenderGate asks them once
+  // on their first app screen instead — this field just saves that step for
+  // whoever registers with an email.
+  const [gender, setGender] = useState<"male" | "female" | null>(null);
+  const saveGender = trpc.profile.setGender.useMutation();
   
   const oauthError = searchParams?.get("error");
   const isAccountExistsError = 
@@ -58,15 +66,33 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (isSignUp && !gender) {
+      setError("Chọn Nam hoặc Nữ để app nhắc đúng giọng với bạn nhé.");
+      return;
+    }
     setLoading(true);
     const result = isSignUp
       ? await authClient.signUp.email({ name, email, password })
       : await authClient.signIn.email({ email, password });
-    setLoading(false);
     if (result.error) {
+      setLoading(false);
       setError(result.error.message ?? "Có lỗi xảy ra, thử lại nhé.");
       return;
     }
+    /*
+     * Sign-up auto-signs-in, so the session cookie is already set and this
+     * writes to the account that was just created. Failure is not fatal and
+     * must not strand someone outside their new account: GenderGate asks the
+     * same question on the first app screen when the field is still empty.
+     */
+    if (isSignUp && gender) {
+      try {
+        await saveGender.mutateAsync({ gender });
+      } catch {
+        /* Left for GenderGate to ask again. */
+      }
+    }
+    setLoading(false);
     // Hard-navigate (not client-side push) so the entire React tree + Query
     // cache resets. This prevents stale space data from a previous login from
     // causing a flash of app chrome before SpaceGuard can redirect to /onboarding.
@@ -168,6 +194,43 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
             onChange={(e) => setName(e.target.value)}
             required
           />
+        )}
+        {isSignUp && (
+          <fieldset>
+            <legend className="text-foreground mb-1.5 text-sm font-medium">Bạn là</legend>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  { value: "male", label: "Nam" },
+                  { value: "female", label: "Nữ" },
+                ] as const
+              ).map((o) => (
+                <label
+                  key={o.value}
+                  className={cn(
+                    "flex cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-sm transition-colors",
+                    gender === o.value
+                      ? "border-accent bg-accent-soft/50 text-accent font-medium"
+                      : "border-border hover:bg-muted",
+                  )}
+                >
+                  {/* Real radio kept in the DOM (screen-reader only) so the
+                      group is keyboard- and label-navigable; the styling rides
+                      on the surrounding label. */}
+                  <input
+                    type="radio"
+                    name="gender"
+                    aria-label={o.label}
+                    value={o.value}
+                    checked={gender === o.value}
+                    onChange={() => setGender(o.value)}
+                    className="sr-only"
+                  />
+                  {o.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
         )}
         <Input
           type="email"

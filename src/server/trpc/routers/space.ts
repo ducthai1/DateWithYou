@@ -399,6 +399,10 @@ export const spaceRouter = router({
         image: p.image,
         avatarEmoji: o?.avatarEmoji ?? null,
         avatarColor: o?.avatarColor ?? null,
+        // From the account, not the space: it describes the person, and the
+        // gendered copy needs it for whoever is reading as well as for whoever
+        // is being written about.
+        gender: p.gender,
         // Always a full, valid bar — the client should never have to decide
         // what to show when the stored list is short or holds a retired emoji.
         reactionBar: normaliseReactionBar(o?.reactionFavourites),

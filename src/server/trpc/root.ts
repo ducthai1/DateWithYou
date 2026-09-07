@@ -21,6 +21,8 @@ import { statsRouter } from "@/server/trpc/routers/stats";
 import { pushRouter } from "@/server/trpc/routers/push";
 import { blogRouter } from "@/server/trpc/routers/blog";
 import { uploadRouter } from "@/server/trpc/routers/upload";
+import { profileRouter } from "@/server/trpc/routers/profile";
+import { cycleRouter } from "@/server/trpc/routers/cycle";
 
 /** Root tRPC router. Each feature registers its own sub-router here. */
 export const appRouter = router({
@@ -46,6 +48,8 @@ export const appRouter = router({
   push: pushRouter,
   blog: blogRouter,
   upload: uploadRouter,
+  profile: profileRouter,
+  cycle: cycleRouter,
 });
 
 export type AppRouter = typeof appRouter;

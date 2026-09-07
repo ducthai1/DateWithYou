@@ -17,6 +17,7 @@ import { PushSetup } from "@/components/layout/push-setup";
 import { FullscreenRecovery } from "@/components/layout/fullscreen-recovery";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
+import { GenderGate } from "@/components/layout/gender-gate";
 import { NavigationInvitesProvider } from "@/features/locations/navigation-invites-context";
 import { NowPlayingProvider } from "@/features/library/now-playing-context";
 import { NavigationProvider } from "@/features/locations/navigation-context";
@@ -285,6 +286,7 @@ export default async function RootLayout({
               <NavigationProvider>
                 <GlobalInviteListener />
                 <WelcomeIntro />
+                <GenderGate />
                 {children}
                 <NavigationMiniDock />
               </NavigationProvider>

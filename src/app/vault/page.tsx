@@ -8,9 +8,10 @@ import { RoadmapBoard } from "@/features/vault/roadmap-board";
 import { WishlistGrid } from "@/features/vault/wishlist-grid";
 import { RewardsPanel } from "@/features/vault/rewards-panel";
 import { CapsulesPanel } from "@/features/vault/capsules-panel";
+import { CyclePanel } from "@/features/vault/cycle-panel";
 import { Tabs } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { Target, Gift, Coins, Hourglass } from "lucide-react";
+import { Target, Gift, Coins, Hourglass, Flower2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -18,6 +19,9 @@ const TABS = [
   { key: "wishlist", label: "Wishlist", icon: Gift },
   { key: "rewards", label: "Phiếu bé ngoan", icon: Coins },
   { key: "capsules", label: "Hộp thời gian", icon: Hourglass },
+  // Soft label by design: this strip is glanced at by both, so the tab says
+  // how the days feel rather than what is being tracked.
+  { key: "cycle", label: "Ngày dịu dàng", icon: Flower2 },
 ] as const;
 
 export default function VaultPage() {
@@ -103,7 +107,7 @@ export default function VaultPage() {
         </div>
       </div>
 
-      {/* Tab strip: scrollable on mobile so all 4 tabs stay tappable at 360px.
+      {/* Tab strip: scrollable on mobile so every tab stays tappable at 360px.
           w-max lets it be as wide as its labels need instead of squeezing them. */}
       <ScrollStrip>
         <Tabs tabs={TABS} value={tab} onChange={setTab} className="w-max" />
@@ -122,6 +126,7 @@ export default function VaultPage() {
             {tab === "wishlist" && <WishlistGrid />}
             {tab === "rewards" && <RewardsPanel />}
             {tab === "capsules" && <CapsulesPanel />}
+            {tab === "cycle" && <CyclePanel />}
           </motion.div>
         </AnimatePresence>
       </div>

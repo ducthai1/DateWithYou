@@ -2,7 +2,7 @@
 
 import { useMemo, memo } from "react";
 import { cldThumb } from "@/lib/cloudinary-url";
-import { Heart } from "lucide-react";
+import { Heart, Flower2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GridCell } from "@/lib/date-keys";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
@@ -62,6 +62,9 @@ export const CalendarCell = memo(function CalendarCell({
   const count = summary?.planCount ?? 0;
   const hasPlans = summary?.plans && summary.plans.length > 0;
   const hasSpecial = !!summary?.special;
+  // The gently-worded day. Only a small mark here: the calendar is glanced at
+  // by both people all day, so the sentence itself waits for the day view.
+  const cycleLabel = summary?.cycle?.label ?? null;
 
   // Mobile shows compact colored dots instead of sticky notes (legibility).
   // Dots convey activity variety; the top-right badge conveys quantity.
@@ -95,7 +98,8 @@ export const CalendarCell = memo(function CalendarCell({
         `Ngày ${cell.day}` +
         (isToday ? ", hôm nay" : "") +
         (count > 0 ? `, ${count} việc` : "") +
-        (hasSpecial ? `, ${summary!.special!.title}` : "")
+        (hasSpecial ? `, ${summary!.special!.title}` : "") +
+        (cycleLabel ? `, ${cycleLabel}` : "")
       }
       className={cn(
         // Mobile: soft borderless tile with tap feedback. Desktop (md+): the
@@ -211,6 +215,13 @@ export const CalendarCell = memo(function CalendarCell({
           </span>
           {summary && summary.memoryCount > 0 && !summary.thumbnailUrl && (
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" title="Kỷ niệm" />
+          )}
+          {cycleLabel && (
+            // Wrapped in a span so the tooltip works: `title` on an <svg> is
+            // not reliably surfaced by browsers.
+            <span title={cycleLabel} className="shrink-0 leading-none">
+              <Flower2 className="h-3.5 w-3.5 text-rose-400" aria-hidden />
+            </span>
           )}
         </div>
         {/* Mobile special-date marker: a small filled heart (the desktop ribbon
