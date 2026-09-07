@@ -7,7 +7,7 @@ import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
-import { cycleDayLabel, shortDateLabel } from "@/lib/cycle-copy";
+import { shortDateLabel } from "@/lib/cycle-copy";
 import { daysBetweenKeys, todayKey } from "@/lib/date-keys";
 import { Trash2, Plus, Info } from "lucide-react";
 
@@ -63,28 +63,35 @@ export function CyclePanel() {
 
   const starts = q.data?.starts ?? [];
   const prediction = q.data?.prediction ?? null;
-  const viewer = q.data?.viewerGender ?? null;
   // Newest first: the recent months are the ones being checked and corrected.
   const recent = [...starts].sort().reverse();
 
   return (
     <div className="space-y-4">
-      {/* ── What it expects next ── */}
+      {/* ── Next period ──
+          Stated as a figure that was worked out, not as a hunch: "dự kiến" is
+          the word Vietnamese already uses for a computed date (ngày dự kiến
+          sinh), and the rhythm it came from is shown right under it so the
+          number is checkable rather than magic. */}
       <div className="border-border bg-card rounded-2xl border p-5 shadow-sm">
-        <p className="text-accent text-sm font-semibold">{cycleDayLabel(viewer)}</p>
+        <p className="text-accent text-sm font-semibold">Kỳ tiếp theo</p>
         {prediction ? (
           <>
             <p className="text-foreground mt-2 text-2xl font-bold tracking-tight">
-              Khoảng {shortDateLabel(prediction.nextStart)}
+              Dự kiến {shortDateLabel(prediction.nextStart)}
               {prediction.spreadDays > 0 && (
                 <span className="text-muted-foreground ml-1.5 text-base font-medium">
                   ± {prediction.spreadDays} ngày
                 </span>
               )}
             </p>
+            {/* The count is the entries the reader actually typed, not
+                `samples + 1`: a dropped implausible gap makes those two differ,
+                and showing a smaller number than they entered is exactly what
+                makes a figure look untrustworthy. */}
             <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
-              Dựa trên nhịp khoảng <strong>{prediction.cycleDays} ngày</strong> của{" "}
-              {prediction.samples + 1} mốc gần đây. Càng nhiều mốc thì càng sát.
+              Tính từ <strong>{starts.length} mốc</strong> bạn đã nhập — nhịp khoảng{" "}
+              <strong>{prediction.cycleDays} ngày</strong>. Thêm mốc thì càng sát.
             </p>
             <p className="text-muted-foreground mt-2 text-xs">
               {(() => {
@@ -94,11 +101,14 @@ export function CyclePanel() {
                 return `Còn khoảng ${away} ngày nữa.`;
               })()}
             </p>
+            <p className="text-muted-foreground border-border mt-3 border-t pt-3 text-xs leading-relaxed">
+              Trước 2 ngày và đúng ngày này, app sẽ nhắc nhẹ cả hai người.
+            </p>
           </>
         ) : (
           <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-            Cần ít nhất <strong>2 mốc</strong> để đo được nhịp. Nhập vài mốc gần đây bên dưới
-            là app tự tính, không cần làm gì thêm.
+            Cần ít nhất <strong>2 mốc</strong> để tính được nhịp. Nhập vài mốc gần đây bên
+            dưới, app tự tính — không cần làm gì thêm.
           </p>
         )}
       </div>
@@ -139,7 +149,7 @@ export function CyclePanel() {
           icon="sparkles"
           art="skyWordmark"
           title="Chưa có mốc nào"
-          subtitle="Thêm vài mốc gần đây để app đoán giúp bạn."
+          subtitle="Thêm vài mốc gần đây để app tính giúp bạn."
         />
       ) : (
         <ul className="border-border divide-border divide-y rounded-2xl border">

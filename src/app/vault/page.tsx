@@ -19,9 +19,11 @@ const TABS = [
   { key: "wishlist", label: "Wishlist", icon: Gift },
   { key: "rewards", label: "Phiếu bé ngoan", icon: Coins },
   { key: "capsules", label: "Hộp thời gian", icon: Hourglass },
-  // Soft label by design: this strip is glanced at by both, so the tab says
-  // how the days feel rather than what is being tracked.
-  { key: "cycle", label: "Ngày dịu dàng", icon: Flower2 },
+  // Named plainly. A soft label here ("Ngày dịu dàng") looked like decoration
+  // and told nobody what the tab was for; the gentle phrasing belongs on the
+  // calendar day and in the notification, where it is actually addressed to
+  // someone. "Chu kỳ" is the term both people already use.
+  { key: "cycle", label: "Chu kỳ", icon: Flower2 },
 ] as const;
 
 export default function VaultPage() {
