@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
@@ -16,11 +17,6 @@ import { CycleLogList } from "./cycle-log-list";
 /** The day-of-month as it appears in a calendar cell, e.g. "2026-09-10" → 10. */
 const dayNum = (key: string) => Number(key.slice(8, 10));
 
-/** `2026-09-07` → `7 tháng 9, 2026` — unambiguous in any browser locale. */
-function longDateLabel(key: string): string {
-  const [y, m, d] = key.split("-").map(Number);
-  return `${d} tháng ${m}, ${y}`;
-}
 
 /**
  * The quiet page behind the vault door.
@@ -193,9 +189,9 @@ export function CyclePanel() {
 
       {/* ── Add a date ── */}
       <div className="border-border bg-card space-y-3 rounded-2xl border p-4 shadow-sm">
-        <label htmlFor="cycle-date" className="text-foreground block text-sm font-medium">
-          Thêm một mốc
-        </label>
+        {/* Not a <label htmlFor>: the control below is a button, and a label
+            cannot point at one — it carries its own aria-label instead. */}
+        <p className="text-foreground text-sm font-medium">Thêm một mốc</p>
         {/* Two taps for the common case. Almost every entry is today or
             yesterday — you notice, and you log it then or the next morning —
             and reaching that through a date picker is three taps and a lot of
@@ -204,16 +200,24 @@ export function CyclePanel() {
           <QuickDate label="Hôm nay" date={today} draft={draft} onPick={setDraft} />
           <QuickDate label="Hôm qua" date={addDaysKey(today, -1)} draft={draft} onPick={setDraft} />
         </div>
+        {/* The shared DatePicker, not <input type="date">.
+            Two things the native field got wrong here, both measured: it
+            printed the date in the BROWSER's locale, so an English machine
+            showed "09/07/2026" — 7 September here, 9 July to anyone reading it
+            as American; and its calendar icon is laid out hard against the
+            right edge of the field, so at the width this row gives it there
+            was a 90px void between the value and the icon and the icon read as
+            glued to the border. This component leads with the icon and states
+            the date day-first, so neither can happen at any width. */}
         <div className="flex gap-2">
-          <input
-            id="cycle-date"
-            type="date"
-            aria-label="Ngày bắt đầu của một mốc"
-            value={draft}
-            max={today}
-            onChange={(e) => setDraft(e.target.value)}
-            className="border-border focus:border-accent bg-card min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none sm:max-w-[220px]"
-          />
+          <div className="min-w-0 flex-1 sm:max-w-[220px]">
+            <DatePicker
+              value={draft}
+              onChange={setDraft}
+              max={today}
+              ariaLabel="Ngày bắt đầu của một mốc"
+            />
+          </div>
           <Button
             className="shrink-0 gap-1.5"
             disabled={!draft || duplicate || add.isPending}
@@ -222,18 +226,6 @@ export function CyclePanel() {
             <Plus className="h-4 w-4" /> Thêm
           </Button>
         </div>
-        {/* The field prints the date in the BROWSER's locale, so an English
-            machine shows "09/07/2026" — which is 7 September here and 9 July
-            to whoever reads it as American. The browser will not be argued
-            with, so the app says the date in words underneath instead. */}
-        {draft && (
-          <p className="text-muted-foreground text-xs">
-            Đang chọn: <strong className="text-foreground">{longDateLabel(draft)}</strong>
-            {/* nowrap: wrapped, the separator was stranded at the end of one
-                line with "hôm nay" alone on the next. */}
-            {draft === today && <span className="whitespace-nowrap"> · hôm nay</span>}
-          </p>
-        )}
         {/* The icon and the words are siblings in a flex row, so the sentence
             lives inside its own element. Without that wrapper each <strong>
             became a flex item of its own and the words were dealt out in

@@ -8,6 +8,18 @@ import { Button } from "./button";
 type DatePickerProps = {
   value: string; // YYYY-MM-DD
   onChange: (date: string) => void;
+  /**
+   * Latest selectable day, `YYYY-MM-DD`. Days after it are shown but not
+   * clickable — a caller that only accepts past dates should not have to catch
+   * a future one after the fact and explain itself in a toast.
+   */
+  max?: string;
+  /**
+   * Accessible name for the trigger. A <label htmlFor> cannot point at a
+   * button, so a field labelled visually beside this needs the name here or
+   * the control announces itself as just a date.
+   */
+  ariaLabel?: string;
 };
 
 const MONTHS = [
@@ -16,7 +28,7 @@ const MONTHS = [
 ];
 const DAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
-export function DatePicker({ value, onChange }: DatePickerProps) {
+export function DatePicker({ value, onChange, max, ariaLabel }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +116,7 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
          * other field.
          */
         className="text-foreground bg-card hover:bg-card w-full justify-start text-left font-medium hover:border-accent"
+        aria-label={ariaLabel}
         onClick={() => setOpen(!open)}
       >
         <CalendarIcon className="mr-2 h-4 w-4 text-accent" />
@@ -150,15 +163,22 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
               const day = i + 1;
               const isSelected = year === currentDate.getFullYear() && month === currentDate.getMonth() && day === currentDate.getDate();
               const isToday = year === new Date().getFullYear() && month === new Date().getMonth() && day === new Date().getDate();
+              // Compared as day keys, so no timezone enters into it.
+              const disabled = max
+                ? `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` > max
+                : false;
 
               return (
                 <button
                   key={day}
                   type="button"
+                  disabled={disabled}
                   onClick={() => handleSelect(day)}
                   className={`
                     flex h-9 w-9 items-center justify-center rounded-lg text-sm transition-colors touch-manipulation
-                    ${isSelected
+                    ${disabled
+                      ? "text-muted-foreground/40 cursor-not-allowed"
+                      : isSelected
                       ? "bg-accent text-accent-foreground font-semibold active:opacity-80"
                       : isToday
                         ? "bg-accent-soft text-accent font-semibold hover:bg-accent/20 active:bg-accent/30"
