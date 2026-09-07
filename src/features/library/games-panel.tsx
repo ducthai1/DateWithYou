@@ -211,7 +211,7 @@ export function GamesPanel() {
             )}
 
             {selected.note && (
-              <div className="rounded-xl bg-muted/50 p-4 text-sm text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-line">
+              <div className="rounded-xl bg-muted/50 p-4 text-sm text-stone-700 leading-relaxed whitespace-pre-line">
                 {selected.note}
               </div>
             )}

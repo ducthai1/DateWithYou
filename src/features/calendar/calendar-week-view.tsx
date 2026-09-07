@@ -5,13 +5,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { todayKey, weekDaysOf, addDaysKey } from "@/lib/date-keys";
 import { CalendarWeekStrip } from "./calendar-week-strip";
+import { CalendarMonthJump } from "./calendar-month-jump";
 import { CalendarDayHero } from "./calendar-day-hero";
 import { DayDetail } from "./day-detail";
-
-const MONTHS = [
-  "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
-  "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12",
-];
 
 const monthOf = (key: string) => ({ year: Number(key.slice(0, 4)), month: Number(key.slice(5, 7)) });
 
@@ -39,20 +35,19 @@ export function CalendarWeekView() {
     [sumA.data, sumB.data],
   );
 
-  const selM = monthOf(selected);
   const shiftWeek = (dir: 1 | -1) => setSelected((s) => addDaysKey(s, dir * 7));
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="font-serif text-2xl font-semibold">
-          {MONTHS[selM.month - 1]} <span className="text-muted-foreground">{selM.year}</span>
-        </h1>
-        <div className="flex items-center gap-1">
+        {/* The month name is the month control; the chevrons stay on weeks,
+            which is the step the strip beside them actually shows. */}
+        <CalendarMonthJump selected={selected} today={today} onPick={setSelected} />
+        <div className="flex shrink-0 items-center gap-0.5">
           <button
             type="button"
             onClick={() => setSelected(today)}
-            className="text-muted-foreground active:bg-muted touch-manipulation rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+            className="text-muted-foreground active:bg-muted touch-manipulation rounded-lg px-2 py-1.5 text-sm font-medium whitespace-nowrap transition-colors"
           >
             Hôm nay
           </button>

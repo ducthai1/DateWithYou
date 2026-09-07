@@ -182,7 +182,7 @@ export function CapsulesPanel() {
                           <Lock className="h-3 w-3 mr-1" /> Bị Khóa
                         </div>
                       ) : capsule.isOpened ? (
-                        <div className="bg-green-100 dark:bg-green-900/30 text-green-600 px-2 py-1 rounded-full inline-flex items-center text-xs font-semibold">
+                        <div className="bg-green-100 text-green-600 px-2 py-1 rounded-full inline-flex items-center text-xs font-semibold">
                           <Unlock className="h-3 w-3 mr-1" /> Đã Mở
                         </div>
                       ) : (

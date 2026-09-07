@@ -29,6 +29,21 @@ export function cycleDayShortLabel(viewer: Gender | null): string {
   return viewer === "female" ? "Ngày nghỉ ngơi 🌸" : "Ngày yêu thương 💛";
 }
 
+/**
+ * The line under the label on a day view, which says out loud that this is a
+ * likelihood and not an appointment.
+ *
+ * Shared by the mobile day card and the desktop day modal. It lived in only one
+ * of them at first, so a desktop visitor clicking the day the ribbon called
+ * "Dự kiến" got no explanation at all — found by opening the modal in a
+ * screenshot rather than by reasoning about the code.
+ */
+export function cycleDayNote(isPeak: boolean): string {
+  return isPeak
+    ? "Ngày dễ xảy ra nhất trong khoảng dự kiến — không phải chắc chắn."
+    : "Nằm trong khoảng dự kiến, có thể sớm hoặc muộn hơn một chút.";
+}
+
 export type CycleReminder = { title: string; body: string };
 
 /**

@@ -93,6 +93,14 @@ body:has([data-chromeless]) [data-app-main] {
 /*
  * Design token foundation for Vivu No Plan.
  *
+ * ONE PALETTE. There is no dark set of these tokens and no dark-mode switch,
+ * so do NOT reach for Tailwind's `dark:` variant in components. It keys off the
+ * VISITOR'S system preference, not anything this app decides — which meant a
+ * chip written `bg-rose-100 dark:bg-rose-950` rendered near-black for every
+ * visitor whose laptop is in dark mode, on a page that stayed white around it.
+ * Twelve such utilities had accumulated and were removed; if this app ever does
+ * gain a dark theme, it starts by defining the tokens below a second time.
+ *
  * Organisation:
  *   1. :root — primitive tokens (colour, typography, elevation, motion, radius)
  *   2. @theme inline — maps tokens to Tailwind v4 utility classes

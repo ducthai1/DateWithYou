@@ -8,8 +8,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { shortDateLabel } from "@/lib/cycle-copy";
+import { CYCLE_PEAK_DISC, CYCLE_WINDOW_TEXT } from "@/lib/cycle-day-style";
+import { cn } from "@/lib/utils";
 import { daysBetweenKeys, todayKey } from "@/lib/date-keys";
 import { Trash2, Plus, Info } from "lucide-react";
+
+/** The day-of-month as it appears in a calendar cell, e.g. "2026-09-10" → 10. */
+const dayNum = (key: string) => Number(key.slice(8, 10));
 
 /**
  * The quiet page behind the vault door.
@@ -108,6 +113,37 @@ export function CyclePanel() {
                 return `Còn khoảng ${away} ngày nữa.`;
               })()}
             </p>
+            {/* The two marks exactly as the calendar draws them.
+                On a phone the calendar has room for a colour and nothing else,
+                so the colour has to be learnable somewhere — and here, where
+                the dates are entered, is the one place that is already about
+                this. Same constants as the grid, so a change to one changes
+                the legend with it. */}
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold",
+                    CYCLE_PEAK_DISC,
+                  )}
+                  aria-hidden="true"
+                >
+                  {dayNum(prediction.nextStart)}
+                </span>
+                <span className="text-muted-foreground">ngày dự kiến trên lịch</span>
+              </span>
+              {prediction.windowStart !== prediction.windowEnd && (
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className={cn("text-[15px] font-bold", CYCLE_WINDOW_TEXT)}
+                    aria-hidden="true"
+                  >
+                    {dayNum(prediction.windowStart)}
+                  </span>
+                  <span className="text-muted-foreground">các ngày trong khoảng</span>
+                </span>
+              )}
+            </div>
             <p className="text-muted-foreground border-border mt-3 border-t pt-3 text-xs leading-relaxed">
               Trước 2 ngày và đúng ngày này, app sẽ nhắc nhẹ cả hai người.
             </p>

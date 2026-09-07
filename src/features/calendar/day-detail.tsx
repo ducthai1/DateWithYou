@@ -8,7 +8,8 @@ import { useIsMobile } from "@/hooks/use-media-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { useCelebrate } from "@/components/ui/celebrate";
-import { Sparkles, CalendarHeart } from "lucide-react";
+import { Sparkles, CalendarHeart, Flower2 } from "lucide-react";
+import { cycleDayNote } from "@/lib/cycle-copy";
 import { BUCKETS, mergeTags, type BucketKey } from "@/lib/plan-meta";
 import { MemoryForm } from "@/features/memories/memory-form";
 import { BucketSection } from "./bucket-section";
@@ -94,6 +95,24 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
             <Skeleton className="h-40 w-full" />
           ) : (
             <>
+              {/* What the ribbon on the cell meant.
+                  The desktop grid marks the day "Dự kiến"/"Có thể", and this
+                  modal is where clicking it lands — so without this the mark
+                  was a colour with no explanation anywhere on desktop, while
+                  the phone had the sentence all along. Same wording as the
+                  mobile day card, from one shared source. */}
+              {detail.data?.cycle && (
+                <div className="flex items-start gap-2 rounded-xl bg-gradient-to-r from-rose-50 to-pink-50 px-3 py-2.5">
+                  <Flower2 className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-rose-800">{detail.data.cycle.label}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-rose-700/80">
+                      {cycleDayNote(detail.data.cycle.isPeak)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {detail.data && detail.data.onThisDay.length > 0 && (
                 <div className="bg-accent-soft/60 rounded-xl p-3">
                   <p className="text-accent mb-1.5 flex items-center gap-1 text-xs font-semibold">
@@ -116,7 +135,7 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
 
               <div className="relative">
                 {items.length === 0 && (
-                  <div className="absolute inset-0 z-0 flex flex-col items-center justify-center opacity-20 pointer-events-none select-none text-muted-foreground mix-blend-multiply dark:mix-blend-screen">
+                  <div className="absolute inset-0 z-0 flex flex-col items-center justify-center opacity-20 pointer-events-none select-none text-muted-foreground mix-blend-multiply">
                     <CalendarHeart className="h-20 w-20 text-muted-foreground" strokeWidth={1.5} />
                   </div>
                 )}

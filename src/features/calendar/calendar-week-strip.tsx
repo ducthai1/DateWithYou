@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
+import { CYCLE_PEAK_DISC, CYCLE_WINDOW_TEXT, CYCLE_DOT } from "@/lib/cycle-day-style";
 
 const WD = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]; // Monday-first
 
@@ -12,6 +13,12 @@ const WD = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]; // Monday-first
  * the weekday, the date (today = filled accent disc, selected = ringed), and a
  * compact indicator row (special-date heart + tag-coloured activity dots).
  * Swiping left/right pages the week via onSwipe; tapping a day selects it.
+ *
+ * The number itself carries the cycle colour. There is no room on a phone for
+ * the two-word ribbon the desktop grid can afford, and a dot alone does not
+ * tell you WHICH day — colouring the digit is the only mark that is legible at
+ * a glance and still points at one specific date. The sentence behind the
+ * colour waits for the day card below, which is one tap away.
  */
 export function CalendarWeekStrip({
   weekDays,
@@ -51,13 +58,14 @@ export function CalendarWeekStrip({
         const isSel = key === selected;
         const dots = (s?.tagColors ?? []).slice(0, 3);
         const hasPlans = (s?.planCount ?? 0) > 0;
+        const cycle = s?.cycle ?? null;
 
         return (
           <button
             key={key}
             type="button"
             onClick={() => onSelect(key)}
-            aria-label={`Ngày ${day}`}
+            aria-label={`Ngày ${day}` + (cycle ? `, ${cycle.label}` : "")}
             aria-pressed={isSel}
             className={cn(
               "relative flex flex-col items-center gap-1 rounded-2xl py-2 transition-all touch-manipulation active:scale-95",
@@ -70,17 +78,29 @@ export function CalendarWeekStrip({
             <span
               className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-colors",
+                // Today outranks everything: where you are matters more than
+                // what a day means, and the dot below still marks the cycle.
                 isToday
                   ? "bg-accent text-accent-foreground shadow"
-                  : isSel
-                    ? "text-accent"
-                    : "text-foreground",
+                  : cycle?.isPeak
+                    ? CYCLE_PEAK_DISC
+                    : cycle
+                      ? CYCLE_WINDOW_TEXT
+                      : isSel
+                        ? "text-accent"
+                        : "text-foreground",
               )}
             >
               {day}
             </span>
             {/* Indicator row — fixed height so pills stay aligned when empty. */}
             <span className="flex h-2 items-center justify-center gap-0.5">
+              {/* Only when the accent disc has taken the digit — otherwise the
+                  coloured number already says it and a dot would just repeat
+                  itself in a row that has three other things to fit. */}
+              {cycle && isToday && (
+                <span className={cn("h-1.5 w-1.5 rounded-full", CYCLE_DOT)} aria-hidden="true" />
+              )}
               {s?.special && (
                 <Heart
                   className="h-2.5 w-2.5 fill-pink-400 text-pink-400"

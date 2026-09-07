@@ -9,6 +9,7 @@ import { CalendarHeart, ChevronRight, Plane, Plus, Sparkles, Flower2 } from "luc
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { colorsForTags, mergeTags } from "@/lib/plan-meta";
+import { cycleDayNote } from "@/lib/cycle-copy";
 import { resolveIcon } from "@/lib/icon-registry";
 import { ToneArt } from "@/components/theme/tone-art";
 import { artForDate } from "./day-art";
@@ -117,9 +118,9 @@ export function CalendarDayHero({
       <div className="space-y-3 p-4">
         {/* Special date banner */}
         {special && (
-          <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-pink-100 to-rose-100 px-3 py-2.5 dark:from-pink-950/40 dark:to-rose-950/40">
+          <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-pink-100 to-rose-100 px-3 py-2.5">
             {SpecialIcon && <SpecialIcon className="h-5 w-5 shrink-0 text-pink-600" />}
-            <span className="text-sm font-bold text-pink-800 dark:text-pink-200">{special.title}</span>
+            <span className="text-sm font-bold text-pink-800">{special.title}</span>
           </div>
         )}
 
@@ -127,18 +128,16 @@ export function CalendarDayHero({
             special-date one: an anniversary and this are different things, and
             this sentence is already written for whoever is reading it. */}
         {data?.cycle && (
-          <div className="flex items-start gap-2 rounded-2xl bg-gradient-to-r from-rose-50 to-pink-50 px-3 py-2.5 dark:from-rose-950/30 dark:to-pink-950/30">
+          <div className="flex items-start gap-2 rounded-2xl bg-gradient-to-r from-rose-50 to-pink-50 px-3 py-2.5">
             <Flower2 className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" aria-hidden="true" />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-rose-800 dark:text-rose-200">
+              <p className="text-sm font-medium text-rose-800">
                 {data.cycle.label}
               </p>
               {/* Says out loud that this is a likelihood, not an appointment —
                   the central day is only the most likely one in a band. */}
-              <p className="mt-0.5 text-xs leading-relaxed text-rose-700/80 dark:text-rose-300/80">
-                {data.cycle.isPeak
-                  ? "Ngày dễ xảy ra nhất trong khoảng dự kiến — không phải chắc chắn."
-                  : "Nằm trong khoảng dự kiến, có thể sớm hoặc muộn hơn một chút."}
+              <p className="mt-0.5 text-xs leading-relaxed text-rose-700/80">
+                {cycleDayNote(data.cycle.isPeak)}
               </p>
             </div>
           </div>

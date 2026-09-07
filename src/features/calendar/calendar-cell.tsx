@@ -7,6 +7,12 @@ import { cn } from "@/lib/utils";
 import type { GridCell } from "@/lib/date-keys";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
 import { resolveIcon } from "@/lib/icon-registry";
+import {
+  CYCLE_PEAK_DISC,
+  CYCLE_WINDOW_TEXT,
+  CYCLE_RIBBON_PEAK,
+  CYCLE_RIBBON_WINDOW,
+} from "@/lib/cycle-day-style";
 import { ToneArt } from "@/components/theme/tone-art";
 import { artForDate, hashKey } from "./day-art";
 
@@ -131,7 +137,7 @@ export const CalendarCell = memo(function CalendarCell({
         // and ties the grid to whichever preset the couple picked.
         cell.inMonth && !isToday && "md:border-[3px]",
         cell.inMonth && !isToday && !hasSpecial && "bg-card shadow-sm active:scale-[0.96] md:shadow-sm md:border-accent/35 md:hover:border-accent md:active:scale-100",
-        cell.inMonth && !isToday && hasSpecial && "bg-pink-50 shadow-sm active:scale-[0.96] md:bg-card md:shadow-none md:border-pink-300 md:active:scale-100 dark:md:border-pink-700",
+        cell.inMonth && !isToday && hasSpecial && "bg-pink-50 shadow-sm active:scale-[0.96] md:bg-card md:shadow-none md:border-pink-300 md:active:scale-100",
         cell.inMonth && isToday &&
           "bg-accent/15 border-[3px] border-accent shadow-sm active:scale-[0.96] md:shadow-none md:active:scale-100",
         !cell.inMonth &&
@@ -159,22 +165,6 @@ export const CalendarCell = memo(function CalendarCell({
           className="absolute inset-0 z-0 pointer-events-none"
           style={{
             background: "radial-gradient(ellipse at 50% 50%, rgba(244,114,182,0.12) 0%, transparent 70%)",
-          }}
-        />
-      )}
-
-      {/* The expected window, as a band rather than a point.
-          Two strengths on purpose: the central day is the most likely one, the
-          edges are "could also be". A single uniform mark would claim the whole
-          window is equally likely, and a single dot claimed the date was
-          certain — neither is what the numbers say. */}
-      {cycle && cell.inMonth && (
-        <div
-          className="absolute inset-0 z-0 pointer-events-none"
-          style={{
-            background: cycle.isPeak
-              ? "radial-gradient(ellipse at 50% 50%, rgba(251,113,133,0.22) 0%, transparent 72%)"
-              : "radial-gradient(ellipse at 50% 50%, rgba(251,113,133,0.10) 0%, transparent 72%)",
           }}
         />
       )}
@@ -219,32 +209,26 @@ export const CalendarCell = memo(function CalendarCell({
           <span
             className={cn(
               "leading-none",
+              // Today keeps the accent disc: where you are outranks what a day
+              // means. The ribbon below still says it is a cycle day.
               isToday
                 ? "flex h-7 w-7 items-center justify-center rounded-full bg-accent text-[14px] font-bold text-accent-foreground shadow-sm"
-                // A halo in the card colour, not a bigger scrim. Widening the
-                // scrim costs picture on every cell to protect two digits;
-                // this protects the digits and costs nothing else, and it
-                // holds for artwork nobody has drawn yet.
-                : "font-semibold pt-1 pl-1 [text-shadow:0_0_3px_var(--card),0_0_6px_var(--card),0_1px_2px_var(--card)]",
+                : cycle?.isPeak
+                  ? `flex h-7 w-7 items-center justify-center rounded-full text-[14px] font-bold ${CYCLE_PEAK_DISC}`
+                  // A halo in the card colour, not a bigger scrim. Widening the
+                  // scrim costs picture on every cell to protect two digits;
+                  // this protects the digits and costs nothing else, and it
+                  // holds for artwork nobody has drawn yet.
+                  : cn(
+                      "font-semibold pt-1 pl-1 [text-shadow:0_0_3px_var(--card),0_0_6px_var(--card),0_1px_2px_var(--card)]",
+                      cycle && CYCLE_WINDOW_TEXT,
+                    ),
             )}
           >
             {cell.day}
           </span>
           {summary && summary.memoryCount > 0 && !summary.thumbnailUrl && (
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" title="Kỷ niệm" />
-          )}
-          {cycle && (
-            // Wrapped in a span so the tooltip works: `title` on an <svg> is
-            // not reliably surfaced by browsers. Mobile has no room for the
-            // ribbon below, so the flower marks the likely day and a plain dot
-            // marks the edges of the window.
-            <span title={cycleLabel ?? undefined} className="shrink-0 leading-none md:hidden">
-              {cycle.isPeak ? (
-                <Flower2 className="h-3.5 w-3.5 text-rose-400" aria-hidden />
-              ) : (
-                <span className="block h-1.5 w-1.5 rounded-full bg-rose-300" />
-              )}
-            </span>
           )}
         </div>
         {/* Mobile special-date marker: a small filled heart (the desktop ribbon
@@ -285,14 +269,12 @@ export const CalendarCell = memo(function CalendarCell({
         <div className="relative z-20 mt-0.5 hidden w-full md:block">
           <div
             className={cn(
-              "flex items-center gap-1 rounded-md px-1.5 py-[3px]",
-              cycle.isPeak
-                ? "bg-rose-200/90 shadow-sm dark:bg-rose-900/70"
-                : "bg-rose-100/80 dark:bg-rose-950/60",
+              "flex items-center gap-1 rounded-md px-1.5 py-[3px] shadow-sm",
+              cycle.isPeak ? CYCLE_RIBBON_PEAK : CYCLE_RIBBON_WINDOW,
             )}
           >
-            <Flower2 className="h-3 w-3 shrink-0 text-rose-500 dark:text-rose-300" aria-hidden="true" />
-            <span className="truncate text-[8px] font-bold leading-tight text-rose-800 sm:text-[9px] dark:text-rose-200">
+            <Flower2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="truncate text-[8px] font-bold leading-tight sm:text-[9px]">
               {cycle.isPeak ? "Dự kiến" : "Có thể"}
             </span>
           </div>
