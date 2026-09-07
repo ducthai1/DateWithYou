@@ -12,8 +12,10 @@ import {
   dayRangeUtc,
   dateKeyFromDate,
   monthDayOf,
+  todayKey,
 } from "@/lib/date-keys";
 import { CycleLogModel } from "@/server/db/models/cycle-log";
+import { pickNextUp } from "@/lib/next-up";
 import { resolveMemberProfiles } from "@/server/auth/member-profiles";
 import { predictNextStart } from "@/lib/cycle-prediction";
 import { cycleDayLabel } from "@/lib/cycle-copy";
@@ -159,6 +161,40 @@ export const calendarRouter = router({
       }
       return days;
     }),
+
+  /**
+   * The single soonest thing worth counting down to — special dates AND trips.
+   *
+   * The countdown chip used to read special dates alone, so a trip leaving in
+   * five days lost to an anniversary ten months out: the one number on screen
+   * was the least useful one available. Merged here rather than in the chip so
+   * there is one definition of "next" for any surface that wants it.
+   */
+  nextUp: protectedProcedure.query(async ({ ctx }) => {
+    await connectToDatabase();
+    const today = todayKey();
+    const [specials, trips] = await Promise.all([
+      SpecialDateModel.find({ spaceId: ctx.spaceId })
+        .select("title date recurYearly icon")
+        .lean<{ title: string; date: string; recurYearly?: boolean; icon?: string }[]>(),
+      /*
+       * Keyed on endDate, not startDate: a trip already under way is still the
+       * thing that is happening, and should read as zero days out rather than
+       * dropping off the moment it begins.
+       */
+      TripModel.find({ spaceId: ctx.spaceId, endDate: { $gte: today } })
+        .select("title startDate endDate")
+        .sort({ startDate: 1 })
+        .limit(5)
+        .lean<{ _id: unknown; title: string; startDate: string; endDate: string }[]>(),
+    ]);
+    // The choice itself is pure and unit-tested — see lib/next-up.ts.
+    return pickNextUp(
+      specials,
+      trips.map((t) => ({ id: String(t._id), title: t.title, startDate: t.startDate })),
+      today,
+    );
+  }),
 
   /** Everything pinned to one day: itinerary items, memories, visited places,
    *  matching special dates, and "on this day" memories from past years. */
