@@ -9,6 +9,7 @@ import { cldThumb } from "@/lib/cloudinary-url";
 import { readableFormError } from "@/lib/form-error";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { BlogEditor } from "./blog-editor";
 import { ImagePlus, Loader2, X, CalendarClock, Eye } from "lucide-react";
 
@@ -294,11 +295,26 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
 
         <div>
           <label className={label}>Danh mục</label>
-          <select className={field} value={v.category} onChange={(e) => set("category", e.target.value)}>
-            {(cats.length ? cats : [{ slug: v.category || "tin-tuc", name: v.category || "tin-tuc" }]).map((c) => (
-              <option key={c.slug} value={c.slug}>{c.name}</option>
-            ))}
-          </select>
+          {/* The shared Select, not a native <select>.
+              Chrome draws a native select's arrow at a fixed ~4px from the
+              border box and ignores padding-right, while adding left padding
+              of its own — measured on this exact field class, 18px of text
+              inset against a 4px arrow inset, which reads as an arrow jammed
+              into the edge. The shared component is a button we lay out
+              ourselves, so both sides match. The height is given as the same
+              recipe the text inputs use (py-2, no fixed height) rather than a
+              pixel figure — measured, both come out at 41px, and they stay
+              level if that padding is ever changed. */}
+          <Select
+            aria-label="Danh mục"
+            className="h-auto rounded-lg py-2"
+            value={v.category}
+            onChange={(next) => set("category", next)}
+            options={(cats.length
+              ? cats
+              : [{ slug: v.category || "tin-tuc", name: v.category || "tin-tuc" }]
+            ).map((c) => ({ value: c.slug, label: c.name }))}
+          />
         </div>
 
         <div>

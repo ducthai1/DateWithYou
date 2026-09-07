@@ -585,3 +585,28 @@ input[type="search"]::-webkit-search-decoration {
   -webkit-appearance: none;
   appearance: none;
 }
+
+/* A native <select> lays its arrow out to its own rules, not the field's.
+   Measured on this app's own field class (`px-3`, so 12px each side): the text
+   started 18px in — Chrome adds padding of its own on top of ours — while the
+   arrow's ink ended 4px from the right border, because `padding-right` does
+   not move it. An arrow wedged against the edge opposite a wide text inset is
+   what that looks like, and it happens to every native select ever added.
+
+   So draw the arrow ourselves, at the same 12px the text sits at. The stroke
+   colour is --muted-foreground written out, since a data URI cannot read a
+   custom property; keep the two in step if that token changes.
+
+   The app's own <Select> (src/components/ui/select.tsx) is a button, not a
+   <select>, and already balances at 14px/16px — prefer it, for the portalled
+   menu and keyboard handling. This rule is the floor for anything that still
+   reaches for the native element. */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23586169' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem 1rem;
+  /* Room for the arrow plus its gap, so a long option cannot run under it. */
+  padding-right: 2.25rem;
+}
