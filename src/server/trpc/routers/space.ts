@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { seedBirthdayRow } from "@/server/lib/birthday-sync";
 import { REACTION_BAR_SIZE, REACTION_EMOJIS, normaliseReactionBar } from "@/lib/reactions";
 import { z } from "zod";
 import { createHash } from "node:crypto";
@@ -219,6 +220,10 @@ export const spaceRouter = router({
         });
         const spaceId = String(doc._id);
 
+        // Your birthday follows you into a space you open — it is a fact about
+        // you, already on your account, not something to type again here.
+        await seedBirthdayRow(spaceId, ctx.userId);
+
         // Seed exactly one special date, and only one that is actually true:
         // the day this space was created. Earlier this seeded an "anniversary"
         // and a "birthday" too, both dated to account-creation day — neither
@@ -316,6 +321,10 @@ export const spaceRouter = router({
           code: "BAD_REQUEST",
           message: "INVALID_OR_EXPIRED_CODE",
         });
+      // ...and into a space you join. Best-effort: the join itself is done.
+      await seedBirthdayRow(String(joined._id), ctx.userId).catch((err) =>
+        console.error("joinByCode: birthday seed failed", err),
+      );
       return { id: String(joined._id) };
     }),
 

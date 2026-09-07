@@ -11,6 +11,7 @@ import { LogOut, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import {
   THEME_PRESETS,
@@ -104,7 +105,14 @@ export function SpaceSettings() {
       void utils.calendar.monthSummary.invalidate();
       void utils.calendar.dayDetail.invalidate();
       void utils.dashboard.today.invalidate();
-      toast("Đã lưu sinh nhật", "success");
+      /*
+       * The one that was missing. The countdown banner on /calendar reads
+       * calendar.nextUp, and nothing invalidated it — so after saving here,
+       * that banner kept the old answer until a full reload. Every other
+       * reader was already on this list; this is why it "needed a refresh".
+       */
+      void utils.calendar.nextUp.invalidate();
+      toast("Đã lưu sinh nhật — hiện ở mọi không gian của bạn", "success");
     },
     onError: (e) => toast(e.message || "Chưa lưu được", "error"),
   });
@@ -266,10 +274,21 @@ export function SpaceSettings() {
     <div className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-4 pt-12 pb-12 md:px-[30px] short:gap-4 short:pt-5 short:pb-6 [&>*]:shrink-0">
       <h1 className="text-2xl font-semibold">Cài đặt</h1>
 
-      <h2 className="text-lg font-semibold mt-2">Hồ sơ</h2>
+      {/*
+        Five cards on a two-column grid, in place of six headings over twelve
+        cards stacked in one column. The old page put every setting in a card
+        of its own under a heading of its own, so a phone scrolled through
+        "Giới tính" and "Sinh nhật" as if they were unrelated chapters, and a
+        1400px desktop column held 40px of content per screen. Things are now
+        grouped by what they are ABOUT — you, this space, all your spaces, this
+        phone — and each card names itself, so the headings had nothing left
+        to say. Width was also being wasted on "Tên không gian" and "Mời người
+        đồng hành" under a heading called "Giao diện", which they are not.
+      */}
+      <div className="grid gap-6 md:grid-cols-2 md:items-start short:gap-4">
 
-      {/* ── HỒ SƠ ── */}
-      <Card className="space-y-4 shadow-sm">
+        {/* ── BẠN ── who you are, on your account: the same everywhere. */}
+        <Card className="space-y-4 shadow-sm">
         <p className="text-sm font-semibold text-accent">
           {full ? "Hồ sơ thành viên" : "Hồ sơ cá nhân"}
         </p>
@@ -304,9 +323,10 @@ export function SpaceSettings() {
                 alt="Avatar" 
                 className="h-14 w-14 rounded-full border-2 border-border object-cover bg-muted"
               />
-              <div>
-                <p className="font-medium">{session?.user.name}</p>
-                <p className="text-sm text-muted-foreground">{session?.user.email}</p>
+              <div className="min-w-0">
+                <p className="font-medium truncate">{session?.user.name}</p>
+                {/* A long address broke mid-word onto two lines at 390px. */}
+                <p className="text-sm text-muted-foreground truncate">{session?.user.email}</p>
               </div>
             </div>
           )}
@@ -426,16 +446,106 @@ export function SpaceSettings() {
             </div>
           </div>
         </div>
-      </Card>
 
-      {/* ── BIỆT DANH ──
-          One row per person, because a nickname belongs to whoever it names and
-          either of you may set it — the same shape it takes in a chat, where
-          the name is something the two of you agreed on rather than a private
-          label one side keeps. Both sides read the same value, so a change
-          here is a change there. */}
-      <Card className="space-y-3 shadow-sm">
-        <p className="text-accent text-sm font-semibold">Biệt danh</p>
+          {/* Gender and birthday side by side: both describe you, both are
+              short, and stacked they cost a whole screen for two answers. */}
+          <div className="border-border grid gap-4 border-t pt-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Giới tính</p>
+              <p className="text-muted-foreground text-xs">Chỉ để app nói đúng giọng với bạn.</p>
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              { value: "male", label: "Nam" },
+              { value: "female", label: "Nữ" },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              disabled={saveGender.isPending}
+              aria-pressed={myGender === o.value}
+              onClick={() => saveGender.mutate({ gender: o.value })}
+              className={cn(
+                "rounded-xl border px-3 py-2.5 text-sm transition-colors disabled:opacity-50",
+                myGender === o.value
+                  ? "border-accent bg-accent-soft/50 text-accent font-medium"
+                  : "border-border hover:bg-muted",
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Sinh nhật</p>
+              {/* On the account, not on this space — see birthday-sync.ts.
+                  The shared DatePicker states the date day-first; the native
+                  field printed the browser's own order. */}
+              <p className="text-muted-foreground text-xs">
+                Lưu trên tài khoản, hiện trên lịch của <strong>mọi</strong> không gian bạn ở.
+              </p>
+              <div className="flex gap-2">
+                <div className="min-w-0 flex-1">
+                  <DatePicker
+                    value={bdayDraft || todayKey()}
+                    onChange={setBdayDraft}
+                    max={todayKey()}
+                    ariaLabel="Ngày sinh của bạn"
+                  />
+                </div>
+                <Button
+                  className="shrink-0"
+                  aria-label="Lưu sinh nhật"
+                  disabled={saveBirthday.isPending || !bdayDraft || bdayDraft === (myBirthday.data?.date ?? "")}
+                  onClick={() => saveBirthday.mutate({ date: bdayDraft })}
+                >
+                  {saveBirthday.isPending ? "Đang lưu…" : "Lưu"}
+                </Button>
+              </div>
+              {myBirthday.data?.date && (
+                <button
+                  type="button"
+                  disabled={saveBirthday.isPending}
+                  onClick={() => {
+                    setBdayDraft("");
+                    saveBirthday.mutate({ date: null });
+                  }}
+                  className="text-muted-foreground hover:text-destructive text-xs underline"
+                >
+                  Xoá ngày sinh
+                </button>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* ── KHÔNG GIAN NÀY ── what the two of you share here. */}
+        <Card className="space-y-4 shadow-sm">
+          <h2 className="text-accent text-sm font-semibold">Không gian này</h2>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Tên không gian</p>
+        <Input
+          placeholder="Tên không gian"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Button
+          disabled={updateTheme.isPending}
+          onClick={() => updateTheme.mutate({ name: name.trim() })}
+          className="w-full"
+        >
+          {updateTheme.isPending ? "Đang lưu…" : "Lưu tên"}
+        </Button>
+          </div>
+
+          <div className="border-border border-t" />
+          {/* Nickname: one row per person — the name belongs to whoever it
+              names and either of you may set it; both sides read the same
+              value, so a change here is a change there. */}
+          <div className="space-y-3">
+        <p className="text-sm font-medium">Biệt danh</p>
         <p className="text-muted-foreground text-xs">
           Tên hiển thị trong không gian này — trên bản đồ, trong hoạt động, dưới mỗi kỷ niệm. Cả
           hai đều thấy giống nhau. Để trống thì dùng tên tài khoản.
@@ -481,93 +591,88 @@ export function SpaceSettings() {
             </div>
           );
         })}
-      </Card>
+          </div>
 
-      {/* ── GIỚI TÍNH ──
-          Your own row only, unlike nickname: this one describes you, and the
-          app uses it for nothing except wording messages addressed to you. It
-          is asked rather than detected because no sign-in provider reports it —
-          Google's scopes carry name, email and picture and stop there. */}
-      <Card className="space-y-3 shadow-sm">
-        <p className="text-accent text-sm font-semibold">Giới tính của bạn</p>
-        <p className="text-muted-foreground text-xs">
-          Chỉ dùng để app nhắc và nói chuyện đúng giọng với bạn. Người kia tự chọn phần của họ.
+          <div className="border-border border-t" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Màu chủ đạo</p>
+        {/* 6-swatch preset grid — one swatch per ThemePresetKey */}
+        {/* Wraps rather than forcing six columns. At 320px each cell was
+            narrower than the 40px swatch, so the row ran past the grid. */}
+        <div className="flex flex-wrap gap-3 sm:gap-2">
+          {THEME_PRESET_KEYS.map((key) => {
+            const preset = THEME_PRESETS[key];
+            const isActive = activePreset === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                title={preset.label}
+                aria-label={preset.label}
+                aria-pressed={isActive}
+                onClick={() => handlePresetSelect(key)}
+                className={cn(
+                  "h-10 w-10 rounded-full transition-all active:scale-90 touch-manipulation sm:h-9 sm:w-9",
+                  // Ring indicates selected preset
+                  isActive
+                    ? "ring-2 ring-offset-2 scale-110"
+                    : "hover:scale-105 opacity-80 hover:opacity-100",
+                )}
+                style={{
+                  background: `linear-gradient(135deg, ${preset.gradientFrom}, ${preset.gradientTo})`,
+                  // Use the preset's own colour for the selection outline ring
+                  outline: isActive ? `2px solid ${preset.ring}` : "none",
+                  outlineOffset: "2px",
+                }}
+              />
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {THEME_PRESETS[activePreset].label}
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              { value: "male", label: "Nam" },
-              { value: "female", label: "Nữ" },
-            ] as const
-          ).map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              disabled={saveGender.isPending}
-              aria-pressed={myGender === o.value}
-              onClick={() => saveGender.mutate({ gender: o.value })}
-              className={cn(
-                "rounded-xl border px-3 py-2.5 text-sm transition-colors disabled:opacity-50",
-                myGender === o.value
-                  ? "border-accent bg-accent-soft/50 text-accent font-medium"
-                  : "border-border hover:bg-muted",
-              )}
+            </div>
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Tông ảnh</p>
+              <TonePicker />
+            </div>
+          </div>
+
+          <div className="border-border border-t" />
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Mời người đồng hành</p>
+        {full ? (
+          <p className="text-muted-foreground text-sm">
+            Không gian đã đủ 2 người 💞
+          </p>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              disabled={createInvite.isPending}
+              onClick={() => createInvite.mutate()}
             >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      {/* ── SINH NHẬT ──
-          Kept as an ordinary recurring special date by the router, which is why
-          this screen does not have to teach the countdown, the calendar or
-          /home about birthdays — they already read special dates. */}
-      <Card className="space-y-3 shadow-sm">
-        <p className="text-accent text-sm font-semibold">Sinh nhật của bạn</p>
-        <p className="text-muted-foreground text-xs">
-          Hiện trên lịch và trong phần đếm ngược. Không lấy được tự động từ Google hay email nên
-          phải tự nhập; người kia tự nhập phần của họ.
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="date"
-            aria-label="Ngày sinh của bạn"
-            value={bdayDraft}
-            max={todayKey()}
-            onChange={(e) => setBdayDraft(e.target.value)}
-            className="border-border focus:border-accent bg-card min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
-          />
-          <Button
-            className="shrink-0"
-            disabled={saveBirthday.isPending || !bdayDraft || bdayDraft === (myBirthday.data?.date ?? "")}
-            onClick={() => saveBirthday.mutate({ date: bdayDraft })}
-          >
-            {saveBirthday.isPending ? "Đang lưu…" : "Lưu"}
-          </Button>
-        </div>
-        {myBirthday.data?.date && (
-          <button
-            type="button"
-            disabled={saveBirthday.isPending}
-            onClick={() => {
-              setBdayDraft("");
-              saveBirthday.mutate({ date: null });
-            }}
-            className="text-muted-foreground hover:text-destructive text-xs underline"
-          >
-            Xoá ngày sinh
-          </button>
+              {createInvite.isPending ? "Đang tạo…" : "Tạo mã mời"}
+            </Button>
+            <p className="text-xs text-muted-foreground">Mã dùng 1 lần, hết hạn sau 7 ngày.</p>
+            {invite && (
+              <div className="border-border bg-muted rounded-xl border p-3 text-center">
+                <p className="text-muted-foreground text-xs">
+                  Mã mời (dùng 1 lần, hết hạn sau 7 ngày)
+                </p>
+                <p className="font-mono text-2xl tracking-widest">{invite}</p>
+              </div>
+            )}
+          </>
         )}
-      </Card>
+          </div>
+        </Card>
 
-      <h2 className="text-lg font-semibold mt-2">Không gian chung</h2>
-      <p className="text-muted-foreground -mt-4 text-sm">
-        Nếu bạn ở nhiều không gian (vd nhiều cặp/nhóm), chọn không gian đang dùng.
-      </p>
-
-      {/* ── QUẢN LÝ KHÔNG GIAN ── */}
-      <Card className="space-y-4 shadow-sm">
+        {/* ── CÁC KHÔNG GIAN ── switch, create, join. */}
+        <Card className="space-y-4 shadow-sm">
+          <h2 className="text-accent text-sm font-semibold">Các không gian của bạn</h2>
+          <p className="text-muted-foreground -mt-2 text-xs">Ở nhiều không gian (nhiều cặp/nhóm) thì chọn cái đang dùng ở đây.</p>
         <div>
           <p className="text-sm font-semibold mb-2 text-accent">Chuyển đổi không gian</p>
           <div className="flex flex-col gap-2">
@@ -635,127 +740,29 @@ export function SpaceSettings() {
           </div>
           {joinSpace.isError && <p className="text-xs text-destructive">{joinSpace.error.message}</p>}
         </div>
-      </Card>
+        </Card>
 
-      <h2 className="text-lg font-semibold mt-2">Giao diện</h2>
+        {/* ── THIẾT BỊ ── properties of this phone, not of any space. The
+            notification switch used to live two taps deep in the map's own
+            settings, where the person whose invites never arrived had no
+            reason to look; the voice/buzz check exists to be run the moment
+            someone says "I hear nothing", so it sits on the one screen
+            reachable from everywhere. */}
+        <Card className="space-y-4 shadow-sm">
+          <h2 className="text-accent text-sm font-semibold">Thiết bị này</h2>
+          <PushPermissionRow />
+          <div className="border-border border-t" />
+          <VoiceHapticTestRow />
+        </Card>
 
-      <Card className="space-y-3">
-        <Input
-          placeholder="Tên không gian"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <Button
-          disabled={updateTheme.isPending}
-          onClick={() => updateTheme.mutate({ name: name.trim() })}
-          className="w-full"
-        >
-          {updateTheme.isPending ? "Đang lưu…" : "Lưu tên"}
-        </Button>
-      </Card>
-
-      <Card className="space-y-3">
-        <p className="text-sm font-medium">Tông ảnh</p>
-        <TonePicker />
-      </Card>
-
-      <Card className="space-y-3">
-        <p className="text-sm font-medium">Màu chủ đạo</p>
-        {/* 6-swatch preset grid — one swatch per ThemePresetKey */}
-        {/* Wraps rather than forcing six columns. At 320px each cell was
-            narrower than the 40px swatch, so the row ran past the grid. */}
-        <div className="flex flex-wrap gap-3 sm:gap-2">
-          {THEME_PRESET_KEYS.map((key) => {
-            const preset = THEME_PRESETS[key];
-            const isActive = activePreset === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                title={preset.label}
-                aria-label={preset.label}
-                aria-pressed={isActive}
-                onClick={() => handlePresetSelect(key)}
-                className={cn(
-                  "h-10 w-10 rounded-full transition-all active:scale-90 touch-manipulation sm:h-9 sm:w-9",
-                  // Ring indicates selected preset
-                  isActive
-                    ? "ring-2 ring-offset-2 scale-110"
-                    : "hover:scale-105 opacity-80 hover:opacity-100",
-                )}
-                style={{
-                  background: `linear-gradient(135deg, ${preset.gradientFrom}, ${preset.gradientTo})`,
-                  // Use the preset's own colour for the selection outline ring
-                  outline: isActive ? `2px solid ${preset.ring}` : "none",
-                  outlineOffset: "2px",
-                }}
-              />
-            );
-          })}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {THEME_PRESETS[activePreset].label}
-        </p>
-      </Card>
-
-      <Card className="space-y-3">
-        <p className="text-sm font-medium">Mời người đồng hành</p>
-        {full ? (
-          <p className="text-muted-foreground text-sm">
-            Không gian đã đủ 2 người 💞
-          </p>
-        ) : (
-          <>
-            <Button
-              variant="outline"
-              disabled={createInvite.isPending}
-              onClick={() => createInvite.mutate()}
-            >
-              {createInvite.isPending ? "Đang tạo…" : "Tạo mã mời"}
-            </Button>
-            <p className="text-xs text-muted-foreground">Mã dùng 1 lần, hết hạn sau 7 ngày.</p>
-            {invite && (
-              <div className="border-border bg-muted rounded-xl border p-3 text-center">
-                <p className="text-muted-foreground text-xs">
-                  Mã mời (dùng 1 lần, hết hạn sau 7 ngày)
-                </p>
-                <p className="font-mono text-2xl tracking-widest">{invite}</p>
-              </div>
-            )}
-          </>
-        )}
-      </Card>
-
-      {/*
-          Sits on this screen rather than in the map's own settings: the voice
-          and the buzz are properties of the phone, not of a place, and this is
-          the one screen reachable from every page — which matters for a check
-          whose whole job is to be run the moment someone says "I hear nothing".
-       */}
-      {/*
-          Notifications belong on the screen people go to for settings.
-          The switch existed only inside the map's own settings modal — two taps
-          deep behind a sheet — so the person whose invites never arrived had no
-          reason to ever find it.
-       */}
-      <h2 className="text-lg font-semibold mt-2">Thông báo</h2>
-      <Card>
-        <PushPermissionRow />
-      </Card>
-
-      <h2 className="text-lg font-semibold mt-2">Giọng &amp; rung</h2>
-      <Card>
-        <VoiceHapticTestRow />
-      </Card>
-
-      {mine.data && !mine.data.isPersonal && mine.data.createdBy === session?.user.id && (
-        <>
-        <h2 className="text-lg font-semibold mt-2 text-destructive">Vùng nguy hiểm</h2>
-
-        {/* Set / change / clear the delete-PIN — so a space created without one
-            (e.g. via onboarding) can be protected later. */}
-        <Card className="space-y-3">
-          <p className="text-sm font-medium">Mã PIN xoá không gian</p>
+        {mine.data && !mine.data.isPersonal && mine.data.createdBy === session?.user.id && (
+          <Card className="border-destructive space-y-4 md:col-span-2">
+            <h2 className="text-destructive text-sm font-semibold">Vùng nguy hiểm</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Set / change / clear the delete-PIN — so a space created without
+                  one (e.g. via onboarding) can be protected later. */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Mã PIN xoá không gian</p>
           <p className="text-xs text-muted-foreground">
             {mine.data.hasPin
               ? "Đang có mã PIN. Nhập mã mới để đổi, hoặc để trống rồi lưu để gỡ mã."
@@ -779,10 +786,9 @@ export function SpaceSettings() {
           </div>
           {setSpacePin.isSuccess && <p className="text-xs text-accent">Đã cập nhật mã PIN ✓</p>}
           {setSpacePin.isError && <p className="text-xs text-destructive">{setSpacePin.error.message}</p>}
-        </Card>
-
-        <Card className="space-y-3 border-destructive">
-          <p className="text-sm font-medium text-destructive">Xoá không gian</p>
+              </div>
+              <div className="space-y-3">
+                <p className="text-destructive text-sm font-medium">Xoá không gian</p>
           <p className="text-xs text-muted-foreground">
             Chỉ người tạo mới có thể xoá. Toàn bộ địa điểm, kỷ niệm, lịch… của không gian này sẽ bị xoá vĩnh viễn.
           </p>
@@ -829,9 +835,11 @@ export function SpaceSettings() {
             </>
           )}
           {deleteSpace.isError && <p className="text-xs text-destructive">{deleteSpace.error.message}</p>}
-        </Card>
-        </>
-      )}
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
 
       <ConfirmButton
         title="Đăng xuất"

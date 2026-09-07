@@ -48,6 +48,7 @@ export function SpecialDatesPanel() {
   const utils = trpc.useUtils();
   const invalidate = () => {
     utils.specialDate.list.invalidate();
+    void utils.calendar.nextUp.invalidate();
     utils.calendar.monthSummary.invalidate();
   };
   const create = trpc.specialDate.create.useMutation({
