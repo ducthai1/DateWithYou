@@ -15,6 +15,11 @@ type DatePickerProps = {
    */
   max?: string;
   /**
+   * Shown when `value` is empty. Without it an empty value fell back to
+   * today, so a birthday nobody had entered read as "born this morning".
+   */
+  placeholder?: string;
+  /**
    * Accessible name for the trigger. A <label htmlFor> cannot point at a
    * button, so a field labelled visually beside this needs the name here or
    * the control announces itself as just a date.
@@ -28,13 +33,14 @@ const MONTHS = [
 ];
 const DAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
-export function DatePicker({ value, onChange, max, ariaLabel }: DatePickerProps) {
+export function DatePicker({ value, onChange, max, ariaLabel, placeholder }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Parse current value
-  const currentDate = new Date(value);
-  const [viewDate, setViewDate] = useState(() => new Date(value));
+  // Parse current value; an empty value opens the calendar on today but
+  // selects nothing.
+  const currentDate = value ? new Date(value) : new Date();
+  const [viewDate, setViewDate] = useState(() => (value ? new Date(value) : new Date()));
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -95,7 +101,9 @@ export function DatePicker({ value, onChange, max, ariaLabel }: DatePickerProps)
   const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
 
   // Display value for the button
-  const displayVal = `${currentDate.getDate().toString().padStart(2, "0")}/${(currentDate.getMonth() + 1).toString().padStart(2, "0")}/${currentDate.getFullYear()}`;
+  const displayVal = value
+    ? `${currentDate.getDate().toString().padStart(2, "0")}/${(currentDate.getMonth() + 1).toString().padStart(2, "0")}/${currentDate.getFullYear()}`
+    : (placeholder ?? "Chọn ngày");
 
   return (
     <div className="relative" ref={containerRef}>
@@ -115,7 +123,7 @@ export function DatePicker({ value, onChange, max, ariaLabel }: DatePickerProps)
          * that says "not for you". It sits on the card colour now, like every
          * other field.
          */
-        className="text-foreground bg-card hover:bg-card w-full justify-start text-left font-medium hover:border-accent"
+        className={`bg-card hover:bg-card w-full justify-start text-left font-medium hover:border-accent ${value ? "text-foreground" : "text-muted-foreground"}`}
         aria-label={ariaLabel}
         onClick={() => setOpen(!open)}
       >
@@ -161,7 +169,7 @@ export function DatePicker({ value, onChange, max, ariaLabel }: DatePickerProps)
             ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
-              const isSelected = year === currentDate.getFullYear() && month === currentDate.getMonth() && day === currentDate.getDate();
+              const isSelected = !!value && year === currentDate.getFullYear() && month === currentDate.getMonth() && day === currentDate.getDate();
               const isToday = year === new Date().getFullYear() && month === new Date().getMonth() && day === new Date().getDate();
               // Compared as day keys, so no timezone enters into it.
               const disabled = max

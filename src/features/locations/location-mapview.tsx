@@ -2,6 +2,10 @@
 
 import { useCallback, memo, useEffect, useRef, useState } from "react";
 import { LocateFixed } from "lucide-react";
+import { readLastFix, rememberLastFix } from "@/lib/last-fix";
+import { AlertModal } from "@/components/ui/alert-modal";
+import { useToast } from "@/components/ui/toast";
+import { useIsMobile } from "@/hooks/use-media-query";
 import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
 import { VietnamSovereigntyMarkers } from "./vietnam-sovereignty-markers";
 import { applyEastSeaLabel } from "./east-sea-label";
@@ -162,8 +166,19 @@ function LocationMapViewImpl({
   className?: string;
 }) {
   const mapRef = useRef<MapRef>(null);
-  // Read once, at mount — this component is client-only (`ssr: false`).
-  const [initialView] = useState(readLastView);
+  /*
+   * Read once, at mount — this component is client-only (`ssr: false`).
+   *
+   * Where the PERSON last was beats where the CAMERA last was. The camera is
+   * remembered after every move, framing a route included, so with location
+   * off the map could open on the midpoint of an old trip — a field over the
+   * border, as it happened. The last GPS fix is what "where I was" means; the
+   * remembered camera is only the fallback for a device that never had one.
+   */
+  const [initialView] = useState(() => {
+    const fix = readLastFix();
+    return fix ? { longitude: fix.lng, latitude: fix.lat, zoom: 14 } : readLastView();
+  });
 
   // Track manual map interactions to suspend auto-tracking
   const [isUserInteracting, setIsUserInteracting] = useState(false);
@@ -231,6 +246,58 @@ function LocationMapViewImpl({
   const handleInteraction = () => {
     setIsUserInteracting(true);
   };
+  /*
+   * "Về vị trí tôi" — the small round button every map keeps in a corner.
+   *
+   * Always there, not only during a ride: wanting to see where you are is
+   * older than wanting directions. It uses the live fix when the page already
+   * has one; otherwise it asks the device itself, which on a first visit is
+   * exactly what raises the browser's permission prompt. When the permission
+   * was refused earlier, asking again does nothing visible — so instead the
+   * app says so, and says where the switch is.
+   */
+  const toast = useToast();
+  const isMobile = useIsMobile();
+  const [locating, setLocating] = useState(false);
+  const [locationBlocked, setLocationBlocked] = useState(false);
+  const goTo = useCallback((g: LatLng, zoom = 16) => {
+    setIsUserInteracting(false);
+    mapRef.current?.easeTo({ center: [g.lng, g.lat], zoom, bearing: 0, pitch: 0, duration: 600 });
+  }, []);
+  const locateMe = useCallback(async () => {
+    const live = followGeo ?? userGeo;
+    if (live) return goTo(live);
+    if (!("geolocation" in navigator)) {
+      toast("Thiết bị này không hỗ trợ định vị", "error");
+      return;
+    }
+    // Known-refused: the prompt will not appear again, so do not pretend to wait for it.
+    try {
+      const st = await navigator.permissions?.query({ name: "geolocation" as PermissionName });
+      if (st?.state === "denied") {
+        setLocationBlocked(true);
+        return;
+      }
+    } catch {
+      /* Safari has no permissions API for this — fall through and just ask. */
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        const g = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        rememberLastFix(g);
+        goTo(g);
+      },
+      (err) => {
+        setLocating(false);
+        if (err.code === err.PERMISSION_DENIED) setLocationBlocked(true);
+        else toast("Chưa lấy được vị trí — thử lại ở nơi thoáng hơn nhé", "error");
+      },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
+    );
+  }, [followGeo, userGeo, goTo, toast]);
+
   const recentre = () => {
     setIsUserInteracting(false);
     const target = followGeo ?? userGeo;
@@ -298,6 +365,13 @@ function LocationMapViewImpl({
       if (timer) clearTimeout(timer);
     };
   }, [userGeo, followGeo, focusGeo]);
+
+  // Any position the map is handed is the newest thing known about where this
+  // device is — remembered so the next open starts there, location on or off.
+  useEffect(() => {
+    const g = followGeo ?? userGeo;
+    if (g) rememberLastFix(g);
+  }, [followGeo, userGeo]);
 
   // Follow mode: keep the live position centred as the user moves.
   // When heading is available, rotate the map so "up" = direction of travel.
@@ -439,6 +513,49 @@ function LocationMapViewImpl({
           Về vị trí của tôi
         </button>
       )}
+
+      {/* Bottom-right, above whatever the page docks at the bottom edge, and
+          clear of the ride-time "Về vị trí của tôi" pill which sits centred.
+          Hidden while a ride is following the rider — there is nothing for it
+          to do that the pill does not already do. */}
+      {!followGeo && (
+        <button
+          type="button"
+          onClick={() => void locateMe()}
+          disabled={locating}
+          aria-label="Về vị trí của tôi"
+          title="Về vị trí của tôi"
+          /*
+           * On a phone the places sheet covers the lower part of the map, and
+           * a button anchored to the map's own bottom edge sat behind it —
+           * present in the DOM, invisible on the screen (caught by a
+           * screenshot, not by the DOM check). So on a phone the button is
+           * fixed to the viewport and rides on the height the sheet publishes;
+           * on desktop, where the sheet is a side panel, it stays inside the
+           * map panel above the ride dock.
+           */
+          style={{
+            bottom: isMobile
+              ? "calc(var(--map-sheet-h, 0px) + 1rem)"
+              : "calc(var(--nav-dock-h, 0px) + 1rem)",
+          }}
+          className={cn(
+            "border-border bg-card/95 text-accent right-3 flex h-11 w-11 items-center justify-center rounded-full border shadow-lg backdrop-blur-sm transition-transform",
+            isMobile ? "fixed z-[44]" : "absolute z-[3]",
+            "hover:bg-card active:scale-95 disabled:opacity-70",
+          )}
+        >
+          <LocateFixed className={cn("h-5 w-5", locating && "animate-pulse")} aria-hidden="true" />
+        </button>
+      )}
+      <AlertModal
+        open={locationBlocked}
+        onClose={() => setLocationBlocked(false)}
+        tone="info"
+        title="Bật định vị để về đúng chỗ bạn đang đứng"
+        message="Trang này đang bị chặn quyền vị trí. Bấm vào ổ khoá (hoặc biểu tượng cạnh địa chỉ) trên thanh trình duyệt, cho phép Vị trí, rồi bấm lại nút này. Trên điện thoại, kiểm tra thêm Cài đặt → Quyền riêng tư → Dịch vụ định vị cho trình duyệt."
+        actionLabel="Đã hiểu"
+      />
 
       <div
         aria-hidden="true"

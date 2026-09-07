@@ -335,7 +335,9 @@ export function SpaceSettings() {
             <p className="text-xs font-medium text-muted-foreground">Đổi ảnh đại diện của bạn</p>
             {/* Capped: a six-column grid across a 1150px settings column left
                 ~150px of dead space between each 40px avatar. */}
-            <div className="grid max-w-md grid-cols-5 gap-2 sm:grid-cols-6 sm:gap-3">
+            {/* Six across on a phone too: twelve avatars in five columns made
+                three rows of a section that is only ever glanced at. */}
+            <div className="grid max-w-md grid-cols-6 gap-2 sm:gap-3">
               {displayAvatars.map((url, idx) => (
                 <button
                   key={url + idx}
@@ -370,15 +372,18 @@ export function SpaceSettings() {
           
           <div className="space-y-2 pt-2 border-t border-border">
             <p className="text-xs font-medium text-muted-foreground">Hoặc dùng link ảnh khác</p>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            {/* One row at every width — the button stacked under the field on
+                a phone was another full-width bar for a two-word action. */}
+            <div className="flex gap-2">
               <Input
                 placeholder="Dán link ảnh (https://...)"
                 value={customAvatarUrl}
                 onChange={(e) => setCustomAvatarUrl(e.target.value)}
+                className="min-w-0 flex-1"
               />
               <Button
                 variant="outline"
-                className="w-full whitespace-nowrap touch-manipulation sm:w-auto"
+                className="shrink-0 whitespace-nowrap touch-manipulation"
                 disabled={!customAvatarUrl.trim() || isUpdatingAvatar}
                 onClick={async () => {
                   setIsUpdatingAvatar(true);
@@ -441,7 +446,7 @@ export function SpaceSettings() {
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Mẹo: Liên kết Google để sau này có thể đăng nhập bằng cả Email/Mật khẩu hoặc Google.
+                Liên kết Google để đăng nhập được bằng cả hai cách.
               </p>
             </div>
           </div>
@@ -452,12 +457,14 @@ export function SpaceSettings() {
           <div className="border-border grid gap-4 border-t pt-4 sm:grid-cols-2">
             <div className="space-y-2">
               <p className="text-sm font-medium">Giới tính</p>
-              <p className="text-muted-foreground text-xs">Chỉ để app nói đúng giọng với bạn.</p>
+              <p className="text-muted-foreground text-xs">Để app nói đúng giọng với bạn.</p>
         <div className="grid grid-cols-2 gap-2">
           {(
             [
-              { value: "male", label: "Nam" },
-              { value: "female", label: "Nữ" },
+              // The same pair the first-run gate shows, so the two screens
+              // agree about what "Nam" and "Nữ" look like.
+              { value: "male", label: "Nam", emoji: "👦" },
+              { value: "female", label: "Nữ", emoji: "👧" },
             ] as const
           ).map((o) => (
             <button
@@ -467,12 +474,13 @@ export function SpaceSettings() {
               aria-pressed={myGender === o.value}
               onClick={() => saveGender.mutate({ gender: o.value })}
               className={cn(
-                "rounded-xl border px-3 py-2.5 text-sm transition-colors disabled:opacity-50",
+                "flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors disabled:opacity-50",
                 myGender === o.value
                   ? "border-accent bg-accent-soft/50 text-accent font-medium"
                   : "border-border hover:bg-muted",
               )}
             >
+              <span className="text-lg leading-none" aria-hidden="true">{o.emoji}</span>
               {o.label}
             </button>
           ))}
@@ -483,15 +491,14 @@ export function SpaceSettings() {
               {/* On the account, not on this space — see birthday-sync.ts.
                   The shared DatePicker states the date day-first; the native
                   field printed the browser's own order. */}
-              <p className="text-muted-foreground text-xs">
-                Lưu trên tài khoản, hiện trên lịch của <strong>mọi</strong> không gian bạn ở.
-              </p>
+              <p className="text-muted-foreground text-xs">Hiện trên lịch của mọi không gian bạn ở.</p>
               <div className="flex gap-2">
                 <div className="min-w-0 flex-1">
                   <DatePicker
-                    value={bdayDraft || todayKey()}
+                    value={bdayDraft}
                     onChange={setBdayDraft}
                     max={todayKey()}
+                    placeholder="Chưa đặt"
                     ariaLabel="Ngày sinh của bạn"
                   />
                 </div>
@@ -526,18 +533,24 @@ export function SpaceSettings() {
           <h2 className="text-accent text-sm font-semibold">Không gian này</h2>
           <div className="space-y-2">
             <p className="text-sm font-medium">Tên không gian</p>
-        <Input
-          placeholder="Tên không gian"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <Button
-          disabled={updateTheme.isPending}
-          onClick={() => updateTheme.mutate({ name: name.trim() })}
-          className="w-full"
-        >
-          {updateTheme.isPending ? "Đang lưu…" : "Lưu tên"}
-        </Button>
+            {/* Field and its button on one row, like every other row on the
+                page. A full-width "Lưu tên" bar under the field was the one
+                block that broke the rhythm. */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Tên không gian"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="min-w-0 flex-1"
+              />
+              <Button
+                className="shrink-0"
+                disabled={updateTheme.isPending || !name.trim()}
+                onClick={() => updateTheme.mutate({ name: name.trim() })}
+              >
+                {updateTheme.isPending ? "Đang lưu…" : "Lưu"}
+              </Button>
+            </div>
           </div>
 
           <div className="border-border border-t" />
@@ -547,8 +560,7 @@ export function SpaceSettings() {
           <div className="space-y-3">
         <p className="text-sm font-medium">Biệt danh</p>
         <p className="text-muted-foreground text-xs">
-          Tên hiển thị trong không gian này — trên bản đồ, trong hoạt động, dưới mỗi kỷ niệm. Cả
-          hai đều thấy giống nhau. Để trống thì dùng tên tài khoản.
+          Tên hai người gọi nhau trong không gian này; để trống thì dùng tên tài khoản.
         </p>
         {(membersQuery.data ?? []).map((m) => {
           const draft = nickDraft[m.id] ?? "";
@@ -594,8 +606,8 @@ export function SpaceSettings() {
           </div>
 
           <div className="border-border border-t" />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-3">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <p className="text-sm font-medium">Màu chủ đạo</p>
         {/* 6-swatch preset grid — one swatch per ThemePresetKey */}
         {/* Wraps rather than forcing six columns. At 320px each cell was
@@ -633,7 +645,7 @@ export function SpaceSettings() {
           {THEME_PRESETS[activePreset].label}
         </p>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <p className="text-sm font-medium">Tông ảnh</p>
               <TonePicker />
             </div>
@@ -672,7 +684,7 @@ export function SpaceSettings() {
         {/* ── CÁC KHÔNG GIAN ── switch, create, join. */}
         <Card className="space-y-4 shadow-sm">
           <h2 className="text-accent text-sm font-semibold">Các không gian của bạn</h2>
-          <p className="text-muted-foreground -mt-2 text-xs">Ở nhiều không gian (nhiều cặp/nhóm) thì chọn cái đang dùng ở đây.</p>
+          <p className="text-muted-foreground -mt-2 text-xs">Chọn không gian đang dùng, tạo mới, hoặc tham gia bằng mã.</p>
         <div>
           <p className="text-sm font-semibold mb-2 text-accent">Chuyển đổi không gian</p>
           <div className="flex flex-col gap-2">

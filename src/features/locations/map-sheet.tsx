@@ -180,8 +180,41 @@ export function MapSheet({
 
   const heightVh = STOPS[stop] * 100;
 
+  /*
+   * Publish how far up the screen the sheet reaches, for anything the map
+   * floats near its bottom edge. Same shape of fact as --nav-dock-h: the
+   * sheet and the map's controls share no ancestor, so a page-level custom
+   * property is the channel. Measured from the viewport's bottom to the
+   * sheet's top so a consumer can simply add its own margin. Zero on desktop,
+   * where this is a side panel and covers nothing.
+   */
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return;
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const publish = () => {
+      const gap = desktop.matches ? 0 : Math.max(0, window.innerHeight - el.getBoundingClientRect().top);
+      document.documentElement.style.setProperty("--map-sheet-h", `${Math.round(gap)}px`);
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    el.addEventListener("transitionend", publish);
+    window.addEventListener("resize", publish);
+    desktop.addEventListener("change", publish);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("transitionend", publish);
+      window.removeEventListener("resize", publish);
+      desktop.removeEventListener("change", publish);
+      document.documentElement.style.removeProperty("--map-sheet-h");
+    };
+  }, []);
+
   return (
     <div
+      ref={sheetRef}
       className={cn(
         // Positioned ABOVE the bottom nav, not behind it. Anchored at bottom-0 the
         // last rows of the list were permanently under the nav — scrolling the

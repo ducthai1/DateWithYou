@@ -5,7 +5,6 @@ import { readableFormError } from "@/lib/form-error";
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/trpc/root";
 import { trpc } from "@/lib/trpc";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
 import {
   DEFAULT_REACTION_BAR,
   REACTION_BAR_SIZE,
@@ -85,10 +84,34 @@ export function ReactionBar({
     });
   };
 
-  // Long-press opens the picker; the click that follows the press must not also
-  // fire the default toggle, so it is suppressed once.
+  /*
+   * Long-press, the way Facebook and Instagram do it on a phone.
+   *
+   * The first version armed a timer on pointerdown and cleared it on
+   * pointerleave/pointercancel. On a touch screen that never fired: the button
+   * allowed panning (touch-manipulation), so the browser claimed the gesture
+   * within a few hundred milliseconds, sent pointercancel, the timer died, and
+   * the tap that followed dropped a heart. Holding longer selected the text
+   * around it instead. What makes it work:
+   *  - touch-action: none on the button, so the browser never takes the
+   *    gesture away;
+   *  - the timer survives small movement (a thumb is never still) and is
+   *    cancelled only past a 10px slop;
+   *  - user-select and the iOS callout are off for the whole row;
+   *  - once the row is open the finger keeps moving with pointer capture, the
+   *    emoji under it lights up, and lifting off picks it — one gesture.
+   * The click that follows a long-press must not also fire the default
+   * toggle, so it is suppressed once.
+   */
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
+  const pressStart = useRef<{ x: number; y: number } | null>(null);
+  const [slideTarget, setSlideTarget] = useState<ReactionEmoji | null>(null);
+  const SLOP_PX = 10;
+  const clearPress = () => {
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+    pressTimer.current = null;
+  };
 
   /*
    * Hover opens the row on a mouse. Gated on the pointer, not the width: a
@@ -191,7 +214,10 @@ export function ReactionBar({
   const mineLabel = mine ? (REACTION_LABEL[mine.emoji as ReactionEmoji] ?? mine.emoji) : null;
 
   return (
-    <div className="relative flex flex-wrap items-end gap-1.5" onPointerLeave={hoverClose}>
+    <div
+      className="relative flex flex-wrap items-end gap-1.5 select-none [-webkit-touch-callout:none]"
+      onPointerLeave={hoverClose}
+    >
       {/*
         Whose reaction it is, on the reaction. Two emoji ringed in two colours
         told you a pair had reacted but not which was which — the name is the
@@ -255,22 +281,57 @@ export function ReactionBar({
               setPickerOpen(true);
             }
           }}
-          onPointerDown={() => {
+          onPointerDown={(e) => {
             longPressed.current = false;
+            pressStart.current = { x: e.clientX, y: e.clientY };
+            const target = e.currentTarget;
+            const pointerId = e.pointerId;
+            clearPress();
             pressTimer.current = setTimeout(() => {
               longPressed.current = true;
               setPickerOpen(true);
+              // A short buzz says "the row is open" before the eye finds it.
+              try {
+                navigator.vibrate?.(12);
+              } catch {
+                /* not every browser lets a page buzz */
+              }
+              // Keep receiving the finger's moves while it slides over the row.
+              try {
+                target.setPointerCapture(pointerId);
+              } catch {
+                /* capture is best-effort */
+              }
             }, LONG_PRESS_MS);
           }}
-          onPointerUp={() => {
-            if (pressTimer.current) clearTimeout(pressTimer.current);
+          onPointerMove={(e) => {
+            if (pressTimer.current && pressStart.current) {
+              const d = Math.hypot(e.clientX - pressStart.current.x, e.clientY - pressStart.current.y);
+              if (d > SLOP_PX) clearPress();
+            }
+            if (longPressed.current && pickerOpen) {
+              const under = document
+                .elementFromPoint(e.clientX, e.clientY)
+                ?.closest<HTMLElement>("[data-emoji]");
+              setSlideTarget((under?.dataset.emoji as ReactionEmoji | undefined) ?? null);
+            }
           }}
-          onPointerLeave={() => {
-            if (pressTimer.current) clearTimeout(pressTimer.current);
+          onPointerUp={(e) => {
+            clearPress();
+            try {
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            } catch {
+              /* nothing captured */
+            }
+            // Lifting off over an emoji is the pick. Lifting off elsewhere
+            // leaves the row open for a tap.
+            if (longPressed.current && slideTarget) {
+              toggle(slideTarget);
+              setPickerOpen(false);
+              setSlideTarget(null);
+            }
           }}
-          onPointerCancel={() => {
-            if (pressTimer.current) clearTimeout(pressTimer.current);
-          }}
+          onPointerCancel={clearPress}
           onClick={() => {
             if (longPressed.current) {
               longPressed.current = false;
@@ -283,12 +344,12 @@ export function ReactionBar({
              */
             toggle((mine?.emoji as ReactionEmoji | undefined) ?? DEFAULT_EMOJI);
           }}
-          className="flex flex-col items-center rounded-2xl outline-none select-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="flex flex-col items-center rounded-2xl outline-none select-none [touch-action:none] [-webkit-touch-callout:none] focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <span
             className={cn(
               "grid h-10 w-10 place-items-center rounded-full text-base transition-colors",
-              "touch-manipulation active:scale-95",
+              "active:scale-95",
               mine ? "bg-accent-soft ring-accent/60 ring-2" : "hover:bg-muted text-muted-foreground opacity-70",
             )}
             aria-hidden
@@ -316,8 +377,12 @@ export function ReactionBar({
       */}
       <ReactionPicker
         open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
+        onClose={() => {
+          setPickerOpen(false);
+          setSlideTarget(null);
+        }}
         bar={bar}
+        highlight={slideTarget}
         chosen={mine?.emoji as ReactionEmoji | undefined}
         onPick={(emoji) => {
           toggle(emoji);
@@ -332,22 +397,20 @@ export function ReactionBar({
 /**
  * Choosing a reaction.
  *
- * Two shapes for two kinds of hand. A bottom sheet is a touch idiom — it comes
- * from the edge a thumb can reach — and on a desktop it was a full-width panel
- * sliding up from the bottom of a 1400px window to offer six emoji. With a
- * mouse the right shape is the one Facebook settled on: a small row that
- * appears next to the thing being reacted to, close to the cursor that opened
- * it.
+ * One shape for every hand: the row that appears right above the button, the
+ * one Facebook settled on. The phone used to get a bottom sheet — a second
+ * screen, a second tap, and a gesture that had to end before it could begin.
+ * With slide-to-pick the row IS the touch idiom: hold, slide, let go.
  *
- * The split is on pointer type, not width, which is what the app already uses
- * to choose between native and custom selects: a bottom sheet is for a thumb,
- * not for a narrow window.
+ * Buttons are a little larger for a thumb, and the one under the finger grows,
+ * so you can see what you are about to pick before you commit to it.
  */
 function ReactionPicker({
   open,
   onClose,
   bar,
   chosen,
+  highlight,
   onPick,
   onPromote,
 }: {
@@ -355,16 +418,13 @@ function ReactionPicker({
   onClose: () => void;
   bar: ReactionEmoji[];
   chosen?: ReactionEmoji;
+  /** The emoji currently under a sliding finger, if any. */
+  highlight: ReactionEmoji | null;
   onPick: (emoji: ReactionEmoji) => void;
   onPromote: (emoji: ReactionEmoji) => void;
 }) {
   const [more, setMore] = useState(false);
-  const [coarse, setCoarse] = useState(false);
   const popRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setCoarse(window.matchMedia?.("(hover: none) and (pointer: coarse)").matches ?? false);
-  }, []);
 
   // Every open starts on the row; the extended grid is somewhere you go, not a
   // state the picker remembers you were in.
@@ -372,20 +432,24 @@ function ReactionPicker({
     if (!open) setMore(false);
   }, [open]);
 
-  // Only the popover needs dismissing — the sheet brings its own scrim.
+  // Dismiss on a press anywhere else. pointerdown, not mousedown, so a finger
+  // counts as well as a mouse.
   useEffect(() => {
-    if (!open || coarse) return;
-    const onDown = (e: MouseEvent) => {
-      if (!popRef.current?.contains(e.target as Node)) onClose();
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      // The trigger button is the row's sibling; a press on it is handled there.
+      if (popRef.current?.contains(t) || popRef.current?.parentElement?.contains(t)) return;
+      onClose();
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, coarse, onClose]);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -395,90 +459,49 @@ function ReactionPicker({
     onPick(emoji);
   };
 
-  if (coarse) {
-    return (
-      <BottomSheet open={open} onClose={onClose}>
-        <div className="px-4 pt-1 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-          <p className="text-muted-foreground mb-3 text-center text-sm">
-            {more ? "Chọn để thêm vào hàng của bạn" : "Gửi một cảm xúc cho khoảnh khắc này"}
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {(more ? rest : bar).map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                aria-label={REACTION_LABEL[emoji]}
-                aria-pressed={chosen === emoji}
-                onClick={() => take(emoji, more)}
-                className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border transition-colors",
-                  "focus-visible:ring-ring/50 touch-manipulation outline-none focus-visible:ring-2 active:scale-95",
-                  chosen === emoji
-                    ? "border-accent bg-accent-soft"
-                    : "border-border bg-card hover:bg-muted",
-                )}
-              >
-                <span className="text-xl leading-none" aria-hidden>
-                  {emoji}
-                </span>
-                <span className="text-muted-foreground text-[10px]">{REACTION_LABEL[emoji]}</span>
-              </button>
-            ))}
-            {!more && (
-              <button
-                type="button"
-                aria-label="Xem thêm cảm xúc"
-                onClick={() => setMore(true)}
-                className="border-border bg-card hover:bg-muted text-muted-foreground flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border transition-colors active:scale-95"
-              >
-                <Plus className="h-5 w-5" aria-hidden />
-                <span className="text-[10px]">Thêm</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </BottomSheet>
-    );
-  }
-
   return (
     <div
       ref={popRef}
       role="dialog"
       aria-label="Chọn cảm xúc"
       className={cn(
-        "border-border bg-card absolute bottom-full z-50 mb-1 rounded-2xl border p-1.5 shadow-xl",
-        "animate-in fade-in slide-in-from-bottom-1 duration-150",
-        "left-0",
-        more && "max-w-[19rem]",
+        "border-border bg-card absolute bottom-full left-0 z-50 mb-1.5 rounded-full border p-1 shadow-xl",
+        "animate-in fade-in slide-in-from-bottom-1 duration-150 select-none [-webkit-touch-callout:none]",
+        more && "max-w-[19rem] rounded-2xl",
       )}
     >
       <div className={cn("flex items-center gap-0.5", more && "flex-wrap")}>
-        {(more ? rest : bar).map((emoji) => (
-          <button
-            key={emoji}
-            type="button"
-            title={REACTION_LABEL[emoji]}
-            aria-label={REACTION_LABEL[emoji]}
-            aria-pressed={chosen === emoji}
-            onClick={() => take(emoji, more)}
-            className={cn(
-              // Grows under the cursor, the way the row it is modelled on does.
-              "inline-flex h-10 w-10 items-center justify-center rounded-full text-2xl leading-none transition-transform",
-              "hover:bg-muted focus-visible:ring-ring/50 outline-none focus-visible:ring-2 hover:scale-125",
-              chosen === emoji && "bg-accent-soft",
-            )}
-          >
-            <span aria-hidden>{emoji}</span>
-          </button>
-        ))}
+        {(more ? rest : bar).map((emoji) => {
+          const lit = highlight === emoji;
+          return (
+            <button
+              key={emoji}
+              type="button"
+              data-emoji={emoji}
+              title={REACTION_LABEL[emoji]}
+              aria-label={REACTION_LABEL[emoji]}
+              aria-pressed={chosen === emoji}
+              onClick={() => take(emoji, more)}
+              className={cn(
+                // Grows under the cursor or the finger, the way the row it is
+                // modelled on does.
+                "inline-flex h-11 w-11 items-center justify-center rounded-full text-2xl leading-none transition-transform",
+                "hover:bg-muted focus-visible:ring-ring/50 outline-none focus-visible:ring-2 hover:scale-125",
+                chosen === emoji && "bg-accent-soft",
+                lit && "bg-muted scale-125",
+              )}
+            >
+              <span aria-hidden>{emoji}</span>
+            </button>
+          );
+        })}
         {!more && (
           <button
             type="button"
             title="Xem thêm cảm xúc"
             aria-label="Xem thêm cảm xúc"
             onClick={() => setMore(true)}
-            className="text-muted-foreground hover:bg-muted focus-visible:ring-ring/50 ml-0.5 inline-flex h-10 w-10 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2"
+            className="text-muted-foreground hover:bg-muted focus-visible:ring-ring/50 ml-0.5 inline-flex h-11 w-11 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2"
           >
             <Plus className="h-4 w-4" aria-hidden />
           </button>

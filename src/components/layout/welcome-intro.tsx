@@ -55,27 +55,38 @@ export function WelcomeIntro() {
   if (!open) return null;
 
   return (
-    <Modal open onClose={dismiss} className="max-w-md">
-      <div className="space-y-5 p-6 overflow-y-auto max-h-[90dvh]">
-        <div className="space-y-2 text-center">
-          <span className="bg-accent-soft text-accent mx-auto flex h-12 w-12 items-center justify-center rounded-2xl">
-            <BrandMark variant="icon" className="h-6 w-6" />
+    <Modal open onClose={dismiss} className="max-w-lg">
+      {/*
+        Three bands, and only the middle one scrolls.
+
+        The whole card used to be one scrolling box, so on a short phone the
+        "Bắt đầu" button sat below the fold behind ten list rows — the thing
+        the screen exists to be pressed was the one thing not on it. Header
+        and footer are fixed; the glossary scrolls between them; the footer
+        clears the home indicator. On a wider screen the ten rows go two
+        abreast, which halves the height and usually removes the scroll.
+      */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* Kept short on purpose: on a 568px-tall phone this header was
+            taking almost half the screen before the first glossary row, so
+            two rows showed and the rest had to be scrolled for. */}
+        <div className="shrink-0 space-y-1 px-6 pt-5 pb-2 text-center">
+          <span className="bg-accent-soft text-accent mx-auto flex h-9 w-9 items-center justify-center rounded-xl">
+            <BrandMark variant="icon" className="h-5 w-5" />
           </span>
-          <h2
-            className="text-2xl font-semibold [font-family:var(--font-display)]"
-          >
+          <h2 className="text-lg font-semibold [font-family:var(--font-display)] sm:text-2xl">
             Chào mừng tới Vivu No Plan
           </h2>
-          <p className="text-muted-foreground text-sm">
-            Góc riêng của bạn — lên kế hoạch, lưu kỷ niệm, và tạo bất ngờ cho người bạn rủ vào.
+          <p className="text-muted-foreground mx-auto max-w-sm text-xs sm:text-sm">
+            Lên kế hoạch, lưu kỷ niệm, tạo bất ngờ cho người bạn rủ vào.
           </p>
         </div>
 
-        <ul className="space-y-2.5">
+        <ul className="min-h-0 flex-1 overflow-y-auto px-6 py-2 [overscroll-behavior:contain] sm:grid sm:grid-cols-2 sm:gap-x-5">
           {NAV_ITEMS.map((it) => {
             const Icon = it.Icon;
             return (
-              <li key={it.href} className="flex items-start gap-3">
+              <li key={it.href} className="flex items-start gap-3 py-1.5">
                 <span className="bg-muted text-accent mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
                   <Icon className="h-[18px] w-[18px]" />
                 </span>
@@ -88,9 +99,11 @@ export function WelcomeIntro() {
           })}
         </ul>
 
-        <Button onClick={dismiss} className="w-full">
-          Bắt đầu nào 💕
-        </Button>
+        <div className="border-border bg-card shrink-0 border-t px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+          <Button onClick={dismiss} className="w-full">
+            Bắt đầu nào 💕
+          </Button>
+        </div>
       </div>
     </Modal>
   );
