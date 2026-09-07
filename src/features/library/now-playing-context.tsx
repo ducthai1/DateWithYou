@@ -124,7 +124,17 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
     setState({ queue, index: Math.max(0, Math.min(at, queue.length - 1)) });
   }, []);
 
-  const close = useCallback(() => setState(EMPTY), []);
+  /*
+   * Closing the player ends the session too.
+   *
+   * It used to only empty the local queue: the document stayed "live", the
+   * other person's dock kept saying "Đang nghe cùng", and they were now
+   * listening together with nobody. One X, both sides told.
+   */
+  const close = useCallback(() => {
+    setState(EMPTY);
+    if (listen.live || listen.waiting) void listen.end();
+  }, [listen]);
 
   /*
    * A skip is reported, not just applied.

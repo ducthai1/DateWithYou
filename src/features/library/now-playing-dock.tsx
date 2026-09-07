@@ -30,7 +30,7 @@ const PAD = 6;
 /** Fixed parts of the panel's height, so it can be computed from the width
  *  alone: 1px border each side, the title strip, and the toolbar row. */
 const BORDER = 2;
-const STRIP_H = 24;
+const STRIP_H = 28;
 /**
  * Toolbar height, and the widths it changes at. Declared once and applied as
  * an explicit height, because the corner-resize anchor computes the panel
@@ -445,9 +445,6 @@ export function NowPlayingDock({
       <button type="button" onClick={onNext} disabled={!hasNext} aria-label="Bài sau" className={skipButton}>
         <SkipForward className="h-4 w-4" />
       </button>
-      <button type="button" onClick={onClose} aria-label="Đóng trình phát" className={skipButton}>
-        <X className="h-4 w-4" />
-      </button>
     </>
   );
 
@@ -563,9 +560,23 @@ export function NowPlayingDock({
             style={{ touchAction: "none" }}
             /* Nothing but the drag surface. Controls belong beside the track
                name below, where the eye already is. */
-            className="flex h-6 cursor-grab items-center justify-center rounded-t-2xl active:cursor-grabbing"
+            className="relative flex h-7 cursor-grab items-center justify-center rounded-t-2xl active:cursor-grabbing"
           >
             <span className="bg-muted-foreground/30 h-1 w-10 rounded-full" aria-hidden="true" />
+            {/* The X, where every window keeps it: top-right. It used to sit
+                at the end of the transport row, where it read as one more
+                playback button and took a moment to find. Left of the corner
+                grip (24px) so resizing from that corner still works, and its
+                pointerdown is stopped so pressing it does not start a drag. */}
+            <button
+              type="button"
+              onClick={onClose}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label="Đóng trình phát"
+              className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-0 right-6 z-20 flex h-7 w-7 items-center justify-center rounded-full transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           <div
