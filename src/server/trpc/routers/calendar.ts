@@ -13,6 +13,8 @@ import {
   dateKeyFromDate,
   monthDayOf,
   todayKey,
+  addDaysKey,
+  daysBetweenKeys,
 } from "@/lib/date-keys";
 import { CycleLogModel } from "@/server/db/models/cycle-log";
 import { pickNextUp } from "@/lib/next-up";
@@ -49,7 +51,15 @@ export type DaySummary = {
    * same date must not be replaced, and the wording here is chosen per reader
    * while a special date reads the same to both.
    */
-  cycle: { label: string } | null;
+  /**
+   * A day inside the expected window, when it falls in this month.
+   *
+   * More than one day is marked on purpose. A single dot implied the date was
+   * certain, which it is not — the body varies, so the honest shape is a band
+   * with a most-likely day in it. `isPeak` is that central day; the rest are
+   * the "could also be" edges and are drawn more faintly.
+   */
+  cycle: { label: string; isPeak: boolean } | null;
 };
 
 export const calendarRouter = router({
@@ -156,8 +166,16 @@ export const calendarRouter = router({
        * the next start on or after today, so a month either contains it or not.
        */
       const prediction = predictNextStart(cycleLog?.periodStarts ?? []);
-      if (prediction && prediction.nextStart.slice(0, 7) === `${year}-${mm}`) {
-        get(prediction.nextStart).cycle = { label: cycleDayLabel(viewer?.gender ?? null) };
+      if (prediction) {
+        const label = cycleDayLabel(viewer?.gender ?? null);
+        // Walk the window rather than the single central date. Bounded by the
+        // window's own length so a wild spread can never spin this loop.
+        const span = Math.max(0, daysBetweenKeys(prediction.windowStart, prediction.windowEnd));
+        for (let i = 0; i <= span; i++) {
+          const key = addDaysKey(prediction.windowStart, i);
+          if (key.slice(0, 7) !== `${year}-${mm}`) continue;
+          get(key).cycle = { label, isPeak: key === prediction.nextStart };
+        }
       }
       return days;
     }),
@@ -308,8 +326,13 @@ export const calendarRouter = router({
             : null,
         onThisDay,
         cycle:
-          cyclePrediction && cyclePrediction.nextStart === key
-            ? { label: cycleDayLabel(viewer?.gender ?? null) }
+          cyclePrediction &&
+          key >= cyclePrediction.windowStart &&
+          key <= cyclePrediction.windowEnd
+            ? {
+                label: cycleDayLabel(viewer?.gender ?? null),
+                isPeak: key === cyclePrediction.nextStart,
+              }
             : null,
       };
     }),

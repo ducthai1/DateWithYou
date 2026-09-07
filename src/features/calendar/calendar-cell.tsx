@@ -64,7 +64,8 @@ export const CalendarCell = memo(function CalendarCell({
   const hasSpecial = !!summary?.special;
   // The gently-worded day. Only a small mark here: the calendar is glanced at
   // by both people all day, so the sentence itself waits for the day view.
-  const cycleLabel = summary?.cycle?.label ?? null;
+  const cycle = summary?.cycle ?? null;
+  const cycleLabel = cycle?.label ?? null;
 
   // Mobile shows compact colored dots instead of sticky notes (legibility).
   // Dots convey activity variety; the top-right badge conveys quantity.
@@ -162,6 +163,22 @@ export const CalendarCell = memo(function CalendarCell({
         />
       )}
 
+      {/* The expected window, as a band rather than a point.
+          Two strengths on purpose: the central day is the most likely one, the
+          edges are "could also be". A single uniform mark would claim the whole
+          window is equally likely, and a single dot claimed the date was
+          certain — neither is what the numbers say. */}
+      {cycle && cell.inMonth && (
+        <div
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={{
+            background: cycle.isPeak
+              ? "radial-gradient(ellipse at 50% 50%, rgba(251,113,133,0.22) 0%, transparent 72%)"
+              : "radial-gradient(ellipse at 50% 50%, rgba(251,113,133,0.10) 0%, transparent 72%)",
+          }}
+        />
+      )}
+
       {/* The day's own photo, at full strength on every size.
           Desktop used to wash it to 25% so the plan chips could sit over it,
           which meant a day someone actually photographed looked FAINTER than a
@@ -216,11 +233,17 @@ export const CalendarCell = memo(function CalendarCell({
           {summary && summary.memoryCount > 0 && !summary.thumbnailUrl && (
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" title="Kỷ niệm" />
           )}
-          {cycleLabel && (
+          {cycle && (
             // Wrapped in a span so the tooltip works: `title` on an <svg> is
-            // not reliably surfaced by browsers.
-            <span title={cycleLabel} className="shrink-0 leading-none">
-              <Flower2 className="h-3.5 w-3.5 text-rose-400" aria-hidden />
+            // not reliably surfaced by browsers. Mobile has no room for the
+            // ribbon below, so the flower marks the likely day and a plain dot
+            // marks the edges of the window.
+            <span title={cycleLabel ?? undefined} className="shrink-0 leading-none md:hidden">
+              {cycle.isPeak ? (
+                <Flower2 className="h-3.5 w-3.5 text-rose-400" aria-hidden />
+              ) : (
+                <span className="block h-1.5 w-1.5 rounded-full bg-rose-300" />
+              )}
             </span>
           )}
         </div>
@@ -249,6 +272,28 @@ export const CalendarCell = memo(function CalendarCell({
             <SpecialIcon className="w-3 h-3 text-pink-600 shrink-0" />
             <span className="text-[8px] sm:text-[9px] font-bold text-pink-800 truncate leading-tight">
               {summary!.special!.title}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Cycle ribbon (desktop only) ──
+          The icon alone said nothing: a flower on a square is not a sentence.
+          Two words fit the cell and carry the meaning, and the wording keeps
+          the softness the calendar is supposed to have. */}
+      {cycle && cell.inMonth && (
+        <div className="relative z-20 mt-0.5 hidden w-full md:block">
+          <div
+            className={cn(
+              "flex items-center gap-1 rounded-md px-1.5 py-[3px]",
+              cycle.isPeak
+                ? "bg-rose-200/90 shadow-sm dark:bg-rose-900/70"
+                : "bg-rose-100/80 dark:bg-rose-950/60",
+            )}
+          >
+            <Flower2 className="h-3 w-3 shrink-0 text-rose-500 dark:text-rose-300" aria-hidden="true" />
+            <span className="truncate text-[8px] font-bold leading-tight text-rose-800 sm:text-[9px] dark:text-rose-200">
+              {cycle.isPeak ? "Dự kiến" : "Có thể"}
             </span>
           </div>
         </div>
