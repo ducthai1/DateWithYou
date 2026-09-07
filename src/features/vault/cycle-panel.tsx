@@ -3,18 +3,24 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { shortDateLabel } from "@/lib/cycle-copy";
 import { CYCLE_PEAK_DISC, CYCLE_WINDOW_TEXT } from "@/lib/cycle-day-style";
 import { cn } from "@/lib/utils";
-import { daysBetweenKeys, todayKey } from "@/lib/date-keys";
-import { Trash2, Plus, Info } from "lucide-react";
+import { addDaysKey, daysBetweenKeys, todayKey } from "@/lib/date-keys";
+import { Plus, Info } from "lucide-react";
+import { CycleLogList } from "./cycle-log-list";
 
 /** The day-of-month as it appears in a calendar cell, e.g. "2026-09-10" → 10. */
 const dayNum = (key: string) => Number(key.slice(8, 10));
+
+/** `2026-09-07` → `7 tháng 9, 2026` — unambiguous in any browser locale. */
+function longDateLabel(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  return `${d} tháng ${m}, ${y}`;
+}
 
 /**
  * The quiet page behind the vault door.
@@ -32,7 +38,16 @@ export function CyclePanel() {
   const toast = useToast();
   const utils = trpc.useUtils();
   const q = trpc.cycle.get.useQuery();
-  const [draft, setDraft] = useState("");
+  /*
+   * The field starts on today rather than empty.
+   *
+   * An empty native date input shows the browser's placeholder — "mm/dd/yyyy"
+   * on an English-locale machine, which is both blank and in the wrong order
+   * for the person reading it. Today is also very nearly always the answer, so
+   * the panel opens one tap from saving instead of three.
+   */
+  const [today] = useState(todayKey);
+  const [draft, setDraft] = useState(today);
 
   const invalidate = () => {
     void utils.cycle.get.invalidate();
@@ -43,7 +58,7 @@ export function CyclePanel() {
   const add = trpc.cycle.addStart.useMutation({
     onSuccess: (r) => {
       if (!r.ok) return toast("Ngày đó không hợp lệ (không thể ở tương lai)", "error");
-      setDraft("");
+      setDraft(today);
       invalidate();
       toast("Đã lưu", "success");
     },
@@ -68,11 +83,19 @@ export function CyclePanel() {
 
   const starts = q.data?.starts ?? [];
   const prediction = q.data?.prediction ?? null;
-  // Newest first: the recent months are the ones being checked and corrected.
-  const recent = [...starts].sort().reverse();
+  /*
+   * Saving is $addToSet, so adding a date already logged silently does nothing
+   * and the toast still says "Đã lưu". Better to say so before the tap — and
+   * it matters more now that the field defaults to today, which is exactly the
+   * date most likely to be in there already.
+   */
+  const duplicate = starts.includes(draft);
 
   return (
-    <div className="space-y-4">
+    // Capped: on a wide screen the uncapped version stretched a date field to
+    // ~1300px and parked its button a screen away from it, and every row's
+    // delete button sat far from the row it deletes.
+    <div className="max-w-3xl space-y-4">
       {/* ── Next period ──
           Stated as a figure that was worked out, not as a hunch: "dự kiến" is
           the word Vietnamese already uses for a computed date (ngày dự kiến
@@ -93,25 +116,37 @@ export function CyclePanel() {
                 {shortDateLabel(prediction.windowEnd)}
               </p>
             )}
-            <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
-              Tính từ <strong>{starts.length} mốc</strong> bạn đã nhập ·{" "}
+            {/* Numbers as chips, not as a sentence.
+                The prose version — "Tính từ 5 mốc bạn đã nhập · nhịp 28–30
+                ngày (trung bình 29, tháng gần đây tính nặng hơn)." — took
+                three ragged lines on a 320px phone, which is the width this
+                panel is actually read at. Chips wrap as whole facts instead of
+                breaking a parenthesis across lines. */}
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <Stat label="mốc đã nhập" value={`${starts.length}`} />
               {prediction.shortestCycle === prediction.longestCycle ? (
-                <>nhịp đều <strong>{prediction.cycleDays} ngày</strong></>
+                <Stat label="nhịp đều" value={`${prediction.cycleDays} ngày`} />
               ) : (
                 <>
-                  nhịp <strong>{prediction.shortestCycle}–{prediction.longestCycle} ngày</strong>{" "}
-                  (trung bình {prediction.cycleDays}, tháng gần đây tính nặng hơn)
+                  <Stat
+                    label="nhịp"
+                    value={`${prediction.shortestCycle}–${prediction.longestCycle} ngày`}
+                  />
+                  <Stat label="trung bình" value={`${prediction.cycleDays} ngày`} />
                 </>
               )}
-              .
-            </p>
-            <p className="text-muted-foreground mt-2 text-xs">
-              {(() => {
-                const away = daysBetweenKeys(todayKey(), prediction.nextStart);
-                if (away === 0) return "Là hôm nay.";
-                if (away === 1) return "Còn 1 ngày nữa.";
-                return `Còn khoảng ${away} ngày nữa.`;
-              })()}
+              <Stat
+                label="còn"
+                value={(() => {
+                  const away = daysBetweenKeys(todayKey(), prediction.nextStart);
+                  if (away === 0) return "hôm nay";
+                  return `${away} ngày`;
+                })()}
+              />
+            </div>
+            <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+              Các tháng gần đây được tính nặng hơn, nên nhịp thay đổi thì con số cũng đi
+              theo.
             </p>
             {/* The two marks exactly as the calendar draws them.
                 On a phone the calendar has room for a colour and nothing else,
@@ -157,37 +192,70 @@ export function CyclePanel() {
       </div>
 
       {/* ── Add a date ── */}
-      <div className="border-border bg-card space-y-2 rounded-2xl border p-4">
+      <div className="border-border bg-card space-y-3 rounded-2xl border p-4 shadow-sm">
         <label htmlFor="cycle-date" className="text-foreground block text-sm font-medium">
           Thêm một mốc
         </label>
+        {/* Two taps for the common case. Almost every entry is today or
+            yesterday — you notice, and you log it then or the next morning —
+            and reaching that through a date picker is three taps and a lot of
+            precision for something the app already knows. */}
+        <div className="flex flex-wrap gap-1.5">
+          <QuickDate label="Hôm nay" date={today} draft={draft} onPick={setDraft} />
+          <QuickDate label="Hôm qua" date={addDaysKey(today, -1)} draft={draft} onPick={setDraft} />
+        </div>
         <div className="flex gap-2">
           <input
             id="cycle-date"
             type="date"
             aria-label="Ngày bắt đầu của một mốc"
             value={draft}
-            max={todayKey()}
+            max={today}
             onChange={(e) => setDraft(e.target.value)}
-            className="border-border focus:border-accent bg-card min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
+            className="border-border focus:border-accent bg-card min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none sm:max-w-[220px]"
           />
           <Button
             className="shrink-0 gap-1.5"
-            disabled={!draft || add.isPending}
+            disabled={!draft || duplicate || add.isPending}
             onClick={() => add.mutate({ date: draft })}
           >
             <Plus className="h-4 w-4" /> Thêm
           </Button>
         </div>
+        {/* The field prints the date in the BROWSER's locale, so an English
+            machine shows "09/07/2026" — which is 7 September here and 9 July
+            to whoever reads it as American. The browser will not be argued
+            with, so the app says the date in words underneath instead. */}
+        {draft && (
+          <p className="text-muted-foreground text-xs">
+            Đang chọn: <strong className="text-foreground">{longDateLabel(draft)}</strong>
+            {/* nowrap: wrapped, the separator was stranded at the end of one
+                line with "hôm nay" alone on the next. */}
+            {draft === today && <span className="whitespace-nowrap"> · hôm nay</span>}
+          </p>
+        )}
+        {/* The icon and the words are siblings in a flex row, so the sentence
+            lives inside its own element. Without that wrapper each <strong>
+            became a flex item of its own and the words were dealt out in
+            columns — on a narrow phone the hint read "Chỉ ngày của mỗi lần,
+            không cần đầu cần ngày kết thúc. tiên Nhập được…". */}
         <p className="text-muted-foreground flex items-start gap-1.5 text-xs leading-relaxed">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Chỉ cần <strong>ngày đầu tiên</strong> của mỗi lần, không cần ngày kết thúc. Nhập
-          được cả các tháng đã qua.
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>
+            {duplicate ? (
+              <>Mốc này đã có trong danh sách rồi — chọn một ngày khác nhé.</>
+            ) : (
+              <>
+                Chỉ cần <strong>ngày đầu tiên</strong> của mỗi lần. Nhập được cả các
+                tháng đã qua.
+              </>
+            )}
+          </span>
         </p>
       </div>
 
       {/* ── What has been entered ── */}
-      {recent.length === 0 ? (
+      {starts.length === 0 ? (
         <EmptyState
           icon="sparkles"
           art="skyWordmark"
@@ -195,36 +263,52 @@ export function CyclePanel() {
           subtitle="Thêm vài mốc gần đây để app tính giúp bạn."
         />
       ) : (
-        <ul className="border-border divide-border divide-y rounded-2xl border">
-          {recent.map((date, i) => {
-            // The gap to the previous entry, which is what the rhythm is made
-            // of — showing it makes a mistyped year obvious at a glance.
-            const older = recent[i + 1];
-            const gap = older ? daysBetweenKeys(older, date) : null;
-            return (
-              <li key={date} className="flex items-center gap-3 p-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-foreground text-sm font-medium">{shortDateLabel(date)}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {date}
-                    {gap != null && <span> · cách lần trước {gap} ngày</span>}
-                  </p>
-                </div>
-                <ConfirmButton
-                  idle=""
-                  icon={<Trash2 className="h-4 w-4" />}
-                  aria-label={`Xoá mốc ${date}`}
-                  title="Xoá mốc này?"
-                  description={`Mốc ${date} sẽ bị xoá và nhịp sẽ được tính lại.`}
-                  disabled={remove.isPending}
-                  className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                  onConfirm={() => remove.mutate({ date })}
-                />
-              </li>
-            );
-          })}
-        </ul>
+        <CycleLogList
+          starts={starts}
+          removing={remove.isPending}
+          onRemove={(date) => remove.mutate({ date })}
+        />
       )}
     </div>
+  );
+}
+
+/** One number with its name under it, so a row of facts wraps as whole facts. */
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="bg-muted/70 rounded-xl px-2.5 py-1.5 leading-tight">
+      <span className="text-foreground block text-sm font-bold tabular-nums">{value}</span>
+      <span className="text-muted-foreground block text-[10px] font-medium">{label}</span>
+    </span>
+  );
+}
+
+/** "Hôm nay" / "Hôm qua" — highlighted when the field already holds that day. */
+function QuickDate({
+  label,
+  date,
+  draft,
+  onPick,
+}: {
+  label: string;
+  date: string;
+  draft: string;
+  onPick: (date: string) => void;
+}) {
+  const active = draft === date;
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(date)}
+      aria-pressed={active}
+      className={cn(
+        "touch-manipulation rounded-full px-3 py-1.5 text-xs font-semibold transition-colors active:scale-95",
+        active
+          ? "bg-accent text-accent-foreground shadow-sm"
+          : "bg-muted text-muted-foreground hover:bg-accent-soft hover:text-accent",
+      )}
+    >
+      {label}
+    </button>
   );
 }
