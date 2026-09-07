@@ -69,12 +69,15 @@ export async function GET(req: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      // Last time anything at all went down the wire, for the keepalive below.
+      let lastSentAt = Date.now();
       const send = (event: string, data: unknown) => {
         if (closed) return;
         try {
           controller.enqueue(
             encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
           );
+          lastSentAt = Date.now();
         } catch {
           closed = true;
         }
@@ -106,9 +109,30 @@ export async function GET(req: NextRequest) {
       let lastListenId: string | null = null;
       let lastListenStatus: string | null = null;
       let lastListenStateAt = 0;
+      /*
+       * What this connection last TOLD its client the playback was.
+       *
+       * Delivery used to be gated on "the newest write was not mine". Both
+       * sides write — a position refresh every 15s, plus every press — so a
+       * partner's pause that landed just before my own refresh was overwritten
+       * as "mine" and never sent. Comparing the substance (playing? which
+       * track? where?) against what was last delivered cannot be fooled by who
+       * happened to write last.
+       */
+      let lastListenSnapshot: string | null = null;
 
+
+      /*
+       * One poll in flight at a time. setInterval does not wait for the
+       * previous tick: a slow database round-trip could finish AFTER a newer
+       * tick, overwrite the trackers with older truth, and emit a spurious
+       * started/ended pair. Skipping a tick while one is running loses
+       * nothing — the next one reads the latest state anyway.
+       */
+      let polling = false;
       const poll = async () => {
-        if (closed) return;
+        if (closed || polling) return;
+        polling = true;
         try {
           // 1. Check for pending invites targeting this user.
           const incoming = await NavigationInviteModel.findOne({
@@ -322,8 +346,22 @@ export async function GET(req: NextRequest) {
            */
           if (listen && listen.status === "live") {
             const stateAtMs = new Date(listen.stateAt).getTime();
-            if (stateAtMs > lastListenStateAt && listen.updatedBy !== userId) {
+            const trackId = (listen.queue?.[listen.index] as { id?: string } | undefined)?.id ?? "";
+            const snapshot = `${listen.isPlaying ? 1 : 0}:${listen.index}:${trackId}`;
+            const substanceChanged = snapshot !== lastListenSnapshot;
+            const fromPartner = listen.updatedBy !== userId;
+            if (stateAtMs > lastListenStateAt && (fromPartner || substanceChanged)) {
+              /*
+               * Sent when the partner wrote it, OR when what it says differs
+               * from what this client was last told — even if the last writer
+               * was this client. The second clause is what rescues a partner's
+               * pause that our own 15s position refresh overwrote a moment
+               * later: the document still says "paused", we last said
+               * "playing", so it goes out. A pure position refresh of our own
+               * (same substance) is still absorbed silently, as before.
+               */
               lastListenStateAt = stateAtMs;
+              lastListenSnapshot = snapshot;
               send("listen-state", {
                 id: lsId,
                 queue: listen.queue ?? [],
@@ -335,12 +373,29 @@ export async function GET(req: NextRequest) {
                 updatedBy: listen.updatedBy,
               });
             } else if (stateAtMs > lastListenStateAt) {
-              // Our own write: absorb it so it is not replayed later.
+              // Our own write with nothing new in it: absorb, do not replay.
               lastListenStateAt = stateAtMs;
+              lastListenSnapshot = snapshot;
             }
+          } else {
+            lastListenSnapshot = null;
+          }
+
+          /*
+           * Keepalive. A host waiting on an invite has a stream on which NOTHING
+           * is sent — every poll is a no-op until the guest answers — and idle
+           * HTTP connections are dropped by carriers, NATs and edge proxies
+           * after 30–120s with no error the client can see. The browser's
+           * EventSource only reconnects when it is told the connection died.
+           * A comment line every 15s costs nothing and keeps it alive.
+           */
+          if (Date.now() - lastSentAt > 15_000) {
+            send("heartbeat", { ts: Date.now() });
           }
         } catch (err) {
           console.error("[SSE nav-invite poll]", err);
+        } finally {
+          polling = false;
         }
       };
 

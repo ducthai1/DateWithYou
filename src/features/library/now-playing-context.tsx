@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { EmbedData } from "@/components/ui/embed-player";
 import type { MediaListItem } from "./media-card";
 import { NowPlayingDock } from "./now-playing-dock";
-import { useListenTogether } from "./use-listen-together";
+import { useListenTogether, type ListenTogether } from "./use-listen-together";
 import { ListenInviteModal } from "./listen-invite-modal";
 import type { ListenTrack } from "@/features/locations/use-navigation-invites";
 
@@ -52,6 +52,13 @@ type NowPlayingContextValue = {
   prev: () => void;
   stop: (id: string) => void;
   close: () => void;
+  /**
+   * The shared session, so a card can offer "nghe cùng" without the dock
+   * having to exist first — the owner did not want to press play and only
+   * then be allowed to invite. One instance, held here, because the hook keeps
+   * state; a second call to it elsewhere would be a second, diverging copy.
+   */
+  listen: ListenTogether | null;
 };
 
 const EMPTY: QueueState = { queue: [], index: 0 };
@@ -102,6 +109,7 @@ const NowPlayingContext = createContext<NowPlayingContextValue>({
   prev: () => {},
   stop: () => {},
   close: () => {},
+  listen: null,
 });
 
 export function useNowPlaying() {
@@ -127,15 +135,17 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
    */
   const step = useCallback(
     (by: number) => {
-      let moved: number | null = null;
-      setState((s) => {
-        const at = Math.max(0, Math.min(s.index + by, s.queue.length - 1));
-        if (at !== s.index) moved = at;
-        return { ...s, index: at };
-      });
-      if (moved !== null) listen.report({ index: moved, positionSec: 0, isPlaying: true });
+      /*
+       * Computed from the rendered state, not read back out of the updater:
+       * React only runs a functional update eagerly when nothing else is
+       * queued, so a variable assigned inside it could still be unset here.
+       */
+      const at = Math.max(0, Math.min(state.index + by, state.queue.length - 1));
+      if (at === state.index) return;
+      setState((s) => ({ ...s, index: at }));
+      listen.report({ index: at, positionSec: 0, isPlaying: true });
     },
-    [listen],
+    [state.index, state.queue.length, listen],
   );
   const next = useCallback(() => step(1), [step]);
   const prev = useCallback(() => step(-1), [step]);
@@ -151,7 +161,8 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
   const appliedState = useRef<string | null>(null);
   useEffect(() => {
     const ps = listen.partnerState;
-    if (!ps || !listen.live) return;
+    // Waiting counts: a host who reloaded mid-invite gets their dock back.
+    if (!ps || !(listen.live || listen.waiting)) return;
     const stamp = `${ps.id}:${ps.index}:${ps.queue.map((t) => t.id).join(",")}`;
     if (appliedState.current === stamp) return;
     appliedState.current = stamp;
@@ -161,7 +172,7 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
       }
       return { queue: ps.queue.map(fromListenTrack), index: ps.index };
     });
-  }, [listen.partnerState, listen.live]);
+  }, [listen.partnerState, listen.live, listen.waiting]);
 
   /** A card was deleted. Close if it was the one playing, otherwise just drop
    *  it from the queue and keep the cursor on the same track. */
@@ -187,8 +198,9 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
       prev,
       stop,
       close,
+      listen,
     };
-  }, [state, start, next, prev, stop, close]);
+  }, [state, start, next, prev, stop, close, listen]);
 
   return (
     <NowPlayingContext.Provider value={value}>

@@ -48,6 +48,9 @@ export function withJsApi(embedUrl: string, pageOrigin: string, autostart = fals
   }
 }
 
+/** Something the person did inside the player, not through the app's buttons. */
+export type FrameChange = { isPlaying: boolean; positionSec: number; reason: "state" | "seek" };
+
 export function useYouTubePlayback(
   getFrame: () => HTMLIFrameElement | null,
   enabled: boolean,
@@ -58,9 +61,20 @@ export function useYouTubePlayback(
   frameKey: string,
   /** Fired when the video runs out — what "play the next one" hangs off. */
   onEnded?: () => void,
+  /** Fired for a pause, resume or scrub done INSIDE the player — not by us. */
+  onFrameChange?: (change: FrameChange) => void,
 ) {
   const endedRef = useRef(onEnded);
   endedRef.current = onEnded;
+  const frameChangeRef = useRef(onFrameChange);
+  frameChangeRef.current = onFrameChange;
+  /*
+   * The last command THIS hook sent, with when. A state message that matches
+   * it within a moment is our own doing echoed back, not the person tapping
+   * the video — and only the person's taps are worth telling the other side.
+   */
+  const lastCommand = useRef<{ playing: boolean; at: number } | null>(null);
+  const lastReportedState = useRef<boolean | null>(null);
   const [playing, setPlaying] = useState(false);
   /**
    * Which frame has actually answered — not a bare boolean.
@@ -87,6 +101,9 @@ export function useYouTubePlayback(
   useEffect(() => {
     setPlaying(false);
     setReadyFor(null);
+    positionRef.current = 0;
+    lastCommand.current = null;
+    lastReportedState.current = null;
   }, [frameKey]);
 
   useEffect(() => {
@@ -113,7 +130,21 @@ export function useYouTubePlayback(
        */
       const info = data.info;
       const t = (info as { currentTime?: number })?.currentTime;
-      if (typeof t === "number" && Number.isFinite(t)) positionRef.current = t;
+      if (typeof t === "number" && Number.isFinite(t)) {
+        /*
+         * A scrub inside the player shows up as the playhead jumping by far
+         * more than the time between two readings. Readings arrive a few
+         * times a second while playing, so anything beyond a couple of
+         * seconds was a hand, not the clock — and one the other device needs
+         * to follow. Our own seek() pre-writes positionRef, so it is not seen
+         * as a jump here.
+         */
+        const prev = positionRef.current;
+        positionRef.current = t;
+        if (prev > 0 && Math.abs(t - prev) > 2.5) {
+          frameChangeRef.current?.({ isPlaying: playingRef.current, positionSec: t, reason: "seek" });
+        }
+      }
       const state =
         typeof info === "number"
           ? info
@@ -121,8 +152,25 @@ export function useYouTubePlayback(
             ? (info as { playerState: number }).playerState
             : null;
       if (state != null) {
-        setPlaying(state === PLAYING);
+        const nowPlaying = state === PLAYING;
+        setPlaying(nowPlaying);
         if (state === ENDED) endedRef.current?.();
+        /*
+         * Pausing or resuming by tapping the video itself was invisible to
+         * the shared session: only the dock's own button reported anything.
+         * Every change of playing state lands here, ours included — so drop
+         * the ones that merely confirm a command we just sent, and pass on
+         * the rest, which can only have come from a hand on the player.
+         */
+        const PAUSED = 2;
+        if ((state === PLAYING || state === PAUSED) && lastReportedState.current !== nowPlaying) {
+          lastReportedState.current = nowPlaying;
+          const own = lastCommand.current;
+          const echo = own && own.playing === nowPlaying && Date.now() - own.at < 1500;
+          if (!echo) {
+            frameChangeRef.current?.({ isPlaying: nowPlaying, positionSec: positionRef.current, reason: "state" });
+          }
+        }
       }
     };
 
@@ -167,6 +215,8 @@ export function useYouTubePlayback(
       // Flip now; the confirming state message follows a beat later and the
       // icon should not wait for a round trip.
       setPlaying(func === "playVideo");
+      lastCommand.current = { playing: func === "playVideo", at: Date.now() };
+      lastReportedState.current = func === "playVideo";
     },
     [getFrame],
   );
@@ -192,6 +242,12 @@ export function useYouTubePlayback(
         JSON.stringify({ event: "command", func: "seekTo", args: [Math.max(0, seconds), true] }),
         YT_ORIGIN,
       );
+      /*
+       * Pre-written so the next reading is not mistaken for a hand on the
+       * scrubber (see the jump check above). If the player refuses the seek —
+       * an iOS frame with no gesture inside it yet — its next reading simply
+       * overwrites this with the truth.
+       */
       positionRef.current = Math.max(0, seconds);
     },
     [getFrame],

@@ -126,16 +126,21 @@ export const listenRouter = router({
       const index = Math.min(input.index, input.queue.length - 1);
 
       /*
-       * One session per space, replaced rather than appended to.
+       * One session per space — replaced, and with a NEW id each time.
        *
-       * The unique index on spaceId makes this the only shape that can exist,
-       * which is what stops two half-live sessions from disagreeing about what
-       * is playing — and re-inviting is how you change your mind about which
-       * track to share, so overwriting is the intended behaviour.
+       * This used to upsert on {spaceId}, which kept one document (one _id) per
+       * space forever. Every event about a session carries its id, and the
+       * client treats a repeated id as "nothing new" — so the SECOND time a
+       * couple ended or declined a session, the other side never heard about
+       * it and sat on "đang chờ" / "đang nghe cùng" indefinitely. Found by
+       * three independent reviewers; the harness had missed it because it
+       * deleted the document between runs. Delete-then-create gives each
+       * session its own identity; the unique index still guarantees at most
+       * one per space.
        */
-      const doc = await ListenSessionModel.findOneAndUpdate(
-        { spaceId: ctx.spaceId },
-        {
+      await ListenSessionModel.deleteMany({ spaceId: ctx.spaceId });
+      const doc = (
+        await ListenSessionModel.create({
           spaceId: ctx.spaceId,
           hostId: ctx.userId,
           guestId: partnerId,
@@ -147,9 +152,8 @@ export const listenRouter = router({
           stateAt: new Date(),
           updatedBy: ctx.userId,
           expiresAt: new Date(Date.now() + SIX_HOURS),
-        },
-        { new: true, upsert: true },
-      ).lean<SessionDoc>();
+        })
+      ).toObject() as SessionDoc;
 
       /*
        * Reach the phone even when the app is closed — the same reasoning as the
@@ -169,7 +173,7 @@ export const listenRouter = router({
         return null;
       });
 
-      return { session: toView(doc!), push: push ?? null };
+      return { session: toView(doc), push: push ?? null };
     }),
 
   /** The guest answers. Accepting is what turns the invite into a session. */
@@ -177,19 +181,42 @@ export const listenRouter = router({
     .input(z.object({ sessionId: z.string().min(1), accept: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
+      const pending = await ListenSessionModel.findOne({
+        _id: input.sessionId,
+        spaceId: ctx.spaceId,
+        // Only the person invited can answer, and only while it is unanswered.
+        guestId: ctx.userId,
+        status: "inviting",
+      }).lean<SessionDoc>();
+      if (!pending)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Lời mời không còn nữa.",
+        });
+
+      /*
+       * Re-base the playhead before re-stamping.
+       *
+       * The invite stored "position P, true at T0, playing". Accepting used to
+       * write a new stateAt and leave P alone — so the document then claimed P
+       * was true NOW, and the host, told about it, was yanked back by however
+       * long the guest took to answer. If it was playing, P has moved on.
+       */
+      const now = Date.now();
+      const positionSec = pending.isPlaying
+        ? pending.positionSec + (now - new Date(pending.stateAt).getTime()) / 1000
+        : pending.positionSec;
+
       const doc = await ListenSessionModel.findOneAndUpdate(
-        {
-          _id: input.sessionId,
-          spaceId: ctx.spaceId,
-          // Only the person invited can answer, and only while it is unanswered.
-          guestId: ctx.userId,
-          status: "inviting",
-        },
+        { _id: pending._id, status: "inviting" },
         {
           status: input.accept ? "live" : "ended",
           updatedBy: ctx.userId,
-          stateAt: new Date(),
-          expiresAt: new Date(Date.now() + SIX_HOURS),
+          positionSec,
+          stateAt: new Date(now),
+          // A decline is over; keep it only long enough for both streams to see
+          // the change, like `end` does — not the six hours a live session gets.
+          expiresAt: new Date(now + (input.accept ? SIX_HOURS : 60 * 1000)),
         },
         { new: true },
       ).lean<SessionDoc>();
@@ -236,9 +263,11 @@ export const listenRouter = router({
       if (input.isPlaying !== undefined) update.isPlaying = input.isPlaying;
       if (input.positionSec !== undefined) update.positionSec = input.positionSec;
       if (input.index !== undefined) {
-        update.index = Math.min(input.index, Math.max(0, doc.queue.length - 1));
-        // A different track starts at its beginning unless told otherwise.
-        if (input.positionSec === undefined) update.positionSec = 0;
+        const nextIndex = Math.min(input.index, Math.max(0, doc.queue.length - 1));
+        update.index = nextIndex;
+        // A DIFFERENT track starts at its beginning unless told otherwise. The
+        // same index re-sent by the periodic full-state write is not a skip.
+        if (input.positionSec === undefined && nextIndex !== doc.index) update.positionSec = 0;
       }
 
       const next = await ListenSessionModel.findOneAndUpdate(

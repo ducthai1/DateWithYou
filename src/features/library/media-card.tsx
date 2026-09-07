@@ -6,11 +6,12 @@ import { trpc } from "@/lib/trpc";
 import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
-import { Clock, Users, ChefHat, Edit, Play } from "lucide-react";
+import { Clock, Users, ChefHat, Edit, Play, Headphones } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { MediaForm } from "./media-form";
-import { useNowPlaying, type NowPlayingItem } from "./now-playing-context";
+import { useNowPlaying, toListenTrack, type NowPlayingItem } from "./now-playing-context";
+import { usePartnerName } from "@/features/space/use-partner";
 import { cn } from "@/lib/utils";
 
 export type MediaListItem = {
@@ -163,8 +164,25 @@ export function MediaCard({
  * looked equally active.
  */
 function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaListItem[] }) {
-  const { playing, start } = useNowPlaying();
+  const { playing, start, listen } = useNowPlaying();
   const isPlaying = playing?.id === item.id;
+  const partnerName = usePartnerName();
+  /*
+   * "Nghe cùng" only where it can be kept: YouTube is the one provider whose
+   * frame answers postMessage, so it is the only one where two devices can be
+   * held at the same second. On anything else the button is absent rather
+   * than present and hollow.
+   */
+  const canListenTogether = item.provider === "youtube" && !!item.embedUrl && !!listen?.enabled;
+
+  /** The visible list as a queue, with this item's position in it. */
+  const buildQueue = () => {
+    const list = (queue?.length ? queue : [item])
+      .map(toNowPlayingItem)
+      .filter((q): q is NowPlayingItem => q !== null);
+    const at = list.findIndex((q) => q.id === item.id);
+    return { list, at: at < 0 ? 0 : at };
+  };
 
   /*
    * Hands the frame to the dock instead of mounting one here.
@@ -176,42 +194,71 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
    * the only frame and keeps it alive across the whole app.
    */
   const handleActivate = () => {
-    /*
-     * The whole visible list goes with it, not just this row. Skip buttons in
-     * the player have to work from any screen, and by then this page is gone.
-     */
-    const list = (queue?.length ? queue : [item])
-      .map(toNowPlayingItem)
-      .filter((q): q is NowPlayingItem => q !== null);
-    const at = list.findIndex((q) => q.id === item.id);
-    start(list, at < 0 ? 0 : at);
+    const { list, at } = buildQueue();
+    start(list, at);
   };
 
+  /*
+   * One tap does both: this device starts the track and the other person is
+   * asked. Splitting them ("play first, then find the invite in the dock") is
+   * what the owner did not want.
+   */
+  const handleInvite = () => {
+    if (!listen) return;
+    const { list, at } = buildQueue();
+    start(list, at);
+    const tracks = list.map(toListenTrack).filter((t) => t.embedUrl);
+    void listen.start(tracks, at, 0);
+  };
+
+  const pill =
+    "relative flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm transition-colors";
+
   return (
-    <button
-      type="button"
-      onClick={handleActivate}
-      aria-label={isPlaying ? `${item.title} đang phát` : `Phát ${item.title}`}
-      className="group border-border bg-accent-soft focus-visible:ring-ring relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl border focus-visible:outline-none focus-visible:ring-2"
-    >
-      {item.thumbnailUrl && (
-        <img
-          src={item.thumbnailUrl}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      )}
-      <span
-        className={cn(
-          "relative flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm transition-colors",
-          isPlaying
-            ? "bg-accent text-accent-foreground"
-            : "bg-card/90 text-foreground group-hover:bg-card",
-        )}
+    <div className="group border-border bg-accent-soft relative aspect-video w-full overflow-hidden rounded-xl border">
+      {/* The whole poster plays — the label pill in the middle is only that,
+          a label; the click goes through it to this button. */}
+      <button
+        type="button"
+        onClick={handleActivate}
+        aria-label={isPlaying ? `${item.title} đang phát` : `Phát ${item.title}`}
+        className="focus-visible:ring-ring absolute inset-0 flex items-center justify-center focus-visible:ring-2 focus-visible:outline-none"
       >
-        <Play className="h-3.5 w-3.5" aria-hidden="true" />
-        {isPlaying ? "Đang phát" : "Phát"}
-      </span>
-    </button>
+        {item.thumbnailUrl && (
+          <img src={item.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        )}
+      </button>
+      {/* Two pills side by side. Not nested in the poster button — a button
+          inside a button is invalid HTML and the inner one would never fire. */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2">
+        <span
+          className={cn(
+            pill,
+            isPlaying ? "bg-accent text-accent-foreground" : "bg-card/90 text-foreground group-hover:bg-card",
+          )}
+        >
+          <Play className="h-3.5 w-3.5" aria-hidden="true" />
+          {isPlaying ? "Đang phát" : "Phát"}
+        </span>
+        {canListenTogether && (
+          <button
+            type="button"
+            onClick={handleInvite}
+            disabled={listen!.isBusy || listen!.waiting}
+            aria-label={listen!.live ? `Đang nghe cùng ${partnerName}` : `Rủ ${partnerName} nghe cùng bài ${item.title}`}
+            className={cn(
+              pill,
+              "pointer-events-auto disabled:opacity-60",
+              listen!.live && isPlaying
+                ? "bg-accent text-accent-foreground"
+                : "bg-card/90 text-accent hover:bg-accent hover:text-white",
+            )}
+          >
+            <Headphones className="h-3.5 w-3.5" aria-hidden="true" />
+            {listen!.live && isPlaying ? "Đang nghe cùng" : listen!.waiting ? "Đang chờ…" : "Nghe cùng"}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

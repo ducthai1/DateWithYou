@@ -200,11 +200,16 @@ export function useNavigationInvites(enabled = true) {
     });
 
     es.addEventListener("listen-ended", (e) => {
+      /*
+       * Suffixed with the arrival time so two ends of sessions that happened
+       * to share an id still read as two events. Equal values are what React
+       * calls "no change", and an effect keyed on this would not have run.
+       */
       try {
         const data = JSON.parse(e.data) as { id: string };
-        setListenEnded(data.id);
+        setListenEnded(`${data.id}@${Date.now()}`);
       } catch {
-        setListenEnded("unknown");
+        setListenEnded(`unknown@${Date.now()}`);
       }
       setListenLive(null);
       setListenInvite(null);
@@ -233,7 +238,19 @@ export function useNavigationInvites(enabled = true) {
 
     es.onerror = () => {
       setIsConnected(false);
-      // EventSource will auto-reconnect after a brief back-off.
+      /*
+       * EventSource retries on its own only while the connection is merely
+       * broken. A non-200 answer (a 401 during a deploy, a 500 from a database
+       * blip) or an iOS background kill leaves it CLOSED for good, silently —
+       * and a stream that is closed for good means the other person can accept,
+       * pause and skip forever without this tab ever hearing it. Reopen it.
+       */
+      if (es.readyState === EventSource.CLOSED) {
+        esRef.current = null;
+        setTimeout(() => {
+          if (!esRef.current) connect();
+        }, 3000);
+      }
     };
 
     es.onopen = () => {
@@ -266,7 +283,20 @@ export function useNavigationInvites(enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     connect();
-    return () => disconnect();
+    // A tab coming back from the background often finds its stream dead with
+    // no error having fired. Check on return and reopen if so.
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!esRef.current || esRef.current.readyState === EventSource.CLOSED) {
+        esRef.current = null;
+        connect();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      disconnect();
+    };
   }, [enabled, connect, disconnect]);
 
   return {

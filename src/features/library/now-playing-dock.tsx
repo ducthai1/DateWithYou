@@ -181,7 +181,20 @@ export function NowPlayingDock({
   /** Which track the player currently holds, frame reuse included. */
   const loadedTrack = useRef<string | null>(null);
 
-  const playback = useYouTubePlayback(getFrame, controllable, frameKey ?? "", handleEnded);
+  /*
+   * What the person does INSIDE the player — tap-to-pause, a scrub, the
+   * hardware pause on a phone — reaches the other side through here. Read via
+   * a ref: this callback is held by the frame's listener for the life of the
+   * track, and a captured `listen` would be the one from whenever the track
+   * started.
+   */
+  const listenRef = useRef(listen);
+  listenRef.current = listen;
+  const onFrameChange = useCallback((c: { isPlaying: boolean; positionSec: number }) => {
+    listenRef.current.report({ isPlaying: c.isPlaying, positionSec: c.positionSec });
+  }, []);
+
+  const playback = useYouTubePlayback(getFrame, controllable, frameKey ?? "", handleEnded, onFrameChange);
 
   useEffect(() => {
     if (!item) {
@@ -212,9 +225,13 @@ export function NowPlayingDock({
    * A frame raised for an automatic advance starts itself; one the person asked
    * for waits to be pressed.
    */
+  const liveAtMount = useRef(false);
+  liveAtMount.current = listen.live;
   const frameEmbed = useMemo(() => {
     if (!item?.embed.embedUrl || !controllable) return item?.embed;
-    const auto = endedTrack.current != null && endedTrack.current !== frameKey;
+    // Automatic advance, or a track adopted from the shared session: both are
+    // frames nobody will press play on, so they must start themselves.
+    const auto = (endedTrack.current != null && endedTrack.current !== frameKey) || liveAtMount.current;
     return { ...item.embed, embedUrl: withJsApi(item.embed.embedUrl, window.location.origin, auto) };
     // Keyed on the frame alone — see above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,11 +255,13 @@ export function NowPlayingDock({
    * new track gives it a new function.
    */
   useEffect(() => {
-    listen.positionReader.current = controllable ? playback.getPosition : null;
+    listen.positionReader.current = controllable
+      ? () => ({ positionSec: playback.getPosition(), isPlaying: playback.playing, index })
+      : null;
     return () => {
       listen.positionReader.current = null;
     };
-  }, [listen.positionReader, controllable, playback.getPosition]);
+  }, [listen.positionReader, controllable, playback, index]);
 
   /*
    * Apply what the other person just did.
@@ -258,6 +277,16 @@ export function NowPlayingDock({
     const ps = listen.partnerState;
     if (!ps || !listen.live || !controllable) return;
     if (!frameKey || playback.readyFor !== frameKey) return;
+    /*
+     * Only once the frame on screen IS the track the message is about.
+     *
+     * React runs a child's effects before its parent's, so on a track change
+     * this ran before the provider had swapped the queue: the message was
+     * applied to the OUTGOING frame and its stamp spent, and the new frame
+     * was never told to play. Returning here without stamping lets the same
+     * message be applied when the right frame is ready.
+     */
+    if (ps.queue[ps.index]?.id !== item?.id) return;
     // The same state message must not be re-applied on every render.
     const stamp = `${ps.id}:${ps.updatedBy}:${ps.receivedAt}`;
     if (appliedPartner.current === stamp) return;
@@ -271,7 +300,7 @@ export function NowPlayingDock({
       if (ps.isPlaying) playback.play();
       else playback.toggle();
     }
-  }, [listen.partnerState, listen.live, controllable, frameKey, playback]);
+  }, [listen.partnerState, listen.live, controllable, frameKey, playback, item?.id]);
 
   /** Play/pause, and tell the other side — one action, both effects. */
   const togglePlayback = useCallback(() => {

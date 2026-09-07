@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { isPublicChrome } from "@/components/layout/nav-items";
 import { trpc } from "@/lib/trpc";
+import { useToast } from "@/components/ui/toast";
 import { useNavigationInvitesContext } from "@/features/locations/navigation-invites-context";
 import type { ListenState, ListenTrack } from "@/features/locations/use-navigation-invites";
 
@@ -57,9 +58,19 @@ export function useListenTogether() {
 
   const invites = useNavigationInvitesContext();
   const utils = trpc.useUtils();
+  const toast = useToast();
+  /*
+   * Declared before the query so the query can read them. A second opinion
+   * while waiting: the stream is the fast path, this is the one that cannot
+   * be silently dead. If the stream died and the guest accepted, this notices
+   * within a few seconds instead of never.
+   */
+  const [liveId, setLiveId] = useState<string | null>(null);
+  const [waiting, setWaiting] = useState(false);
   const current = trpc.listen.current.useQuery(undefined, {
     enabled,
     staleTime: 30_000,
+    refetchInterval: waiting && !liveId ? 5_000 : false,
   });
 
   const inviteMutation = trpc.listen.invite.useMutation();
@@ -73,8 +84,6 @@ export function useListenTogether() {
    * actions. Held as one piece of state rather than derived, so an accept can
    * take effect immediately instead of waiting for the next poll.
    */
-  const [liveId, setLiveId] = useState<string | null>(null);
-  const [waiting, setWaiting] = useState(false);
   /*
    * A state this device learned WITHOUT the stream telling it.
    *
@@ -94,8 +103,15 @@ export function useListenTogether() {
     const s = current.data;
     if (!s) return;
     if (s.status === "inviting") setWaiting(true);
-    if (s.status !== "live") return;
-    setLiveId(s.id);
+    if (s.status === "live") setLiveId(s.id);
+    /*
+     * Seeded for BOTH statuses. Found by reloading the host mid-invite: with
+     * only "live" seeded, the host came back to no dock at all — the queue is
+     * in memory and the page had just been thrown away — and when the guest
+     * then accepted there was no track to put on screen, so the accept landed
+     * in the database and nowhere visible. The host's own pending invite is
+     * as much "the session" as a live one is.
+     */
     // Only as a starting point: anything the stream says afterwards is newer.
     setLocalState((prev) =>
       prev
@@ -150,13 +166,28 @@ export function useListenTogether() {
       try {
         const res = await inviteMutation.mutateAsync({ queue, index, positionSec });
         void utils.listen.current.invalidate();
+        toast(res.push && res.push.delivered > 0 ? "Đã gửi lời mời 🎧" : "Đã gửi lời mời — người ấy sẽ thấy khi mở app", "success");
         return res;
       } catch (err) {
+        /*
+         * Said out loud, here, because both callers fire-and-forget this. The
+         * first version swallowed the rejection: a refused invite (no partner
+         * in the space, a stale space cookie) flashed "Đang chờ…" for a frame
+         * and then simply went back to the button, as if nothing had been
+         * pressed.
+         */
         setWaiting(false);
-        throw err;
+        const message = err instanceof Error ? err.message : "";
+        toast(
+          /NO_SPACE|2 người/.test(message)
+            ? "Cần có người ấy trong không gian để nghe cùng."
+            : "Chưa gửi được lời mời, thử lại nhé.",
+          "error",
+        );
+        return undefined;
       }
     },
-    [inviteMutation, utils],
+    [inviteMutation, utils, toast],
   );
 
   const respond = useCallback(
@@ -219,12 +250,25 @@ export function useListenTogether() {
    * handing a reader in through a setter would have CALLED it instead of
    * storing it.
    */
-  const positionReader = useRef<(() => number) | null>(null);
+  const positionReader = useRef<(() => { positionSec: number; isPlaying: boolean; index: number }) | null>(null);
   useEffect(() => {
     if (!liveId) return;
     const t = setInterval(() => {
-      const at = positionReader.current?.();
-      if (at && at > 0) controlMutation.mutate({ positionSec: at });
+      const r = positionReader.current?.();
+      if (!r) return;
+      /*
+       * The WHOLE state, every time — not just the playhead.
+       *
+       * Two reasons. The first version wrote the position alone, so a paused
+       * side kept announcing a frozen position that the other side read as
+       * "still playing, here" — undoing the pause and dragging them back to it
+       * every 15 seconds. And a control whose POST was lost on a flaky mobile
+       * network (mutations do not retry) was never re-sent; with the full
+       * state repeated here, the document converges on the truth within one
+       * tick regardless. The stream only forwards what actually CHANGED, so
+       * repeating an unchanged state costs the other device nothing.
+       */
+      controlMutation.mutate({ positionSec: Math.max(0, r.positionSec), isPlaying: r.isPlaying, index: r.index });
     }, REPORT_EVERY_MS);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
