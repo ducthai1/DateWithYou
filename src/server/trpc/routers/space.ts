@@ -230,11 +230,15 @@ export const spaceRouter = router({
         // doesn't need to imitate it. "Ngày mở góc riêng" only claims what is
         // verifiably true today — the space itself just opened — and avoids
         // "tụi mình" since isPersonal spaces have a single member, not a couple.
-        // Not recurYearly: it's a one-time note ("welcome, this is day one"),
-        // not a yearly milestone the couple asked to keep celebrating — it
-        // shows today, then quietly drops out of the countdown, leaving room
-        // for the couple's own recurring dates (added via the special-dates
-        // panel) instead of an app-invented one competing with them forever.
+        // recurYearly: the owner asked for it to come back every year ("gần tới ngày
+        // này năm sau nhắc lại"), so the day the space opened is a marker they
+        // keep. This reverses an earlier call here that made it one-time to
+        // avoid an app-invented row competing with the couple's own dates in
+        // the countdown — that trade-off is real and was accepted knowingly:
+        // the date is at least TRUE (this space did open today), unlike the
+        // "Sinh nhật"/"Ngày kỷ niệm" rows this seed used to write, which dated
+        // an untyped birthday and anniversary to account-creation day. Existing
+        // spaces were migrated to match rather than left inconsistent.
         // create-only: never called again so couple edits are never overwritten.
         await SpecialDateModel.insertMany([
           {
@@ -244,7 +248,7 @@ export const spaceRouter = router({
             icon: "sparkles",     // registry key — resolveIcon renders Sparkles
             date: todayKey(),     // Saigon-local day, matching how the rest of
                                    // the app buckets "today" (see date-keys.ts)
-            recurYearly: false,
+            recurYearly: true,
           },
         ]);
 
