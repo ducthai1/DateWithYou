@@ -1,4 +1,4 @@
-import { daysUntil, daysBetweenKeys } from "@/lib/date-keys";
+import { daysUntil, daysBetweenKeys, addDaysKey } from "@/lib/date-keys";
 
 /**
  * Choosing the one thing to count down to.
@@ -17,6 +17,15 @@ export type NextUp = {
   /** Icon registry key — resolveIcon turns it into a themed Lucide SVG. */
   icon: string | null;
   daysUntil: number;
+  /**
+   * The day it actually lands, ready to print.
+   *
+   * For a recurring date this is the resolved next occurrence, not the stored
+   * birth year. For a trip it is the departure day, which for one already
+   * under way is in the past while `daysUntil` reads 0 — the trip is happening
+   * now, and callers that show both should say "đang đi", not a date away.
+   */
+  occursOn: string;
   /** Where tapping it goes, when there is somewhere to go. */
   href: string | null;
 };
@@ -54,6 +63,7 @@ export function pickNextUp(
       title: s.title,
       icon: s.icon ?? null,
       daysUntil: until,
+      occursOn: addDaysKey(today, until),
       href: null,
     });
   }
@@ -65,6 +75,7 @@ export function pickNextUp(
       icon: "plane",
       // Clamped: a trip that began yesterday is happening now, not overdue.
       daysUntil: Math.max(0, daysBetweenKeys(today, t.startDate)),
+      occursOn: t.startDate,
       href: `/trips/${t.id}`,
     });
   }

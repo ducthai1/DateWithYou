@@ -108,8 +108,9 @@ function buildCards(data: TodayData): React.ReactNode[] {
     );
   }
 
-  if (data.nextSpecialDate) {
-    cards.push(<SpecialDateCountdownCard key="special" event={data.nextSpecialDate} />);
+  // Special date OR an upcoming trip — whichever is genuinely soonest.
+  if (data.nextUp) {
+    cards.push(<SpecialDateCountdownCard key="next-up" event={data.nextUp} />);
   }
 
   // Nothing has been deposited yet: one invitation beats four empty sections.

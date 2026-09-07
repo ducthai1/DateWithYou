@@ -7,8 +7,9 @@ import { SpecialDateModel } from "@/server/db/models/special-date";
 import { MemoryModel } from "@/server/db/models/memory";
 import { PlanItemModel } from "@/server/db/models/plan-item";
 import { TimeCapsuleModel } from "@/server/db/models/time-capsule";
-import { addDaysKey, dateKeyFromDate, daysBetweenKeys, daysUntil, saigonMidnightUtc, todayKey } from "@/lib/date-keys";
+import { addDaysKey, dateKeyFromDate, daysBetweenKeys, saigonMidnightUtc, todayKey } from "@/lib/date-keys";
 import { BUCKET_ORDER, type BucketKey } from "@/lib/plan-meta";
+import { pickNextUp } from "@/lib/next-up";
 
 /**
  * Aggregates the "Hôm nay" home screen in ONE round-trip.
@@ -160,7 +161,7 @@ export const dashboardRouter = router({
     const todayStartUtc = saigonMidnightUtc(todayYear, todayMonth, todayDay);
     const upcomingLastKey = addDaysKey(today, UPCOMING_DAYS);
 
-    const [space, specials, onThisDayDocs, planDocs, capsuleDocs, anyMemory, anyPlan, tripDocs] =
+    const [space, specials, onThisDayDocs, planDocs, capsuleDocs, anyMemory, anyPlan, tripDocs, futureTrips] =
       await Promise.all([
         SpaceModel.findById(ctx.spaceId).select("anniversaryDate").lean<{
           anniversaryDate?: Date;
@@ -253,6 +254,18 @@ export const dashboardRouter = router({
           .sort({ startDate: 1 })
           .limit(1)
           .lean<TripDoc[]>(),
+
+        /*
+         * Trips that have NOT started yet, for the countdown slot below.
+         * Deliberately disjoint from the query above (which matches only a trip
+         * already under way) so the same trip is never announced twice on one
+         * screen.
+         */
+        TripModel.find({ spaceId: ctx.spaceId, startDate: { $gt: today } })
+          .select("title startDate")
+          .sort({ startDate: 1 })
+          .limit(3)
+          .lean<{ _id: unknown; title: string; startDate: string }[]>(),
       ]);
 
     // a) Days together — whole days elapsed since the anniversary (0 on the day
@@ -266,23 +279,28 @@ export const dashboardRouter = router({
     // f) Milestone within the next week.
     const milestone = daysTogether === null ? null : nextMilestone(daysTogether);
 
-    // b) Next special date. `daysUntil` already rolls a recurring date to next
-    // year once this year's occurrence has passed (and clamps Feb-29).
-    const nextSpecialDate = specials
-      .map((s) => {
-        const until = daysUntil(s.date, Boolean(s.recurYearly));
-        return {
-          id: String(s._id),
-          title: s.title,
-          icon: s.icon ?? null,
-          date: s.date,
-          // The day it actually lands this time round, ready to display.
-          occursOn: until >= 0 ? addDaysKey(today, until) : s.date,
-          daysUntil: until,
-        };
-      })
-      .filter((s) => s.daysUntil >= 0)
-      .sort((a, b) => a.daysUntil - b.daysUntil)[0] ?? null;
+    /*
+     * b) The soonest thing worth counting down to — special dates AND trips.
+     *
+     * Special dates alone left a hole: a trip leaving in five days did not
+     * appear on this screen at all, because `activeTrip` above only matches a
+     * trip already under way. Only NOT-yet-started trips are offered here, so
+     * one in progress is not announced twice on the same screen (it already
+     * has its own card at the top).
+     *
+     * The choice itself lives in lib/next-up.ts, shared with the calendar's
+     * countdown chip so the two can never disagree about what is next.
+     */
+    const nextUp = pickNextUp(
+      specials.map((s) => ({
+        title: s.title,
+        date: s.date,
+        recurYearly: Boolean(s.recurYearly),
+        icon: s.icon ?? null,
+      })),
+      futureTrips.map((t) => ({ id: String(t._id), title: t.title, startDate: t.startDate })),
+      today,
+    );
 
     // c) Memories from the same month+day in an earlier year.
     const onThisDay = onThisDayDocs.map((m) => {
@@ -362,7 +380,7 @@ export const dashboardRouter = router({
       anniversaryDate,
       daysTogether,
       milestone,
-      nextSpecialDate,
+      nextUp,
       onThisDay,
       todayPlans,
       upcomingPlans,

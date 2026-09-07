@@ -79,19 +79,26 @@ export function CyclePanel() {
           <>
             <p className="text-foreground mt-2 text-2xl font-bold tracking-tight">
               Dự kiến {shortDateLabel(prediction.nextStart)}
-              {prediction.spreadDays > 0 && (
-                <span className="text-muted-foreground ml-1.5 text-base font-medium">
-                  ± {prediction.spreadDays} ngày
-                </span>
-              )}
             </p>
-            {/* The count is the entries the reader actually typed, not
-                `samples + 1`: a dropped implausible gap makes those two differ,
-                and showing a smaller number than they entered is exactly what
-                makes a figure look untrustworthy. */}
+            {/* Only when the body actually varies. A window on a perfectly
+                regular rhythm would invent doubt that the data does not show. */}
+            {prediction.windowStart !== prediction.windowEnd && (
+              <p className="text-muted-foreground mt-0.5 text-sm font-medium">
+                Có thể trong khoảng {shortDateLabel(prediction.windowStart)}–
+                {shortDateLabel(prediction.windowEnd)}
+              </p>
+            )}
             <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
-              Tính từ <strong>{starts.length} mốc</strong> bạn đã nhập — nhịp khoảng{" "}
-              <strong>{prediction.cycleDays} ngày</strong>. Thêm mốc thì càng sát.
+              Tính từ <strong>{starts.length} mốc</strong> bạn đã nhập ·{" "}
+              {prediction.shortestCycle === prediction.longestCycle ? (
+                <>nhịp đều <strong>{prediction.cycleDays} ngày</strong></>
+              ) : (
+                <>
+                  nhịp <strong>{prediction.shortestCycle}–{prediction.longestCycle} ngày</strong>{" "}
+                  (trung bình {prediction.cycleDays}, tháng gần đây tính nặng hơn)
+                </>
+              )}
+              .
             </p>
             <p className="text-muted-foreground mt-2 text-xs">
               {(() => {

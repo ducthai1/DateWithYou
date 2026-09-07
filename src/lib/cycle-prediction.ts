@@ -14,7 +14,7 @@ import { addDaysKey, daysBetweenKeys, todayKey } from "@/lib/date-keys";
  *
  * A gap outside this is not evidence about the rhythm — it is a mistyped year,
  * a month that was never logged, or two entries for the same period. Counting
- * it would move the average by weeks, which is exactly the failure someone
+ * it would move the estimate by weeks, which is exactly the failure someone
  * notices as "the app says the wrong date".
  */
 const MIN_CYCLE_DAYS = 18;
@@ -24,32 +24,50 @@ const MAX_CYCLE_DAYS = 45;
 const MAX_ROLL_FORWARD = 24;
 
 export type CyclePrediction = {
-  /** The next expected start, on or after today, as a `YYYY-MM-DD` key. */
+  /** The central expected start, on or after today, as a `YYYY-MM-DD` key. */
   nextStart: string;
-  /** The rhythm the prediction rests on, in days. */
-  cycleDays: number;
   /**
-   * Honest ± around `nextStart`, in days, taken from how much the observed
-   * gaps actually varied. Shown to the reader rather than hidden: a single
-   * confident-looking date from a body that varies by five days is a promise
-   * the data cannot keep.
+   * The realistic window around `nextStart`, from the shortest and longest
+   * cycles actually observed.
+   *
+   * Reported instead of a single confident date because a body does not keep
+   * one fixed interval: with gaps of 28, 30 and 28 days the honest answer is
+   * "somewhere in these three days", not "this day".
    */
-  spreadDays: number;
-  /** How many usable gaps the rhythm was measured from. */
+  windowStart: string;
+  windowEnd: string;
+  /** The rhythm the central date rests on, in days. */
+  cycleDays: number;
+  /** The observed spread of the rhythm itself, in days. */
+  shortestCycle: number;
+  longestCycle: number;
+  /** How many usable gaps informed the estimate. */
   samples: number;
 };
 
 /**
- * Median, not mean.
+ * The rhythm, from EVERY usable gap, weighting recent months more heavily.
  *
- * With only four or five entries a single wrong digit drags a mean by days,
- * while the median simply ignores it. Robustness matters more than precision
- * here because the input is typed by hand from memory.
+ * This replaced a median. A median of three gaps is literally the middle one,
+ * so a month that ran long contributed nothing at all — four months of careful
+ * input were being answered as though two had been given, which is precisely
+ * what the owner noticed. A mean uses all of them; linear recency weights
+ * (oldest 1, newest n) then let the estimate follow a body that is drifting
+ * rather than averaging its past and present equally.
+ *
+ * Robustness against a typo does not depend on this any more: the 18–45 day
+ * filter has already removed gaps that could not be a real cycle, so what
+ * reaches here is all genuine evidence and deserves to be counted.
  */
-function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+function weightedMean(gaps: readonly number[]): number {
+  let weighted = 0;
+  let weights = 0;
+  gaps.forEach((gap, index) => {
+    const weight = index + 1; // oldest gap = 1 … newest = gaps.length
+    weighted += gap * weight;
+    weights += weight;
+  });
+  return weighted / weights;
 }
 
 /**
@@ -74,8 +92,9 @@ export function predictNextStart(
   }
   if (gaps.length === 0) return null;
 
-  const cycleDays = Math.round(median(gaps));
-  const spreadDays = Math.max(...gaps.map((gap) => Math.abs(gap - cycleDays)));
+  const cycleDays = Math.round(weightedMean(gaps));
+  const shortestCycle = Math.min(...gaps);
+  const longestCycle = Math.max(...gaps);
 
   /*
    * Roll forward past today rather than answering with a date already gone.
@@ -89,5 +108,18 @@ export function predictNextStart(
     nextStart = addDaysKey(nextStart, cycleDays);
   }
 
-  return { nextStart, cycleDays, spreadDays, samples: gaps.length };
+  /*
+   * The window is the observed spread hung around the central date, so it
+   * survives the roll-forward above without being recomputed from an anchor
+   * that may be several cycles back.
+   */
+  return {
+    nextStart,
+    windowStart: addDaysKey(nextStart, -(cycleDays - shortestCycle)),
+    windowEnd: addDaysKey(nextStart, longestCycle - cycleDays),
+    cycleDays,
+    shortestCycle,
+    longestCycle,
+    samples: gaps.length,
+  };
 }

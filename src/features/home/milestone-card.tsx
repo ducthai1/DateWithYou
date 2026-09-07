@@ -1,7 +1,8 @@
 "use client";
 
 // Two small countdown cards: the round day-count milestone derived from the
-// anniversary, and the nearest upcoming special date.
+// anniversary, and the nearest upcoming event — which may be a special date OR
+// a trip that has not left yet.
 
 import { useEffect, useRef } from "react";
 import { Sparkles, CalendarHeart } from "lucide-react";
@@ -50,29 +51,52 @@ export function MilestoneCard({
   );
 }
 
-export type NextSpecialDate = {
-  id: string;
+/**
+ * Whatever is soonest, from `lib/next-up.ts`.
+ *
+ * Was special-dates-only, which meant a trip leaving in five days never
+ * reached this screen at all: the only trip query on /home matches one already
+ * under way. Both kinds arrive here now, so the card has to say the right
+ * thing for each — "sắp tới" reads oddly over a departure, and a trip has
+ * somewhere to tap through to while a birthday does not.
+ */
+export type NextUpEvent = {
+  kind: "special" | "trip";
   title: string;
   icon: string | null;
-  date: string;
   occursOn: string;
   daysUntil: number;
+  href: string | null;
 };
 
-export function SpecialDateCountdownCard({ event }: { event: NextSpecialDate }) {
+export function SpecialDateCountdownCard({ event }: { event: NextUpEvent }) {
   const Icon = resolveIcon(event.icon ?? undefined);
   const isToday = event.daysUntil === 0;
+  const isTrip = event.kind === "trip";
+
+  const title = isToday
+    ? isTrip
+      ? "Hôm nay khởi hành"
+      : "Hôm nay là ngày đặc biệt"
+    : isTrip
+      ? "Chuyến đi sắp tới"
+      : "Sắp tới";
+
+  const headline = isToday
+    ? isTrip
+      ? `${event.title} — đi thôi 🧳`
+      : `${event.title} — chúc tụi mình một ngày thật đẹp 🎉`
+    : event.title;
 
   return (
     <HomeSection
-      Icon={isToday ? Icon : CalendarHeart}
-      title={isToday ? "Hôm nay là ngày đặc biệt" : "Sắp tới"}
-      link={{ href: "/calendar", label: "Lịch" }}
+      Icon={isToday || isTrip ? Icon : CalendarHeart}
+      title={title}
+      // A trip has a page of its own worth opening; a date belongs to the calendar.
+      link={isTrip && event.href ? { href: event.href, label: "Chuyến đi" } : { href: "/calendar", label: "Lịch" }}
       highlight={isToday}
     >
-      <p className="text-foreground text-base font-medium leading-snug">
-        {isToday ? `${event.title} — chúc tụi mình một ngày thật đẹp 🎉` : event.title}
-      </p>
+      <p className="text-foreground text-base font-medium leading-snug">{headline}</p>
       <p className="text-muted-foreground text-sm">
         {isToday
           ? `Ngày ${shortDate(event.occursOn)}`
