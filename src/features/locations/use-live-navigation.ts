@@ -90,6 +90,12 @@ export type LiveNavigation = {
   speedKmH: number | null;
   /** Network connection status */
   isOffline: boolean;
+  /**
+   * The radio says online but the server is not answering: three live-location
+   * writes in a row have failed. The state a phone is in for the half-minute
+   * after switching from Wi-Fi to mobile data, and under a bridge.
+   */
+  networkFlaky: boolean;
   /** True while navigating but the device has no fresh GPS fix (location off /
    *  signal lost). Derived from fix staleness, not just the watchPosition error. */
   gpsLost: boolean;
@@ -219,8 +225,29 @@ export function useLiveNavigation(options?: {
     };
   }, [userGeo, heading, speedKmH, accuracyM]);
   
-  const pingLiveLocation = trpc.location.pingLiveLocation.useMutation();
+  /*
+   * `networkMode: "always"`: a write made while the device is offline must FAIL,
+   * not queue. React Query's default parks it and replays it when the network
+   * returns — with the coordinates from when it was parked, arriving a moment
+   * after the fresh ping this hook sends on reconnect and overwriting it. A
+   * position from two minutes ago is worse than no position; the next tick is
+   * 2.5 s away.
+   */
+  const pingLiveLocation = trpc.location.pingLiveLocation.useMutation({ networkMode: "always" });
   const lastPingTime = useRef<number>(0);
+  const pingFailuresRef = useRef(0);
+  const [networkFlaky, setNetworkFlaky] = useState(false);
+  const notePingResult = useCallback((ok: boolean) => {
+    if (ok) {
+      pingFailuresRef.current = 0;
+      setNetworkFlaky(false);
+      return;
+    }
+    pingFailuresRef.current += 1;
+    // One lost write is normal on mobile; three in a row is a link that is down
+    // while the OS still reports it up.
+    if (pingFailuresRef.current >= 3) setNetworkFlaky(true);
+  }, []);
 
   const sendPingAction = useCallback(async (action: string): Promise<PingResult> => {
     const now = Date.now();
@@ -304,6 +331,7 @@ export function useLiveNavigation(options?: {
       },
       {
         onSuccess: (partners) => {
+          notePingResult(true);
           if (partners && partners.length > 0) {
             setPartnerLocation(partners[0]);
             setEverHadPartner(true);
@@ -311,6 +339,7 @@ export function useLiveNavigation(options?: {
           // Keep the last-known partner on an empty result (see sendPingAction):
           // avoids HUD/route flicker; staleness derivation handles a real drop.
         },
+        onError: () => notePingResult(false),
       },
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -586,7 +615,13 @@ export function useLiveNavigation(options?: {
 
   // Track network connection status
   useEffect(() => {
-    const handleOffline = () => setIsOffline(true);
+    const handleOffline = () => {
+      setIsOffline(true);
+      // "Offline" is the stronger, clearer statement; the flaky flag would only
+      // muddle it, and it starts counting again from the reconnect.
+      pingFailuresRef.current = 0;
+      setNetworkFlaky(false);
+    };
     const handleOnline = () => setIsOffline(false);
     window.addEventListener("offline", handleOffline);
     window.addEventListener("online", handleOnline);
@@ -622,6 +657,7 @@ export function useLiveNavigation(options?: {
     heading,
     speedKmH,
     isOffline,
+    networkFlaky,
     gpsLost,
     partnerLocation,
     accuracyM,

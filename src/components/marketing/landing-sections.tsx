@@ -3,6 +3,7 @@ import { Reveal } from "./reveal";
 import { ToneArt } from "@/components/theme/tone-art";
 import { FaqItem } from "./faq-item";
 import { FAQ, FEATURES, STEPS } from "./landing-content";
+import { READING_PATH } from "@/features/blog/reading-path";
 import { SITE_NAME } from "@/lib/site";
 
 /*
@@ -214,6 +215,62 @@ export function LandingSections() {
 
       <div className="mx-auto h-px max-w-4xl bg-[#d8cfc1]/60" />
 
+      {/* Where to start reading — the blog, in the order the app is used.
+
+          A first-time visitor who has read this far knows what the app is and
+          how to sign up, and still has no idea what to do on day one. These six
+          cards are that answer; they are the same list the blog index leads
+          with, so the two never disagree. Numbered because here the order IS
+          the information: each step assumes the one before it. The palette is
+          the landing's own, not the app tokens, like everything else on this
+          page. */}
+      <section id="doc-truoc" className="mx-auto max-w-5xl px-6 py-20 sm:py-28">
+        <Reveal>
+          <SectionHeading
+            eyebrow="Đọc trước khi dùng"
+            title="Chưa biết bắt đầu từ đâu?"
+            lead="Sáu bài viết ngắn, theo đúng thứ tự bạn sẽ dùng app: mở không gian, ghim chỗ, đi tới đó, rồi giữ lại. Đọc xong là mở app biết bấm vào đâu."
+          />
+        </Reveal>
+        <ol className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {READING_PATH.map((s, i) => (
+            <Reveal as="li" key={s.slug} delay={Math.min(i, 5) * 110}>
+              <Link
+                href={`/blog/${s.slug}`}
+                className="group flex h-full gap-4 rounded-3xl border border-[#d8cfc1]/70 bg-white/50 p-6 backdrop-blur-sm transition-colors hover:border-[#c2693f]/40 hover:bg-white/80"
+              >
+                <span className="text-2xl font-medium leading-none tabular-nums text-[#c2693f]/70">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-medium uppercase tracking-[0.18em] text-[#a8542f]">
+                    {s.step}
+                  </span>
+                  <span className="mt-2 block text-lg font-medium leading-snug text-[#3b322a] transition-colors group-hover:text-[#a8542f]">
+                    {s.title}
+                  </span>
+                  <span className="mt-2 block text-[15px] font-light leading-relaxed text-[#6b5c51]">
+                    {s.blurb}
+                  </span>
+                </span>
+              </Link>
+            </Reveal>
+          ))}
+        </ol>
+        <Reveal>
+          <div className="mt-12 text-center">
+            <Link
+              href="/blog"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#d8cfc1]/80 bg-white/40 px-6 py-3 text-[15px] font-medium text-[#6f675d] transition-colors hover:border-[#c2693f]/40 hover:text-[#a8542f]"
+            >
+              Xem tất cả bài viết <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        </Reveal>
+      </section>
+
+      <div className="mx-auto h-px max-w-4xl bg-[#d8cfc1]/60" />
+
       {/* FAQ — mirrored verbatim into the FAQPage JSON-LD on the route. Native
           <details> so the answers exist in the HTML even while collapsed;
           hiding them behind JavaScript would hide them from crawlers too. */}
@@ -261,9 +318,12 @@ export function LandingSections() {
         <p>
           {SITE_NAME} — giữ lại những chuyến đi của bạn. Làm tại Việt Nam.
         </p>
-        <p className="mt-2">
+        <p className="mt-2 flex items-center justify-center gap-4">
           <Link href="/tinh-nang" className="transition-colors hover:text-[#a8542f]">
             Tính năng
+          </Link>
+          <Link href="/blog" className="transition-colors hover:text-[#a8542f]">
+            Blog
           </Link>
         </p>
       </footer>

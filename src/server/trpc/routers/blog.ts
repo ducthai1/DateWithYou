@@ -120,7 +120,17 @@ const postInput = z.object({
   slug: z.string().trim().max(90).optional(),
   excerpt: z.string().trim().max(400).default(""),
   body: z.string().max(200_000).default(""),
-  coverImage: z.string().url().max(2000).optional().or(z.literal("")),
+  // A full URL (Cloudinary) or a path on this site (/brand-image/…, /blog/…):
+  // the brand artwork already shipped with the app is a valid cover too, and
+  // it must not be re-uploaded to a CDN just to satisfy `.url()`.
+  coverImage: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine((v) => v === "" || /^https?:\/\//.test(v) || (v.startsWith("/") && !v.startsWith("//")), {
+      message: "Ảnh bìa phải là URL http(s) hoặc đường dẫn bắt đầu bằng /",
+    })
+    .optional(),
   category: z.string().trim().min(1).max(40).default("tin-tuc"),
   tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
   featured: z.boolean().default(false),

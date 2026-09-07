@@ -190,8 +190,16 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-      <div className="border-border bg-card space-y-4 rounded-3xl border p-5 shadow-sm sm:p-6">
+    /*
+     * Three blocks, placed by breakpoint. On a phone they stack in the order a
+     * writer needs them: the actions (Đăng / Lưu nháp / hẹn giờ) first, then
+     * the editor, then cover-category-tags. The actions used to live at the
+     * bottom of the sidebar, which on a phone meant scrolling past the whole
+     * article to find the publish button. On lg the editor takes the left
+     * column across both rows and the two side blocks stack on the right.
+     */
+    <div className="grid gap-6 lg:grid-cols-[1fr_20rem] lg:grid-rows-[auto_1fr]">
+      <div className="border-border bg-card space-y-4 rounded-3xl border p-5 shadow-sm sm:p-6 lg:col-start-1 lg:row-span-2 lg:row-start-1">
         <div>
           <label className={label}>Tiêu đề</label>
           <input
@@ -224,8 +232,7 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
         </div>
       </div>
 
-      <aside className="space-y-5">
-        <div className="border-border bg-card space-y-3 rounded-2xl border p-4">
+      <div className="border-border bg-card order-first space-y-3 rounded-2xl border p-4 shadow-sm lg:order-none lg:col-start-2 lg:row-start-1">
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => void submit("published")} disabled={saving} className="flex-1 gap-2">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -277,8 +284,9 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
             <input type="checkbox" aria-label="Đánh dấu nổi bật" checked={v.featured} onChange={(e) => set("featured", e.target.checked)} />
             Đánh dấu nổi bật
           </label>
-        </div>
+      </div>
 
+      <aside className="lg:col-start-2 lg:row-start-2">
         <div className="border-border bg-card space-y-5 rounded-2xl border p-4 shadow-sm">
         <div>
           <label className={label}>Ảnh bìa</label>

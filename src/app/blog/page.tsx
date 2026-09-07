@@ -3,6 +3,9 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { publicCaller } from "@/server/caller";
 import { ArticleCard, CATEGORY_LABEL } from "@/features/blog/post-card";
+import { CategoryTabs } from "@/features/blog/category-tabs";
+import { ReadingPathStrip } from "@/features/blog/reading-path-strip";
+import { READING_PATH } from "@/features/blog/reading-path";
 import { SITE_NAME } from "@/lib/site";
 
 /*
@@ -37,32 +40,64 @@ export const metadata: Metadata = {
   },
 };
 
+/** Cover at the hero size; Cloudinary resizes its own, anything else is served as-is. */
+function heroCover(url: string): string {
+  return url.includes("res.cloudinary.com")
+    ? url.replace("/upload/", "/upload/c_fill,w_900,h_600,f_auto,q_auto/")
+    : url;
+}
+
 export default async function BlogIndexPage() {
-  const [featured, popular, recent, cats] = await Promise.all([
+  const [featured, popular, recent, cats, pathPosts] = await Promise.all([
     publicCaller.blog.featured({ limit: 1 }),
     publicCaller.blog.popular({ limit: 5 }),
-    publicCaller.blog.list({ page: 1, pageSize: 12 }),
+    publicCaller.blog.list({ page: 1, pageSize: 24 }),
     publicCaller.blog.categories(),
+    /*
+     * The guided path is resolved post by post rather than filtered out of the
+     * recent list: once the blog outgrows one page, a step's post would drop
+     * off the list and the path would silently lose it. A step whose post has
+     * been unpublished is dropped here instead of linking to a 404.
+     */
+    Promise.all(
+      READING_PATH.map((s) =>
+        publicCaller.blog.bySlug({ slug: s.slug }).then(
+          (p) => ({ slug: p.slug, title: p.title }),
+          () => null,
+        ),
+      ),
+    ),
   ]);
   const labelOf = (slug: string) => cats.find((c) => c.slug === slug)?.name ?? CATEGORY_LABEL[slug] ?? slug;
   const hero = featured[0] ?? recent.items[0] ?? null;
   const rest = recent.items.filter((p) => p.slug !== hero?.slug);
+  const liveTitles = Object.fromEntries(pathPosts.flatMap((p) => (p ? [[p.slug, p.title]] : [])));
+  const steps = READING_PATH.filter((s) => liveTitles[s.slug]);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-8 sm:pt-12">
-      <header className="mb-8">
+      <header className="mb-6">
         <p className="text-accent text-sm font-semibold">Blog</p>
         <h1 className="text-foreground mt-1 text-3xl font-bold sm:text-4xl [font-family:var(--font-display)]">
           Chuyện của Vivu No Plan
         </h1>
         <p className="text-muted-foreground mt-2 max-w-2xl">{DESCRIPTION}</p>
-        <Link
-          href="/blog/tim-kiem"
-          className="border-border bg-card hover:border-accent/40 text-muted-foreground mt-4 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm shadow-sm"
-        >
-          <Search className="h-4 w-4" /> Tìm bài viết
-        </Link>
+        {/* Stacked on a phone — the tab row needs the whole width to scroll —
+            and one row from sm up, search on the right. */}
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <CategoryTabs categories={cats} active={null} className="sm:min-w-0 sm:flex-1" />
+          <Link
+            href="/blog/tim-kiem"
+            className="border-border bg-card hover:border-accent/40 text-muted-foreground inline-flex shrink-0 items-center gap-2 self-start rounded-full border px-4 py-1.5 text-sm shadow-sm sm:self-auto"
+          >
+            <Search className="h-4 w-4" /> Tìm bài viết
+          </Link>
+        </div>
       </header>
+
+      {/* The path first, before anything sorted by date: a first-time visitor
+          needs "where do I start", not "what is newest". */}
+      {steps.length > 0 && <ReadingPathStrip steps={steps} titles={liveTitles} className="mb-8" />}
 
       {recent.items.length === 0 ? (
         <p className="text-muted-foreground rounded-2xl border border-dashed border-border p-10 text-center">
@@ -78,8 +113,8 @@ export default async function BlogIndexPage() {
               >
                 <div className="bg-muted relative aspect-[16/10] overflow-hidden sm:aspect-auto">
                   {hero.coverImage ? (
-                          <img
-                      src={`${hero.coverImage.includes("res.cloudinary.com") ? hero.coverImage.replace("/upload/", "/upload/c_fill,w_900,h_600,f_auto,q_auto/") : hero.coverImage}`}
+                    <img
+                      src={heroCover(hero.coverImage)}
                       alt=""
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                     />
@@ -99,6 +134,7 @@ export default async function BlogIndexPage() {
               </Link>
             )}
 
+            <h2 className="text-muted-foreground mb-3 text-sm font-semibold">Mới nhất</h2>
             <div className="grid gap-5 sm:grid-cols-2">
               {rest.map((post, i) => (
                 <ArticleCard key={post.slug} post={post} priority={i < 2} categoryLabel={labelOf(post.category)} />
@@ -110,23 +146,43 @@ export default async function BlogIndexPage() {
                 static routes rather than a ?page query that turns this dynamic. */}
           </div>
 
-          {popular.length > 0 && (
-            <aside className="lg:pt-2">
-              <h2 className="text-muted-foreground mb-3 text-sm font-semibold">Đọc nhiều</h2>
-              <ol className="space-y-3">
-                {popular.map((post, i) => (
-                  <li key={post.slug}>
-                    <Link href={`/blog/${post.slug}`} className="group flex gap-3">
-                      <span className="text-accent/40 text-lg font-bold leading-none">{i + 1}</span>
-                      <span className="text-foreground group-hover:text-accent line-clamp-2 text-sm font-medium">
-                        {post.title}
+          <aside className="space-y-8 lg:pt-2">
+            {popular.length > 0 && (
+              <div>
+                <h2 className="text-muted-foreground mb-3 text-sm font-semibold">Đọc nhiều</h2>
+                <ol className="space-y-3">
+                  {popular.map((post, i) => (
+                    <li key={post.slug}>
+                      <Link href={`/blog/${post.slug}`} className="group flex gap-3">
+                        <span className="text-accent/40 text-lg font-bold leading-none tabular-nums">{i + 1}</span>
+                        <span className="text-foreground group-hover:text-accent line-clamp-2 text-sm font-medium">
+                          {post.title}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+            <div>
+              <h2 className="text-muted-foreground mb-3 text-sm font-semibold">Danh mục</h2>
+              <ul className="space-y-1.5">
+                {cats.map((c) => (
+                  <li key={c.slug}>
+                    <Link
+                      href={`/blog/danh-muc/${c.slug}`}
+                      className="text-foreground hover:text-accent flex items-center justify-between text-sm"
+                    >
+                      <span>{c.name}</span>
+                      <span className="text-muted-foreground text-xs tabular-nums">
+                        {recent.items.filter((p) => p.category === c.slug).length}
                       </span>
                     </Link>
                   </li>
                 ))}
-              </ol>
-            </aside>
-          )}
+              </ul>
+            </div>
+          </aside>
         </div>
       )}
     </main>

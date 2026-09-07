@@ -1,10 +1,12 @@
 /*
  * Map asset cache.
  *
- * Deliberately narrow. It answers exactly two things: requests to the tile
- * server, and our own /_next/static/ files. Nothing else — no HTML, no RSC
- * payload, no tRPC, no uploads — so a deploy can never be shadowed by a stale
- * cached shell and there is no update-loop failure mode to reason about.
+ * Deliberately narrow. It answers three things: requests to the tile server,
+ * our own /_next/static/ files, and — only when the network has FAILED — the
+ * HTML of the two screens a ride depends on (see SHELL below). Nothing else:
+ * no RSC payload, no tRPC, no uploads. Online, HTML always comes from the
+ * network, so a deploy is never shadowed by a stale shell and there is no
+ * update-loop failure mode to reason about.
  * /_next/static/ is safe to keep forever because Next content-hashes those
  * filenames and serves them `immutable`: a new build cannot reuse a URL, it can
  * only mint new ones. The old entries are then dead weight, which is what the
@@ -33,7 +35,24 @@ const STATIC = "ofm-static-v1"; // fonts, sprites — never change under a fixed
 const TILES = "ofm-tiles-v1"; // versioned tile pyramid
 const LIVE = "ofm-live-v1"; // style + tilejson, refreshed in the background
 const APP = "app-static-v1"; // content-hashed /_next/static/ chunks and fonts
-const TILE_LIMIT = 400; // ~25 MB of vector tiles; plenty for the areas one couple browses
+/*
+ * The last good HTML of the screens a ride cannot do without.
+ *
+ * A phone on a bike kills background tabs, and the person comes back to the
+ * app with no signal — the one moment a "no internet" page costs the most.
+ * With these two pages kept, the app opens, its chunks come from APP, the
+ * map's style and fonts from LIVE/STATIC, the tiles along the route from
+ * TILES (pre-fetched when the route was drawn), and the route itself from
+ * localStorage. Served ONLY when the network request fails or stalls: online,
+ * every navigation still goes to the server, so this can never show an old
+ * build to someone with a connection.
+ */
+const SHELL = "app-shell-v1";
+const SHELL_PATHS = new Set(["/map", "/home"]); // /home is the installed app's start_url
+const SHELL_TIMEOUT_MS = 10000; // lie-fi: connected, nothing arriving
+// ~40 MB of vector tiles. Raised from 400 once routes began pre-fetching their
+// tiles; a long ride plus the areas the couple browses must both fit.
+const TILE_LIMIT = 600;
 const APP_LIMIT = 250; // a few builds' worth of chunks before the oldest are dropped
 
 self.addEventListener("install", (e) => e.waitUntil(self.skipWaiting()));
@@ -41,7 +60,7 @@ self.addEventListener("install", (e) => e.waitUntil(self.skipWaiting()));
 self.addEventListener("activate", (e) =>
   e.waitUntil(
     (async () => {
-      const keep = new Set([STATIC, TILES, LIVE, APP]);
+      const keep = new Set([STATIC, TILES, LIVE, APP, SHELL]);
       for (const k of await caches.keys()) if (!keep.has(k)) await caches.delete(k);
       await self.clients.claim();
     })(),
@@ -96,15 +115,47 @@ async function staleWhileRevalidate(request) {
   return hit || network;
 }
 
+/**
+ * Network first, always; the cached copy only when the network does not answer.
+ *
+ * Keyed by path alone so `/map?trip=…` and `/map` share one entry. The losing
+ * fetch of the race is left to finish on its own — aborting a navigation
+ * request would need a re-constructed Request, which loses its `navigate` mode.
+ */
+async function shellNetworkFirst(request, key) {
+  let cache = null;
+  try {
+    cache = await caches.open(SHELL);
+  } catch {
+    return fetch(request);
+  }
+  const stall = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("shell: network stalled")), SHELL_TIMEOUT_MS),
+  );
+  try {
+    const res = await Promise.race([fetch(request), stall]);
+    // Redirects (a signed-out visit) and errors are not the page; keep neither.
+    if (res.ok && res.type === "basic") cache.put(key, res.clone()).catch(() => {});
+    return res;
+  } catch (err) {
+    const hit = await cache.match(key);
+    if (hit) return hit;
+    throw err;
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
   if (url.origin === self.location.origin) {
-    // Hashed build output only. Everything else on this origin must stay live.
+    // Hashed build output only. Everything else on this origin must stay live —
+    // except the two ride screens, and those only when the network fails.
     if (url.pathname.startsWith("/_next/static/")) {
       event.respondWith(cacheFirst(request, APP, APP_LIMIT));
+    } else if (request.mode === "navigate" && SHELL_PATHS.has(url.pathname)) {
+      event.respondWith(shellNetworkFirst(request, url.origin + url.pathname));
     }
     return;
   }

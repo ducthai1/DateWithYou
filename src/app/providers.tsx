@@ -55,6 +55,32 @@ const SpaceGuard = dynamic(
  */
 const STALE_SPACE_LATCH = "vivu:stale-space-recovered";
 
+/*
+ * No request may hang forever.
+ *
+ * A request caught while the phone moves from Wi-Fi to mobile data neither
+ * fails nor completes: the old socket is gone and nothing tells the browser.
+ * Without a deadline the promise sat pending for the rest of the session, and
+ * whatever was waiting on it — a re-route, a "đang chờ" spinner — waited with
+ * it. Thirty seconds is longer than any procedure here legitimately takes and
+ * short enough that a stuck one is retried within the same ride.
+ *
+ * Combined with the signal tRPC already passes (its own per-batch abort), so
+ * cancelling a query still cancels the request.
+ */
+const REQUEST_DEADLINE_MS = 30_000;
+const fetchWithDeadline: typeof fetch = (input, init) => {
+  const A = AbortSignal as typeof AbortSignal & {
+    timeout?: (ms: number) => AbortSignal;
+    any?: (signals: AbortSignal[]) => AbortSignal;
+  };
+  const deadline = typeof A.timeout === "function" ? A.timeout(REQUEST_DEADLINE_MS) : undefined;
+  const own = init?.signal ?? undefined;
+  const signal =
+    own && deadline ? (typeof A.any === "function" ? A.any([own, deadline]) : own) : (own ?? deadline);
+  return fetch(input, { ...init, signal });
+};
+
 function recoverFromStaleSpace(error: unknown) {
   const message =
     error && typeof error === "object" && "message" in error
@@ -114,6 +140,7 @@ export function Providers({
         httpBatchLink({
           url: "/api/trpc",
           transformer: superjson,
+          fetch: fetchWithDeadline,
         }),
       ],
     }),

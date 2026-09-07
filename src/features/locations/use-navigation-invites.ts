@@ -63,6 +63,10 @@ export type ListenTrack = {
 /** "Nghe cùng nhau?" — waiting on this user to answer. */
 export type ListenInvite = { id: string; hostId: string; title: string };
 
+/** The server sends a heartbeat at least every 15 s; three missed is dead. */
+const STREAM_SILENCE_MS = 45_000;
+const STREAM_WATCHDOG_MS = 10_000;
+
 /**
  * What the other person just did to the shared playback.
  *
@@ -121,6 +125,14 @@ export function useNavigationInvites(enabled = true) {
   const [listenEnded, setListenEnded] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const esRef = useRef<EventSource | null>(null);
+  /*
+   * When the server was last heard from, on any event including the heartbeat
+   * it sends every 15 s. A connection the phone carried from Wi-Fi onto 4G is
+   * dead without ever saying so: `readyState` stays OPEN, no error fires, and
+   * the browser has nothing to retry. Silence is the only symptom, so silence
+   * is what is watched.
+   */
+  const lastEventAtRef = useRef(0);
 
   const connect = useCallback(() => {
     // Don't double-connect.
@@ -128,12 +140,19 @@ export function useNavigationInvites(enabled = true) {
 
     const es = new EventSource("/api/navigation-invites/stream");
     esRef.current = es;
+    lastEventAtRef.current = Date.now();
+    // Every named event goes through here so the watchdog sees all of them.
+    const on = (name: string, fn: (e: MessageEvent) => void) =>
+      es.addEventListener(name, (e) => {
+        lastEventAtRef.current = Date.now();
+        fn(e as MessageEvent);
+      });
 
-    es.addEventListener("heartbeat", () => {
+    on("heartbeat", () => {
       setIsConnected(true);
     });
 
-    es.addEventListener("invite", (e) => {
+    on("invite", (e) => {
       try {
         const data = JSON.parse(e.data) as IncomingInvite;
         setIncomingInvite(data);
@@ -144,11 +163,11 @@ export function useNavigationInvites(enabled = true) {
 
     // The pending invite went away (cancelled / responded elsewhere / expired) →
     // clear it so the incoming-invite modal dismisses instead of sticking around.
-    es.addEventListener("invite-cancelled", () => {
+    on("invite-cancelled", () => {
       setIncomingInvite(null);
     });
 
-    es.addEventListener("invite-response", (e) => {
+    on("invite-response", (e) => {
       try {
         const data = JSON.parse(e.data) as InviteResponse;
         setInviteResponse(data);
@@ -157,7 +176,7 @@ export function useNavigationInvites(enabled = true) {
       }
     });
 
-    es.addEventListener("partner-location", (e) => {
+    on("partner-location", (e) => {
       try {
         setPartnerLive(JSON.parse(e.data) as PartnerLive);
       } catch {
@@ -167,9 +186,9 @@ export function useNavigationInvites(enabled = true) {
 
     // Their last fix aged out. Clearing beats leaving a pin at a place they
     // have not been for five minutes.
-    es.addEventListener("partner-gone", () => setPartnerLive(null));
+    on("partner-gone", () => setPartnerLive(null));
 
-    es.addEventListener("ping", (e) => {
+    on("ping", (e) => {
       try {
         const data = JSON.parse(e.data) as { action: string; ts: number };
         setPartnerPingAction(data.action);
@@ -180,7 +199,7 @@ export function useNavigationInvites(enabled = true) {
       }
     });
 
-    es.addEventListener("listen-invite", (e) => {
+    on("listen-invite", (e) => {
       try {
         setListenInvite(JSON.parse(e.data) as ListenInvite);
       } catch {
@@ -188,7 +207,7 @@ export function useNavigationInvites(enabled = true) {
       }
     });
 
-    es.addEventListener("listen-started", (e) => {
+    on("listen-started", (e) => {
       try {
         const data = JSON.parse(e.data) as { id: string };
         setListenLive(data.id);
@@ -199,7 +218,7 @@ export function useNavigationInvites(enabled = true) {
       }
     });
 
-    es.addEventListener("listen-ended", (e) => {
+    on("listen-ended", (e) => {
       /*
        * Suffixed with the arrival time so two ends of sessions that happened
        * to share an id still read as two events. Equal values are what React
@@ -216,7 +235,7 @@ export function useNavigationInvites(enabled = true) {
       setListenState(null);
     });
 
-    es.addEventListener("listen-state", (e) => {
+    on("listen-state", (e) => {
       try {
         const data = JSON.parse(e.data) as Omit<ListenState, "receivedAt">;
         // Stamped on arrival: the drift correction needs to know how much
@@ -227,7 +246,7 @@ export function useNavigationInvites(enabled = true) {
       }
     });
 
-    es.addEventListener("trip-ended", (e) => {
+    on("trip-ended", (e) => {
       try {
         const data = JSON.parse(e.data) as { id: string; locationName: string };
         setEndedTrip(data);
@@ -254,6 +273,7 @@ export function useNavigationInvites(enabled = true) {
     };
 
     es.onopen = () => {
+      lastEventAtRef.current = Date.now();
       setIsConnected(true);
     };
   }, []);
@@ -263,6 +283,42 @@ export function useNavigationInvites(enabled = true) {
     esRef.current = null;
     setIsConnected(false);
   }, []);
+
+  /** Throw the current connection away and open a fresh one. */
+  const reopen = useCallback(() => {
+    disconnect();
+    connect();
+  }, [connect, disconnect]);
+
+  /*
+   * Two reasons to reopen that `onerror` never reports.
+   *
+   * Silence: the server sends something at least every 15 s, so three missed
+   * beats mean the connection is gone even though the socket still says OPEN.
+   * And the network coming back: the OS `online` event after a Wi-Fi → 4G
+   * switch is the moment the old socket became certainly useless and a new one
+   * can certainly be made; waiting for the watchdog would cost up to 45 s of
+   * not hearing the other person.
+   */
+  useEffect(() => {
+    if (!enabled) return;
+    const watchdog = setInterval(() => {
+      if (!esRef.current) return;
+      if (Date.now() - lastEventAtRef.current > STREAM_SILENCE_MS) reopen();
+    }, STREAM_WATCHDOG_MS);
+    let settle: ReturnType<typeof setTimeout> | null = null;
+    const onOnline = () => {
+      if (settle) clearTimeout(settle);
+      // The radio reports "online" a beat before packets flow.
+      settle = setTimeout(reopen, 500);
+    };
+    window.addEventListener("online", onOnline);
+    return () => {
+      clearInterval(watchdog);
+      if (settle) clearTimeout(settle);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [enabled, reopen]);
 
   /** Dismiss the current incoming invite from state (after responding). */
   const clearIncoming = useCallback(() => setIncomingInvite(null), []);

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Lock, MoreHorizontal, Newspaper } from "lucide-react";
+import { BookOpen, Lock, MoreHorizontal, Newspaper } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { NAV_ITEMS } from "./nav-items";
 import { trpc } from "@/lib/trpc";
@@ -36,7 +36,11 @@ const IN_HEADER = ["/settings", "/search"];
  * would place it in the bottom bar's ordering. Listed here in the same shape so
  * the sheet renders it identically.
  */
-const EXTRA = [{ href: "/vault", label: "Bí mật", Icon: Lock }];
+const EXTRA = [
+  { href: "/vault", label: "Bí mật", Icon: Lock },
+  // The public blog — the guides for using the app. Everyone, not just the admin.
+  { href: "/blog", label: "Xem blog", Icon: BookOpen },
+];
 
 export function MobileMoreMenu({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);

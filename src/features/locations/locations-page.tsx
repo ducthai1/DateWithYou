@@ -27,6 +27,10 @@ import { rerouteLine } from "@/lib/nav-chatter";
 import { destinationSide } from "@/lib/route-geometry";
 import { releaseAudio, unlockAudio } from "@/lib/audio-session";
 import { useNavigation } from "./navigation-context";
+import { useRerouteManager } from "./use-reroute-manager";
+import { NavConnectivityPill } from "./nav-connectivity-pill";
+import { forgetSavedRoute, readSavedRoute, rememberRoute } from "./saved-route";
+import { prefetchRouteTiles } from "@/lib/route-tile-prefetch";
 import { fmtDistance, fmtDuration } from "./format-journey";
 import { ToneArt } from "@/components/theme/tone-art";
 import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -159,8 +163,6 @@ export function LocationsPage() {
   const [partnerRouteGeometry, setPartnerRouteGeometry] = useState<unknown>(null);
   const [partnerRouteDistanceMeters, setPartnerRouteDistanceMeters] = useState<number | null>(null);
   const [partnerRouteDurationSeconds, setPartnerRouteDurationSeconds] = useState<number | null>(null);
-  
-  const isRecalculating = useRef(false);
 
   // ── Multi-leg trip navigation ──
   // When a companion trip has intermediate stops, the route is split into legs
@@ -380,67 +382,99 @@ export function LocationsPage() {
    * client. The provider owns the GPS watch so a journey survives leaving here,
    * and calls back into whatever handler is registered.
    *
-   * Kept in a ref and registered once. Registering the closure itself would
-   * re-register on every render that touches leg state — harmless, but pointless
-   * churn on a hot path, and it makes the subscription look load-bearing.
+   * The manager below owns WHEN to fetch — deadline, retry, "wait for the
+   * network to come back"; this page only says HOW, in `perform`. The vanilla
+   * client is used on purpose: React Query would pause the request while the
+   * device is offline and replay it later with the origin it was given, which
+   * by then is a point the rider left long ago. Here the origin is read when
+   * the request actually goes out.
    */
-  const offRouteRef = useRef<((geo: LatLng) => void) | null>(null);
-  offRouteRef.current = async (currentGeo: LatLng) => {
-      if (isRecalculating.current) return;
+  const latestGeoRef = useRef<LatLng | null>(null);
+  latestGeoRef.current = nav.userGeo ?? userGeo;
+  const reroute = useRerouteManager({
+    isOffline: nav.isOffline,
+    active: nav.isNavigating || pausedTrip,
+    currentGeo: () => latestGeoRef.current,
+    perform: async (origin, signal) => {
       // On a multi-leg trip, re-route ONLY the active leg: current position →
       // that leg's end point. Upcoming legs are left untouched on the map.
       if (legGeometries && !legArrived) {
-        isRecalculating.current = true;
-        try {
-          const endpoint = legEndpoint(legGeometries[currentLegIndex]);
-          const r = await utils.location.getRoute.fetch({ destination: endpoint, origin: currentGeo });
-          const leg = r.legs[0];
-          const coords = leg?.geometry.coordinates ?? [];
-          setLegGeometries((prev) =>
-            prev ? prev.map((l, i) => (i === currentLegIndex ? (leg ?? l) : l)) : prev,
-          );
-          if (coords.length) {
-            nav.setRouteInfo(coords, leg?.distanceMeters ?? r.distanceMeters, leg?.durationSeconds ?? r.durationSeconds);
-            // Only once the new line is actually in hand: saying it has been
-            // redrawn while the request is still out, or after it failed, is a
-            // promise the map has not kept.
-            speak(rerouteLine(), { chime: true });
-          }
-        } catch (err) {
-          console.error("Lỗi tính lại chặng đang đi", err);
-        } finally {
-          setTimeout(() => { isRecalculating.current = false; }, 5000);
+        const endpoint = legEndpoint(legGeometries[currentLegIndex]);
+        const r = await utils.client.location.getRoute.query({ destination: endpoint, origin }, { signal });
+        const leg = r.legs[0];
+        const coords = leg?.geometry.coordinates ?? [];
+        setLegGeometries((prev) =>
+          prev ? prev.map((l, i) => (i === currentLegIndex ? (leg ?? l) : l)) : prev,
+        );
+        if (coords.length) {
+          nav.setRouteInfo(coords, leg?.distanceMeters ?? r.distanceMeters, leg?.durationSeconds ?? r.durationSeconds);
+          // Only once the new line is actually in hand: saying it has been
+          // redrawn while the request is still out, or after it failed, is a
+          // promise the map has not kept.
+          speak(rerouteLine(), { chime: true });
+          void prefetchRouteTiles(coords);
         }
         return;
       }
       if (!selectedId) return;
-      isRecalculating.current = true;
-      try {
-        const r = await utils.location.getRoute.fetch({ destinationId: selectedId, origin: currentGeo });
-        setRouteGeometry(r.geometry);
-        // The turns belong to the line. Without this the map redrew around the
-        // detour while the voice carried on down the road that was abandoned —
-        // worse than saying nothing, because it is confidently wrong.
-        setRouteLegs(r.legs);
-        setRouteDistanceMeters(r.distanceMeters);
-        setRouteDurationSeconds(r.durationSeconds);
-        const coords = (r.geometry as { coordinates?: Array<[number, number]> }).coordinates;
-        if (coords) {
-          nav.setRouteInfo(coords, r.distanceMeters, r.durationSeconds);
-          speak(rerouteLine(), { chime: true });
-        }
-      } catch (err) {
-        console.error("Lỗi tính lại đường đi", err);
-      } finally {
-        // Wait a bit before allowing another recalculation to avoid spamming
-        setTimeout(() => { isRecalculating.current = false; }, 5000);
+      const r = await utils.client.location.getRoute.query({ destinationId: selectedId, origin }, { signal });
+      setRouteGeometry(r.geometry);
+      // The turns belong to the line. Without this the map redrew around the
+      // detour while the voice carried on down the road that was abandoned —
+      // worse than saying nothing, because it is confidently wrong.
+      setRouteLegs(r.legs);
+      setRouteDistanceMeters(r.distanceMeters);
+      setRouteDurationSeconds(r.durationSeconds);
+      const coords = (r.geometry as { coordinates?: Array<[number, number]> }).coordinates;
+      if (coords) {
+        nav.setRouteInfo(coords, r.distanceMeters, r.durationSeconds);
+        speak(rerouteLine(), { chime: true });
+        rememberRoute({
+          locationId: selectedId,
+          geometry: r.geometry,
+          legs: r.legs,
+          distanceMeters: r.distanceMeters,
+          durationSeconds: r.durationSeconds,
+          multiLeg: false,
+        });
+        void prefetchRouteTiles(coords);
       }
-    
-  };
-  useEffect(
-    () => nav.setOffRouteHandler((geo) => offRouteRef.current?.(geo)),
-    [nav],
-  );
+    },
+  });
+  useEffect(() => nav.setOffRouteHandler(reroute.request), [nav, reroute.request]);
+
+  /*
+   * Said aloud, because nobody reads a screen at 40 km/h. Once per change, and
+   * only while riding; the re-route itself announces when it has a new line.
+   */
+  const wasOfflineRef = useRef(nav.isOffline);
+  useEffect(() => {
+    const was = wasOfflineRef.current;
+    wasOfflineRef.current = nav.isOffline;
+    if (!nav.isNavigating || was === nav.isOffline) return;
+    if (nav.isOffline) speak("Mất mạng rồi, mình vẫn dẫn theo GPS nha");
+    else if (!reroute.pending) speak("Có mạng lại rồi");
+  }, [nav.isOffline, nav.isNavigating, reroute.pending]);
+
+  /*
+   * A "Chỉ đường" pressed with no network and no saved line is owed, not
+   * failed: the same request goes out the moment the network is back.
+   */
+  const routeRetryRef = useRef<{
+    id: string;
+    dest: LatLng | null;
+    waypoints?: Array<{ lat: number; lng: number }>;
+    opts?: { askChoice?: boolean; withPartner?: boolean };
+  } | null>(null);
+  useEffect(() => {
+    if (nav.isOffline) return;
+    const owed = routeRetryRef.current;
+    if (!owed) return;
+    routeRetryRef.current = null;
+    goToLocation(owed.id, owed.dest, owed.waypoints, owed.opts);
+    // goToLocation is a plain function declared below; it reads live state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nav.isOffline]);
 
 
   const liveUser = nav.userGeo ?? userGeo;
@@ -804,7 +838,13 @@ export function LocationsPage() {
     if (nav.isNavigating && selectedId) {
       wasNavigating.current = true;
       try {
-        window.localStorage.setItem(RIDE_KEY, JSON.stringify({ locationId: selectedId, startedAt: Date.now() }));
+        // Name and pin travel with the record so the offer to resume can be
+        // made before — or without — the place list loading (no network).
+        const loc = list.data?.find((l) => l.id === selectedId);
+        window.localStorage.setItem(
+          RIDE_KEY,
+          JSON.stringify({ locationId: selectedId, name: loc?.name ?? null, geo: loc?.geo ?? null, startedAt: Date.now() }),
+        );
       } catch {
         /* Not remembered; the ride itself is unaffected. */
       }
@@ -817,23 +857,33 @@ export function LocationsPage() {
         /* nothing to clear */
       }
     }
-  }, [nav.isNavigating, pausedTrip, selectedId]);
+  }, [nav.isNavigating, pausedTrip, selectedId, list.data]);
 
-  const [resumable, setResumable] = useState<{ locationId: string; name: string } | null>(null);
+  const [resumable, setResumable] = useState<{ locationId: string; name: string; geo: LatLng | null } | null>(null);
   useEffect(() => {
-    if (nav.isNavigating || pausedTrip || !list.data) return;
+    if (nav.isNavigating || pausedTrip) return;
     try {
       const raw = window.localStorage.getItem(RIDE_KEY);
       if (!raw) return setResumable(null);
-      const rec = JSON.parse(raw) as { locationId?: string; startedAt?: number };
+      const rec = JSON.parse(raw) as {
+        locationId?: string;
+        startedAt?: number;
+        name?: string | null;
+        geo?: LatLng | null;
+      };
       // Three hours: long enough for any ride, short enough that a forgotten
       // record does not greet someone a week later.
       if (!rec.locationId || !rec.startedAt || Date.now() - rec.startedAt > 3 * 3600_000) {
         window.localStorage.removeItem(RIDE_KEY);
         return setResumable(null);
       }
-      const loc = list.data.find((l) => l.id === rec.locationId);
-      setResumable(loc ? { locationId: loc.id, name: loc.name } : null);
+      const loc = list.data?.find((l) => l.id === rec.locationId);
+      if (loc) return setResumable({ locationId: loc.id, name: loc.name, geo: loc.geo ?? null });
+      // No list yet — still loading, or no network: the record itself is enough
+      // to offer the ride back, which is the whole point of an offline resume.
+      if (rec.name && rec.geo) return setResumable({ locationId: rec.locationId, name: rec.name, geo: rec.geo });
+      // The list is here and the place is gone from it.
+      if (list.data) setResumable(null);
     } catch {
       setResumable(null);
     }
@@ -849,17 +899,20 @@ export function LocationsPage() {
     goTo: ((id: string, geo: { lat: number; lng: number }) => void) | null;
   }>({ announce: null, goTo: null });
   const resumeRide = useCallback(() => {
-    const loc = list.data?.find((l) => l.id === resumable?.locationId);
-    if (!loc?.geo) return;
+    if (!resumable) return;
+    const loc = list.data?.find((l) => l.id === resumable.locationId);
+    const geo = loc?.geo ?? resumable.geo;
+    if (!geo) return;
     setResumable(null);
     enterImmersive();
-    startRefs.current.goTo?.(loc.id, loc.geo);
+    startRefs.current.goTo?.(resumable.locationId, geo);
     startRefs.current.announce?.({ withNumbers: false });
     setAutoStartWhenRouted(true);
   }, [list.data, resumable, enterImmersive]);
 
   const dismissResume = useCallback(() => {
     setResumable(null);
+    forgetSavedRoute();
     try {
       window.localStorage.removeItem(RIDE_KEY);
     } catch {
@@ -904,9 +957,9 @@ export function LocationsPage() {
       selectedId &&
       nav.partnerLocation &&
       !partnerRouteGeometry &&
-      !isRecalculating.current
+      !reroute.busyRef.current
     ) {
-      utils.location.getRoute.fetch({
+      utils.client.location.getRoute.query({
         destinationId: selectedId,
         origin: { lat: nav.partnerLocation.lat, lng: nav.partnerLocation.lng }
       }).then(r => {
@@ -1122,6 +1175,7 @@ export function LocationsPage() {
      * complaints, one condition.
      */
     setRoutePending(true);
+    routeRetryRef.current = null; // a new request supersedes anything owed
     if (opts?.askChoice && typeof window !== "undefined" && window.innerWidth < 1024) {
       setSheetCollapseTick((t) => t + 1);
       setTripChoiceOpen(true);
@@ -1145,18 +1199,27 @@ export function LocationsPage() {
         const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserGeo(origin);
         try {
+          /*
+           * The vanilla client, here and for every other route request on this
+           * page. React Query's fetch PAUSES while the device is offline and
+           * resumes it later — so a "Chỉ đường" pressed with no network sat on
+           * its spinner forever instead of failing into the saved-route path
+           * below, and a resumed request went out with a stale origin. A
+           * request that fails at once is the one this page knows how to
+           * handle.
+           */
           // Pass waypoints to getRoute so multi-stop companion trips draw correctly.
           const routeArgs = {
             destinationId: id,
             origin,
             ...(waypoints && waypoints.length > 0 ? { waypoints } : {}),
           };
-          const reqs = [utils.location.getRoute.fetch(routeArgs)];
+          const reqs = [utils.client.location.getRoute.query(routeArgs)];
 
           // Their route is drawn only when this is a trip they agreed to. Being
           // online is not agreement.
           if (opts?.withPartner && nav.partnerLocation) {
-            reqs.push(utils.location.getRoute.fetch({
+            reqs.push(utils.client.location.getRoute.query({
               destinationId: id,
               origin: { lat: nav.partnerLocation.lat, lng: nav.partnerLocation.lng },
               ...(waypoints && waypoints.length > 0 ? { waypoints } : {}),
@@ -1192,6 +1255,20 @@ export function LocationsPage() {
               nav.setRouteInfo(coords, r.distanceMeters, r.durationSeconds);
             }
           }
+          rememberRoute({
+            locationId: id,
+            geometry: r.geometry,
+            legs: r.legs,
+            distanceMeters: r.distanceMeters,
+            durationSeconds: r.durationSeconds,
+            multiLeg: isMultiLeg,
+          });
+          // Every tile the ride will need, fetched now while the link is good.
+          void prefetchRouteTiles(
+            isMultiLeg
+              ? r.legs.flatMap((l) => l.geometry.coordinates)
+              : ((r.geometry as { coordinates?: Array<[number, number]> }).coordinates ?? []),
+          );
 
           // Always cleared, because it is always set: the flag now means "a
           // route is being fetched" for every caller, not just the one that
@@ -1208,7 +1285,51 @@ export function LocationsPage() {
             setPartnerRouteDurationSeconds(null);
           }
         } catch {
-          setRouteError("Không vẽ được đường đi (kiểm tra STADIA_API_KEY).");
+          /*
+           * No network, or the router is down. Fall back to the line this ride
+           * was already drawn with, if there is one for this destination: a
+           * rider picking a killed tab back up under a bridge gets their route,
+           * not an error about an API key. The re-route manager corrects the
+           * line from wherever they are once the network is back.
+           */
+          const saved = readSavedRoute(id);
+          if (saved) {
+            setRouteDistanceMeters(saved.distanceMeters);
+            setRouteDurationSeconds(saved.durationSeconds);
+            setRouteLegs(saved.legs);
+            setRouteAlternatives([]);
+            if (saved.multiLeg && saved.legs.length > 0) {
+              setLegGeometries(saved.legs);
+              setCurrentLegIndex(0);
+              setLegArrived(false);
+              setRouteGeometry(null);
+              const first = saved.legs[0];
+              nav.setRouteInfo(first.geometry.coordinates, first.distanceMeters, first.durationSeconds, saved.legs);
+            } else {
+              setLegGeometries(null);
+              setRouteGeometry(saved.geometry);
+              const coords = (saved.geometry as { coordinates?: Array<[number, number]> }).coordinates;
+              if (coords) nav.setRouteInfo(coords, saved.distanceMeters, saved.durationSeconds);
+            }
+            setPartnerRouteGeometry(null);
+            setPartnerRouteDistanceMeters(null);
+            setPartnerRouteDurationSeconds(null);
+            setRoutePending(false);
+            toast(
+              navigator.onLine
+                ? "Không tải được đường mới — dùng lại đường đã vẽ lúc trước."
+                : "Mất mạng — dùng lại đường đã vẽ lúc trước.",
+              "info",
+            );
+            return;
+          }
+          if (!navigator.onLine) {
+            // Owed, not failed: drawn the moment the network is back.
+            routeRetryRef.current = { id, dest, waypoints, opts };
+            setRouteError("Mất mạng — sẽ vẽ đường ngay khi có mạng lại.");
+          } else {
+            setRouteError("Không vẽ được đường đi (kiểm tra STADIA_API_KEY).");
+          }
           setRoutePending(false);
         }
       },
@@ -1277,7 +1398,7 @@ export function LocationsPage() {
     legArmedRef.current = false;
     if (cur) {
       try {
-        const r = await utils.location.getRoute.fetch({ destination: legEndpoint(planned), origin: cur });
+        const r = await utils.client.location.getRoute.query({ destination: legEndpoint(planned), origin: cur });
         const leg = r.legs[0];
         if (leg) {
           setLegGeometries((prev) => (prev ? prev.map((l, i) => (i === nextIdx ? leg : l)) : prev));
@@ -1336,6 +1457,7 @@ export function LocationsPage() {
   const resetTrip = () => {
     nav.stop();
     closeTripDialogs();
+    forgetSavedRoute();
     setPausedTrip(false);
     setLegGeometries(null);
     setCurrentLegIndex(0);
@@ -1421,6 +1543,17 @@ export function LocationsPage() {
     setRouteDistanceMeters(alt.distanceMeters);
     setRouteDurationSeconds(alt.durationSeconds);
     nav.setRouteInfo(coords, alt.distanceMeters, alt.durationSeconds);
+    if (selectedId) {
+      rememberRoute({
+        locationId: selectedId,
+        geometry: alt.geometry,
+        legs: alt.legs,
+        distanceMeters: alt.distanceMeters,
+        durationSeconds: alt.durationSeconds,
+        multiLeg: false,
+      });
+    }
+    void prefetchRouteTiles(coords);
     // The one just taken is no longer an alternative to itself.
     setRouteAlternatives((prev) => prev.filter((_, k) => k !== i));
   };
@@ -1766,6 +1899,13 @@ export function LocationsPage() {
               style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
             >
               <div className="flex w-full max-w-md flex-col items-center gap-2">
+                <NavConnectivityPill
+                  isOffline={nav.isOffline}
+                  networkFlaky={nav.networkFlaky}
+                  gpsLost={nav.gpsLost}
+                  reroute={reroute.status}
+                  reroutePending={reroute.pending}
+                />
                 {/*
                   The next turn, above everything else on the screen.
 
@@ -2420,9 +2560,9 @@ export function LocationsPage() {
                 <LocateOff className="h-3.5 w-3.5" /> Mất định vị GPS
               </div>
             )}
-            {isRecalculating.current && !nav.isOffline && (
+            {reroute.status === "fetching" && !nav.isOffline && (
               <div className="flex self-center items-center gap-2 rounded-full bg-yellow-500 px-3 py-1.5 text-xs font-medium text-white shadow-md mb-1 animate-in fade-in slide-in-from-bottom-2">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tính lại đường...
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang vẽ lại đường…
               </div>
             )}
             {pausedTrip ? (
