@@ -3,7 +3,9 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { SpecialDateModel } from "@/server/db/models/special-date";
-import { daysUntil } from "@/lib/date-keys";
+import { SpaceModel } from "@/server/db/models/space";
+import { resolveMemberProfiles } from "@/server/auth/member-profiles";
+import { daysUntil, todayKey } from "@/lib/date-keys";
 
 const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -31,6 +33,66 @@ export const specialDateRouter = router({
       }))
       .sort((a, b) => a.daysUntil - b.daysUntil);
   }),
+
+  /** Your own birthday — the one row in this space tagged to you. */
+  myBirthday: protectedProcedure.query(async ({ ctx }) => {
+    await connectToDatabase();
+    const doc = await SpecialDateModel.findOne({
+      spaceId: ctx.spaceId,
+      birthdayOf: ctx.userId,
+    })
+      .select("date")
+      .lean<{ date?: string }>();
+    return { date: doc?.date ?? null };
+  }),
+
+  /**
+   * Set, or clear, your own birthday. Only ever your own.
+   *
+   * Written as an ordinary recurring special date on purpose: the countdown,
+   * the calendar grid and /home already read those, so this needs no new
+   * plumbing and inherits the Feb-29 clamping in `daysUntil`. `birthdayOf` is
+   * what makes a second save an update rather than a duplicate row.
+   */
+  setMyBirthday: protectedProcedure
+    .input(z.object({ date: dateKey.nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      if (!input.date) {
+        await SpecialDateModel.deleteOne({ spaceId: ctx.spaceId, birthdayOf: ctx.userId });
+        return { ok: true as const };
+      }
+      // Nobody is born tomorrow. Guards a typo'd year landing a "birthday"
+      // decades out, which would then sit at the top of the countdown.
+      if (input.date > todayKey()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Ngày sinh không thể ở tương lai" });
+      }
+      /*
+       * The name rides in the title so two people's birthdays are tellable
+       * apart on the calendar. Rewritten on every save, so if a nickname
+       * changes, re-saving the date refreshes it.
+       */
+      const [me] = await resolveMemberProfiles([ctx.userId]);
+      const space = await SpaceModel.findById(ctx.spaceId)
+        .select("memberProfiles")
+        .lean<{ memberProfiles?: { userId: string; nickname?: string }[] }>();
+      const nickname = (space?.memberProfiles ?? []).find((p) => p.userId === ctx.userId)?.nickname;
+      const who = nickname || me?.name || "bạn";
+      await SpecialDateModel.updateOne(
+        { spaceId: ctx.spaceId, birthdayOf: ctx.userId },
+        {
+          $set: {
+            title: `Sinh nhật ${who}`,
+            date: input.date,
+            recurYearly: true,
+            icon: "cake",
+          },
+          $setOnInsert: { spaceId: ctx.spaceId, birthdayOf: ctx.userId, createdBy: ctx.userId },
+        },
+        { upsert: true },
+      );
+      return { ok: true as const };
+    }),
 
   create: protectedProcedure.input(input).mutation(async ({ ctx, input }) => {
     await connectToDatabase();

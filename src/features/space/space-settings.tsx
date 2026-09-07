@@ -20,6 +20,7 @@ import {
   type ThemePresetKey,
 } from "@/lib/theme-presets";
 import { cn } from "@/lib/utils";
+import { todayKey } from "@/lib/date-keys";
 
 import { useToast } from "@/components/ui/toast";
 import { VoiceHapticTestRow } from "@/features/locations/voice-haptic-test-row";
@@ -81,6 +82,31 @@ export function SpaceSettings() {
       void utils.space.members.invalidate();
       void utils.profile.me.invalidate();
     },
+  });
+  /*
+   * Birthday. Seeded once like the nicknames above so a background refetch
+   * cannot yank the field while it is being edited.
+   */
+  const myBirthday = trpc.specialDate.myBirthday.useQuery();
+  const [bdayDraft, setBdayDraft] = useState("");
+  const seededBday = useRef(false);
+  useEffect(() => {
+    if (seededBday.current || !myBirthday.data) return;
+    seededBday.current = true;
+    setBdayDraft(myBirthday.data.date ?? "");
+  }, [myBirthday.data]);
+  const saveBirthday = trpc.specialDate.setMyBirthday.useMutation({
+    onSuccess: () => {
+      // It is an ordinary special date, so everything that reads those has to
+      // hear about it: the countdown list, the calendar grid and /home.
+      void utils.specialDate.myBirthday.invalidate();
+      void utils.specialDate.list.invalidate();
+      void utils.calendar.monthSummary.invalidate();
+      void utils.calendar.dayDetail.invalidate();
+      void utils.dashboard.today.invalidate();
+      toast("Đã lưu sinh nhật", "success");
+    },
+    onError: (e) => toast(e.message || "Chưa lưu được", "error"),
   });
   const saveNickname = trpc.space.setNickname.useMutation({
     onSuccess: () => {
@@ -491,6 +517,48 @@ export function SpaceSettings() {
             </button>
           ))}
         </div>
+      </Card>
+
+      {/* ── SINH NHẬT ──
+          Kept as an ordinary recurring special date by the router, which is why
+          this screen does not have to teach the countdown, the calendar or
+          /home about birthdays — they already read special dates. */}
+      <Card className="space-y-3 shadow-sm">
+        <p className="text-accent text-sm font-semibold">Sinh nhật của bạn</p>
+        <p className="text-muted-foreground text-xs">
+          Hiện trên lịch và trong phần đếm ngược. Không lấy được tự động từ Google hay email nên
+          phải tự nhập; người kia tự nhập phần của họ.
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="date"
+            aria-label="Ngày sinh của bạn"
+            value={bdayDraft}
+            max={todayKey()}
+            onChange={(e) => setBdayDraft(e.target.value)}
+            className="border-border focus:border-accent bg-card min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
+          />
+          <Button
+            className="shrink-0"
+            disabled={saveBirthday.isPending || !bdayDraft || bdayDraft === (myBirthday.data?.date ?? "")}
+            onClick={() => saveBirthday.mutate({ date: bdayDraft })}
+          >
+            {saveBirthday.isPending ? "Đang lưu…" : "Lưu"}
+          </Button>
+        </div>
+        {myBirthday.data?.date && (
+          <button
+            type="button"
+            disabled={saveBirthday.isPending}
+            onClick={() => {
+              setBdayDraft("");
+              saveBirthday.mutate({ date: null });
+            }}
+            className="text-muted-foreground hover:text-destructive text-xs underline"
+          >
+            Xoá ngày sinh
+          </button>
+        )}
       </Card>
 
       <h2 className="text-lg font-semibold mt-2">Không gian chung</h2>
