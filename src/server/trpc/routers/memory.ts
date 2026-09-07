@@ -161,6 +161,8 @@ function toItem(d: any) {
       })),
       tags: d.tags ?? [],
       date: d.date,
+      // When it was written down — a different fact from the day it is about.
+      createdAt: (d as { createdAt?: Date }).createdAt?.toISOString() ?? null,
       locationId: d.locationId ?? null,
       geo: d.geo?.lat != null ? { lat: d.geo.lat, lng: d.geo.lng } : null,
   };

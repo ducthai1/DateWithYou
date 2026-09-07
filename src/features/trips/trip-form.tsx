@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { trpc } from "@/lib/trpc";
 import { todayKey } from "@/lib/date-keys";
 import { useRouter } from "next/navigation";
@@ -111,25 +112,25 @@ export function TripForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">Từ ngày</label>
-            <input
-              aria-label="Ngày bắt đầu"
-              required
-              type="date"
+            {/* Shared DatePicker: day-first and unambiguous, icon leading — the
+                native field printed the browser's own order and drew its icon
+                against the right edge. Moving the start past the end drags the
+                end along, so the range can never be inverted. */}
+            <DatePicker
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              onChange={(d) => {
+                setStartDate(d);
+                if (endDate < d) setEndDate(d);
+              }}
+              ariaLabel="Ngày bắt đầu"
             />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-muted-foreground">Đến ngày</label>
-            <input
-              aria-label="Ngày kết thúc"
-              required
-              type="date"
+            <DatePicker
               value={endDate}
-              min={startDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              onChange={(d) => setEndDate(d < startDate ? startDate : d)}
+              ariaLabel="Ngày kết thúc"
             />
           </div>
         </div>

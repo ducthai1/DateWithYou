@@ -140,6 +140,18 @@ export function LocationsPage() {
   const [routeGeometry, setRouteGeometry] = useState<unknown>(null);
   const [focusGeo, setFocusGeo] = useState<LatLng | null>(null);
   const [userGeo, setUserGeo] = useState<LatLng | null>(null);
+  /*
+   * "Now", for the open/closed badge on every card.
+   *
+   * One reading per render rather than a Date per card, and ticked once a
+   * minute: a list left open across a closing time would otherwise keep
+   * saying "Đang mở" until something else happened to re-render it.
+   */
+  const [listNow, setListNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setListNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeDistanceMeters, setRouteDistanceMeters] = useState<number | null>(null);
   const [routeDurationSeconds, setRouteDurationSeconds] = useState<number | null>(null);
@@ -2633,6 +2645,31 @@ export function LocationsPage() {
                             </span>
                           )}
                         </p>
+                        {/* The hours, and the one thing they are for: is it
+                            open NOW. This was already on the record and already
+                            used by the meet-halfway suggestions, but the card
+                            never showed it — so deciding whether to press
+                            "Chỉ đường" meant opening the place to look. */}
+                        {(l.openTime || l.closeTime) && (
+                          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs">
+                            <Clock className="text-muted-foreground h-3 w-3 shrink-0" aria-hidden="true" />
+                            <span className="text-muted-foreground tabular-nums">
+                              {l.openTime ?? "?"}–{l.closeTime ?? "?"}
+                            </span>
+                            {l.openTime && l.closeTime && (
+                              <span
+                                className={cn(
+                                  "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                                  isOpenAt(l, listNow)
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-muted text-muted-foreground",
+                                )}
+                              >
+                                {isOpenAt(l, listNow) ? "Đang mở" : "Đã đóng"}
+                              </span>
+                            )}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="border-border/70 mt-auto flex flex-wrap items-center gap-1 border-t pt-2 text-xs">
@@ -2686,6 +2723,10 @@ export function LocationsPage() {
                             googleMapsUrl: l.googleMapsUrl ?? "",
                             socialUrl: l.socialUrl ?? "",
                             mustTry: l.mustTry ?? "",
+                            // The hours were dropped on the way into the form, so editing any place
+                            // showed two empty clocks and re-saving could lose what was entered.
+                            openTime: l.openTime ?? "",
+                            closeTime: l.closeTime ?? "",
                             rating: l.rating,
                             note: l.note ?? "",
                           });

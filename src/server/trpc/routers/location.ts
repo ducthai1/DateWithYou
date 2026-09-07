@@ -117,11 +117,21 @@ async function travelSeconds(
  */
 async function withArea(district: string | undefined, geo?: { lat: number; lng: number }) {
   const given = district?.trim();
-  if (given) return given;
+  /*
+   * The pin decides, when there is one.
+   *
+   * This used to take whatever the client sent and only consult the
+   * coordinates when the field was blank — so a stale or invented name
+   * ("Pleiku - Embe") rode along with a perfectly good pin, and the two
+   * disagreed in the database. The coordinates are the fact; the typed value
+   * is a fallback for a pin the geocoder could not name, and for places with
+   * no pin at all.
+   */
   if (geo) {
     const area = await areaAtPoint(geo.lat, geo.lng);
     if (area?.value) return area.value;
   }
+  if (given) return given;
   return "Chưa rõ khu vực";
 }
 
@@ -289,7 +299,8 @@ export const locationRouter = router({
       }
       // Only when the field was actually sent and came back blank — an edit that
       // never touches the area must not have one invented for it.
-      if (patch.district !== undefined) {
+      // A moved pin names a new area whether or not the client sent one.
+      if (patch.district !== undefined || patch.geo) {
         patch.district = await withArea(patch.district, patch.geo);
       }
       const update: Record<string, unknown> = { $set: patch };

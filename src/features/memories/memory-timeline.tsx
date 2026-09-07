@@ -29,7 +29,7 @@ import {
   type ReactionRow,
 } from "@/features/interactions/reaction-bar";
 import { NoteThread } from "@/features/interactions/note-thread";
-import { Edit, AlertTriangle, Trash2 } from "lucide-react";
+import { Edit, AlertTriangle, Trash2, PenLine } from "lucide-react";
 
 type EmbedField = {
   provider: string;
@@ -46,6 +46,14 @@ const INTERACTION_BATCH = 50;
 
 function monthKey(d: Date): string {
   return new Date(d).toLocaleDateString("vi-VN", { month: "long", year: "numeric" });
+}
+
+/** "14:32, 8/9/2026" — time first, because the time is what tells this line
+ *  apart from the event date beside it, which never has one. */
+function savedAtLabel(iso: string): string {
+  const d = new Date(iso);
+  const hm = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  return `${hm}, ${d.toLocaleDateString("vi-VN")}`;
 }
 
 export function MemoryTimeline() {
@@ -308,6 +316,17 @@ export function MemoryTimeline() {
                             it always did. */}
                         {m.time ? ` · ${m.time}` : ""}
                       </p>
+                      {/* Two dates, two meanings, kept apart on purpose: the
+                          line above is the day the memory is ABOUT; this one
+                          is when it was written down. Worded as an action
+                          ("lưu lúc") and shown smaller with its own icon so the
+                          two can never be read as the same thing. */}
+                      {m.createdAt && (
+                        <p className="text-muted-foreground/70 flex items-center gap-1 text-[11px]">
+                          <PenLine className="h-3 w-3" aria-hidden="true" />
+                          Lưu lúc {savedAtLabel(m.createdAt)}
+                        </p>
+                      )}
                     </div>
                     {m.caption && (
                       <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
@@ -439,6 +458,12 @@ export function MemoryTimeline() {
                 })}
                 {selectedMemo.time ? ` · lúc ${selectedMemo.time}` : ""}
               </p>
+              {selectedMemo.createdAt && (
+                <p className="text-muted-foreground/70 -mt-2 flex items-center gap-1 text-[11px]">
+                  <PenLine className="h-3 w-3" aria-hidden="true" />
+                  Lưu lúc {savedAtLabel(selectedMemo.createdAt)}
+                </p>
+              )}
               {selectedMemo.caption && (
                 <p className="text-sm">
                   <MentionText text={selectedMemo.caption} members={members} />

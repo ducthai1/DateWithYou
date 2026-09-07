@@ -5,6 +5,8 @@ import { trpc } from "@/lib/trpc";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TimePicker } from "@/components/ui/time-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Lock, Unlock, Loader2, Hourglass } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,7 +31,7 @@ export function CapsulesPanel() {
       toast("Đã giấu kín hộp thời gian!", "success");
       setTitle("");
       setMessage("");
-      setUnlockDate("");
+      setUnlockClock("09:00");
     },
     onError: (err) => {
       toast(readableFormError(err.message), "error");
@@ -39,7 +41,19 @@ export function CapsulesPanel() {
   const [formOpen, setFormOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [unlockDate, setUnlockDate] = useState("");
+  /*
+   * A capsule is "open this in a year" far more often than anything else, so
+   * that is where the field starts — a date and a time, each in the shared
+   * picker, instead of a native datetime-local that starts blank and draws its
+   * own icon against the right edge.
+   */
+  const [unlockDay, setUnlockDay] = useState(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  const [unlockClock, setUnlockClock] = useState("09:00");
+  const unlockDate = unlockDay && unlockClock ? `${unlockDay}T${unlockClock}` : "";
 
   const [selectedCapsule, setSelectedCapsule] = useState<{ id: string; title: string; message: string | null; unlockDate: string | Date; isOpened: boolean; creatorId?: string } | null>(null);
 
@@ -111,14 +125,15 @@ export function CapsulesPanel() {
                 required
               />
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Ngày mở khóa</label>
-                <Input
-                  type="datetime-local"
-                  value={unlockDate}
-                  onChange={(e) => setUnlockDate(e.target.value)}
-                  min={new Date().toISOString().slice(0, 16)}
-                  required
-                />
+                <p className="text-sm font-medium text-muted-foreground">Ngày mở khóa</p>
+                <div className="flex gap-2">
+                  <div className="min-w-0 flex-1">
+                    <DatePicker value={unlockDay} onChange={setUnlockDay} ariaLabel="Ngày mở khoá" />
+                  </div>
+                  <div className="w-32 shrink-0">
+                    <TimePicker value={unlockClock} onChange={setUnlockClock} />
+                  </div>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>Hủy</Button>

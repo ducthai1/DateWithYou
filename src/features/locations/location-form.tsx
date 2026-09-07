@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { TimePicker } from "@/components/ui/time-picker";
 
 import { cn } from "@/lib/utils";
 import type { LatLng } from "@/lib/maps";
@@ -79,7 +80,15 @@ export function LocationForm({
     // official list is searchable and a blank field asks rather than assumes.
     district: initial?.district || "",
     category: initial?.category || categories[0] || "",
+    /*
+     * Opening hours start filled on a NEW place — most cafés and eateries keep
+     * something close to this — so the two fields are an adjustment rather than
+     * a blank to work out. Only on create: pre-filling an existing place that
+     * has no hours would silently write hours onto it during an unrelated edit.
+     */
     ...initial,
+    openTime: initial?.id ? (initial.openTime ?? "") : (initial?.openTime || "08:00"),
+    closeTime: initial?.id ? (initial.closeTime ?? "") : (initial?.closeTime || "22:00"),
   });
   /*
    * A point tapped on the map after this form opened has to land in it.
@@ -157,15 +166,27 @@ export function LocationForm({
   const resolvingLink = linkGeo.isFetching;
   const linkHadNoGeo = !!linkToResolve && linkGeo.isFetched && !linkGeo.isFetching && !resolvedGeo && !v.geo;
 
+  /*
+   * With a pin, the area is not a choice — it is a fact about the pin.
+   *
+   * Earlier this only filled an EMPTY field, so a hand-typed or stale value
+   * survived a corrected pin, and the field stayed editable, so the two could
+   * be made to disagree ("Bình Thạnh" on a pin in Gia Lai). Now the lookup
+   * runs for whatever the pin is, its answer replaces the field, and the field
+   * is locked while a pin exists. Without a pin the person picks from the
+   * official list; nothing else is offered.
+   */
   const areaAt = trpc.location.areaAt.useQuery(
     { lat: v.geo?.lat ?? 0, lng: v.geo?.lng ?? 0 },
-    { enabled: !!v.geo && !v.district, staleTime: 60 * 60 * 1000, retry: false },
+    { enabled: !!v.geo, staleTime: 60 * 60 * 1000, retry: false },
   );
   const suggestedArea = areaAt.data?.value ?? null;
   useEffect(() => {
-    if (!suggestedArea) return;
-    setV((p) => (p.district ? p : { ...p, district: suggestedArea }));
-  }, [suggestedArea]);
+    if (!v.geo || !suggestedArea) return;
+    setV((p) => (p.district === suggestedArea ? p : { ...p, district: suggestedArea }));
+  }, [suggestedArea, v.geo]);
+  const areaLocked = !!v.geo;
+  const areaLookingUp = !!v.geo && areaAt.isFetching;
 
   /*
    * Add a category without leaving the dialog.
@@ -226,21 +247,22 @@ export function LocationForm({
     { enabled: areaQuery.trim().length > 1, staleTime: 5 * 60 * 1000 },
   );
   const areaOptions = useMemo(() => {
-    const own = districts.map((d) => ({ value: d, label: d }));
-    const seen = new Set(own.map((o) => o.value));
-    const official = (areaSearch.data ?? [])
-      .filter((a) => !seen.has(a.value))
-      .map((a) => ({ value: a.value, label: a.label }));
-    // A value already saved on this place must stay selectable even when it is
-    // in neither list — otherwise editing an old pin silently clears its area.
-    const current = v.district && !seen.has(v.district)
-      && !official.some((o) => o.value === v.district)
+    /*
+     * The official list only. The space's own hand-typed areas used to be
+     * offered beside it "as a convenience", and that is where the wrong names
+     * came from — a made-up label chosen once kept being re-chosen. The prop is
+     * still accepted so the page need not change, but nothing is read from it.
+     */
+    const official = (areaSearch.data ?? []).map((a) => ({ value: a.value, label: a.label }));
+    // A value already saved on this place must stay selectable even when the
+    // search has not surfaced it — otherwise editing an old pin silently
+    // clears its area.
+    const current = v.district && !official.some((o) => o.value === v.district)
       ? [{ value: v.district, label: v.district }]
       : [];
-    // The official list first now: it is the authority, and the space's own
-    // hand-typed entries are a convenience beside it rather than the default.
-    return [...current, ...official, ...own];
-  }, [districts, areaSearch.data, v.district]);
+    return [...current, ...official];
+  }, [areaSearch.data, v.district]);
+  void districts;
 
   const onError = (err: { message?: string }) =>
     toast("Lưu thất bại: " + readableFormError(err?.message), "error");
@@ -303,16 +325,25 @@ export function LocationForm({
         {/* Its own row. An official ward reads "Phường An Khánh, Thành phố Hồ
             Chí Minh" — long enough that sharing a row with the category pushed
             the pair past the panel's width the moment an area was chosen. */}
-        <Select
-          aria-label="Khu vực"
-          value={v.district}
-          onChange={(val) => set("district", val)}
-          options={areaOptions}
-          searchable
-          onSearch={setAreaQuery}
-          searchPlaceholder="Tìm phường, xã…"
-          emptyLabel="Không tìm thấy khu vực"
-        />
+        <div className="space-y-1">
+          <Select
+            aria-label="Khu vực"
+            value={v.district}
+            onChange={(val) => set("district", val)}
+            options={areaOptions}
+            searchable
+            onSearch={setAreaQuery}
+            searchPlaceholder="Tìm phường, xã…"
+            emptyLabel="Không tìm thấy khu vực"
+            placeholder={areaLookingUp ? "Đang xác định khu vực từ vị trí…" : "Chọn phường, xã…"}
+            disabled={areaLocked}
+          />
+          <p className="text-muted-foreground ml-1 text-[11px]">
+            {areaLocked
+              ? "Khu vực lấy theo vị trí đã ghim — đổi pin để đổi khu vực."
+              : "Danh sách phường/xã chuẩn (sau sáp nhập 2025). Ghim vị trí để tự điền."}
+          </p>
+        </div>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Select
@@ -421,22 +452,19 @@ export function LocationForm({
           value={v.mustTry}
           onChange={(e) => set("mustTry", e.target.value)}
         />
+        {/* The shared TimePicker, not <input type="time">: the native field
+            draws its own clock icon hard against the right edge (the same
+            fault as the native select and date fields had), and renders
+            differently on every engine. This one leads with the icon and
+            speaks 24h. */}
         <div className="flex gap-2">
-          <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Giờ mở cửa</label>
-            <Input
-              type="time"
-              value={v.openTime}
-              onChange={(e) => set("openTime", e.target.value)}
-            />
+          <div className="min-w-0 flex-1">
+            <p className="text-muted-foreground mb-1.5 ml-1 text-xs font-medium">Giờ mở cửa</p>
+            <TimePicker value={v.openTime} onChange={(t) => set("openTime", t)} clearable />
           </div>
-          <div className="flex-1">
-            <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Giờ đóng cửa</label>
-            <Input
-              type="time"
-              value={v.closeTime}
-              onChange={(e) => set("closeTime", e.target.value)}
-            />
+          <div className="min-w-0 flex-1">
+            <p className="text-muted-foreground mb-1.5 ml-1 text-xs font-medium">Giờ đóng cửa</p>
+            <TimePicker value={v.closeTime} onChange={(t) => set("closeTime", t)} clearable />
           </div>
         </div>
         <Select

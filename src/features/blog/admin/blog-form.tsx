@@ -10,6 +10,8 @@ import { readableFormError } from "@/lib/form-error";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { TimePicker } from "@/components/ui/time-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { BlogEditor } from "./blog-editor";
 import { ImagePlus, Loader2, X, CalendarClock, Eye } from "lucide-react";
 
@@ -38,12 +40,6 @@ const EMPTY: BlogFormValues = {
 
 const field = "border-border focus:border-accent w-full rounded-lg border bg-card px-3 py-2 text-sm outline-none";
 const label = "text-foreground mb-1 block text-sm font-medium";
-
-/** A Date as the local "YYYY-MM-DDTHH:mm" a <input type=datetime-local> wants. */
-function toLocalInput(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 /** Pick one image and upload it through the admin-signed Cloudinary flow. */
 function useBlogImageUpload() {
@@ -103,10 +99,27 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
   const [slugTouched, setSlugTouched] = useState(Boolean(initial?.slug));
   const [tagInput, setTagInput] = useState("");
   const [coverBusy, setCoverBusy] = useState(false);
-  const [schedule, setSchedule] = useState(() => {
+  /*
+   * Scheduling starts at the next full hour rather than blank — the field is
+   * only ever opened by someone who wants "soon, on the hour" — unless the post
+   * already carries a future publish time, which is kept. Day and clock are
+   * separate so each can use the shared picker instead of a native
+   * datetime-local that started blank and drew its icon against the edge.
+   */
+  const scheduledAt = (() => {
     const d = initial?.publishedAt ? new Date(initial.publishedAt) : null;
-    return d && d.getTime() > Date.now() ? toLocalInput(d) : "";
-  });
+    if (d && d.getTime() > Date.now()) return d;
+    const n = new Date();
+    n.setHours(n.getHours() + 1, 0, 0, 0);
+    return n;
+  })();
+  const [scheduleDay, setScheduleDay] = useState(
+    `${scheduledAt.getFullYear()}-${String(scheduledAt.getMonth() + 1).padStart(2, "0")}-${String(scheduledAt.getDate()).padStart(2, "0")}`,
+  );
+  const [scheduleClock, setScheduleClock] = useState(
+    `${String(scheduledAt.getHours()).padStart(2, "0")}:${String(scheduledAt.getMinutes()).padStart(2, "0")}`,
+  );
+  const schedule = `${scheduleDay}T${scheduleClock}`;
   const pickImage = useBlogImageUpload();
   const pickImages = useBlogImagesUpload();
   const isEdit = Boolean(v.id);
@@ -227,13 +240,14 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
               <CalendarClock className="h-4 w-4" /> Hẹn giờ đăng
             </summary>
             <div className="mt-2 space-y-2">
-              <input
-                type="datetime-local"
-                aria-label="Thời gian đăng"
-                className={field}
-                value={schedule}
-                onChange={(e) => setSchedule(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <div className="min-w-0 flex-1">
+                  <DatePicker value={scheduleDay} onChange={setScheduleDay} ariaLabel="Ngày đăng" />
+                </div>
+                <div className="w-32 shrink-0">
+                  <TimePicker value={scheduleClock} onChange={setScheduleClock} />
+                </div>
+              </div>
               <Button
                 variant="outline"
                 className="w-full"
