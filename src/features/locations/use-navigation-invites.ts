@@ -49,6 +49,39 @@ export type PartnerLive = {
   updatedAt: string;
 };
 
+/** A track as it travels over the stream — same shape the session stores. */
+export type ListenTrack = {
+  id: string;
+  kind: string;
+  title: string;
+  thumbnailUrl: string | null;
+  providerLabel: string;
+  provider: string;
+  embedUrl: string;
+};
+
+/** "Nghe cùng nhau?" — waiting on this user to answer. */
+export type ListenInvite = { id: string; hostId: string; title: string };
+
+/**
+ * What the other person just did to the shared playback.
+ *
+ * `stateAgeMs` is how long ago it was true, measured on the SERVER, and
+ * `receivedAt` is when this device saw it. A follower works out where to be
+ * from those two and never from a timestamp, because the two phones in a space
+ * do not agree about what time it is.
+ */
+export type ListenState = {
+  id: string;
+  queue: ListenTrack[];
+  index: number;
+  isPlaying: boolean;
+  positionSec: number;
+  stateAgeMs: number;
+  updatedBy: string;
+  receivedAt: number;
+};
+
 /**
  * @param enabled  Open the stream only where it is needed. The public marketing
  *   surface (landing, feature pages, blog) has no invites and no session, so a
@@ -74,6 +107,18 @@ export function useNavigationInvites(enabled = true) {
   const [partnerLive, setPartnerLive] = useState<PartnerLive | null>(null);
   // Set when the partner ends a shared trip — drives the "stop too?" prompt.
   const [endedTrip, setEndedTrip] = useState<{ id: string; locationName: string } | null>(null);
+  // ── Shared listening ──
+  const [listenInvite, setListenInvite] = useState<ListenInvite | null>(null);
+  const [listenState, setListenState] = useState<ListenState | null>(null);
+  /** Session id while one is live, else null. */
+  const [listenLive, setListenLive] = useState<string | null>(null);
+  /*
+   * The id of the session that ended, kept rather than just clearing the one
+   * above. On mount `listenLive` is already null, so a consumer cannot tell
+   * "nothing has happened yet" from "it just ended" — and one seeded from a
+   * load-time query would wipe itself the moment it mounted.
+   */
+  const [listenEnded, setListenEnded] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const esRef = useRef<EventSource | null>(null);
 
@@ -135,6 +180,48 @@ export function useNavigationInvites(enabled = true) {
       }
     });
 
+    es.addEventListener("listen-invite", (e) => {
+      try {
+        setListenInvite(JSON.parse(e.data) as ListenInvite);
+      } catch {
+        /* ignore malformed */
+      }
+    });
+
+    es.addEventListener("listen-started", (e) => {
+      try {
+        const data = JSON.parse(e.data) as { id: string };
+        setListenLive(data.id);
+        // The invite has been answered; the card must not linger behind it.
+        setListenInvite(null);
+      } catch {
+        /* ignore malformed */
+      }
+    });
+
+    es.addEventListener("listen-ended", (e) => {
+      try {
+        const data = JSON.parse(e.data) as { id: string };
+        setListenEnded(data.id);
+      } catch {
+        setListenEnded("unknown");
+      }
+      setListenLive(null);
+      setListenInvite(null);
+      setListenState(null);
+    });
+
+    es.addEventListener("listen-state", (e) => {
+      try {
+        const data = JSON.parse(e.data) as Omit<ListenState, "receivedAt">;
+        // Stamped on arrival: the drift correction needs to know how much
+        // longer has passed since the server measured the age.
+        setListenState({ ...data, receivedAt: Date.now() });
+      } catch {
+        /* ignore malformed */
+      }
+    });
+
     es.addEventListener("trip-ended", (e) => {
       try {
         const data = JSON.parse(e.data) as { id: string; locationName: string };
@@ -166,6 +253,14 @@ export function useNavigationInvites(enabled = true) {
   const clearResponse = useCallback(() => setInviteResponse(null), []);
   /** Dismiss the partner-ended-trip prompt (after the user decides). */
   const clearEndedTrip = useCallback(() => setEndedTrip(null), []);
+  /** Dismiss the listen invite card (after responding). */
+  const clearListenInvite = useCallback(() => setListenInvite(null), []);
+  /** Local end: forget the session without waiting for the stream to say so. */
+  const clearListen = useCallback(() => {
+    setListenLive(null);
+    setListenState(null);
+    setListenInvite(null);
+  }, []);
 
   // Connect on mount, disconnect on unmount — but only where enabled.
   useEffect(() => {
@@ -185,9 +280,19 @@ export function useNavigationInvites(enabled = true) {
     partnerLive,
     /** Set when the partner ends a shared trip (null = none). */
     endedTrip,
+    /** A pending "listen together?" aimed at this user (null = none). */
+    listenInvite,
+    /** Session id while one is live, else null. */
+    listenLive,
+    /** Set to the id of a session the stream reported as finished. */
+    listenEnded,
+    /** The partner's latest playback state (never an echo of our own). */
+    listenState,
     isConnected,
     clearIncoming,
     clearResponse,
     clearEndedTrip,
+    clearListenInvite,
+    clearListen,
   };
 }

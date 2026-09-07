@@ -23,6 +23,8 @@ import {
 import { ReactionModel } from "./models/reaction";
 import { NoteModel } from "./models/note";
 import { MemberStateModel } from "./models/member-state";
+import { ListenSessionModel } from "./models/listen-session";
+import { CycleLogModel } from "./models/cycle-log";
 import { SpaceModel } from "./models/space";
 
 // Structural type — every Mongoose model exposes deleteMany(filter).
@@ -47,6 +49,16 @@ const SPACE_SCOPED_MODELS: Deletable[] = [
   ReactionModel,
   NoteModel,
   MemberStateModel,
+  ListenSessionModel,
+  /*
+   * The cycle log was missing from this list.
+   *
+   * It is the most private thing the app stores and it is space-scoped like
+   * everything else here, so a deleted space was leaving those dates behind in
+   * the database with nothing left pointing at them. Found while adding the
+   * listening session beside it.
+   */
+  CycleLogModel,
 ];
 
 /**

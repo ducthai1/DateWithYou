@@ -3,6 +3,7 @@ import { auth } from "@/server/auth/auth";
 import { connectToDatabase } from "@/server/db/connect";
 import { SpaceModel } from "@/server/db/models/space";
 import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
+import { ListenSessionModel } from "@/server/db/models/listen-session";
 import { LiveLocationModel } from "@/server/db/models/live-location";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
 
@@ -95,6 +96,16 @@ export async function GET(req: NextRequest) {
       let lastPartnerPingAt = 0;
       // Track the last "trip ended" invite we notified about (push once).
       let lastEndedId: string | null = null;
+      /*
+       * Shared listening. Two trackers, because the two things a client needs
+       * are different: the INVITE has to arrive once, while the STATE has to
+       * arrive every time either person touches the playback — so state is
+       * keyed on the document's own `stateAt`, which every control action
+       * re-stamps.
+       */
+      let lastListenId: string | null = null;
+      let lastListenStatus: string | null = null;
+      let lastListenStateAt = 0;
 
       const poll = async () => {
         if (closed) return;
@@ -258,6 +269,74 @@ export async function GET(req: NextRequest) {
             if (updatedAtMs > lastPartnerPingAt && (Date.now() - updatedAtMs) < 10000) {
               lastPartnerPingAt = updatedAtMs;
               send("ping", { action: partnerLoc.pingAction, ts: updatedAtMs });
+            }
+          }
+
+          // ── 5. Shared listening session ──────────────────────────────────
+          const listen = await ListenSessionModel.findOne({
+            spaceId,
+            status: { $in: ["inviting", "live"] },
+          }).lean<{
+            _id: unknown;
+            status: string;
+            hostId: string;
+            guestId: string;
+            queue: unknown[];
+            index: number;
+            isPlaying: boolean;
+            positionSec: number;
+            stateAt: Date;
+            updatedBy: string;
+          }>();
+
+          const lsId = listen ? String(listen._id) : null;
+          const lsStatus = listen?.status ?? null;
+
+          if (lsId !== lastListenId || lsStatus !== lastListenStatus) {
+            const prevId = lastListenId;
+            lastListenId = lsId;
+            lastListenStatus = lsStatus;
+            if (listen && listen.status === "inviting" && listen.guestId === userId) {
+              // Only the person invited is asked. The host already knows.
+              send("listen-invite", {
+                id: lsId,
+                hostId: listen.hostId,
+                title: (listen.queue?.[listen.index] as { title?: string } | undefined)?.title ?? "",
+              });
+            } else if (listen && listen.status === "live") {
+              // Both sides learn it went live: the guest to start playing, the
+              // host to stop showing "đang chờ".
+              send("listen-started", { id: lsId, updatedBy: listen.updatedBy });
+            } else if (!listen && prevId) {
+              // Declined, ended, or TTL'd. Say so once so both docks close.
+              send("listen-ended", { id: prevId });
+            }
+          }
+
+          /*
+           * State, only for the OTHER person.
+           *
+           * Echoing a control back to whoever pressed it is how a seek war
+           * starts: their own position arrives a second late, they jump back to
+           * it, that writes a new state, and so on.
+           */
+          if (listen && listen.status === "live") {
+            const stateAtMs = new Date(listen.stateAt).getTime();
+            if (stateAtMs > lastListenStateAt && listen.updatedBy !== userId) {
+              lastListenStateAt = stateAtMs;
+              send("listen-state", {
+                id: lsId,
+                queue: listen.queue ?? [],
+                index: listen.index ?? 0,
+                isPlaying: !!listen.isPlaying,
+                positionSec: listen.positionSec ?? 0,
+                // An age, not a timestamp — the two phones' clocks disagree.
+                stateAgeMs: Math.max(0, Date.now() - stateAtMs),
+                updatedBy: listen.updatedBy,
+              });
+            } else if (stateAtMs > lastListenStateAt) {
+              // Our own write: absorb it so it is not replayed later.
+              lastListenStateAt = stateAtMs;
             }
           }
         } catch (err) {

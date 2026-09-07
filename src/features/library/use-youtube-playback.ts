@@ -72,6 +72,15 @@ export function useYouTubePlayback(
   const [readyFor, setReadyFor] = useState<string | null>(null);
   const playingRef = useRef(false);
   playingRef.current = playing;
+  /*
+   * The playhead, in seconds, kept in a ref rather than state.
+   *
+   * The frame already volunteers this several times a second in its
+   * `infoDelivery` messages, so nothing has to be asked for — but rendering on
+   * every one of them would re-render the whole dock a few times a second for
+   * a number nothing on screen shows. A shared session reads it on demand.
+   */
+  const positionRef = useRef(0);
   const readyRef = useRef(false);
   readyRef.current = readyFor === frameKey;
 
@@ -103,6 +112,8 @@ export function useYouTubePlayback(
        * while the periodic `infoDelivery` wraps it in an info object.
        */
       const info = data.info;
+      const t = (info as { currentTime?: number })?.currentTime;
+      if (typeof t === "number" && Number.isFinite(t)) positionRef.current = t;
       const state =
         typeof info === "number"
           ? info
@@ -163,6 +174,29 @@ export function useYouTubePlayback(
   const toggle = useCallback(() => send(playingRef.current ? "pauseVideo" : "playVideo"), [send]);
   const play = useCallback(() => send("playVideo"), [send]);
 
+  /** Where the frame is now, in seconds. 0 before it has said anything. */
+  const getPosition = useCallback(() => positionRef.current, []);
+
+  /**
+   * Jump to a point in the track — what keeps two people listening together
+   * actually together.
+   *
+   * `allowSeekAhead: true` so a jump past what has buffered still moves; the
+   * player fetches the new range instead of stopping at the edge of the old one.
+   */
+  const seek = useCallback(
+    (seconds: number) => {
+      const win = getFrame()?.contentWindow;
+      if (!win) return;
+      win.postMessage(
+        JSON.stringify({ event: "command", func: "seekTo", args: [Math.max(0, seconds), true] }),
+        YT_ORIGIN,
+      );
+      positionRef.current = Math.max(0, seconds);
+    },
+    [getFrame],
+  );
+
   /**
    * Swap the video inside the running player, which starts it playing.
    *
@@ -184,5 +218,5 @@ export function useYouTubePlayback(
     [getFrame],
   );
 
-  return { playing, readyFor, toggle, play, loadVideo };
+  return { playing, readyFor, toggle, play, loadVideo, seek, getPosition };
 }

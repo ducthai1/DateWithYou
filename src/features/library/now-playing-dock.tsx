@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChefHat, Music2, Pause, Play, SkipBack, SkipForward, Video, X } from "lucide-react";
+import { ChefHat, Headphones, Loader2, Music2, Pause, Play, SkipBack, SkipForward, Video, X } from "lucide-react";
 import { EmbedPlayer, EMBED_ASPECT, SPOTIFY_BAR_HEIGHT } from "@/components/ui/embed-player";
 import { cn } from "@/lib/utils";
 import type { MediaListItem } from "./media-card";
 import type { NowPlayingItem } from "./now-playing-context";
 import { useFloatingWindow, type DragMode } from "./use-floating-window";
 import { useYouTubePlayback, withJsApi } from "./use-youtube-playback";
+import { DRIFT_TOLERANCE_SEC, targetPosition, type ListenTogether } from "./use-listen-together";
+import { toListenTrack } from "./now-playing-context";
+import { usePartnerName } from "@/features/space/use-partner";
 
 const KIND_ICON: Record<MediaListItem["kind"], typeof Music2> = {
   music: Music2,
@@ -43,6 +46,15 @@ const BAR_H_NARROW = 84;
    layout has room for the whole line. */
 const NARROW_W = 340;
 const barHeightFor = (w: number) => (w < NARROW_W ? BAR_H_NARROW : BAR_H);
+/**
+ * Height of the shared-listening strip.
+ *
+ * It gets a row of its own rather than a slot in the info row because the dock
+ * opens at 224px on a phone and 320px on desktop, both under NARROW_W — so
+ * anything sharing that row would have shown as a bare icon at every default
+ * size, and an icon is not an explanation.
+ */
+const LISTEN_STRIP_H = 34;
 const AUTONEXT_KEY = "vivu.nowplaying.autonext";
 
 /** The video id out of a YouTube embed URL, for loading it into a live player. */
@@ -83,6 +95,9 @@ export function NowPlayingDock({
   onPrev,
   onNext,
   onClose,
+  listen,
+  queue,
+  index,
 }: {
   item: NowPlayingItem | null;
   position: number;
@@ -92,6 +107,11 @@ export function NowPlayingDock({
   onPrev: () => void;
   onNext: () => void;
   onClose: () => void;
+  /** The shared session. The dock owns the frame, so it owns play/pause/seek. */
+  listen: ListenTogether;
+  /** The full local queue, for handing over when a session starts. */
+  queue: readonly NowPlayingItem[];
+  index: number;
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -208,6 +228,65 @@ export function NowPlayingDock({
     playback.play();
   }, [playback]);
 
+  const partnerName = usePartnerName();
+
+  /*
+   * Let the session read this frame's playhead for its periodic write.
+   *
+   * Assigned rather than passed down as a callback prop: the reader has to be
+   * the CURRENT frame's, and the session's timer must not re-arm every time a
+   * new track gives it a new function.
+   */
+  useEffect(() => {
+    listen.positionReader.current = controllable ? playback.getPosition : null;
+    return () => {
+      listen.positionReader.current = null;
+    };
+  }, [listen.positionReader, controllable, playback.getPosition]);
+
+  /*
+   * Apply what the other person just did.
+   *
+   * Play/pause goes through as-is; the playhead is only corrected past
+   * DRIFT_TOLERANCE_SEC, because a seek is audible and being half a second
+   * apart is not. Waits for `readyFor` — a frame that has not finished its
+   * handshake drops every command silently, which would look like the sync
+   * simply not working.
+   */
+  const appliedPartner = useRef<string | null>(null);
+  useEffect(() => {
+    const ps = listen.partnerState;
+    if (!ps || !listen.live || !controllable) return;
+    if (!frameKey || playback.readyFor !== frameKey) return;
+    // The same state message must not be re-applied on every render.
+    const stamp = `${ps.id}:${ps.updatedBy}:${ps.receivedAt}`;
+    if (appliedPartner.current === stamp) return;
+    appliedPartner.current = stamp;
+
+    const want = targetPosition(ps);
+    if (Math.abs(playback.getPosition() - want) > DRIFT_TOLERANCE_SEC) {
+      playback.seek(want);
+    }
+    if (ps.isPlaying !== playback.playing) {
+      if (ps.isPlaying) playback.play();
+      else playback.toggle();
+    }
+  }, [listen.partnerState, listen.live, controllable, frameKey, playback]);
+
+  /** Play/pause, and tell the other side — one action, both effects. */
+  const togglePlayback = useCallback(() => {
+    const nowPlaying = !playback.playing;
+    playback.toggle();
+    listen.report({ isPlaying: nowPlaying, positionSec: playback.getPosition() });
+  }, [playback, listen]);
+
+  /** Invite the partner to whatever is playing, from where it is. */
+  const inviteToListen = useCallback(() => {
+    const tracks = queue.map(toListenTrack).filter((t) => t.embedUrl);
+    if (!tracks.length) return;
+    void listen.start(tracks, index, controllable ? playback.getPosition() : 0);
+  }, [queue, index, listen, controllable, playback]);
+
   const toggleAutoNext = useCallback(() => {
     setAutoNext((on) => {
       const next = !on;
@@ -229,11 +308,23 @@ export function NowPlayingDock({
     return aspect && h > capH ? capH : h;
   };
 
+  /*
+   * Only where a session could actually work: YouTube is the one provider whose
+   * frame answers postMessage, so it is the only one where two devices can be
+   * held at the same second. Offering it elsewhere would be a promise the app
+   * cannot keep.
+   */
+  const showListenStrip = controllable && listen.enabled;
+
   const { boxRef, box, moveProps, cornerProps } = useFloatingWindow({
     storageKey: "vivu.nowplaying.window",
     minWidth: MIN_W,
     maxWidth: MAX_W,
-    heightFor: (w) => BORDER + STRIP_H + mediaHeightFor(w) + barHeightFor(w) + PAD,
+    // The strip is counted, or a bottom-corner drag would jump by its height:
+    // the ref this closes over is refreshed every render, so the sum is always
+    // the one currently on screen.
+    heightFor: (w) =>
+      BORDER + STRIP_H + mediaHeightFor(w) + barHeightFor(w) + (showListenStrip ? LISTEN_STRIP_H : 0) + PAD,
   });
 
   if (!mounted || !box) return null;
@@ -314,7 +405,7 @@ export function NowPlayingDock({
       {controllable && (
         <button
           type="button"
-          onClick={playback.toggle}
+          onClick={togglePlayback}
           aria-label={playback.playing ? "Tạm dừng" : "Phát"}
           aria-pressed={playback.playing}
           className={cn(skipButton, "bg-accent-soft text-accent hover:bg-accent hover:text-white")}
@@ -330,6 +421,61 @@ export function NowPlayingDock({
       </button>
     </>
   );
+
+  /*
+   * One row, its own width, words at every size.
+   *
+   * Idle it is the invitation; waiting it says who is being waited on; live it
+   * says who you are listening with and how to stop. All three carry the
+   * partner's name, because "nghe cùng" on its own does not say with whom.
+   */
+  const listenStrip = showListenStrip ? (
+    <div
+      className="pointer-events-none relative z-10 flex items-center justify-center pt-1"
+      style={{ height: LISTEN_STRIP_H }}
+    >
+      {listen.live ? (
+        <div className="pointer-events-auto flex w-full items-center gap-1.5">
+          <span className="bg-accent text-accent-foreground flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-2.5 py-1.5">
+            <Headphones className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate text-[11px] font-bold">Đang nghe cùng {partnerName}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => void listen.end()}
+            className="text-muted-foreground hover:text-destructive shrink-0 rounded-full px-2 py-1.5 text-[11px] font-semibold transition-colors"
+          >
+            Dừng
+          </button>
+        </div>
+      ) : listen.waiting ? (
+        <div className="pointer-events-auto flex w-full items-center gap-1.5">
+          <span className="bg-muted text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-2.5 py-1.5">
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+            <span className="truncate text-[11px] font-semibold">Đang chờ {partnerName} trả lời…</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => void listen.end()}
+            className="text-muted-foreground hover:text-destructive shrink-0 rounded-full px-2 py-1.5 text-[11px] font-semibold transition-colors"
+          >
+            Huỷ
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={inviteToListen}
+          disabled={listen.isBusy}
+          aria-label={`Rủ ${partnerName} nghe cùng`}
+          className="bg-accent-soft text-accent hover:bg-accent pointer-events-auto flex w-full items-center justify-center gap-1.5 rounded-full py-1.5 text-[11px] font-bold transition-colors hover:text-white disabled:opacity-60"
+        >
+          <Headphones className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate">Rủ {partnerName} nghe cùng</span>
+        </button>
+      )}
+    </div>
+  ) : null;
 
   return createPortal(
     <AnimatePresence>
@@ -444,6 +590,8 @@ export function NowPlayingDock({
                 </div>
               )}
             </div>
+
+            {listenStrip}
           </div>
         </motion.div>
       )}

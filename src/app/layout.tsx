@@ -277,8 +277,11 @@ export default async function RootLayout({
             {/* Above the router: the library's player must keep playing while
                 someone walks to another tab, and an iframe cannot survive being
                 unmounted. */}
-            <NowPlayingProvider>
+            {/* Invites outside the player: shared listening reads the invite
+                stream from inside NowPlayingProvider, so that context has to
+                already exist. Nothing here depends on the other direction. */}
             <NavigationInvitesProvider>
+            <NowPlayingProvider>
               {/* Live navigation is owned here, not by the map page. Mounted
                   inside the map page it was torn down by any route change,
                   which stopped the GPS watch and released the wake lock on
@@ -290,8 +293,8 @@ export default async function RootLayout({
                 {children}
                 <NavigationMiniDock />
               </NavigationProvider>
-            </NavigationInvitesProvider>
             </NowPlayingProvider>
+            </NavigationInvitesProvider>
           </MainWrapper>
           <BottomNav />
         </Providers>
