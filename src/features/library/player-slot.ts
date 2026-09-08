@@ -14,12 +14,44 @@ import { useSyncExternalStore } from "react";
  * floats again, with the same frame still playing.
  */
 let slot: HTMLElement | null = null;
+/*
+ * "A slot is on its way": set by the card the moment Phát is pressed, before
+ * the watch page has mounted. Without it the dock appeared floating in the
+ * corner for the few hundred milliseconds the navigation took and then slid
+ * into place — a flash of the wrong thing before the right one. While this is
+ * set and no slot exists yet, the dock stays invisible. It clears when a slot
+ * registers, or on a timer if the page never arrives (offline, an error), so
+ * the music is never stuck in an invisible player.
+ */
+let expecting = false;
+let expectTimer: ReturnType<typeof setTimeout> | null = null;
 const subscribers = new Set<() => void>();
+const notify = () => subscribers.forEach((fn) => fn());
 
 export function setPlayerSlot(el: HTMLElement | null) {
+  if (el && expecting) {
+    expecting = false;
+    if (expectTimer) clearTimeout(expectTimer);
+    expectTimer = null;
+  }
   if (slot === el) return;
   slot = el;
-  subscribers.forEach((fn) => fn());
+  notify();
+}
+
+export function expectPlayerSlot(withinMs = 4000) {
+  expecting = true;
+  if (expectTimer) clearTimeout(expectTimer);
+  expectTimer = setTimeout(() => {
+    expecting = false;
+    expectTimer = null;
+    notify();
+  }, withinMs);
+  notify();
+}
+
+export function usePlayerSlotExpected(): boolean {
+  return useSyncExternalStore(subscribe, () => expecting, () => false);
 }
 
 function subscribe(fn: () => void) {

@@ -267,9 +267,16 @@ export function WatchScreen({ id }: { id: string }) {
         )}
       </div>
 
-      <aside className="mt-6 min-w-0 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:mt-0">
-        <div className="border-border bg-card rounded-2xl border shadow-sm">
-          <div className="border-border flex items-center justify-between gap-3 border-b px-4 py-3">
+      {/* From lg up the card takes the height of the screen — the list scrolls
+          inside it and fades at the edges — and stays put should the left
+          side ever be the taller one. A card the height of its six rows
+          looked cut short next to the video. */}
+      <aside className="mt-6 min-w-0 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:mt-0 lg:self-start">
+        <div
+          data-watch-playlist=""
+          className="border-border bg-card flex flex-col overflow-hidden rounded-2xl border shadow-sm lg:h-[calc(100dvh-3rem)]"
+        >
+          <div className="border-border flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
             <h2 className="text-foreground flex items-center gap-2 text-sm font-semibold">
               <ListMusic className="text-accent h-4 w-4" aria-hidden="true" />
               Danh sách phát

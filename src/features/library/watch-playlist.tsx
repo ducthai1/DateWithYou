@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { AudioLines } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FadeScroll } from "@/components/ui/fade-scroll";
 import type { NowPlayingItem } from "./now-playing-context";
 
 /**
@@ -10,9 +11,10 @@ import type { NowPlayingItem } from "./now-playing-context";
  * marked and kept in view. A pick jumps the shared queue; the page's URL
  * follows on its own (see WatchScreen).
  *
- * The list scrolls inside its own box from lg up so the video stays level
- * with its top — and deliberately without `overscroll-contain`: on a box that
- * does not overflow, that rule swallows the wheel and the page stops moving.
+ * From lg up the card around it is as tall as the screen, so the list scrolls
+ * inside a FadeScroll and fades where more rows hide — deliberately without
+ * `overscroll-contain`: on a box that does not overflow, that rule swallows
+ * the wheel and the page stops moving. On a phone the page itself scrolls.
  */
 export function WatchPlaylist({
   queue,
@@ -45,46 +47,56 @@ export function WatchPlaylist({
   }
 
   return (
-    <ol className="max-h-none space-y-1 p-2 lg:max-h-[calc(100dvh-11rem)] lg:overflow-y-auto">
-      {queue.map((q, i) => {
-        const active = i === index;
-        return (
-          <li key={q.id} ref={active ? activeRef : null}>
-            <button
-              type="button"
-              onClick={() => onPick(i)}
-              aria-current={active ? "true" : undefined}
-              className={cn(
-                "group flex w-full gap-3 rounded-xl p-2 text-left transition-colors",
-                active ? "bg-accent-soft" : "hover:bg-muted",
-              )}
-            >
-              <span className="bg-muted relative aspect-video w-28 shrink-0 overflow-hidden rounded-lg">
-                {q.thumbnailUrl && <img src={q.thumbnailUrl} alt="" className="h-full w-full object-cover" />}
-                {active && (
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white">
-                    <AudioLines className="h-5 w-5" aria-hidden="true" />
-                  </span>
+    <FadeScroll className="p-2">
+      <ol className="space-y-1">
+        {queue.map((q, i) => {
+          const active = i === index;
+          return (
+            <li key={q.id} ref={active ? activeRef : null}>
+              <button
+                type="button"
+                onClick={() => onPick(i)}
+                aria-current={active ? "true" : undefined}
+                className={cn(
+                  "group flex w-full gap-3 rounded-xl p-2 text-left transition-colors",
+                  active ? "bg-accent-soft" : "hover:bg-muted",
                 )}
-              </span>
-              <span className="min-w-0 flex-1 py-0.5">
-                <span
-                  className={cn(
-                    "line-clamp-2 text-sm leading-snug font-semibold",
-                    active ? "text-accent" : "text-foreground group-hover:text-accent",
+              >
+                <span className="bg-muted relative aspect-video w-28 shrink-0 overflow-hidden rounded-lg">
+                  {q.thumbnailUrl && (
+                    <img
+                      src={q.thumbnailUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
                   )}
-                >
-                  {q.title}
+                  {active && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white">
+                      <AudioLines className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                  )}
                 </span>
-                <span className="text-muted-foreground mt-1 block text-xs">
-                  {q.providerLabel}
-                  {active && " · Đang phát"}
+                <span className="min-w-0 flex-1 py-0.5">
+                  <span
+                    className={cn(
+                      "line-clamp-2 text-sm leading-snug font-semibold",
+                      active
+                        ? "text-accent"
+                        : "text-foreground group-hover:text-accent",
+                    )}
+                  >
+                    {q.title}
+                  </span>
+                  <span className="text-muted-foreground mt-1 block text-xs">
+                    {q.providerLabel}
+                    {active && " · Đang phát"}
+                  </span>
                 </span>
-              </span>
-            </button>
-          </li>
-        );
-      })}
-    </ol>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </FadeScroll>
   );
 }

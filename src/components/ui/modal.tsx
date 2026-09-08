@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { FadeScroll } from "@/components/ui/fade-scroll";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lockBodyScroll, releaseBodyScroll } from "@/lib/body-scroll-lock";
@@ -30,10 +31,14 @@ const FOCUSABLE_SELECTOR = [
 ].join(",");
 
 function focusableIn(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+  ).filter(
     (el) =>
       el.getAttribute("aria-hidden") !== "true" &&
-      (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0),
+      (el.offsetWidth > 0 ||
+        el.offsetHeight > 0 ||
+        el.getClientRects().length > 0),
   );
 }
 
@@ -70,7 +75,9 @@ function useDialogA11y(open: boolean) {
   // render — that happens before the dialog's children mount, so it still
   // points at the trigger even when a child grabs focus with autoFocus.
   const [openerAtMount] = useState<HTMLElement | null>(() =>
-    typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null),
+    typeof document === "undefined"
+      ? null
+      : (document.activeElement as HTMLElement | null),
   );
   const openerRef = useRef<HTMLElement | null>(openerAtMount);
 
@@ -256,7 +263,7 @@ export function Modal({
             exit={{ scale: 0.95, opacity: 0, y: 10 }}
             transition={{ type: "spring", duration: 0.4, bounce: 0 }}
             onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
             className={cn(
               "bg-card border-border relative flex w-full flex-col overflow-hidden rounded-2xl border shadow-2xl cursor-default",
               MODAL_SIZE[size],
@@ -313,11 +320,16 @@ export function ModalHeader({
           </span>
         ) : null}
         <div className="min-w-0">
-          <h2 id={dialogTitle?.titleId} className="text-lg font-semibold leading-tight">
+          <h2
+            id={dialogTitle?.titleId}
+            className="text-lg font-semibold leading-tight"
+          >
             {title}
           </h2>
           {description ? (
-            <p className="text-muted-foreground mt-1 text-sm leading-snug">{description}</p>
+            <p className="text-muted-foreground mt-1 text-sm leading-snug">
+              {description}
+            </p>
           ) : null}
         </div>
       </div>
@@ -341,52 +353,23 @@ export function ModalHeader({
  * of the form rather than as more to come. The fades only appear when there is
  * actually something past the edge.
  */
-export function ModalContent({ children, className }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ top: false, bottom: false });
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => {
-      const more = el.scrollHeight - el.clientHeight;
-      setEdges({
-        top: el.scrollTop > 4,
-        bottom: more > 4 && el.scrollTop < more - 4,
-      });
-    };
-    measure();
-    el.addEventListener("scroll", measure, { passive: true });
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    Array.from(el.children).forEach((c) => ro.observe(c));
-    return () => { el.removeEventListener("scroll", measure); ro.disconnect(); };
-  }, []);
-
-  return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      <div
-        aria-hidden="true"
-        className={cn(
-          "from-card pointer-events-none absolute inset-x-0 top-0 z-10 h-5 bg-gradient-to-b to-transparent transition-opacity duration-200",
-          edges.top ? "opacity-100" : "opacity-0",
-        )}
-      />
-      <div ref={ref} className={cn("min-h-0 flex-1 overflow-y-auto p-5", className)}>
-        {children}
-      </div>
-      <div
-        aria-hidden="true"
-        className={cn(
-          "from-card pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-gradient-to-t to-transparent transition-opacity duration-200",
-          edges.bottom ? "opacity-100" : "opacity-0",
-        )}
-      />
-    </div>
-  );
+export function ModalContent({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <FadeScroll className={cn("p-5", className)}>{children}</FadeScroll>;
 }
 
-export function ModalFooter({ children, className }: { children: React.ReactNode; className?: string }) {
+export function ModalFooter({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div
       className={cn(

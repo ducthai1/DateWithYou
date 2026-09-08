@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { MediaForm } from "./media-form";
 import { useNowPlaying, toListenTrack, type NowPlayingItem } from "./now-playing-context";
+import { expectPlayerSlot } from "./player-slot";
 import { usePartnerName } from "@/features/space/use-partner";
 import { cn } from "@/lib/utils";
 
@@ -197,6 +198,7 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
    */
   const handleActivate = () => {
     const { list, at } = buildQueue();
+    expectPlayerSlot();
     start(list, at);
     // …and the watch page opens around that frame: video large, title under
     // it, the playlist beside it. Leaving the page lets the frame float again.
@@ -211,6 +213,7 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
   const handleInvite = () => {
     if (!listen) return;
     const { list, at } = buildQueue();
+    expectPlayerSlot();
     start(list, at);
     const tracks = list.map(toListenTrack).filter((t) => t.embedUrl);
     void listen.start(tracks, at, 0);

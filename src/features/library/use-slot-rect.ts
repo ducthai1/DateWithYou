@@ -64,3 +64,15 @@ export function useSlotRect(el: HTMLElement | null): SlotRect | null {
 
   return rect;
 }
+
+/**
+ * The nearest ancestor of `el` that scrolls vertically — the page's own
+ * scroll box, not the document, which the app never lets scroll.
+ */
+export function scrollParentOf(el: HTMLElement | null): HTMLElement | null {
+  for (let node = el?.parentElement ?? null; node; node = node.parentElement) {
+    const { overflowY } = getComputedStyle(node);
+    if ((overflowY === "auto" || overflowY === "scroll") && node.scrollHeight > node.clientHeight) return node;
+  }
+  return null;
+}
