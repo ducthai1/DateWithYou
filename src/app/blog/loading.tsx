@@ -1,7 +1,9 @@
+import { SITE_WIDTH } from "@/lib/site-width";
+
 /** Shown the instant a click lands on /blog, before the static page arrives. */
 export default function BlogIndexLoading() {
   return (
-    <main aria-busy="true" aria-label="Đang tải blog" className="mx-auto w-full max-w-6xl 2xl:max-w-7xl animate-pulse px-4 pb-16 pt-8 sm:pt-12">
+    <main aria-busy="true" aria-label="Đang tải blog" className={`mx-auto w-full ${SITE_WIDTH} animate-pulse px-4 pb-16 pt-8 sm:pt-12`}>
       <div className="bg-muted h-4 w-12 rounded" />
       <div className="bg-muted mt-3 h-9 w-72 max-w-full rounded-lg" />
       <div className="bg-muted mt-3 h-4 w-96 max-w-full rounded" />

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_WIDTH } from "@/lib/site-width";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TRPCError } from "@trpc/server";
@@ -109,7 +110,7 @@ export default async function ArticlePage({
    * above the article — always-open it cost a whole screen on a phone.
    */
   return (
-    <main className="mx-auto w-full max-w-6xl 2xl:max-w-7xl px-4 pb-16 pt-6 sm:pt-10">
+    <main className={`mx-auto w-full ${SITE_WIDTH} px-4 pb-16 pt-6 sm:pt-10`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <ViewBeacon slug={post.slug} />
 
@@ -128,7 +129,7 @@ export default async function ArticlePage({
         </nav>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start xl:gap-10 xl:grid-cols-[minmax(0,1fr)_21rem] 2xl:grid-cols-[minmax(0,1fr)_25rem]">
         <div className="min-w-0">
           {toc.length >= 3 && (
             <details className="border-border bg-card mb-4 rounded-2xl border p-4 shadow-sm lg:hidden">
@@ -157,8 +158,14 @@ export default async function ArticlePage({
           has no room to travel inside it and simply scrolls away with the page
           — which is exactly what happened here: measured at -3437px halfway
           down the article. A sticky grid item travels its whole grid area.
+
+          No overflow on this column any more. Making the whole aside a scroll
+          box meant that pointing at it and scrolling moved the little panel
+          instead of the article, which is the last thing a reader expects. The
+          contents list caps its own height instead (see TocRail), so only that
+          list ever scrolls and everything under it stays in place.
         */}
-        <aside className="hidden space-y-5 lg:sticky lg:top-24 lg:block lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:[scrollbar-width:thin]">
+        <aside className="hidden space-y-5 lg:sticky lg:top-24 lg:block">
           <div className="space-y-5">
             {toc.length >= 3 && <TocRail items={toc} />}
             {popular.length > 0 && (
@@ -167,12 +174,12 @@ export default async function ArticlePage({
                 <ol className="space-y-2">
                   {popular
                     .filter((p) => p.slug !== post.slug)
-                    .slice(0, 4)
+                    .slice(0, 3)
                     .map((p, i) => (
                       <li key={p.slug}>
                         <Link href={`/blog/${p.slug}`} className="group flex gap-2 text-sm">
                           <span className="text-accent/40 font-bold tabular-nums">{i + 1}</span>
-                          <span className="text-muted-foreground group-hover:text-accent line-clamp-2">{p.title}</span>
+                          <span className="text-muted-foreground group-hover:text-accent line-clamp-2 xl:line-clamp-3">{p.title}</span>
                         </Link>
                       </li>
                     ))}

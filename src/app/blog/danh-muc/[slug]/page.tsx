@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_WIDTH } from "@/lib/site-width";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { publicCaller } from "@/server/caller";
@@ -72,7 +73,7 @@ export default async function BlogCategoryPage({ params }: { params: Promise<{ s
   const labelOf = (s: string) => cats.find((c) => c.slug === s)?.name ?? CATEGORY_LABEL[s] ?? s;
 
   return (
-    <main className="mx-auto w-full max-w-6xl 2xl:max-w-7xl px-4 pb-16 pt-8 sm:pt-12">
+    <main className={`mx-auto w-full ${SITE_WIDTH} px-4 pb-16 pt-8 sm:pt-12`}>
       <header className="mb-8">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <SmartBackLink fallback="/blog" tone="app" />
@@ -102,7 +103,7 @@ export default async function BlogCategoryPage({ params }: { params: Promise<{ s
           nhé.
         </p>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {list.items.map((post, i) => (
             <ArticleCard key={post.slug} post={post} priority={i < 3} categoryLabel={labelOf(post.category)} />
           ))}

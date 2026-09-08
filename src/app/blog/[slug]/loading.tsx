@@ -1,7 +1,9 @@
+import { SITE_WIDTH } from "@/lib/site-width";
+
 /** The article's shape, drawn immediately so a press is never silent. */
 export default function ArticleLoading() {
   return (
-    <main aria-busy="true" aria-label="Đang mở bài viết" className="mx-auto w-full max-w-6xl 2xl:max-w-7xl animate-pulse px-4 pb-16 pt-6 sm:pt-10">
+    <main aria-busy="true" aria-label="Đang mở bài viết" className={`mx-auto w-full ${SITE_WIDTH} animate-pulse px-4 pb-16 pt-6 sm:pt-10`}>
       <div className="bg-muted h-4 w-32 rounded" />
       <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_17rem]">
         <div className="border-border rounded-3xl border p-5 sm:p-8">

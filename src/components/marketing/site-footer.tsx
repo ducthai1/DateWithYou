@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SITE_WIDTH } from "@/lib/site-width";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { READING_PATH } from "@/features/blog/reading-path";
 import { SITE_NAME } from "@/lib/site";
@@ -57,7 +58,7 @@ export function SiteFooter() {
       {/* Two columns of links on a phone. Stacked one per row the footer ran
           past two screens; the brand block and the numbered path take the full
           width, the two short lists share a row. */}
-      <div className="mx-auto grid max-w-6xl grid-cols-2 2xl:max-w-7xl gap-x-6 gap-y-9 px-6 pb-10 pt-14 sm:pt-16 lg:grid-cols-[1.5fr_1fr_1fr_1.15fr] lg:gap-12">
+      <div className={`mx-auto grid grid-cols-2 ${SITE_WIDTH} gap-x-6 gap-y-9 px-6 pb-10 pt-14 sm:pt-16 lg:grid-cols-[1.5fr_1fr_1fr_1.15fr] lg:gap-12`}>
         {/* Brand block: the logo, signed with the brand face. */}
         <div className="col-span-2 lg:col-span-1">
           <Link href="/" className="inline-flex items-center gap-3 transition-opacity hover:opacity-80">
@@ -124,7 +125,7 @@ export function SiteFooter() {
 
       {/* Bottom bar. Short, factual, and the one line worth repeating. */}
       <div className="border-t border-white/[0.07]">
-        <div className="mx-auto flex max-w-6xl flex-col 2xl:max-w-7xl gap-2 px-6 py-6 text-[13px] text-[#8f857a] sm:flex-row sm:items-center sm:justify-between">
+        <div className={`mx-auto flex flex-col ${SITE_WIDTH} gap-2 px-6 py-6 text-[13px] text-[#8f857a] sm:flex-row sm:items-center sm:justify-between`}>
           <p>
             © {new Date().getFullYear()} {SITE_NAME} — làm tại Việt Nam.
           </p>

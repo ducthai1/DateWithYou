@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_WIDTH } from "@/lib/site-width";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { publicCaller } from "@/server/caller";
@@ -70,7 +71,7 @@ export default async function BlogIndexPage() {
   const steps = READING_PATH.filter((s) => liveTitles[s.slug]);
 
   return (
-    <main className="mx-auto w-full max-w-6xl 2xl:max-w-7xl px-4 pb-16 pt-8 sm:pt-12">
+    <main className={`mx-auto w-full ${SITE_WIDTH} px-4 pb-16 pt-8 sm:pt-12`}>
       <header className="mb-6">
         <p className="text-accent text-sm font-semibold">Blog</p>
         <h1 className="text-foreground mt-1 text-3xl font-bold sm:text-4xl [font-family:var(--font-display)]">
@@ -99,7 +100,7 @@ export default async function BlogIndexPage() {
           Chưa có bài viết nào. Ghé lại sau nhé 💛
         </p>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-[1fr_18rem] lg:items-start">
+        <div className="grid gap-8 lg:grid-cols-[1fr_18rem] lg:items-start xl:gap-10 xl:grid-cols-[1fr_21rem] 2xl:grid-cols-[1fr_24rem]">
           <div>
             {hero && (
               <Link
@@ -131,7 +132,7 @@ export default async function BlogIndexPage() {
             )}
 
             <h2 className="text-foreground mb-3 text-sm font-semibold">Mới nhất</h2>
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {rest.map((post, i) => (
                 <ArticleCard key={post.slug} post={post} priority={i < 2} categoryLabel={labelOf(post.category)} />
               ))}
@@ -142,8 +143,9 @@ export default async function BlogIndexPage() {
                 static routes rather than a ?page query that turns this dynamic. */}
           </div>
 
-          {/* Follows the reader down the list, like the article's contents rail. */}
-          <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:space-y-5 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:[scrollbar-width:thin] space-y-5">
+          {/* Follows the reader down the list, like the article's contents rail.
+              Short enough to never need a scroll box of its own. */}
+          <aside className="space-y-5 lg:sticky lg:top-24">
             {popular.length > 0 && (
               <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
                 <h2 className="text-foreground mb-3 text-sm font-semibold">Đọc nhiều</h2>
@@ -152,7 +154,7 @@ export default async function BlogIndexPage() {
                     <li key={post.slug}>
                       <Link href={`/blog/${post.slug}`} className="group flex gap-3">
                         <span className="text-accent/40 text-lg font-bold leading-none tabular-nums">{i + 1}</span>
-                        <span className="text-foreground group-hover:text-accent line-clamp-2 text-sm font-medium">
+                        <span className="text-foreground group-hover:text-accent line-clamp-2 text-sm font-medium xl:line-clamp-3">
                           {post.title}
                         </span>
                       </Link>

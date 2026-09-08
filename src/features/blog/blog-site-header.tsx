@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { cn } from "@/lib/utils";
+import { SITE_WIDTH } from "@/lib/site-width";
 
 // Client-only: better-auth's useSession throws during server rendering.
 const BlogHeaderAccount = dynamic(
@@ -34,7 +35,7 @@ export function BlogSiteHeader() {
 
   return (
     <header className="border-border/70 bg-card/85 sticky top-0 z-40 border-b backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-6xl 2xl:max-w-7xl items-center gap-3 px-4 sm:h-16">
+      <div className={`mx-auto flex h-14 w-full ${SITE_WIDTH} items-center gap-3 px-4 sm:h-16`}>
         <Link href="/" aria-label="Về trang chủ Vivu No Plan" className="flex shrink-0 items-center">
           <BrandMark className="h-8 w-[5.5rem] sm:h-9 sm:w-[6.25rem]" />
         </Link>
