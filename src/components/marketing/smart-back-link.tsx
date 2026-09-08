@@ -33,6 +33,7 @@ const NAMES: Record<string, string> = {
   "/luu-dia-diem-da-di": "Về Lưu địa điểm",
   "/nhat-ky-du-lich": "Về Nhật ký du lịch",
   "/thu-gui-tuong-lai": "Về Thư gửi tương lai",
+  "/library": "Về Bộ sưu tập",
   "/sign-in": "Về đăng nhập",
   "/sign-up": "Về đăng ký",
 };

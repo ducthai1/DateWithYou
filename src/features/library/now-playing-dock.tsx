@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChefHat, Headphones, Loader2, Music2, Pause, Play, SkipBack, SkipForward, Video, X } from "lucide-react";
+import { ChefHat, Maximize2, Music2, Pause, Play, SkipBack, SkipForward, Video, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { EmbedPlayer, EMBED_ASPECT, SPOTIFY_BAR_HEIGHT } from "@/components/ui/embed-player";
 import { cn } from "@/lib/utils";
 import type { MediaListItem } from "./media-card";
@@ -11,8 +12,9 @@ import type { NowPlayingItem } from "./now-playing-context";
 import { useFloatingWindow, type DragMode } from "./use-floating-window";
 import { useYouTubePlayback, withJsApi } from "./use-youtube-playback";
 import { DRIFT_TOLERANCE_SEC, targetPosition, type ListenTogether } from "./use-listen-together";
-import { toListenTrack } from "./now-playing-context";
-import { usePartnerName } from "@/features/space/use-partner";
+import { ListenTogetherControls } from "./listen-together-controls";
+import { usePlayerSlot } from "./player-slot";
+import { useSlotRect } from "./use-slot-rect";
 
 const KIND_ICON: Record<MediaListItem["kind"], typeof Music2> = {
   music: Music2,
@@ -116,6 +118,28 @@ export function NowPlayingDock({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const viewportH = useViewportHeight();
+  const router = useRouter();
+
+  /*
+   * "Docked": a page has registered a box for the player (the watch page), so
+   * this panel lays itself over that box and hides its own chrome — the page
+   * draws the title, the playlist and the controls itself. The frame is the
+   * very same element in both modes; only its geometry changes, which is the
+   * whole point (see player-slot.ts). The mode switch animates; while docked,
+   * the box is followed without a transition so scrolling does not lag.
+   */
+  const slotEl = usePlayerSlot();
+  const slotRect = useSlotRect(slotEl);
+  const docked = slotRect !== null;
+  const [settling, setSettling] = useState(false);
+  const wasDocked = useRef(docked);
+  useEffect(() => {
+    if (wasDocked.current === docked) return;
+    wasDocked.current = docked;
+    setSettling(true);
+    const t = setTimeout(() => setSettling(false), 320);
+    return () => clearTimeout(t);
+  }, [docked]);
 
   /*
    * Play/pause talks to the frame directly, so it needs the frame. Reaching
@@ -245,7 +269,6 @@ export function NowPlayingDock({
     playback.play();
   }, [playback]);
 
-  const partnerName = usePartnerName();
 
   /*
    * Let the session read this frame's playhead for its periodic write.
@@ -310,12 +333,6 @@ export function NowPlayingDock({
   }, [playback, listen]);
 
   /** Invite the partner to whatever is playing, from where it is. */
-  const inviteToListen = useCallback(() => {
-    const tracks = queue.map(toListenTrack).filter((t) => t.embedUrl);
-    if (!tracks.length) return;
-    void listen.start(tracks, index, controllable ? playback.getPosition() : 0);
-  }, [queue, index, listen, controllable, playback]);
-
   const toggleAutoNext = useCallback(() => {
     setAutoNext((on) => {
       const next = !on;
@@ -460,46 +477,12 @@ export function NowPlayingDock({
       className="pointer-events-none relative z-10 flex items-center justify-center pt-1"
       style={{ height: LISTEN_STRIP_H }}
     >
-      {listen.live ? (
-        <div className="pointer-events-auto flex w-full items-center gap-1.5">
-          <span className="bg-accent text-accent-foreground flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-2.5 py-1.5">
-            <Headphones className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span className="truncate text-[11px] font-bold">Đang nghe cùng {partnerName}</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => void listen.end()}
-            className="text-muted-foreground hover:text-destructive shrink-0 rounded-full px-2 py-1.5 text-[11px] font-semibold transition-colors"
-          >
-            Dừng
-          </button>
-        </div>
-      ) : listen.waiting ? (
-        <div className="pointer-events-auto flex w-full items-center gap-1.5">
-          <span className="bg-muted text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-2.5 py-1.5">
-            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
-            <span className="truncate text-[11px] font-semibold">Đang chờ {partnerName} trả lời…</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => void listen.end()}
-            className="text-muted-foreground hover:text-destructive shrink-0 rounded-full px-2 py-1.5 text-[11px] font-semibold transition-colors"
-          >
-            Huỷ
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={inviteToListen}
-          disabled={listen.isBusy}
-          aria-label={`Rủ ${partnerName} nghe cùng`}
-          className="bg-accent-soft text-accent hover:bg-accent pointer-events-auto flex w-full items-center justify-center gap-1.5 rounded-full py-1.5 text-[11px] font-bold transition-colors hover:text-white disabled:opacity-60"
-        >
-          <Headphones className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span className="truncate">Rủ {partnerName} nghe cùng</span>
-        </button>
-      )}
+      <ListenTogetherControls
+        listen={listen}
+        queue={queue}
+        index={index}
+        getPosition={() => (controllable ? playback.getPosition() : 0)}
+      />
     </div>
   ) : null;
 
@@ -515,18 +498,30 @@ export function NowPlayingDock({
           ref={boxRef}
           role="region"
           aria-label={`Đang phát: ${item.title}`}
-          style={box.x == null ? { width: box.w } : { width: box.w, left: box.x, top: box.y ?? 0 }}
+          style={
+            slotRect
+              ? { left: slotRect.left, top: slotRect.top, width: slotRect.width, height: slotRect.height }
+              : box.x == null
+                ? { width: box.w }
+                : { width: box.w, left: box.x, top: box.y ?? 0 }
+          }
           className={cn(
             /*
-              No `overflow-hidden` here on purpose. With it, `rounded-2xl`
-              clips the children's hit area to the rounded shape, and the few
-              pixels nearest each corner stop responding — the corner people
-              aim at to grab or resize the panel goes dead. The frame inside
-              has its own rounding, so nothing needs clipping at this level.
+              No `overflow-hidden` on the floating panel on purpose. With it,
+              `rounded-2xl` clips the children's hit area to the rounded shape,
+              and the few pixels nearest each corner stop responding — the
+              corner people aim at to grab or resize the panel goes dead. The
+              frame inside has its own rounding, so nothing needs clipping at
+              this level. Docked, there are no grips and the frame must be cut
+              to the slot's corners, so it is clipped there.
             */
-            "border-border bg-card fixed z-40 rounded-2xl border shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
+            "fixed z-40",
+            docked
+              ? "overflow-hidden rounded-2xl bg-black"
+              : "border-border bg-card rounded-2xl border shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
             // Parked above the bottom nav until the first drag moves it.
-            box.x == null && "right-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6",
+            !docked && box.x == null && "right-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6",
+            settling && "transition-[left,top,width,height] duration-300 ease-out",
           )}
         >
           {/*
@@ -536,7 +531,7 @@ export function NowPlayingDock({
             people aim at — falls through to the drag surface and moves the
             panel instead of sizing it.
           */}
-          {CORNERS.map((c) => (
+          {!docked && CORNERS.map((c) => (
             <div
               key={c.mode}
               {...cornerProps(c.mode)}
@@ -555,6 +550,7 @@ export function NowPlayingDock({
             to be only the thin inset around the frame, which meant hunting for
             a few pixels of border before the window would move at all.
           */}
+          {!docked && (
           <div
             {...moveProps}
             style={{ touchAction: "none" }}
@@ -563,6 +559,20 @@ export function NowPlayingDock({
             className="relative flex h-7 cursor-grab items-center justify-center rounded-t-2xl active:cursor-grabbing"
           >
             <span className="bg-muted-foreground/30 h-1 w-10 rounded-full" aria-hidden="true" />
+            {/* Mirror of the X: open the full watch page — video, title,
+                playlist — with this same frame carrying on uninterrupted. */}
+            {embeddable && (
+              <button
+                type="button"
+                onClick={() => router.push(`/library/phat/${item.id}`)}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-label="Mở trang phát"
+                title="Mở trang phát"
+                className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-0 left-6 z-20 flex h-7 w-7 items-center justify-center rounded-full transition-colors"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
+            )}
             {/* The X, where every window keeps it: top-right. It used to sit
                 at the end of the transport row, where it read as one more
                 playback button and took a moment to find. Left of the corner
@@ -578,17 +588,18 @@ export function NowPlayingDock({
               <X className="h-4 w-4" />
             </button>
           </div>
+          )}
 
           <div
-            {...moveProps}
-            style={{ paddingLeft: PAD, paddingRight: PAD, paddingBottom: PAD, touchAction: "none" }}
-            className="cursor-grab active:cursor-grabbing"
+            {...(docked ? {} : moveProps)}
+            style={docked ? undefined : { paddingLeft: PAD, paddingRight: PAD, paddingBottom: PAD, touchAction: "none" }}
+            className={docked ? "h-full" : "cursor-grab active:cursor-grabbing"}
           >
             {embeddable ? (
               <div
                 ref={mediaRef}
-                className="bg-muted mx-auto overflow-hidden rounded-xl"
-                style={{ width: mediaW, height: mediaH }}
+                className={cn("bg-muted mx-auto overflow-hidden", docked ? "h-full w-full rounded-2xl" : "rounded-xl")}
+                style={docked ? undefined : { width: mediaW, height: mediaH }}
               >
                 {/*
                   Keyed by track, so a change mounts a fresh frame instead of
@@ -614,6 +625,7 @@ export function NowPlayingDock({
               empty space beside them still drags the window instead of
               swallowing the gesture.
             */}
+            {!docked && (
             <div
               className="pointer-events-none relative z-10 flex items-center pt-2"
               style={{ height: barH }}
@@ -630,8 +642,9 @@ export function NowPlayingDock({
                 </div>
               )}
             </div>
+            )}
 
-            {listenStrip}
+            {!docked && listenStrip}
           </div>
         </motion.div>
       )}

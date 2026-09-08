@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Card } from "@/components/ui/card";
@@ -165,6 +166,7 @@ export function MediaCard({
  */
 function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaListItem[] }) {
   const { playing, start, listen } = useNowPlaying();
+  const router = useRouter();
   const isPlaying = playing?.id === item.id;
   const partnerName = usePartnerName();
   /*
@@ -196,6 +198,9 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
   const handleActivate = () => {
     const { list, at } = buildQueue();
     start(list, at);
+    // …and the watch page opens around that frame: video large, title under
+    // it, the playlist beside it. Leaving the page lets the frame float again.
+    router.push(`/library/phat/${item.id}`);
   };
 
   /*
@@ -209,6 +214,7 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
     start(list, at);
     const tracks = list.map(toListenTrack).filter((t) => t.embedUrl);
     void listen.start(tracks, at, 0);
+    router.push(`/library/phat/${item.id}`);
   };
 
   const pill =

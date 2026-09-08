@@ -46,10 +46,15 @@ type NowPlayingContextValue = {
   total: number;
   hasPrev: boolean;
   hasNext: boolean;
+  /** The whole queue and where we are in it — the watch page draws its own list. */
+  queue: readonly NowPlayingItem[];
+  index: number;
   /** The whole visible list is handed over, so skipping never needs the page. */
   start: (queue: NowPlayingItem[], index: number) => void;
   next: () => void;
   prev: () => void;
+  /** Go straight to a track in the current queue (a click on the playlist). */
+  jumpTo: (index: number) => void;
   stop: (id: string) => void;
   close: () => void;
   /**
@@ -104,9 +109,12 @@ const NowPlayingContext = createContext<NowPlayingContextValue>({
   total: 0,
   hasPrev: false,
   hasNext: false,
+  queue: [],
+  index: 0,
   start: () => {},
   next: () => {},
   prev: () => {},
+  jumpTo: () => {},
   stop: () => {},
   close: () => {},
   listen: null,
@@ -143,22 +151,23 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
    * is knowable without staleness — and handed out afterwards so the report
    * carries the same number the player moved to.
    */
-  const step = useCallback(
-    (by: number) => {
+  const jumpTo = useCallback(
+    (to: number) => {
       /*
        * Computed from the rendered state, not read back out of the updater:
        * React only runs a functional update eagerly when nothing else is
        * queued, so a variable assigned inside it could still be unset here.
        */
-      const at = Math.max(0, Math.min(state.index + by, state.queue.length - 1));
+      const at = Math.max(0, Math.min(to, state.queue.length - 1));
       if (at === state.index) return;
       setState((s) => ({ ...s, index: at }));
+      // The other side hears about a skip the same way as a pressed button.
       listen.report({ index: at, positionSec: 0, isPlaying: true });
     },
     [state.index, state.queue.length, listen],
   );
-  const next = useCallback(() => step(1), [step]);
-  const prev = useCallback(() => step(-1), [step]);
+  const next = useCallback(() => jumpTo(state.index + 1), [jumpTo, state.index]);
+  const prev = useCallback(() => jumpTo(state.index - 1), [jumpTo, state.index]);
 
   /*
    * Follow the other person's queue.
@@ -203,14 +212,17 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
       total: state.queue.length,
       hasPrev: state.index > 0,
       hasNext: state.index < state.queue.length - 1,
+      queue: state.queue,
+      index: state.index,
       start,
       next,
       prev,
+      jumpTo,
       stop,
       close,
       listen,
     };
-  }, [state, start, next, prev, stop, close, listen]);
+  }, [state, start, next, prev, jumpTo, stop, close, listen]);
 
   return (
     <NowPlayingContext.Provider value={value}>
