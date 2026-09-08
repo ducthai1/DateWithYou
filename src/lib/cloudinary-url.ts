@@ -32,18 +32,46 @@ function withTransform(url: string, transform: string): string {
 }
 
 /**
- * Square thumbnail for the timeline grid.
+ * Square thumbnail, at exactly `size` DEVICE pixels.
  *
- * `dpr_auto` doubles it on a retina screen without doubling it on a laptop, so
- * the phone that needs the pixels is the only one paying for them.
+ * `dpr_auto` used to be here, on the belief that Cloudinary would double the
+ * image on a retina screen. It does not, and cannot: it answers the browser's
+ * `DPR` client hint, which is only sent by a page that opts in with an
+ * `Accept-CH` header — and, for images on another origin, only with a
+ * matching `Permissions-Policy` delegation as well. Neither is set here, so
+ * `dpr_auto` resolved to 1 every single time. Measured against the same asset:
+ * 8,846 bytes with no hint, 42,615 with `DPR: 3` — the identical byte count as
+ * an explicit `dpr_3.0`. Every thumbnail in the app was therefore a 1x image
+ * stretched over a 2x or 3x box, which is exactly how the calendar's day
+ * photos came to look soft.
+ *
+ * The fix is to ask for the pixels outright and let the browser choose among
+ * candidates (`cldThumbSrcSet`), which needs no headers and no guessing about
+ * hint support.
  */
 export function cldThumb(url: string, size = 400): string {
-  return withTransform(url, `c_fill,g_auto,w_${size},h_${size},f_auto,q_auto,dpr_auto`);
+  return withTransform(url, `c_fill,g_auto,w_${size},h_${size},f_auto,q_auto`);
+}
+
+/**
+ * The same crop at several sizes, as a `srcset` with width descriptors.
+ *
+ * Width descriptors rather than `2x`/`3x` ones because these boxes change size
+ * with the breakpoint: paired with a `sizes` attribute the browser works out
+ * the need from the layout AND the screen density, so a small phone cell does
+ * not fetch the desktop image just because the screen is dense.
+ */
+export function cldThumbSrcSet(url: string, sizes: readonly number[]): string {
+  if (!url.includes("res.cloudinary.com")) return "";
+  return sizes.map((s) => `${cldThumb(url, s)} ${s}w`).join(", ");
 }
 
 /** Big enough to fill a dialog on any phone, far short of the original. */
 export function cldPreview(url: string, width = 1000): string {
-  return withTransform(url, `c_limit,w_${width},f_auto,q_auto,dpr_auto`);
+  // No dpr_auto here either (see cldThumb). Callers already pass a width
+  // generous enough for a dialog on a dense screen, so nothing is scaled up:
+  // 1000px of picture in a box a third that wide.
+  return withTransform(url, `c_limit,w_${width},f_auto,q_auto`);
 }
 
 /**

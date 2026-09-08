@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type HTMLAttributes } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type HTMLAttributes,
+} from "react";
 import { ImageOff } from "lucide-react";
-import { cldPreview, cldThumb } from "@/lib/cloudinary-url";
+import { cldPreview, cldThumb, cldThumbSrcSet } from "@/lib/cloudinary-url";
 import { cn } from "@/lib/utils";
 
 /**
@@ -25,7 +31,7 @@ import { cn } from "@/lib/utils";
  */
 
 type Variant =
-  /** Square crop at `size` px (CSS px; Cloudinary doubles it for retina). */
+  /** Square crop at `size` CSS px; denser screens get a bigger source. */
   | { variant: "thumb"; size?: number }
   /** Scaled to fit within `width`, original aspect. */
   | { variant: "preview"; width?: number };
@@ -44,11 +50,37 @@ type Props = Variant &
   };
 
 export function Photo(props: Props) {
-  const { src, alt = "", className, imgClassName, style, priority = false, variant, ...rest } = props;
+  const {
+    src,
+    alt = "",
+    className,
+    imgClassName,
+    style,
+    priority = false,
+    variant,
+    ...rest
+  } = props;
   // `size` and `width` each belong to one variant; whatever is left is for the
   // frame (PhotoView's onClick lands there).
-  const { size, width, ...frameProps } = rest as { size?: number; width?: number } & HTMLAttributes<HTMLDivElement>;
-  const url = variant === "thumb" ? cldThumb(src, size ?? 400) : cldPreview(src, width ?? 1000);
+  const { size, width, ...frameProps } = rest as {
+    size?: number;
+    width?: number;
+  } & HTMLAttributes<HTMLDivElement>;
+  /*
+   * A square thumbnail has a fixed CSS size, so its density candidates are
+   * simply that size doubled and tripled — `sizes` states the box and the
+   * browser picks. Without this every thumbnail was drawn from a 1x source
+   * (see cldThumb) and looked soft on any modern screen.
+   */
+  const cssSize = size ?? 400;
+  const url =
+    variant === "thumb"
+      ? cldThumb(src, cssSize)
+      : cldPreview(src, width ?? 1000);
+  const srcSet =
+    variant === "thumb"
+      ? cldThumbSrcSet(src, [cssSize, cssSize * 2, cssSize * 3])
+      : undefined;
 
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
@@ -69,13 +101,18 @@ export function Photo(props: Props) {
         <span aria-hidden className="bg-muted absolute inset-0 animate-pulse" />
       )}
       {state === "failed" ? (
-        <span aria-hidden className="text-muted-foreground/60 absolute inset-0 grid place-items-center">
+        <span
+          aria-hidden
+          className="text-muted-foreground/60 absolute inset-0 grid place-items-center"
+        >
           <ImageOff className="h-5 w-5" />
         </span>
       ) : (
         <img
           ref={imgRef}
           src={url}
+          srcSet={srcSet || undefined}
+          sizes={srcSet ? `${cssSize}px` : undefined}
           alt={alt}
           loading={priority ? "eager" : "lazy"}
           decoding="async"

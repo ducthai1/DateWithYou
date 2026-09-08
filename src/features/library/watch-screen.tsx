@@ -69,15 +69,25 @@ export function WatchScreen({ id }: { id: string }) {
    * Before they have — a fresh load, a pasted link, a back/forward step — the
    * URL is the instruction and the player is made to match it. After they
    * have, this page is a view of whatever is playing, so a skip, a playlist
-   * pick or the partner moving the shared session rewrites the URL (with
-   * `replace`, so the history does not fill up with tracks).
+   * pick or the partner moving the shared session rewrites the URL.
    *
    * Getting that order wrong was visible: with a live shared session, opening
    * a track outside it bounced straight back to the session's track, because
    * the first non-null `playing` — the session being adopted a moment after
    * mount — was read as "the playback moved, follow it".
+   *
+   * The rewrite goes through the history API, NOT the router. A dynamic
+   * segment is part of the route, so `router.replace` to another track
+   * REMOUNTS this page: the box the player sits in is unregistered and
+   * registered again, and for as long as that takes the frame falls back to
+   * its floating corner. That is what made every skip — a button here, a
+   * playlist pick, or the other person moving the shared session — throw both
+   * sides out of the large player and into the small window, and what left
+   * the page in a state where its own expand button had nothing to open.
+   * Rewriting the address alone keeps the page, the box and the frame exactly
+   * where they are, and the link still names the track that is playing.
    */
-  const seen = useRef({ id, agreed: false, pendingUrl: null as string | null });
+  const seen = useRef({ id, agreed: false });
   useEffect(() => {
     const s = seen.current;
     const pid = playing?.id ?? null;
@@ -93,9 +103,15 @@ export function WatchScreen({ id }: { id: string }) {
       if (!items) return;
       const wanted = items.find((i) => i.id === id);
       if (!wanted) return;
-      // The same queue a card on the library tab would have handed over.
+      /*
+       * The same queue a card on the library tab would have handed over —
+       * which means the same provider as well as the same kind. Filtering on
+       * kind alone quietly put the mixture back: a reload of this page rebuilt
+       * a queue with the tab's TikToks in it, so skipping landed on something
+       * the dock cannot drive and a shared session cannot follow.
+       */
       const sameTab = items
-        .filter((i) => i.kind === wanted.kind)
+        .filter((i) => i.kind === wanted.kind && i.provider === wanted.provider)
         .map(toNowPlayingItem)
         .filter((q): q is NowPlayingItem => q !== null);
       const idx = sameTab.findIndex((q) => q.id === id);
@@ -104,12 +120,9 @@ export function WatchScreen({ id }: { id: string }) {
     };
 
     if (id !== s.id) {
-      // The address bar moved. Our own `replace` is not a new instruction;
-      // anything else is, and starts the page over as un-agreed.
-      const ours = s.pendingUrl === id;
+      // A real navigation — the URL is an instruction again.
       s.id = id;
-      s.pendingUrl = null;
-      if (!ours) s.agreed = false;
+      s.agreed = false;
     }
 
     if (pid === id) {
@@ -121,10 +134,22 @@ export function WatchScreen({ id }: { id: string }) {
       return;
     }
     if (pid) {
-      s.pendingUrl = pid;
-      router.replace(`/library/phat/${pid}`);
+      const next = `/library/phat/${pid}`;
+      if (window.location.pathname !== next)
+        window.history.replaceState(null, "", next);
     }
-  }, [id, playing, queue, list.data, jumpTo, start, router]);
+  }, [id, playing, queue, list.data, jumpTo, start]);
+
+  /*
+   * The player was closed — the X on the floating window, or the last track
+   * removed. There is nothing for this page to show, and it showed exactly
+   * that: "Đang mở…" with a spinner, for ever. It leaves instead.
+   */
+  const closed = seen.current.agreed && total === 0;
+  useEffect(() => {
+    if (!closed) return;
+    router.push(previousRoute(pathname) ?? "/library");
+  }, [closed, router, pathname]);
 
   // Registered as a callback ref so the box is known the moment it exists.
   const slotRef = useCallback(
@@ -257,9 +282,13 @@ export function WatchScreen({ id }: { id: string }) {
               queue={queue}
               index={index}
               size="md"
-              getPosition={() =>
-                listen.positionReader.current?.().positionSec ?? 0
-              }
+              getState={() => {
+                const r = listen.positionReader.current?.();
+                return {
+                  positionSec: r?.positionSec ?? 0,
+                  isPlaying: r?.isPlaying ?? false,
+                };
+              }}
             />
           </div>
         )}

@@ -33,6 +33,7 @@ import {
 } from "./use-listen-together";
 import { ListenTogetherControls } from "./listen-together-controls";
 import { usePlayerSlot, usePlayerSlotExpected } from "./player-slot";
+import { usePlayerPauseTicket } from "./player-command";
 import { useSlotRect } from "./use-slot-rect";
 import { useScrollMirror } from "./use-scroll-mirror";
 
@@ -347,6 +348,17 @@ export function NowPlayingDock({
   liveAtMount.current = listen.live;
   const intentRef = useRef(intent);
   intentRef.current = intent;
+  /*
+   * An invite that has not been answered holds the music.
+   *
+   * Pressing "Nghe cùng" on a card used to start playing here at once, so by
+   * the time the other person accepted, this side was already well into the
+   * song and they were dragged to wherever it had got to. Nothing plays while
+   * the answer is outstanding; accepting is what starts both — see the accept
+   * handler on the server, which re-times the state at that instant.
+   */
+  const waitingRef = useRef(listen.waiting);
+  waitingRef.current = listen.waiting;
   const frameEmbed = useMemo(() => {
     if (!item?.embed.embedUrl || !controllable) return item?.embed;
     // Automatic advance, or a track adopted from the shared session: both are
@@ -363,7 +375,7 @@ export function NowPlayingDock({
        * on the card is the gesture the browser's autoplay rule wants, and it
        * is still the same document after the navigation, so it counts.
        */
-      intentRef.current === "press";
+      (intentRef.current === "press" && !waitingRef.current);
     return {
       ...item.embed,
       embedUrl: withJsApi(item.embed.embedUrl, window.location.origin, auto),
@@ -391,9 +403,10 @@ export function NowPlayingDock({
   useEffect(() => {
     if (!controllable || !frameKey || playback.readyFor !== frameKey) return;
     if (startedFrame.current === frameKey) return;
+    if (listen.waiting) return; // Held until the other person answers.
     startedFrame.current = frameKey;
     if (intentRef.current === "press") playback.play();
-  }, [controllable, frameKey, playback]);
+  }, [controllable, frameKey, playback, listen.waiting]);
 
   /*
    * Let the session read this frame's playhead for its periodic write.
@@ -502,6 +515,19 @@ export function NowPlayingDock({
       positionSec: playback.getPosition(),
     });
   }, [playback, listen]);
+
+  /*
+   * Another screen has asked for silence — the TikTok feed, which plays sound
+   * of its own. Routed through togglePlayback rather than the frame directly,
+   * so a shared session hears about the pause like any other.
+   */
+  const pauseTicket = usePlayerPauseTicket();
+  const handledPause = useRef(pauseTicket);
+  useEffect(() => {
+    if (handledPause.current === pauseTicket) return;
+    handledPause.current = pauseTicket;
+    if (controllable && playback.playing) togglePlayback();
+  }, [pauseTicket, controllable, playback.playing, togglePlayback]);
 
   /** Invite the partner to whatever is playing, from where it is. */
   const toggleAutoNext = useCallback(() => {
@@ -681,7 +707,10 @@ export function NowPlayingDock({
         listen={listen}
         queue={queue}
         index={index}
-        getPosition={() => (controllable ? playback.getPosition() : 0)}
+        getState={() => ({
+          positionSec: controllable ? playback.getPosition() : 0,
+          isPlaying: controllable ? playback.playing : false,
+        })}
       />
     </div>
   ) : null;
@@ -786,7 +815,14 @@ export function NowPlayingDock({
                 {embeddable && (
                   <button
                     type="button"
-                    onClick={() => router.push(`/library/phat/${item.id}`)}
+                    onClick={() => {
+                      // Already there (the address is rewritten as tracks change,
+                      // so it can name this very track) — a push would be a no-op
+                      // and the button would look broken.
+                      const to = `/library/phat/${item.id}`;
+                      if (window.location.pathname === to) router.refresh();
+                      else router.push(to);
+                    }}
                     onPointerDown={(e) => e.stopPropagation()}
                     aria-label="Mở trang phát"
                     title="Mở trang phát"

@@ -6,12 +6,20 @@ import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
+import {
+  PROVIDER_LABEL,
+  isFeedProvider,
+  type EmbedProvider,
+} from "@/lib/embed";
 import { Clock, Users, ChefHat, Edit, Play, Headphones } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { MediaForm } from "./media-form";
-import { useNowPlaying, toListenTrack, type NowPlayingItem } from "./now-playing-context";
+import {
+  useNowPlaying,
+  toListenTrack,
+  type NowPlayingItem,
+} from "./now-playing-context";
 import { expectPlayerSlot } from "./player-slot";
 import { usePartnerName } from "@/features/space/use-partner";
 import { cn } from "@/lib/utils";
@@ -100,7 +108,9 @@ export function MediaCard({
     <>
       <Card className="space-y-2 p-3 relative group transition-all duration-300 hover:-translate-y-1 hover:shadow-elev-2">
         <div className="flex items-start justify-between gap-2">
-          <p className="font-medium leading-snug min-w-0 flex-1 pr-14">{item.title}</p>
+          <p className="font-medium leading-snug min-w-0 flex-1 pr-14">
+            {item.title}
+          </p>
           <div className="shrink-0 absolute top-3 right-3 flex items-center gap-1 bg-card/80 backdrop-blur-sm rounded-lg">
             <button
               onClick={() => setEditing(true)}
@@ -109,47 +119,80 @@ export function MediaCard({
             >
               <Edit className="h-4 w-4" />
             </button>
-            <ConfirmButton idle="" className="text-xs" onConfirm={() => remove.mutate({ id: item.id })} />
+            <ConfirmButton
+              idle=""
+              className="text-xs"
+              onConfirm={() => remove.mutate({ id: item.id })}
+            />
           </div>
         </div>
 
         {item.kind === "recipe" ? (
-          <button type="button" onClick={onOpen} className="block w-full text-left">
-          {item.recipe?.coverImage && (
-            <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-              { }
-              <img src={item.recipe.coverImage} alt={item.title} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+          <button
+            type="button"
+            onClick={onOpen}
+            className="block w-full text-left"
+          >
+            {item.recipe?.coverImage && (
+              <div className="relative aspect-video w-full overflow-hidden rounded-lg">
+                {}
+                <img
+                  src={item.recipe.coverImage}
+                  alt={item.title}
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              </div>
+            )}
+            <div className="text-muted-foreground mt-1.5 flex flex-wrap items-center gap-3 text-xs">
+              {item.recipe?.cookTime && (
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {item.recipe.cookTime}
+                </span>
+              )}
+              {item.recipe?.servings && (
+                <span className="inline-flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  {item.recipe.servings}
+                </span>
+              )}
+              <span className="text-accent inline-flex items-center gap-1 font-medium">
+                <ChefHat className="h-3 w-3" />
+                Xem công thức
+              </span>
             </div>
-          )}
-          <div className="text-muted-foreground mt-1.5 flex flex-wrap items-center gap-3 text-xs">
-            {item.recipe?.cookTime && <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{item.recipe.cookTime}</span>}
-            {item.recipe?.servings && <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{item.recipe.servings}</span>}
-            <span className="text-accent inline-flex items-center gap-1 font-medium"><ChefHat className="h-3 w-3" />Xem công thức</span>
-          </div>
-        </button>
-      ) : (
-        item.url && <PlayableEmbed item={item} queue={queue} />
-      )}
+          </button>
+        ) : (
+          item.url && <PlayableEmbed item={item} queue={queue} />
+        )}
 
-      {item.note && <p className="text-muted-foreground text-xs">{item.note}</p>}
-      {item.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {item.tags.map((t) => (
-            <span key={t} className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[10px] font-medium">{t}</span>
-          ))}
-        </div>
-      )}
-    </Card>
-    
-    <Modal open={editing} onClose={() => setEditing(false)}>
-      <ModalHeader title="Chỉnh sửa" onClose={() => setEditing(false)} />
-      <MediaForm
-        kind={item.kind}
-        initialData={item}
-        onDone={() => setEditing(false)}
-        onCancel={() => setEditing(false)}
-      />
-    </Modal>
+        {item.note && (
+          <p className="text-muted-foreground text-xs">{item.note}</p>
+        )}
+        {item.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {item.tags.map((t) => (
+              <span
+                key={t}
+                className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[10px] font-medium"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Modal open={editing} onClose={() => setEditing(false)}>
+        <ModalHeader title="Chỉnh sửa" onClose={() => setEditing(false)} />
+        <MediaForm
+          kind={item.kind}
+          initialData={item}
+          onDone={() => setEditing(false)}
+          onCancel={() => setEditing(false)}
+        />
+      </Modal>
     </>
   );
 }
@@ -165,7 +208,13 @@ export function MediaCard({
  * which meant nothing ever counted as "the one playing" — every visible card
  * looked equally active.
  */
-function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaListItem[] }) {
+function PlayableEmbed({
+  item,
+  queue,
+}: {
+  item: MediaListItem;
+  queue?: MediaListItem[];
+}) {
   const { playing, start, listen } = useNowPlaying();
   const router = useRouter();
   const isPlaying = playing?.id === item.id;
@@ -176,11 +225,23 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
    * held at the same second. On anything else the button is absent rather
    * than present and hollow.
    */
-  const canListenTogether = item.provider === "youtube" && !!item.embedUrl && !!listen?.enabled;
+  const canListenTogether =
+    item.provider === "youtube" && !!item.embedUrl && !!listen?.enabled;
 
-  /** The visible list as a queue, with this item's position in it. */
+  /**
+   * The visible list as a queue, with this item's position in it.
+   *
+   * One provider per queue. The list mixes YouTube, TikTok and Spotify links,
+   * and a queue that mixed them was only partly playable: the dock can drive a
+   * YouTube frame and nothing else, a shared session can only be kept in step
+   * for YouTube, and TikTok now has a screen of its own. Skipping through such
+   * a queue landed on a track that could neither be controlled nor synced,
+   * which is where the tangle between the two came from. Pressing play takes
+   * the links the same player can actually drive, and no others.
+   */
   const buildQueue = () => {
     const list = (queue?.length ? queue : [item])
+      .filter((q) => q.provider === item.provider)
       .map(toNowPlayingItem)
       .filter((q): q is NowPlayingItem => q !== null);
     const at = list.findIndex((q) => q.id === item.id);
@@ -197,6 +258,12 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
    * the only frame and keeps it alive across the whole app.
    */
   const handleActivate = () => {
+    // TikTok is not a track in a queue; it is a feed to swipe. Its screen owns
+    // its own frames and never involves the dock (see tiktok-feed).
+    if (isFeedProvider(item.provider)) {
+      router.push(`/library/luot/${item.id}`);
+      return;
+    }
     const { list, at } = buildQueue();
     expectPlayerSlot();
     start(list, at);
@@ -216,7 +283,8 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
     expectPlayerSlot();
     start(list, at);
     const tracks = list.map(toListenTrack).filter((t) => t.embedUrl);
-    void listen.start(tracks, at, 0);
+    // Nothing is playing yet: both sides start when the invite is accepted.
+    void listen.start(tracks, at, 0, false);
     router.push(`/library/phat/${item.id}`);
   };
 
@@ -230,11 +298,17 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
       <button
         type="button"
         onClick={handleActivate}
-        aria-label={isPlaying ? `${item.title} đang phát` : `Phát ${item.title}`}
+        aria-label={
+          isPlaying ? `${item.title} đang phát` : `Phát ${item.title}`
+        }
         className="focus-visible:ring-ring absolute inset-0 flex items-center justify-center focus-visible:ring-2 focus-visible:outline-none"
       >
         {item.thumbnailUrl && (
-          <img src={item.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            src={item.thumbnailUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
         )}
       </button>
       {/* Two pills side by side. Not nested in the poster button — a button
@@ -243,7 +317,9 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
         <span
           className={cn(
             pill,
-            isPlaying ? "bg-accent text-accent-foreground" : "bg-card/90 text-foreground group-hover:bg-card",
+            isPlaying
+              ? "bg-accent text-accent-foreground"
+              : "bg-card/90 text-foreground group-hover:bg-card",
           )}
         >
           <Play className="h-3.5 w-3.5" aria-hidden="true" />
@@ -254,7 +330,11 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
             type="button"
             onClick={handleInvite}
             disabled={listen!.isBusy || listen!.waiting}
-            aria-label={listen!.live ? `Đang nghe cùng ${partnerName}` : `Rủ ${partnerName} nghe cùng bài ${item.title}`}
+            aria-label={
+              listen!.live
+                ? `Đang nghe cùng ${partnerName}`
+                : `Rủ ${partnerName} nghe cùng bài ${item.title}`
+            }
             className={cn(
               pill,
               "pointer-events-auto disabled:opacity-60",
@@ -264,7 +344,11 @@ function PlayableEmbed({ item, queue }: { item: MediaListItem; queue?: MediaList
             )}
           >
             <Headphones className="h-3.5 w-3.5" aria-hidden="true" />
-            {listen!.live && isPlaying ? "Đang nghe cùng" : listen!.waiting ? "Đang chờ…" : "Nghe cùng"}
+            {listen!.live && isPlaying
+              ? "Đang nghe cùng"
+              : listen!.waiting
+                ? "Đang chờ…"
+                : "Nghe cùng"}
           </button>
         )}
       </div>

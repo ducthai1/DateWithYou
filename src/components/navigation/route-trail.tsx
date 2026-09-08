@@ -22,7 +22,7 @@ const MAX = 12;
  * seven offered track six, and a dozen skips buried where the person had
  * actually come from.
  */
-const FAMILIES = ["/library/phat/"];
+const FAMILIES = ["/library/phat/", "/library/luot/"];
 function familyOf(path: string): string {
   const f = FAMILIES.find((p) => path.startsWith(p));
   return f ?? path;
@@ -32,7 +32,9 @@ export function readRouteTrail(): string[] {
   try {
     const raw = sessionStorage.getItem(KEY);
     const arr = raw ? (JSON.parse(raw) as unknown) : [];
-    return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : [];
+    return Array.isArray(arr)
+      ? arr.filter((x): x is string => typeof x === "string")
+      : [];
   } catch {
     return [];
   }
@@ -42,7 +44,8 @@ export function readRouteTrail(): string[] {
 export function previousRoute(current: string): string | null {
   const trail = readRouteTrail();
   const family = familyOf(current);
-  for (let i = trail.length - 1; i >= 0; i--) if (familyOf(trail[i]) !== family) return trail[i];
+  for (let i = trail.length - 1; i >= 0; i--)
+    if (familyOf(trail[i]) !== family) return trail[i];
   return null;
 }
 
@@ -61,10 +64,12 @@ export function RouteTrail() {
        * in a circle instead of going further back.
        */
       const last = trail[trail.length - 1];
-      if (trail.length >= 2 && trail[trail.length - 2] === pathname) trail.pop();
+      if (trail.length >= 2 && trail[trail.length - 2] === pathname)
+        trail.pop();
       // Same place, new address (one track to the next): the step is updated,
       // not repeated.
-      else if (last !== undefined && familyOf(last) === familyOf(pathname)) trail[trail.length - 1] = pathname;
+      else if (last !== undefined && familyOf(last) === familyOf(pathname))
+        trail[trail.length - 1] = pathname;
       else trail.push(pathname);
       sessionStorage.setItem(KEY, JSON.stringify(trail.slice(-MAX)));
     } catch {

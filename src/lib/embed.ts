@@ -4,7 +4,8 @@
 // thumbnails; TikTok gets an oEmbed iframe; Instagram uses its public /embed
 // iframe (no auth needed). Unknown links become a generic link card.
 
-export type EmbedProvider = "youtube" | "spotify" | "tiktok" | "instagram" | "other";
+export type EmbedProvider =
+  "youtube" | "spotify" | "tiktok" | "instagram" | "other";
 
 export type ParsedEmbed = {
   provider: EmbedProvider;
@@ -63,6 +64,73 @@ function tiktokId(u: URL): string | null {
   return null;
 }
 
+/**
+ * TikTok's embed player.
+ *
+ * `/embed/v2/<id>` — what this file used to build — answers HTTP 400 today, so
+ * every TikTok link in the library was a frame that could not load. The
+ * documented endpoint is `/player/v1/<id>`, driven by query parameters
+ * (developers.tiktok.com/doc/embed-player), and it answers 200.
+ *
+ * Built from the id on demand rather than read back from the `embedUrl` stored
+ * with the row, so links saved before this fix play without touching a single
+ * database record.
+ */
+export const TIKTOK_ORIGIN = "https://www.tiktok.com";
+
+export type TikTokPlayerOptions = {
+  autoplay?: boolean;
+  loop?: boolean;
+  /** The creator's caption, inside the player. */
+  description?: boolean;
+  /** The track's name, inside the player. */
+  musicInfo?: boolean;
+  /** TikTok's suggestions after the video — off, or the list is left behind. */
+  related?: boolean;
+  /** Silent, and the viewer cannot change it from inside the player. */
+  muted?: boolean;
+};
+
+export function tiktokPlayerUrl(
+  id: string,
+  o: TikTokPlayerOptions = {},
+): string {
+  const p = new URLSearchParams({
+    autoplay: o.autoplay ? "1" : "0",
+    loop: o.loop ? "1" : "0",
+    description: o.description ? "1" : "0",
+    music_info: o.musicInfo ? "1" : "0",
+    rel: o.related ? "1" : "0",
+    muted: o.muted ? "1" : "0",
+    controls: "1",
+    // The browser's own menu over a video is noise in a full-screen feed.
+    native_context_menu: "0",
+  });
+  return `${TIKTOK_ORIGIN}/player/v1/${id}?${p.toString()}`;
+}
+
+/**
+ * The numeric post id of a TikTok link, or null.
+ *
+ * Only the long form carries one. A short link (vm.tiktok.com/CODE) is a
+ * redirect, and resolving it needs a request TikTok answers only to a real
+ * browser — so those stay link cards, as they always have.
+ */
+export function tiktokPostId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const id = tiktokId(new URL(url));
+    return id && /^\d+$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Links that get the full-screen swipe feed instead of the floating dock. */
+export function isFeedProvider(provider: string | null | undefined): boolean {
+  return provider === "tiktok";
+}
+
 /** Parse a pasted URL into provider + embed info. Returns provider "other" for
  *  anything unrecognised (still stored + shown as a link). */
 export function parseEmbed(rawUrl: string): ParsedEmbed {
@@ -114,9 +182,9 @@ export function parseEmbed(rawUrl: string): ParsedEmbed {
         provider: "tiktok",
         url: rawUrl,
         embedId: id,
-        embedUrl: isNumericId
-          ? `https://www.tiktok.com/embed/v2/${id}`
-          : null, // short-link codes can't be directly embedded
+        // A short-link code is not a post id and cannot be played; it stays a
+        // link card. See tiktokPlayerUrl for why this endpoint.
+        embedUrl: isNumericId ? tiktokPlayerUrl(id) : null,
         thumbnailUrl: null,
       };
     }

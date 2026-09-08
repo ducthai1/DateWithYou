@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, memo } from "react";
-import { cldThumb } from "@/lib/cloudinary-url";
+import { cldThumb, cldThumbSrcSet } from "@/lib/cloudinary-url";
 import { Heart, Flower2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GridCell } from "@/lib/date-keys";
@@ -45,12 +45,36 @@ const PIN_BG = ["#E53935", "#1E88E5", "#43A047", "#FB8C00", "#8E24AA"];
  *  We pick from several layout presets based on the date hash so every
  *  day looks a little different.  */
 const LAYOUTS: [number, number, number][][] = [
-  [[25, 10, -4], [40, 35, 3], [20, 55, -2]],
-  [[18, 5, 2],  [38, 30, -5], [55, 50, 4]],
-  [[20, 8, -3], [15, 48, 5],  [50, 25, -1]],
-  [[22, 40, 3], [45, 8, -4],  [48, 50, 2]],
-  [[18, 15, -2],[35, 45, 4],  [55, 10, -3]],
-  [[22, 15, 3], [30, 38, -3], [45, 20, 1]],
+  [
+    [25, 10, -4],
+    [40, 35, 3],
+    [20, 55, -2],
+  ],
+  [
+    [18, 5, 2],
+    [38, 30, -5],
+    [55, 50, 4],
+  ],
+  [
+    [20, 8, -3],
+    [15, 48, 5],
+    [50, 25, -1],
+  ],
+  [
+    [22, 40, 3],
+    [45, 8, -4],
+    [48, 50, 2],
+  ],
+  [
+    [18, 15, -2],
+    [35, 45, 4],
+    [55, 10, -3],
+  ],
+  [
+    [22, 15, 3],
+    [30, 38, -3],
+    [45, 20, 1],
+  ],
 ];
 
 /** One day cell in the month grid – sticky-note style. */
@@ -95,7 +119,9 @@ export const CalendarCell = memo(function CalendarCell({
   const artName = artForDate(cell.key);
 
   // Resolve Lucide icon for special date
-  const SpecialIcon = hasSpecial ? resolveIcon(summary!.special!.icon ?? undefined) : null;
+  const SpecialIcon = hasSpecial
+    ? resolveIcon(summary!.special!.icon ?? undefined)
+    : null;
 
   return (
     <button
@@ -136,9 +162,16 @@ export const CalendarCell = memo(function CalendarCell({
         // A tint of the space's own accent separates the card from the ground
         // and ties the grid to whichever preset the couple picked.
         cell.inMonth && !isToday && "md:border-[3px]",
-        cell.inMonth && !isToday && !hasSpecial && "bg-card shadow-sm active:scale-[0.96] md:shadow-sm md:border-accent/35 md:hover:border-accent md:active:scale-100",
-        cell.inMonth && !isToday && hasSpecial && "bg-pink-50 shadow-sm active:scale-[0.96] md:bg-card md:shadow-none md:border-pink-300 md:active:scale-100",
-        cell.inMonth && isToday &&
+        cell.inMonth &&
+          !isToday &&
+          !hasSpecial &&
+          "bg-card shadow-sm active:scale-[0.96] md:shadow-sm md:border-accent/35 md:hover:border-accent md:active:scale-100",
+        cell.inMonth &&
+          !isToday &&
+          hasSpecial &&
+          "bg-pink-50 shadow-sm active:scale-[0.96] md:bg-card md:shadow-none md:border-pink-300 md:active:scale-100",
+        cell.inMonth &&
+          isToday &&
           "bg-accent/15 border-[3px] border-accent shadow-sm active:scale-[0.96] md:shadow-none md:active:scale-100",
         !cell.inMonth &&
           "bg-card/45 text-muted-foreground/60 md:border-transparent md:border-[3px]",
@@ -156,7 +189,12 @@ export const CalendarCell = memo(function CalendarCell({
           above 190px — instead of ToneArt's 720w/100vw default, which would
           be a wasteful fetch repeated 35-42 times a month. */}
       {cell.inMonth && !summary?.thumbnailUrl && (
-        <ToneArt name={artName} fill sizes="190px" className="z-0 pointer-events-none" />
+        <ToneArt
+          name={artName}
+          fill
+          sizes="190px"
+          className="z-0 pointer-events-none"
+        />
       )}
 
       {/* Soft radial glow background for special dates */}
@@ -164,7 +202,8 @@ export const CalendarCell = memo(function CalendarCell({
         <div
           className="absolute inset-0 z-0 pointer-events-none"
           style={{
-            background: "radial-gradient(ellipse at 50% 50%, rgba(244,114,182,0.12) 0%, transparent 70%)",
+            background:
+              "radial-gradient(ellipse at 50% 50%, rgba(244,114,182,0.12) 0%, transparent 70%)",
           }}
         />
       )}
@@ -177,8 +216,24 @@ export const CalendarCell = memo(function CalendarCell({
       {summary?.thumbnailUrl && cell.inMonth && (
         <img
           /* A month is up to 31 of these. Fed the original upload each, that
-             was the single heaviest thing the calendar did. */
+             was the single heaviest thing the calendar did — so a cell asks
+             for a cell-sized picture, not the photo off the phone.
+             
+             `sizes` states the real width of a cell at each breakpoint —
+             measured: about a third of the screen on a phone, 120px from
+             md, 147px from lg and 188px at the widest — and the browser
+             multiplies that by the screen's density to choose. Overstating
+             it (one flat "190px") is not harmless: it made a 147px cell on
+             an ordinary laptop fetch the 256px picture it did not need.
+             Three candidates cover 1x, 2x and 3x without a fourth fetch;
+             384 is a shade under three times a phone cell, which no eye can
+             tell from exact, and it keeps a month of photos at a few hundred
+             kilobytes instead of well over a megabyte. A single 160px source,
+             which is what this asked for before, was being stretched across
+             every dense screen in the house. */
           src={cldThumb(summary.thumbnailUrl, 160)}
+          srcSet={cldThumbSrcSet(summary.thumbnailUrl, [160, 256, 384])}
+          sizes="(min-width: 1536px) 190px, (min-width: 1024px) 150px, (min-width: 768px) 120px, 33vw"
           alt=""
           loading="lazy"
           decoding="async"
@@ -215,11 +270,11 @@ export const CalendarCell = memo(function CalendarCell({
                 ? "flex h-7 w-7 items-center justify-center rounded-full bg-accent text-[14px] font-bold text-accent-foreground shadow-sm"
                 : cycle?.isPeak
                   ? `flex h-7 w-7 items-center justify-center rounded-full text-[14px] font-bold ${CYCLE_PEAK_DISC}`
-                  // A halo in the card colour, not a bigger scrim. Widening the
-                  // scrim costs picture on every cell to protect two digits;
-                  // this protects the digits and costs nothing else, and it
-                  // holds for artwork nobody has drawn yet.
-                  : cn(
+                  : // A halo in the card colour, not a bigger scrim. Widening the
+                    // scrim costs picture on every cell to protect two digits;
+                    // this protects the digits and costs nothing else, and it
+                    // holds for artwork nobody has drawn yet.
+                    cn(
                       "font-semibold pt-1 pl-1 [text-shadow:0_0_3px_var(--card),0_0_6px_var(--card),0_1px_2px_var(--card)]",
                       cycle && CYCLE_WINDOW_TEXT,
                     ),
@@ -228,7 +283,10 @@ export const CalendarCell = memo(function CalendarCell({
             {cell.day}
           </span>
           {summary && summary.memoryCount > 0 && !summary.thumbnailUrl && (
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" title="Kỷ niệm" />
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400"
+              title="Kỷ niệm"
+            />
           )}
         </div>
         {/* Mobile special-date marker: a small filled heart (the desktop ribbon
@@ -250,7 +308,8 @@ export const CalendarCell = memo(function CalendarCell({
           <div
             className="flex items-center gap-1 rounded-md px-1.5 py-[3px] shadow-sm"
             style={{
-              background: "linear-gradient(135deg, #FCE4EC 0%, #F8BBD0 50%, #F48FB1 100%)",
+              background:
+                "linear-gradient(135deg, #FCE4EC 0%, #F8BBD0 50%, #F48FB1 100%)",
             }}
           >
             <SpecialIcon className="w-3 h-3 text-pink-600 shrink-0" />
@@ -310,7 +369,8 @@ export const CalendarCell = memo(function CalendarCell({
                 className="relative -mb-[4px] z-20 w-[7px] h-[7px] sm:w-[8px] sm:h-[8px] rounded-full shrink-0"
                 style={{
                   backgroundColor: pin,
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 2px rgba(255,255,255,0.35)",
+                  boxShadow:
+                    "0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 2px rgba(255,255,255,0.35)",
                 }}
               />
 
@@ -320,8 +380,10 @@ export const CalendarCell = memo(function CalendarCell({
                 style={{
                   backgroundColor: style.bg,
                   color: style.text,
-                  boxShadow: "2px 3px 6px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.12)",
-                  backgroundImage: "linear-gradient(135deg, transparent 70%, rgba(0,0,0,0.04) 100%)",
+                  boxShadow:
+                    "2px 3px 6px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.12)",
+                  backgroundImage:
+                    "linear-gradient(135deg, transparent 70%, rgba(0,0,0,0.04) 100%)",
                 }}
               >
                 <div
@@ -348,7 +410,12 @@ export const CalendarCell = memo(function CalendarCell({
       {/* Mobile: compact colored dots (sticky notes are desktop-only). A thin
           white ring keeps them legible when they sit over a photo thumbnail. */}
       {cell.inMonth && dotColors.length > 0 && (
-        <div className={cn("absolute inset-x-0 bottom-1.5 z-20 flex items-center justify-center gap-1 md:hidden", allDone && "opacity-50")}>
+        <div
+          className={cn(
+            "absolute inset-x-0 bottom-1.5 z-20 flex items-center justify-center gap-1 md:hidden",
+            allDone && "opacity-50",
+          )}
+        >
           {dotColors.map((c, i) => (
             <span
               key={i}

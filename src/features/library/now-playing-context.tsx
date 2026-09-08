@@ -16,6 +16,8 @@ import { NowPlayingDock } from "./now-playing-dock";
 import { useListenTogether, type ListenTogether } from "./use-listen-together";
 import { ListenInviteModal } from "./listen-invite-modal";
 import { useToast } from "@/components/ui/toast";
+import { useRouter } from "next/navigation";
+import { expectPlayerSlot } from "./player-slot";
 import type { ListenTrack } from "@/features/locations/use-navigation-invites";
 
 /**
@@ -162,6 +164,7 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<QueueState>(EMPTY);
   const listen = useListenTogether();
   const toast = useToast();
+  const router = useRouter();
   // The rendered state, readable from callbacks without re-creating them.
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -342,6 +345,26 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /*
+   * Accepting an invite opens the full player, not just the little window.
+   *
+   * Saying yes to "nghe cùng" is saying yes to sitting down with it, so the
+   * guest lands where the host is: the track large, its list beside it. The
+   * slot is announced first so the frame appears in place rather than in the
+   * corner for the moment the page takes to arrive.
+   */
+  const acceptInvite = useCallback(async () => {
+    try {
+      const res = await listen.respond(true);
+      const track = res?.queue?.[res.index];
+      if (!track) return;
+      expectPlayerSlot();
+      router.push(`/library/phat/${track.id}`);
+    } catch {
+      toast("Lời mời không còn nữa.", "error");
+    }
+  }, [listen, router, toast]);
+
   const value = useMemo<NowPlayingContextValue>(() => {
     const playing = state.queue[state.index] ?? null;
     return {
@@ -372,7 +395,7 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
         <ListenInviteModal
           trackTitle={listen.invite.title}
           isPending={listen.isBusy}
-          onAccept={() => void listen.respond(true)}
+          onAccept={() => void acceptInvite()}
           onDecline={() => void listen.respond(false)}
         />
       )}

@@ -194,7 +194,12 @@ export function useListenTogether() {
   }, [invites.listenEnded]);
 
   const start = useCallback(
-    async (queue: ListenTrack[], index: number, positionSec: number) => {
+    async (
+      queue: ListenTrack[],
+      index: number,
+      positionSec: number,
+      isPlaying = true,
+    ) => {
       if (!queue.length) return;
       setWaiting(true);
       try {
@@ -202,6 +207,7 @@ export function useListenTogether() {
           queue,
           index,
           positionSec,
+          isPlaying,
         });
         void utils.listen.current.invalidate();
         toast(

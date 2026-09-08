@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLink, Play } from "lucide-react";
-import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
+import { PROVIDER_LABEL, tiktokPlayerUrl, tiktokPostId, type EmbedProvider } from "@/lib/embed";
 
 /**
  * Natural shape of each provider's frame, as width ÷ height. `null` means the
@@ -109,12 +109,17 @@ export function EmbedPlayer({ data, fill = false }: { data: EmbedData; fill?: bo
     );
   }
   if (data.provider === "tiktok") {
+    // Rebuilt from the post id: rows saved before the endpoint changed carry
+    // an embedUrl that answers 400 (see tiktokPlayerUrl).
+    const id = tiktokPostId(data.url);
+    const src = id ? tiktokPlayerUrl(id, { description: true, musicInfo: true }) : data.embedUrl;
     return (
       <div className="mx-auto w-full max-w-[325px] overflow-hidden rounded-xl">
         <iframe
-          src={data.embedUrl}
+          src={src}
           title={data.title ?? "TikTok"}
           sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts allow-top-navigation allow-same-origin"
+          allow="autoplay; fullscreen"
           allowFullScreen
           loading="lazy"
           className="w-full border-0"

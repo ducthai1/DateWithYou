@@ -118,6 +118,17 @@ export const listenRouter = router({
         queue: z.array(trackInput).min(1),
         index: z.number().int().min(0),
         positionSec: z.number().min(0).default(0),
+        /**
+         * Whether the inviter is playing right now.
+         *
+         * False when the invite comes from a card that was never started: the
+         * host holds at the beginning until the answer comes, so the two of
+         * them start together. It matters on the server as well as on screen,
+         * because `respond` adds the waiting time to the playhead of a session
+         * that says it is playing — an invite answered a minute later would
+         * otherwise open both players a minute into the song.
+         */
+        isPlaying: z.boolean().default(true),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -147,7 +158,7 @@ export const listenRouter = router({
           status: "inviting",
           queue: input.queue,
           index,
-          isPlaying: true,
+          isPlaying: input.isPlaying,
           positionSec: input.positionSec,
           stateAt: new Date(),
           updatedBy: ctx.userId,
@@ -204,7 +215,8 @@ export const listenRouter = router({
        */
       const now = Date.now();
       const positionSec = pending.isPlaying
-        ? pending.positionSec + (now - new Date(pending.stateAt).getTime()) / 1000
+        ? pending.positionSec +
+          (now - new Date(pending.stateAt).getTime()) / 1000
         : pending.positionSec;
 
       const doc = await ListenSessionModel.findOneAndUpdate(
@@ -212,6 +224,13 @@ export const listenRouter = router({
         {
           status: input.accept ? "live" : "ended",
           updatedBy: ctx.userId,
+          /*
+           * Accepting is what starts the music. An invite sent from a card
+           * that had not been played holds at the beginning — neither side
+           * plays while it is pending — so the answer is the moment both
+           * players are told to go, from the same point.
+           */
+          ...(input.accept ? { isPlaying: true } : {}),
           positionSec,
           stateAt: new Date(now),
           // A decline is over; keep it only long enough for both streams to see
@@ -261,13 +280,18 @@ export const listenRouter = router({
         expiresAt: new Date(Date.now() + SIX_HOURS),
       };
       if (input.isPlaying !== undefined) update.isPlaying = input.isPlaying;
-      if (input.positionSec !== undefined) update.positionSec = input.positionSec;
+      if (input.positionSec !== undefined)
+        update.positionSec = input.positionSec;
       if (input.index !== undefined) {
-        const nextIndex = Math.min(input.index, Math.max(0, doc.queue.length - 1));
+        const nextIndex = Math.min(
+          input.index,
+          Math.max(0, doc.queue.length - 1),
+        );
         update.index = nextIndex;
         // A DIFFERENT track starts at its beginning unless told otherwise. The
         // same index re-sent by the periodic full-state write is not a skip.
-        if (input.positionSec === undefined && nextIndex !== doc.index) update.positionSec = 0;
+        if (input.positionSec === undefined && nextIndex !== doc.index)
+          update.positionSec = 0;
       }
 
       const next = await ListenSessionModel.findOneAndUpdate(
