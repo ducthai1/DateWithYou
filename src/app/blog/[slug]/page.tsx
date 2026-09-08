@@ -7,6 +7,7 @@ import { ArticleCard, CATEGORY_LABEL } from "@/features/blog/post-card";
 import { ViewBeacon } from "@/features/blog/view-beacon";
 import { ArticleView } from "@/features/blog/article-view";
 import { withHeadingAnchors } from "@/features/blog/toc";
+import { SmartBackLink } from "@/components/marketing/smart-back-link";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import "@/features/blog/blog-body.css";
 
@@ -125,15 +126,20 @@ export default async function ArticlePage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <ViewBeacon slug={post.slug} />
 
-      <nav className="text-muted-foreground mb-4 text-sm">
-        <Link href="/blog" className="hover:text-accent">
-          Blog
-        </Link>
-        <span className="px-1.5">/</span>
-        <Link href={`/blog/danh-muc/${post.category}`} className="hover:text-accent">
-          {labelOf(post.category)}
-        </Link>
-      </nav>
+      {/* A back button that returns where the reader came from — the feature
+          page, the landing, the app — plus the breadcrumb for structure. */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <SmartBackLink fallback="/blog" tone="app" />
+        <nav aria-label="Đường dẫn" className="text-muted-foreground text-sm">
+          <Link href="/blog" className="hover:text-accent">
+            Blog
+          </Link>
+          <span className="px-1.5">/</span>
+          <Link href={`/blog/danh-muc/${post.category}`} className="hover:text-accent">
+            {labelOf(post.category)}
+          </Link>
+        </nav>
+      </div>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start">
         <div className="min-w-0">

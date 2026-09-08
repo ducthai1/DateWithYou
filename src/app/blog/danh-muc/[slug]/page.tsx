@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { publicCaller } from "@/server/caller";
 import { ArticleCard, CATEGORY_LABEL } from "@/features/blog/post-card";
 import { CategoryTabs } from "@/features/blog/category-tabs";
+import { SmartBackLink } from "@/components/marketing/smart-back-link";
 import { SITE_NAME } from "@/lib/site";
 
 /*
@@ -73,13 +74,16 @@ export default async function BlogCategoryPage({ params }: { params: Promise<{ s
   return (
     <main className="mx-auto w-full max-w-6xl 2xl:max-w-7xl px-4 pb-16 pt-8 sm:pt-12">
       <header className="mb-8">
-        <nav className="text-muted-foreground text-sm">
-          <Link href="/blog" className="hover:text-accent">
-            Blog
-          </Link>
-          <span className="px-1.5">/</span>
-          <span>Danh mục</span>
-        </nav>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <SmartBackLink fallback="/blog" tone="app" />
+          <nav aria-label="Đường dẫn" className="text-muted-foreground text-sm">
+            <Link href="/blog" className="hover:text-accent">
+              Blog
+            </Link>
+            <span className="px-1.5">/</span>
+            <span>Danh mục</span>
+          </nav>
+        </div>
         <h1 className="text-foreground mt-1 text-3xl font-bold sm:text-4xl [font-family:var(--font-display)]">
           {cat.name}
         </h1>

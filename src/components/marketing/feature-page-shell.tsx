@@ -4,7 +4,8 @@ import { Reveal } from "./reveal";
 import { FaqItem } from "./faq-item";
 import type { FeaturePage, FeaturePageSection } from "./feature-pages";
 import { FEATURE_PAGE_APP_HREF } from "./feature-pages";
-import { SITE_NAME } from "@/lib/site";
+import { SiteFooter } from "./site-footer";
+import { SmartBackLink } from "./smart-back-link";
 
 /*
  * Renders one feature page. Plain Server Components, no JavaScript attached to
@@ -83,12 +84,7 @@ export function FeaturePageShell({ page }: { page: FeaturePage }) {
         {/* Link back to the hub. Also the visible counterpart of the
             BreadcrumbList in the structured data. */}
         <Reveal>
-          <Link
-            href="/"
-            className="-my-2 inline-flex items-center gap-1.5 py-2 text-sm font-light text-[#8a7c6f] transition-colors hover:text-[#a8542f]"
-          >
-            <span aria-hidden="true">←</span> {SITE_NAME}
-          </Link>
+          <SmartBackLink fallback="/tinh-nang" />
         </Reveal>
 
         <Reveal delay={90}>
@@ -232,14 +228,7 @@ export function FeaturePageShell({ page }: { page: FeaturePage }) {
         </Reveal>
       </article>
 
-      <footer className="border-t border-[#d8cfc1]/60 px-6 py-10 text-center text-sm font-light text-[#7a6d60]">
-        <p>
-          <Link href="/" className="transition-colors hover:text-[#a8542f]">
-            {SITE_NAME}
-          </Link>{" "}
-          — giữ lại những chuyến đi của bạn. Làm tại Việt Nam.
-        </p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

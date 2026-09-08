@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
 import { ToastProvider } from "@/components/ui/toast";
 import { PhotoProvider } from "react-photo-view";
+import { RouteTrail } from "@/components/navigation/route-trail";
 
 // One Tap is browser-only (Google script + useSession). Load it client-side
 // with ssr:false so it never prerenders on the server — useSession throws
@@ -166,6 +167,7 @@ export function Providers({
             <ToastProvider>
               <GoogleOneTap />
               <SpaceGuard />
+              <RouteTrail />
               {children}
             </ToastProvider>
           </SidebarProvider>

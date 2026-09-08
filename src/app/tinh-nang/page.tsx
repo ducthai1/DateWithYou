@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { SmartBackLink } from "@/components/marketing/smart-back-link";
+import { SiteFooter } from "@/components/marketing/site-footer";
 import Link from "next/link";
 import { Reveal } from "@/components/marketing/reveal";
 import { ToneArt } from "@/components/theme/tone-art";
@@ -97,12 +99,7 @@ export default function Page() {
             1600px display and read as an unfinished document. */}
         <div className="mx-auto max-w-6xl px-6 pt-12 pb-20 sm:px-8 sm:pt-16 sm:pb-28">
           <Reveal>
-            <Link
-              href="/"
-              className="-my-2 inline-flex items-center gap-1.5 py-2 text-sm font-light text-[#8a7c6f] transition-colors hover:text-[#a8542f]"
-            >
-              <span aria-hidden="true">←</span> {SITE_NAME}
-            </Link>
+            <SmartBackLink fallback="/" />
           </Reveal>
 
           {/* Hero spans the full width in two columns rather than stacking in a
@@ -182,6 +179,7 @@ export default function Page() {
             </div>
           </Reveal>
         </div>
+        <SiteFooter />
       </div>
     </>
   );
