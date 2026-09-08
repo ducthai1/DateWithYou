@@ -63,29 +63,30 @@ export function WatchScreen({ id }: { id: string }) {
   const list = trpc.media.list.useQuery(undefined, { enabled: !inQueue });
 
   /*
-   * The URL and the playback are kept in step from both sides, and which one
-   * moved decides who follows:
-   *  - the URL changed (back/forward, a pasted link): playback follows it;
-   *  - the playback changed (a button, the playlist, the partner): the URL
-   *    follows it, with `replace` so the history does not fill with tracks.
-   * Without remembering what was seen last, the two effects fight: a press on
-   * "next" changes the track, the URL still names the old one for a render,
-   * and a naive "make playback match the URL" snaps straight back.
+   * The URL and the playback are kept in step, and which one leads depends on
+   * whether they have ever agreed.
+   *
+   * Before they have — a fresh load, a pasted link, a back/forward step — the
+   * URL is the instruction and the player is made to match it. After they
+   * have, this page is a view of whatever is playing, so a skip, a playlist
+   * pick or the partner moving the shared session rewrites the URL (with
+   * `replace`, so the history does not fill up with tracks).
+   *
+   * Getting that order wrong was visible: with a live shared session, opening
+   * a track outside it bounced straight back to the session's track, because
+   * the first non-null `playing` — the session being adopted a moment after
+   * mount — was read as "the playback moved, follow it".
    */
-  const seen = useRef({
-    id,
-    playing: playing?.id ?? null,
-    pendingUrl: null as string | null,
-  });
+  const seen = useRef({ id, agreed: false, pendingUrl: null as string | null });
   useEffect(() => {
     const s = seen.current;
     const pid = playing?.id ?? null;
 
+    /** Make the player match the URL: from the queue, or from the library. */
     const adopt = () => {
       const at = queue.findIndex((q) => q.id === id);
       if (at >= 0) {
         jumpTo(at);
-        s.playing = id;
         return;
       }
       const items = list.data;
@@ -100,32 +101,29 @@ export function WatchScreen({ id }: { id: string }) {
       const idx = sameTab.findIndex((q) => q.id === id);
       if (idx < 0) return;
       start(sameTab, idx);
-      s.playing = id;
     };
 
     if (id !== s.id) {
+      // The address bar moved. Our own `replace` is not a new instruction;
+      // anything else is, and starts the page over as un-agreed.
+      const ours = s.pendingUrl === id;
       s.id = id;
-      if (s.pendingUrl === id) {
-        // Our own `replace` landing — nothing to do.
-        s.pendingUrl = null;
-        s.playing = pid;
-        return;
-      }
-      s.playing = pid;
-      if (pid !== id) adopt();
+      s.pendingUrl = null;
+      if (!ours) s.agreed = false;
+    }
+
+    if (pid === id) {
+      s.agreed = true;
       return;
     }
-    if (pid !== s.playing) {
-      s.playing = pid;
-      if (pid && pid !== id) {
-        s.pendingUrl = pid;
-        router.replace(`/library/phat/${pid}`);
-      }
+    if (!s.agreed) {
+      adopt();
       return;
     }
-    // Neither moved since the last look and they still disagree: first
-    // mount, or the list has just arrived for a reload.
-    if (pid !== id) adopt();
+    if (pid) {
+      s.pendingUrl = pid;
+      router.replace(`/library/phat/${pid}`);
+    }
   }, [id, playing, queue, list.data, jumpTo, start, router]);
 
   // Registered as a callback ref so the box is known the moment it exists.

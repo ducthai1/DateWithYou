@@ -1,11 +1,21 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { EmbedData } from "@/components/ui/embed-player";
 import type { MediaListItem } from "./media-card";
 import { NowPlayingDock } from "./now-playing-dock";
 import { useListenTogether, type ListenTogether } from "./use-listen-together";
 import { ListenInviteModal } from "./listen-invite-modal";
+import { useToast } from "@/components/ui/toast";
 import type { ListenTrack } from "@/features/locations/use-navigation-invites";
 
 /**
@@ -37,7 +47,26 @@ export type NowPlayingItem = {
 };
 
 /** Queue and cursor move together: every change is one atomic update. */
-type QueueState = { queue: NowPlayingItem[]; index: number };
+/**
+ * `intent` is why this track is on screen: because somebody here pressed
+ * something ("press"), or because the shared session moved ("follow"). The
+ * dock reads it to decide whether the frame it is about to raise should start
+ * itself — a press must play, a followed state is applied afterwards anyway.
+ */
+type QueueState = {
+  queue: NowPlayingItem[];
+  index: number;
+  intent: "press" | "follow";
+  /**
+   * When somebody last pressed something HERE, by this device's clock.
+   *
+   * Only ever compared with `receivedAt` on a shared state — also this
+   * device's clock — so the two phones' disagreeing clocks never enter into
+   * it. It exists to order the two sources that both claim to say what should
+   * be playing: the session, and the person in front of this screen.
+   */
+  pressedAt: number;
+};
 
 type NowPlayingContextValue = {
   playing: NowPlayingItem | null;
@@ -66,7 +95,12 @@ type NowPlayingContextValue = {
   listen: ListenTogether | null;
 };
 
-const EMPTY: QueueState = { queue: [], index: 0 };
+const EMPTY: QueueState = {
+  queue: [],
+  index: 0,
+  intent: "follow",
+  pressedAt: 0,
+};
 
 /** The player's item as it travels to the other device. */
 export function toListenTrack(item: NowPlayingItem): ListenTrack {
@@ -127,10 +161,28 @@ export function useNowPlaying() {
 export function NowPlayingProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<QueueState>(EMPTY);
   const listen = useListenTogether();
-
-  const start = useCallback((queue: NowPlayingItem[], at: number) => {
-    setState({ queue, index: Math.max(0, Math.min(at, queue.length - 1)) });
-  }, []);
+  const toast = useToast();
+  // The rendered state, readable from callbacks without re-creating them.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  /*
+   * A session this device has deliberately walked away from.
+   *
+   * Ending it is not enough on its own: the stream is a poll, so a state
+   * written before the person chose something else can still arrive after
+   * they did — and once it has been applied, their choice is gone. Remembered
+   * by id, so every later message about the SAME session is ignored while a
+   * new invite (a new id, since inviting replaces the document) still works.
+   */
+  const dismissed = useRef<string | null>(null);
+  const leaveSession = useCallback(
+    (sessionId: string | null) => {
+      if (sessionId) dismissed.current = sessionId;
+      void listen.end();
+      toast("Đã dừng nghe cùng — bạn vừa mở một danh sách khác", "info");
+    },
+    [listen, toast],
+  );
 
   /*
    * Closing the player ends the session too.
@@ -160,14 +212,59 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
        */
       const at = Math.max(0, Math.min(to, state.queue.length - 1));
       if (at === state.index) return;
-      setState((s) => ({ ...s, index: at }));
+      setState((s) => ({
+        ...s,
+        index: at,
+        intent: "press",
+        pressedAt: Date.now(),
+      }));
       // The other side hears about a skip the same way as a pressed button.
       listen.report({ index: at, positionSec: 0, isPlaying: true });
     },
     [state.index, state.queue.length, listen],
   );
-  const next = useCallback(() => jumpTo(state.index + 1), [jumpTo, state.index]);
-  const prev = useCallback(() => jumpTo(state.index - 1), [jumpTo, state.index]);
+  const next = useCallback(
+    () => jumpTo(state.index + 1),
+    [jumpTo, state.index],
+  );
+  const prev = useCallback(
+    () => jumpTo(state.index - 1),
+    [jumpTo, state.index],
+  );
+
+  /*
+   * A card's Phát, with a shared session in mind.
+   *
+   * Alone, it simply becomes the queue. In a live session it used to do the
+   * same — and only here: this side now played from a list the other side had
+   * never seen, while the periodic report kept pushing this side's index into
+   * a session whose queue was still the old one, so the other person was
+   * dragged to the wrong track of the wrong list. Now a track that is in the
+   * shared queue is a skip, told to both sides like any other; one that is not
+   * ends the session first, said out loud, and then plays here alone.
+   */
+  const start = useCallback(
+    (queue: NowPlayingItem[], at: number) => {
+      const wanted = queue[at];
+      if (wanted && (listen.live || listen.waiting)) {
+        const shared = stateRef.current.queue.findIndex(
+          (q) => q.id === wanted.id,
+        );
+        if (shared >= 0 && listen.live) {
+          jumpTo(shared);
+          return;
+        }
+        leaveSession(listen.partnerState?.id ?? null);
+      }
+      setState({
+        queue,
+        index: Math.max(0, Math.min(at, queue.length - 1)),
+        intent: "press",
+        pressedAt: Date.now(),
+      });
+    },
+    [listen, jumpTo, leaveSession],
+  );
 
   /*
    * Follow the other person's queue.
@@ -182,16 +279,53 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
     const ps = listen.partnerState;
     // Waiting counts: a host who reloaded mid-invite gets their dock back.
     if (!ps || !(listen.live || listen.waiting)) return;
+    if (ps.id === dismissed.current) return;
     const stamp = `${ps.id}:${ps.index}:${ps.queue.map((t) => t.id).join(",")}`;
     if (appliedState.current === stamp) return;
+
+    /*
+     * Which side was chosen more recently — the session, or the person here?
+     *
+     * Compared on when each was CHOSEN, not on when this device heard about
+     * it. `receivedAt - stateAgeMs` is when somebody last wrote the session
+     * state, in this device's own clock (an age plus a local arrival time, so
+     * the two phones' disagreeing clocks never come into it); `pressedAt` is
+     * when somebody pressed something here. Arrival order is the wrong test
+     * and was measurably a coin flip: on a fresh load the session is seeded
+     * from the server at the same moment the page's URL is adopted, and
+     * whichever answered last won — so opening a link while listening
+     * together sometimes bounced back to the shared track and sometimes did
+     * not. Accepting an invite still wins, because the accept re-times the
+     * state at that instant, which is later than any earlier press here.
+     */
+    const writtenAt = ps.receivedAt - ps.stateAgeMs;
+    const local = stateRef.current;
+    if (writtenAt < local.pressedAt) {
+      appliedState.current = stamp;
+      const playingId = local.queue[local.index]?.id;
+      const stillOnTheList =
+        playingId != null && ps.queue.some((t) => t.id === playingId);
+      // They have moved to something the session does not contain, so they
+      // have left it. Silence about it would leave both docks lying.
+      if (!stillOnTheList) leaveSession(ps.id);
+      return;
+    }
+
     appliedState.current = stamp;
     setState((s) => {
       if (sameQueue(s.queue, ps.queue)) {
-        return s.index === ps.index ? s : { ...s, index: ps.index };
+        return s.index === ps.index
+          ? s
+          : { ...s, index: ps.index, intent: "follow" };
       }
-      return { queue: ps.queue.map(fromListenTrack), index: ps.index };
+      return {
+        queue: ps.queue.map(fromListenTrack),
+        index: ps.index,
+        intent: "follow",
+        pressedAt: s.pressedAt,
+      };
     });
-  }, [listen.partnerState, listen.live, listen.waiting]);
+  }, [listen.partnerState, listen.live, listen.waiting, leaveSession]);
 
   /** A card was deleted. Close if it was the one playing, otherwise just drop
    *  it from the queue and keep the cursor on the same track. */
@@ -200,7 +334,11 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
       const at = s.queue.findIndex((q) => q.id === id);
       if (at < 0) return s;
       if (at === s.index) return EMPTY;
-      return { queue: s.queue.filter((q) => q.id !== id), index: at < s.index ? s.index - 1 : s.index };
+      return {
+        ...s,
+        queue: s.queue.filter((q) => q.id !== id),
+        index: at < s.index ? s.index - 1 : s.index,
+      };
     });
   }, []);
 
@@ -250,6 +388,7 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
         listen={listen}
         queue={state.queue}
         index={state.index}
+        intent={state.intent}
       />
     </NowPlayingContext.Provider>
   );

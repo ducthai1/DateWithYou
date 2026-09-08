@@ -26,13 +26,15 @@ import type { NowPlayingItem } from "./now-playing-context";
 import { useFloatingWindow, type DragMode } from "./use-floating-window";
 import { useYouTubePlayback, withJsApi } from "./use-youtube-playback";
 import {
+  COMMAND_TOLERANCE_SEC,
   DRIFT_TOLERANCE_SEC,
   targetPosition,
   type ListenTogether,
 } from "./use-listen-together";
 import { ListenTogetherControls } from "./listen-together-controls";
 import { usePlayerSlot, usePlayerSlotExpected } from "./player-slot";
-import { scrollParentOf, useSlotRect } from "./use-slot-rect";
+import { useSlotRect } from "./use-slot-rect";
+import { useScrollMirror } from "./use-scroll-mirror";
 
 const KIND_ICON: Record<MediaListItem["kind"], typeof Music2> = {
   music: Music2,
@@ -138,6 +140,7 @@ export function NowPlayingDock({
   listen,
   queue,
   index,
+  intent,
 }: {
   item: NowPlayingItem | null;
   position: number;
@@ -152,9 +155,38 @@ export function NowPlayingDock({
   /** The full local queue, for handing over when a session starts. */
   queue: readonly NowPlayingItem[];
   index: number;
+  /** Why the current track is up: a press here, or the session moving. */
+  intent: "press" | "follow";
 }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  /*
+   * The layer the panel is rendered into: one fixed, full-screen element on
+   * <body> that never receives pointer events itself. Floating, the panel is
+   * fixed inside it and the layer is inert. Docked, the layer scrolls in step
+   * with the page (use-scroll-mirror) and the panel sits in it absolutely, so
+   * a wheel over the frame scrolls the page and the frame rides along.
+   */
+  const [layer, setLayer] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = document.createElement("div");
+    el.setAttribute("data-player-layer", "");
+    Object.assign(el.style, {
+      position: "fixed",
+      inset: "0",
+      zIndex: "40",
+      overflowX: "hidden",
+      overflowY: "hidden",
+      pointerEvents: "none",
+      overscrollBehavior: "contain",
+      scrollbarWidth: "none",
+    } as Partial<CSSStyleDeclaration>);
+    document.body.appendChild(el);
+    setLayer(el);
+    return () => {
+      el.remove();
+      setLayer(null);
+    };
+  }, []);
+  const mounted = layer !== null;
   const viewportH = useViewportHeight();
   const router = useRouter();
 
@@ -169,6 +201,7 @@ export function NowPlayingDock({
   const slotEl = usePlayerSlot();
   const slotRect = useSlotRect(slotEl);
   const docked = slotRect !== null;
+  const spacer = useScrollMirror(layer, slotRect?.box ?? null, docked);
   // Phát was just pressed and the watch page is still on its way: stay out
   // of sight rather than flash in the corner and slide up (see player-slot).
   const hidden = usePlayerSlotExpected() && !docked;
@@ -185,27 +218,6 @@ export function NowPlayingDock({
     const t = setTimeout(() => setSettling(false), 320);
     return () => clearTimeout(t);
   }, [mode]);
-
-  /*
-   * Docked, the frame sits over the page but is not IN it: this panel hangs
-   * off <body>, which never scrolls, so a wheel over the video went nowhere
-   * while the same wheel an inch lower scrolled the page. A cross-origin
-   * frame swallows its own wheel events, so nothing here can hear them —
-   * except a pane laid over the frame. It covers the middle of the picture
-   * only: YouTube's title bar above and control bar below stay bare and
-   * clickable. A wheel on it scrolls the slot's scroll box by hand; a click
-   * on it does what a click on the picture does on YouTube, play or pause.
-   */
-  const relayWheel = useCallback(
-    (e: React.WheelEvent) => {
-      const box = scrollParentOf(slotEl);
-      if (!box) return;
-      const unit =
-        e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? box.clientHeight : 1;
-      box.scrollBy({ top: e.deltaY * unit, left: 0 });
-    },
-    [slotEl],
-  );
 
   /*
    * Play/pause talks to the frame directly, so it needs the frame. Reaching
@@ -333,13 +345,25 @@ export function NowPlayingDock({
    */
   const liveAtMount = useRef(false);
   liveAtMount.current = listen.live;
+  const intentRef = useRef(intent);
+  intentRef.current = intent;
   const frameEmbed = useMemo(() => {
     if (!item?.embed.embedUrl || !controllable) return item?.embed;
     // Automatic advance, or a track adopted from the shared session: both are
     // frames nobody will press play on, so they must start themselves.
     const auto =
       (endedTrack.current != null && endedTrack.current !== frameKey) ||
-      liveAtMount.current;
+      liveAtMount.current ||
+      /*
+       * A press must play. Pressing Phát only LOADED the player: the person
+       * landed on the watch page with the poster and YouTube's own play
+       * button, and had to press a second time — and in a shared session that
+       * second press was the only thing that ever started the music, so the
+       * two sides sat at different points from the very first track. The tap
+       * on the card is the gesture the browser's autoplay rule wants, and it
+       * is still the same document after the navigation, so it counts.
+       */
+      intentRef.current === "press";
     return {
       ...item.embed,
       embedUrl: withJsApi(item.embed.embedUrl, window.location.origin, auto),
@@ -355,6 +379,21 @@ export function NowPlayingDock({
     endedTrack.current = null;
     playback.play();
   }, [playback]);
+
+  /*
+   * And the same in the other direction: ask the frame to play as soon as it
+   * answers. The `autoplay` flag in its URL is the fast path — it needs no
+   * message and so works in a background tab — but a browser may ignore it,
+   * and then a pressed track would sit silent. One `playVideo` per frame,
+   * once, so pausing straight afterwards is not undone.
+   */
+  const startedFrame = useRef<string | null>(null);
+  useEffect(() => {
+    if (!controllable || !frameKey || playback.readyFor !== frameKey) return;
+    if (startedFrame.current === frameKey) return;
+    startedFrame.current = frameKey;
+    if (intentRef.current === "press") playback.play();
+  }, [controllable, frameKey, playback]);
 
   /*
    * Let the session read this frame's playhead for its periodic write.
@@ -386,6 +425,12 @@ export function NowPlayingDock({
    * simply not working.
    */
   const appliedPartner = useRef<string | null>(null);
+  /** What the last applied message said, to tell a command from a refresh. */
+  const lastSubstance = useRef<{ isPlaying: boolean; index: number } | null>(
+    null,
+  );
+  /** The frame that has been lined up with the session since it came ready. */
+  const alignedFrame = useRef<string | null>(null);
   useEffect(() => {
     const ps = listen.partnerState;
     if (!ps || !listen.live || !controllable) return;
@@ -400,13 +445,39 @@ export function NowPlayingDock({
      * message be applied when the right frame is ready.
      */
     if (ps.queue[ps.index]?.id !== item?.id) return;
-    // The same state message must not be re-applied on every render.
+    // The same state message must not be re-applied on every render — unless
+    // a new frame has come up for this track since, which has to be lined up.
     const stamp = `${ps.id}:${ps.updatedBy}:${ps.receivedAt}`;
-    if (appliedPartner.current === stamp) return;
+    const freshFrame = alignedFrame.current !== frameKey;
+    if (appliedPartner.current === stamp && !freshFrame) return;
     appliedPartner.current = stamp;
+    alignedFrame.current = frameKey;
+
+    /*
+     * Two tolerances, because two different things arrive here.
+     *
+     * A command — the other person pressed pause, resumed, or moved to another
+     * track — is a moment when the two players are being interrupted anyway,
+     * so lining them up to within a fraction of a second costs nothing
+     * audible. With one loose tolerance every pause left the follower a
+     * second behind (the message's own travel time) and never corrected it,
+     * and a track change left them the frame's load time apart: the two
+     * sides were audibly out of step for the whole song. The periodic refresh
+     * of an unchanged state keeps the loose tolerance — there a seek would be
+     * a jump out of nowhere in the middle of listening.
+     *
+     * A frame that has just come up is lined up tightly too, whatever the
+     * message: it started from zero when the song was already under way.
+     */
+    const last = lastSubstance.current;
+    const command =
+      !last || last.isPlaying !== ps.isPlaying || last.index !== ps.index;
+    lastSubstance.current = { isPlaying: ps.isPlaying, index: ps.index };
+    const tolerance =
+      command || freshFrame ? COMMAND_TOLERANCE_SEC : DRIFT_TOLERANCE_SEC;
 
     const want = targetPosition(ps);
-    if (Math.abs(playback.getPosition() - want) > DRIFT_TOLERANCE_SEC) {
+    if (Math.abs(playback.getPosition() - want) > tolerance) {
       playback.seek(want);
     }
     if (ps.isPlaying !== playback.playing) {
@@ -478,7 +549,7 @@ export function NowPlayingDock({
       PAD,
   });
 
-  if (!mounted || !box) return null;
+  if (!mounted || !layer || !box) return null;
 
   const Icon = item ? KIND_ICON[item.kind] : Music2;
   const embeddable = Boolean(item?.embed.embedUrl);
@@ -616,32 +687,40 @@ export function NowPlayingDock({
   ) : null;
 
   return createPortal(
-    <AnimatePresence>
-      {item && (
-        <motion.div
-          key="now-playing"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 16 }}
-          transition={{ duration: 0.2 }}
-          ref={boxRef}
-          role="region"
-          aria-label={`Đang phát: ${item.title}`}
-          style={{
-            ...(slotRect
-              ? {
-                  left: slotRect.left,
-                  top: slotRect.top,
-                  width: slotRect.width,
-                  height: slotRect.height,
-                }
-              : box.x == null
-                ? { width: box.w }
-                : { width: box.w, left: box.x, top: box.y ?? 0 }),
-            ...(hidden ? { visibility: "hidden" as const } : {}),
-          }}
-          className={cn(
-            /*
+    <>
+      {/* Gives the layer the page's scroll height while docked; see use-scroll-mirror. */}
+      <div
+        aria-hidden="true"
+        style={{ height: spacer, pointerEvents: "none" }}
+      />
+      <AnimatePresence>
+        {item && (
+          <motion.div
+            key="now-playing"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.2 }}
+            ref={boxRef}
+            role="region"
+            aria-label={`Đang phát: ${item.title}`}
+            style={{
+              ...(slotRect
+                ? {
+                    // In the layer's content space, which scrolls with the page.
+                    position: "absolute" as const,
+                    left: slotRect.left,
+                    top: slotRect.boxTop + slotRect.top,
+                    width: slotRect.width,
+                    height: slotRect.height,
+                  }
+                : box.x == null
+                  ? { width: box.w }
+                  : { width: box.w, left: box.x, top: box.y ?? 0 }),
+              ...(hidden ? { visibility: "hidden" as const } : {}),
+            }}
+            className={cn(
+              /*
               No `overflow-hidden` on the floating panel on purpose. With it,
               `rounded-2xl` clips the children's hit area to the rounded shape,
               and the few pixels nearest each corner stop responding — the
@@ -650,112 +729,115 @@ export function NowPlayingDock({
               this level. Docked, there are no grips and the frame must be cut
               to the slot's corners, so it is clipped there.
             */
-            "fixed z-40",
-            docked
-              ? "overflow-hidden rounded-2xl bg-black"
-              : "border-border bg-card rounded-2xl border shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
-            // Parked above the bottom nav until the first drag moves it.
-            !docked &&
-              box.x == null &&
-              "right-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6",
-            settling &&
-              "transition-[left,top,width,height] duration-300 ease-out",
-          )}
-        >
-          {/*
+              // The layer swallows nothing; the panel is the one thing in it that does.
+              "pointer-events-auto fixed",
+              docked
+                ? "overflow-hidden rounded-2xl bg-black"
+                : "border-border bg-card rounded-2xl border shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
+              // Parked above the bottom nav until the first drag moves it.
+              !docked &&
+                box.x == null &&
+                "right-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6",
+              settling &&
+                "transition-[left,top,width,height] duration-300 ease-out",
+            )}
+          >
+            {/*
             Corner grips come first so the toolbar below paints over them, and
             they are deliberately square and unclipped: a `rounded-*` here
             clips a grip's own hit area, and the outermost corner — the one
             people aim at — falls through to the drag surface and moves the
             panel instead of sizing it.
           */}
-          {!docked &&
-            CORNERS.map((c) => (
-              <div
-                key={c.mode}
-                {...cornerProps(c.mode)}
-                role="separator"
-                aria-label={`Kéo góc ${c.label} để đổi cỡ`}
-                style={{ touchAction: "none" }}
-                /* Above the title strip: that strip is `relative` so it can hold
+            {!docked &&
+              CORNERS.map((c) => (
+                <div
+                  key={c.mode}
+                  {...cornerProps(c.mode)}
+                  role="separator"
+                  aria-label={`Kéo góc ${c.label} để đổi cỡ`}
+                  style={{ touchAction: "none" }}
+                  /* Above the title strip: that strip is `relative` so it can hold
                  the switch, which made it paint over both top corners and swallow
                  their grips. */
-                className={cn("absolute z-10 h-6 w-6", c.className)}
-              />
-            ))}
+                  className={cn("absolute z-10 h-6 w-6", c.className)}
+                />
+              ))}
 
-          {/*
+            {/*
             Title strip: the drag surface, the full width of the panel. It used
             to be only the thin inset around the frame, which meant hunting for
             a few pixels of border before the window would move at all.
           */}
-          {!docked && (
-            <div
-              {...moveProps}
-              style={{ touchAction: "none" }}
-              /* Nothing but the drag surface. Controls belong beside the track
+            {!docked && (
+              <div
+                {...moveProps}
+                style={{ touchAction: "none" }}
+                /* Nothing but the drag surface. Controls belong beside the track
                name below, where the eye already is. */
-              className="relative flex h-7 cursor-grab items-center justify-center rounded-t-2xl active:cursor-grabbing"
-            >
-              <span
-                className="bg-muted-foreground/30 h-1 w-10 rounded-full"
-                aria-hidden="true"
-              />
-              {/* Mirror of the X: open the full watch page — video, title,
+                className="relative flex h-7 cursor-grab items-center justify-center rounded-t-2xl active:cursor-grabbing"
+              >
+                <span
+                  className="bg-muted-foreground/30 h-1 w-10 rounded-full"
+                  aria-hidden="true"
+                />
+                {/* Mirror of the X: open the full watch page — video, title,
                 playlist — with this same frame carrying on uninterrupted. */}
-              {embeddable && (
-                <button
-                  type="button"
-                  onClick={() => router.push(`/library/phat/${item.id}`)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  aria-label="Mở trang phát"
-                  title="Mở trang phát"
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-0 left-6 z-20 flex h-7 w-7 items-center justify-center rounded-full transition-colors"
-                >
-                  <Maximize2 className="h-3.5 w-3.5" />
-                </button>
-              )}
-              {/* The X, where every window keeps it: top-right. It used to sit
+                {embeddable && (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/library/phat/${item.id}`)}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    aria-label="Mở trang phát"
+                    title="Mở trang phát"
+                    className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-0 left-6 z-20 flex h-7 w-7 items-center justify-center rounded-full transition-colors"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {/* The X, where every window keeps it: top-right. It used to sit
                 at the end of the transport row, where it read as one more
                 playback button and took a moment to find. Left of the corner
                 grip (24px) so resizing from that corner still works, and its
                 pointerdown is stopped so pressing it does not start a drag. */}
-              <button
-                type="button"
-                onClick={onClose}
-                onPointerDown={(e) => e.stopPropagation()}
-                aria-label="Đóng trình phát"
-                className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-0 right-6 z-20 flex h-7 w-7 items-center justify-center rounded-full transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  aria-label="Đóng trình phát"
+                  className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-0 right-6 z-20 flex h-7 w-7 items-center justify-center rounded-full transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
 
-          <div
-            {...(docked ? {} : moveProps)}
-            style={
-              docked
-                ? undefined
-                : {
-                    paddingLeft: PAD,
-                    paddingRight: PAD,
-                    paddingBottom: PAD,
-                    touchAction: "none",
-                  }
-            }
-            className={docked ? "h-full" : "cursor-grab active:cursor-grabbing"}
-          >
-            {embeddable ? (
-              <div
-                ref={mediaRef}
-                className={cn(
-                  "bg-muted relative mx-auto overflow-hidden",
-                  docked ? "h-full w-full rounded-2xl" : "rounded-xl",
-                )}
-                style={docked ? undefined : { width: mediaW, height: mediaH }}
-              >
-                {/*
+            <div
+              {...(docked ? {} : moveProps)}
+              style={
+                docked
+                  ? undefined
+                  : {
+                      paddingLeft: PAD,
+                      paddingRight: PAD,
+                      paddingBottom: PAD,
+                      touchAction: "none",
+                    }
+              }
+              className={
+                docked ? "h-full" : "cursor-grab active:cursor-grabbing"
+              }
+            >
+              {embeddable ? (
+                <div
+                  ref={mediaRef}
+                  className={cn(
+                    "bg-muted mx-auto overflow-hidden",
+                    docked ? "h-full w-full rounded-2xl" : "rounded-xl",
+                  )}
+                  style={docked ? undefined : { width: mediaW, height: mediaH }}
+                >
+                  {/*
                   Keyed by track, so a change mounts a fresh frame instead of
                   pointing the old one at a new video. Reusing it left the
                   previous player's trailing state messages arriving on the
@@ -763,26 +845,17 @@ export function NowPlayingDock({
                   answered, which stopped the handshake before the new one was
                   listening. From there nothing could be told to play.
                 */}
-                <EmbedPlayer
-                  key={frameKey ?? item.id}
-                  data={frameEmbed ?? item.embed}
-                  fill
-                />
-                {docked && (
-                  <div
-                    data-wheel-relay=""
-                    aria-hidden="true"
-                    onWheel={relayWheel}
-                    onClick={controllable ? () => playback.toggle() : undefined}
-                    className="absolute inset-x-0 top-16 bottom-12 z-10"
+                  <EmbedPlayer
+                    key={frameKey ?? item.id}
+                    data={frameEmbed ?? item.embed}
+                    fill
                   />
-                )}
-              </div>
-            ) : (
-              <EmbedPlayer data={item.embed} />
-            )}
+                </div>
+              ) : (
+                <EmbedPlayer data={item.embed} />
+              )}
 
-            {/*
+              {/*
               Always out. Hiding it behind a hover made the panel flicker open
               and shut as the pointer crossed it, and the bar that never hides
               on its own is YouTube's, inside the frame — not this one.
@@ -792,34 +865,35 @@ export function NowPlayingDock({
               empty space beside them still drags the window instead of
               swallowing the gesture.
             */}
-            {!docked && (
-              <div
-                className="pointer-events-none relative z-10 flex items-center pt-2"
-                style={{ height: barH }}
-              >
-                {narrow ? (
-                  <div className="flex w-full min-w-0 flex-col gap-1">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      {info}
+              {!docked && (
+                <div
+                  className="pointer-events-none relative z-10 flex items-center pt-2"
+                  style={{ height: barH }}
+                >
+                  {narrow ? (
+                    <div className="flex w-full min-w-0 flex-col gap-1">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        {info}
+                      </div>
+                      <div className="flex items-center justify-center gap-1">
+                        {controls}
+                      </div>
                     </div>
-                    <div className="flex items-center justify-center gap-1">
+                  ) : (
+                    <div className="flex w-full min-w-0 items-center gap-1.5">
+                      {info}
                       {controls}
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex w-full min-w-0 items-center gap-1.5">
-                    {info}
-                    {controls}
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
 
-            {!docked && listenStrip}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body,
+              {!docked && listenStrip}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>,
+    layer,
   );
 }

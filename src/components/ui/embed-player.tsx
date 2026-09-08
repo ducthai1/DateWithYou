@@ -71,7 +71,11 @@ export function EmbedPlayer({ data, fill = false }: { data: EmbedData; fill?: bo
            app frozen on its splash. Denying PiP to the frame removes that path;
            the trade-off is that YouTube audio does not keep playing once the
            tab is hidden (it never truly did — only PiP kept it, at that cost). */
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+        /* `fullscreen` is named here as well as in allowFullScreen: when an
+           `allow` list is present it is the one that decides, and leaving it
+           out left the player's fullscreen button up to the browser's reading
+           of the legacy attribute. */
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope"
         allowFullScreen
         className="h-full w-full border-0"
       />

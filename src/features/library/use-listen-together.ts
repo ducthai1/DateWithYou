@@ -6,7 +6,10 @@ import { isPublicChrome } from "@/components/layout/nav-items";
 import { trpc } from "@/lib/trpc";
 import { useToast } from "@/components/ui/toast";
 import { useNavigationInvitesContext } from "@/features/locations/navigation-invites-context";
-import type { ListenState, ListenTrack } from "@/features/locations/use-navigation-invites";
+import type {
+  ListenState,
+  ListenTrack,
+} from "@/features/locations/use-navigation-invites";
 
 /**
  * The shared-listening session, from the client's side.
@@ -44,6 +47,15 @@ export function targetPosition(state: ListenState, now = Date.now()): number {
  * the audio jump. A seek is audible; being half a second apart is not.
  */
 export const DRIFT_TOLERANCE_SEC = 2.5;
+
+/**
+ * The tolerance for a moment that is already an interruption — the other
+ * person's pause, resume or track change, or a frame that has just come up.
+ * Wide enough to absorb the player's own reporting granularity (a reading a
+ * few times a second) and the stream's jitter, narrow enough that the two
+ * sides are not heard apart afterwards.
+ */
+export const COMMAND_TOLERANCE_SEC = 0.75;
 
 /** How often a live session writes its position down, in ms. */
 const REPORT_EVERY_MS = 15_000;
@@ -96,12 +108,29 @@ export function useListenTogether() {
    * Folded into the same slot the stream writes to, so the dock has one code
    * path for "go to this point" rather than three.
    */
-  const [localState, setLocalState] = useState<ListenState | null>(null);
+  const [localFromHere, setLocalState] = useState<ListenState | null>(null);
+
+  /*
+   * Sessions this device has ended or declined. They must never come back.
+   *
+   * Every source here is a poll or a stream, so news written before the
+   * ending can still arrive after it: the stream's first message on a fresh
+   * connection announces whatever session it finds, and the load-time query
+   * answers with what the server knew a moment ago. Either one used to make
+   * the dock say "Đang nghe cùng" again for a second or two after the person
+   * had left — and, worse, hand the shared queue back over the track they had
+   * just chosen. Ending is remembered by id, so a NEW invite (a new document,
+   * hence a new id) is unaffected.
+   */
+  const left = useRef<Set<string>>(new Set());
+  const forget = useCallback((id: string | null | undefined) => {
+    if (id) left.current.add(id);
+  }, []);
 
   // Seed from the load-time query, once it answers.
   useEffect(() => {
     const s = current.data;
-    if (!s) return;
+    if (!s || left.current.has(s.id)) return;
     if (s.status === "inviting") setWaiting(true);
     if (s.status === "live") setLiveId(s.id);
     /*
@@ -137,15 +166,20 @@ export function useListenTogether() {
    * measured slightly earlier.
    */
   const partnerState = useMemo(() => {
-    const fromStream = invites.listenState;
+    const live = (s: ListenState | null) =>
+      s && !left.current.has(s.id) ? s : null;
+    const fromStream = live(invites.listenState);
+    const localState = live(localFromHere);
     if (!fromStream) return localState;
     if (!localState) return fromStream;
-    return fromStream.receivedAt >= localState.receivedAt ? fromStream : localState;
-  }, [invites.listenState, localState]);
+    return fromStream.receivedAt >= localState.receivedAt
+      ? fromStream
+      : localState;
+  }, [invites.listenState, localFromHere]);
 
   // The stream is authoritative from then on.
   useEffect(() => {
-    if (invites.listenLive) {
+    if (invites.listenLive && !left.current.has(invites.listenLive)) {
       setLiveId(invites.listenLive);
       setWaiting(false);
     }
@@ -164,9 +198,18 @@ export function useListenTogether() {
       if (!queue.length) return;
       setWaiting(true);
       try {
-        const res = await inviteMutation.mutateAsync({ queue, index, positionSec });
+        const res = await inviteMutation.mutateAsync({
+          queue,
+          index,
+          positionSec,
+        });
         void utils.listen.current.invalidate();
-        toast(res.push && res.push.delivered > 0 ? "Đã gửi lời mời 🎧" : "Đã gửi lời mời — người ấy sẽ thấy khi mở app", "success");
+        toast(
+          res.push && res.push.delivered > 0
+            ? "Đã gửi lời mời 🎧"
+            : "Đã gửi lời mời — người ấy sẽ thấy khi mở app",
+          "success",
+        );
         return res;
       } catch (err) {
         /*
@@ -194,8 +237,13 @@ export function useListenTogether() {
     async (accept: boolean) => {
       const invite = invites.listenInvite;
       if (!invite) return null;
-      const res = await respondMutation.mutateAsync({ sessionId: invite.id, accept });
+      const res = await respondMutation.mutateAsync({
+        sessionId: invite.id,
+        accept,
+      });
       invites.clearListenInvite();
+      // A declined session is over for this device as firmly as an ended one.
+      if (!accept) forget(invite.id);
       if (accept) {
         setLiveId(res.id);
         // The accepting device is the last actor, so the server will not echo
@@ -214,10 +262,11 @@ export function useListenTogether() {
       void utils.listen.current.invalidate();
       return res;
     },
-    [invites, respondMutation, utils],
+    [invites, respondMutation, utils, forget],
   );
 
   const end = useCallback(async () => {
+    forget(liveId ?? partnerState?.id ?? current.data?.id ?? null);
     setLiveId(null);
     setWaiting(false);
     setLocalState(null);
@@ -226,7 +275,7 @@ export function useListenTogether() {
       /* Already gone server-side is the same outcome as ending it. */
     });
     void utils.listen.current.invalidate();
-  }, [endMutation, invites, utils]);
+  }, [endMutation, invites, utils, forget, liveId, partnerState, current.data]);
 
   /** Tell the other side what just happened here. No-op with no session. */
   const report = useCallback(
@@ -250,7 +299,9 @@ export function useListenTogether() {
    * handing a reader in through a setter would have CALLED it instead of
    * storing it.
    */
-  const positionReader = useRef<(() => { positionSec: number; isPlaying: boolean; index: number }) | null>(null);
+  const positionReader = useRef<
+    (() => { positionSec: number; isPlaying: boolean; index: number }) | null
+  >(null);
   useEffect(() => {
     if (!liveId) return;
     const t = setInterval(() => {
@@ -268,7 +319,11 @@ export function useListenTogether() {
        * tick regardless. The stream only forwards what actually CHANGED, so
        * repeating an unchanged state costs the other device nothing.
        */
-      controlMutation.mutate({ positionSec: Math.max(0, r.positionSec), isPlaying: r.isPlaying, index: r.index });
+      controlMutation.mutate({
+        positionSec: Math.max(0, r.positionSec),
+        isPlaying: r.isPlaying,
+        index: r.index,
+      });
     }, REPORT_EVERY_MS);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -14,7 +14,36 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * The frame must be loaded with `enablejsapi=1` or it ignores every message.
  */
 
-const YT_ORIGIN = "https://www.youtube.com";
+/**
+ * Where to send commands, and whose messages to trust: the frame's own origin,
+ * read from its src.
+ *
+ * This was hard-coded to https://www.youtube.com, which silently broke every
+ * `youtube-nocookie.com` embed — a targetOrigin that does not match the frame
+ * makes postMessage drop the message, and the origin check rejected the
+ * frame's replies. Nothing threw: the handshake simply never completed, so
+ * play/pause did nothing, the playhead stayed 0, and a shared session using
+ * such a link could never be kept in step. Both hosts are YouTube's own
+ * players and both speak this protocol.
+ */
+const YT_HOSTS = [
+  "www.youtube.com",
+  "www.youtube-nocookie.com",
+  "youtube.com",
+  "youtube-nocookie.com",
+  "m.youtube.com",
+];
+const YT_FALLBACK_ORIGIN = "https://www.youtube.com";
+
+function frameOrigin(frame: HTMLIFrameElement | null): string {
+  try {
+    if (!frame?.src) return YT_FALLBACK_ORIGIN;
+    const { origin, hostname } = new URL(frame.src);
+    return YT_HOSTS.includes(hostname) ? origin : YT_FALLBACK_ORIGIN;
+  } catch {
+    return YT_FALLBACK_ORIGIN;
+  }
+}
 
 /** Player states the widget reports. */
 const ENDED = 0;
@@ -31,7 +60,11 @@ const PLAYING = 1;
  * came back, which is exactly when the queued play arrived. Letting the frame
  * start itself needs no message at all.
  */
-export function withJsApi(embedUrl: string, pageOrigin: string, autostart = false): string {
+export function withJsApi(
+  embedUrl: string,
+  pageOrigin: string,
+  autostart = false,
+): string {
   try {
     const u = new URL(embedUrl);
     u.searchParams.set("enablejsapi", "1");
@@ -49,7 +82,11 @@ export function withJsApi(embedUrl: string, pageOrigin: string, autostart = fals
 }
 
 /** Something the person did inside the player, not through the app's buttons. */
-export type FrameChange = { isPlaying: boolean; positionSec: number; reason: "state" | "seek" };
+export type FrameChange = {
+  isPlaying: boolean;
+  positionSec: number;
+  reason: "state" | "seek";
+};
 
 export function useYouTubePlayback(
   getFrame: () => HTMLIFrameElement | null,
@@ -112,13 +149,17 @@ export function useYouTubePlayback(
     const win = frame?.contentWindow;
     if (!win) return;
 
-    const post = (msg: object) => win.postMessage(JSON.stringify(msg), YT_ORIGIN);
+    const origin = frameOrigin(frame);
+    const post = (msg: object) => win.postMessage(JSON.stringify(msg), origin);
 
     const onMessage = (e: MessageEvent) => {
-      if (e.origin !== YT_ORIGIN || e.source !== win) return;
+      if (e.origin !== origin || e.source !== win) return;
       let data: { event?: string; info?: unknown };
       try {
-        data = typeof e.data === "string" ? JSON.parse(e.data) : (e.data as typeof data);
+        data =
+          typeof e.data === "string"
+            ? JSON.parse(e.data)
+            : (e.data as typeof data);
       } catch {
         return;
       }
@@ -142,7 +183,11 @@ export function useYouTubePlayback(
         const prev = positionRef.current;
         positionRef.current = t;
         if (prev > 0 && Math.abs(t - prev) > 2.5) {
-          frameChangeRef.current?.({ isPlaying: playingRef.current, positionSec: t, reason: "seek" });
+          frameChangeRef.current?.({
+            isPlaying: playingRef.current,
+            positionSec: t,
+            reason: "seek",
+          });
         }
       }
       const state =
@@ -163,12 +208,20 @@ export function useYouTubePlayback(
          * the rest, which can only have come from a hand on the player.
          */
         const PAUSED = 2;
-        if ((state === PLAYING || state === PAUSED) && lastReportedState.current !== nowPlaying) {
+        if (
+          (state === PLAYING || state === PAUSED) &&
+          lastReportedState.current !== nowPlaying
+        ) {
           lastReportedState.current = nowPlaying;
           const own = lastCommand.current;
-          const echo = own && own.playing === nowPlaying && Date.now() - own.at < 1500;
+          const echo =
+            own && own.playing === nowPlaying && Date.now() - own.at < 1500;
           if (!echo) {
-            frameChangeRef.current?.({ isPlaying: nowPlaying, positionSec: positionRef.current, reason: "state" });
+            frameChangeRef.current?.({
+              isPlaying: nowPlaying,
+              positionSec: positionRef.current,
+              reason: "state",
+            });
           }
         }
       }
@@ -209,9 +262,13 @@ export function useYouTubePlayback(
 
   const send = useCallback(
     (func: "playVideo" | "pauseVideo") => {
-      const win = getFrame()?.contentWindow;
+      const frame = getFrame();
+      const win = frame?.contentWindow;
       if (!win) return;
-      win.postMessage(JSON.stringify({ event: "command", func, args: [] }), YT_ORIGIN);
+      win.postMessage(
+        JSON.stringify({ event: "command", func, args: [] }),
+        frameOrigin(frame),
+      );
       // Flip now; the confirming state message follows a beat later and the
       // icon should not wait for a round trip.
       setPlaying(func === "playVideo");
@@ -221,7 +278,10 @@ export function useYouTubePlayback(
     [getFrame],
   );
 
-  const toggle = useCallback(() => send(playingRef.current ? "pauseVideo" : "playVideo"), [send]);
+  const toggle = useCallback(
+    () => send(playingRef.current ? "pauseVideo" : "playVideo"),
+    [send],
+  );
   const play = useCallback(() => send("playVideo"), [send]);
 
   /** Where the frame is now, in seconds. 0 before it has said anything. */
@@ -236,11 +296,16 @@ export function useYouTubePlayback(
    */
   const seek = useCallback(
     (seconds: number) => {
-      const win = getFrame()?.contentWindow;
+      const frame = getFrame();
+      const win = frame?.contentWindow;
       if (!win) return;
       win.postMessage(
-        JSON.stringify({ event: "command", func: "seekTo", args: [Math.max(0, seconds), true] }),
-        YT_ORIGIN,
+        JSON.stringify({
+          event: "command",
+          func: "seekTo",
+          args: [Math.max(0, seconds), true],
+        }),
+        frameOrigin(frame),
       );
       /*
        * Pre-written so the next reading is not mistaken for a hand on the
@@ -263,11 +328,16 @@ export function useYouTubePlayback(
    */
   const loadVideo = useCallback(
     (videoId: string) => {
-      const win = getFrame()?.contentWindow;
+      const frame = getFrame();
+      const win = frame?.contentWindow;
       if (!win) return;
       win.postMessage(
-        JSON.stringify({ event: "command", func: "loadVideoById", args: [videoId] }),
-        YT_ORIGIN,
+        JSON.stringify({
+          event: "command",
+          func: "loadVideoById",
+          args: [videoId],
+        }),
+        frameOrigin(frame),
       );
       setPlaying(true);
     },
