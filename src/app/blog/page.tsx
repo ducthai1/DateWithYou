@@ -130,7 +130,7 @@ export default async function BlogIndexPage() {
               </Link>
             )}
 
-            <h2 className="text-muted-foreground mb-3 text-sm font-semibold">Mới nhất</h2>
+            <h2 className="text-foreground mb-3 text-sm font-semibold">Mới nhất</h2>
             <div className="grid gap-5 sm:grid-cols-2">
               {rest.map((post, i) => (
                 <ArticleCard key={post.slug} post={post} priority={i < 2} categoryLabel={labelOf(post.category)} />
@@ -142,10 +142,10 @@ export default async function BlogIndexPage() {
                 static routes rather than a ?page query that turns this dynamic. */}
           </div>
 
-          <aside className="space-y-8 lg:pt-2">
+          <aside className="space-y-5 lg:pt-2">
             {popular.length > 0 && (
-              <div>
-                <h2 className="text-muted-foreground mb-3 text-sm font-semibold">Đọc nhiều</h2>
+              <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
+                <h2 className="text-foreground mb-3 text-sm font-semibold">Đọc nhiều</h2>
                 <ol className="space-y-3">
                   {popular.map((post, i) => (
                     <li key={post.slug}>
@@ -160,8 +160,8 @@ export default async function BlogIndexPage() {
                 </ol>
               </div>
             )}
-            <div>
-              <h2 className="text-muted-foreground mb-3 text-sm font-semibold">Danh mục</h2>
+            <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
+              <h2 className="text-foreground mb-3 text-sm font-semibold">Danh mục</h2>
               <ul className="space-y-1.5">
                 {cats.map((c) => (
                   <li key={c.slug}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -8,10 +8,13 @@ import { coverAt } from "@/lib/blog-image";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { CATEGORY_LABEL } from "@/features/blog/post-card";
-import { Pencil, Plus, Trash2, ExternalLink, Loader2, Eye, Clock, Tags, Newspaper, Star } from "lucide-react";
+import { Pencil, Plus, Trash2, ExternalLink, Loader2, Eye, Clock, Tags, Newspaper, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { CategoryManager } from "@/features/blog/admin/category-manager";
 
 type Filter = "all" | "published" | "scheduled" | "draft";
+
+/** Rows per page. Eight fit a laptop frame without the list ever needing to scroll far. */
+const PAGE_SIZE = 8;
 
 const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: "all", label: "Tất cả" },
@@ -59,6 +62,9 @@ export function BlogAdminList() {
   const cats = trpc.blog.categories.useQuery().data ?? [];
   const labelOf = (slug: string) => cats.find((c) => c.slug === slug)?.name ?? CATEGORY_LABEL[slug] ?? slug;
   const [filter, setFilter] = useState<Filter>("all");
+  const [pageNo, setPageNo] = useState(1);
+  // A new filter starts from its first page — page 3 of "Nháp" rarely exists.
+  useEffect(() => setPageNo(1), [filter]);
   const remove = trpc.blog.remove.useMutation({
     onSuccess: () => {
       utils.blog.adminList.invalidate();
@@ -73,7 +79,13 @@ export function BlogAdminList() {
     for (const p of posts) c[stateOf(p)] += 1;
     return c;
   }, [posts]);
-  const shown = filter === "all" ? posts : posts.filter((p) => stateOf(p) === filter);
+  const filtered = filter === "all" ? posts : posts.filter((p) => stateOf(p) === filter);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const current = Math.min(pageNo, pageCount);
+  const shown = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  const rangeLabel = filtered.length
+    ? `${(current - 1) * PAGE_SIZE + 1}–${Math.min(current * PAGE_SIZE, filtered.length)} / ${filtered.length}`
+    : "0 bài";
 
   if (list.isLoading) {
     return (
@@ -112,9 +124,16 @@ export function BlogAdminList() {
     "text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 w-9 items-center justify-center rounded-lg transition-colors";
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:py-8">
-      <div className="border-border bg-card rounded-3xl border p-4 shadow-sm sm:p-6">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    /*
+     * The frame does not scroll — the rows do. Title, category manager, filters
+     * and the pager stay put at the top and the list below them owns the
+     * scroll box, so paging and filtering are always one press away instead of
+     * a scroll back up. The pager sits UP HERE for the same reason: the bottom
+     * of a scroll box is the one place you cannot see while reading its top.
+     */
+    <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-4 py-4 sm:py-6">
+      <div className="border-border bg-card flex min-h-0 flex-1 flex-col rounded-3xl border p-4 shadow-sm sm:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-foreground text-2xl font-bold">Quản lý blog</h1>
             <p className="text-muted-foreground text-sm">
@@ -150,22 +169,67 @@ export function BlogAdminList() {
         </details>
 
         {posts.length > 0 && (
-          <div role="tablist" aria-label="Lọc theo trạng thái" className="-mx-1 mb-2 flex gap-1 overflow-x-auto px-1 pb-1">
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                role="tab"
-                aria-selected={filter === f.key}
-                onClick={() => setFilter(f.key)}
-                className={cn(
-                  "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                  filter === f.key ? "bg-accent text-white" : "bg-muted text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {f.label} <span className="tabular-nums opacity-70">{counts[f.key]}</span>
-              </button>
-            ))}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div role="tablist" aria-label="Lọc theo trạng thái" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === f.key}
+                  onClick={() => setFilter(f.key)}
+                  className={cn(
+                    "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                    filter === f.key ? "bg-accent text-white" : "bg-muted text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {f.label} <span className="tabular-nums opacity-70">{counts[f.key]}</span>
+                </button>
+              ))}
+            </div>
+            {pageCount > 1 && (
+              /* The pager as a film strip: one frame per page, the current one
+                 wide and named, the rest thin ticks you can press. Reads as
+                 "where am I in the stack" rather than a row of numbers. */
+              <nav aria-label="Trang" className="flex items-center gap-2">
+                <span className="text-muted-foreground hidden text-xs tabular-nums sm:inline">{rangeLabel}</span>
+                <div className="bg-muted flex items-center gap-1 rounded-full p-1">
+                  <button
+                    type="button"
+                    aria-label="Trang trước"
+                    disabled={current === 1}
+                    onClick={() => setPageNo((n) => Math.max(1, n - 1))}
+                    className="text-muted-foreground hover:text-foreground flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-30"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-label={`Trang ${n}`}
+                      aria-current={n === current ? "page" : undefined}
+                      onClick={() => setPageNo(n)}
+                      className={cn(
+                        "flex h-7 items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-all",
+                        n === current ? "bg-accent w-9 text-white shadow-sm" : "bg-card/80 text-muted-foreground hover:text-foreground w-2.5 hover:w-7",
+                      )}
+                    >
+                      {n === current ? n : <span className="sr-only">{n}</span>}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    aria-label="Trang sau"
+                    disabled={current === pageCount}
+                    onClick={() => setPageNo((n) => Math.min(pageCount, n + 1))}
+                    className="text-muted-foreground hover:text-foreground flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-30"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </nav>
+            )}
           </div>
         )}
 
@@ -173,12 +237,12 @@ export function BlogAdminList() {
           <p className="text-muted-foreground rounded-2xl border border-dashed border-border p-10 text-center">
             Chưa có bài nào. Bấm “Viết bài” để bắt đầu.
           </p>
-        ) : shown.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <p className="text-muted-foreground rounded-2xl border border-dashed border-border p-8 text-center text-sm">
             Không có bài nào ở trạng thái này.
           </p>
         ) : (
-          <ul className="divide-border divide-y">
+          <ul className="divide-border -mx-2 min-h-0 flex-1 divide-y overflow-y-auto px-2 [scrollbar-gutter:stable]">
             {shown.map((p) => {
               const state = stateOf(p);
               const badge = BADGE[state];

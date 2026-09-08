@@ -5,5 +5,10 @@ import { BlogAdminList } from "@/features/blog/admin/admin-list";
 export const metadata: Metadata = { title: "Quản lý blog", robots: { index: false, follow: false } };
 
 export default function AdminBlogPage() {
-  return <BlogAdminList />;
+  // Fills the app frame so the list inside can own the scrolling.
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <BlogAdminList />
+    </div>
+  );
 }

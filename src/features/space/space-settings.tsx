@@ -21,6 +21,7 @@ import {
   type ThemePresetKey,
 } from "@/lib/theme-presets";
 import { cn } from "@/lib/utils";
+import { GenderBadge } from "@/components/ui/gender-badge";
 import { todayKey } from "@/lib/date-keys";
 
 import { useToast } from "@/components/ui/toast";
@@ -299,11 +300,15 @@ export function SpaceSettings() {
 
               {mine.data.membersData.map((member: { id: string; name: string; email: string; image?: string | null }) => (
                 <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border bg-card/50 p-3 shadow-sm">
-                  <img 
-                    src={member.image || PRESET_AVATARS[0]} 
-                    alt={member.name} 
-                    className="h-14 w-14 shrink-0 rounded-full border-2 border-border object-cover bg-muted"
-                  />
+                  {/* The ♂/♀ dot on the avatar's corner says who is who at a glance. */}
+                  <span className="relative shrink-0">
+                    <img
+                      src={member.image || PRESET_AVATARS[0]}
+                      alt={member.name}
+                      className="h-14 w-14 shrink-0 rounded-full border-2 border-border object-cover bg-muted"
+                    />
+                    <GenderBadge gender={membersQuery.data?.find((m) => m.id === member.id)?.gender} />
+                  </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="font-medium truncate">{member.name}</p>
@@ -318,11 +323,14 @@ export function SpaceSettings() {
             </div>
           ) : (
             <div className="flex items-center gap-4 rounded-xl border border-border bg-card/50 p-3 shadow-sm w-fit pr-8">
-              <img 
-                src={session?.user.image || PRESET_AVATARS[0]} 
-                alt="Avatar" 
-                className="h-14 w-14 rounded-full border-2 border-border object-cover bg-muted"
-              />
+              <span className="relative shrink-0">
+                <img
+                  src={session?.user.image || PRESET_AVATARS[0]}
+                  alt="Avatar"
+                  className="h-14 w-14 rounded-full border-2 border-border object-cover bg-muted"
+                />
+                <GenderBadge gender={myGender} />
+              </span>
               <div className="min-w-0">
                 <p className="font-medium truncate">{session?.user.name}</p>
                 {/* A long address broke mid-word onto two lines at 390px. */}

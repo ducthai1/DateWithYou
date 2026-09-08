@@ -108,14 +108,14 @@ export function RewardsPanel() {
               )}
             >
               <div className="relative z-10 flex flex-col gap-1">
-                <p className={cn("text-xs font-medium truncate", b.isMe ? "text-accent-foreground/80" : "text-muted-foreground")}>
+                <p className={cn("text-xs font-medium truncate", b.isMe ? "text-accent" : "text-muted-foreground")}>
                   Điểm của {label(b).toLowerCase()}
                 </p>
                 <div className="flex items-baseline gap-0.5 min-w-0">
-                  <span className={cn("text-3xl font-bold tracking-tight", b.isMe ? "text-accent-foreground" : "")}>
+                  <span className={cn("text-3xl font-bold tracking-tight", b.isMe ? "text-foreground" : "")}>
                     {b.balance}
                   </span>
-                  <span className={cn("text-base font-semibold", b.isMe ? "text-accent-foreground/70" : "text-muted-foreground")}>đ</span>
+                  <span className={cn("text-base font-semibold", b.isMe ? "text-accent/80" : "text-muted-foreground")}>đ</span>
                 </div>
               </div>
               <div className="absolute -right-4 -top-4 opacity-[0.08]">

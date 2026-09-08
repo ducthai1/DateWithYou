@@ -58,7 +58,7 @@ export default function VaultPage() {
           <button
             type="button"
             onClick={() => setTab("roadmap")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left short:p-3 transition-colors", tab === "roadmap" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-card/90 hover:bg-card border-border/70 flex cursor-pointer flex-col justify-center rounded-2xl border p-4 text-left shadow-sm short:p-3 transition-colors", tab === "roadmap" && "bg-accent-soft hover:bg-accent-soft border-accent/30")}
           >
             <div className="text-muted-foreground mb-1.5 flex items-start gap-1.5 text-xs font-medium">
               <Target className="h-3.5 w-3.5 shrink-0" /> <span className="leading-tight">Kế hoạch</span>
@@ -71,7 +71,7 @@ export default function VaultPage() {
           <button
             type="button"
             onClick={() => setTab("wishlist")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left short:p-3 transition-colors", tab === "wishlist" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-card/90 hover:bg-card border-border/70 flex cursor-pointer flex-col justify-center rounded-2xl border p-4 text-left shadow-sm short:p-3 transition-colors", tab === "wishlist" && "bg-accent-soft hover:bg-accent-soft border-accent/30")}
           >
             <div className="text-muted-foreground mb-1.5 flex items-start gap-1.5 text-xs font-medium">
               <Gift className="h-3.5 w-3.5 shrink-0" /> <span className="leading-tight">Wishlist</span>
@@ -84,7 +84,7 @@ export default function VaultPage() {
           <button
             type="button"
             onClick={() => setTab("rewards")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left short:p-3 transition-colors", tab === "rewards" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-card/90 hover:bg-card border-border/70 flex cursor-pointer flex-col justify-center rounded-2xl border p-4 text-left shadow-sm short:p-3 transition-colors", tab === "rewards" && "bg-accent-soft hover:bg-accent-soft border-accent/30")}
           >
             <div className="text-muted-foreground mb-1.5 flex items-start gap-1.5 text-xs font-medium">
               <Coins className="h-3.5 w-3.5 shrink-0" /> <span className="leading-tight">Tổng điểm</span>
@@ -97,7 +97,7 @@ export default function VaultPage() {
           <button
             type="button"
             onClick={() => setTab("capsules")}
-            className={cn("bg-muted/40 hover:bg-muted/60 flex cursor-pointer flex-col justify-center rounded-2xl p-4 text-left short:p-3 transition-colors", tab === "capsules" && "bg-accent-soft/50 hover:bg-accent-soft/70 border border-accent/20")}
+            className={cn("bg-card/90 hover:bg-card border-border/70 flex cursor-pointer flex-col justify-center rounded-2xl border p-4 text-left shadow-sm short:p-3 transition-colors", tab === "capsules" && "bg-accent-soft hover:bg-accent-soft border-accent/30")}
           >
             <div className="text-muted-foreground mb-1.5 flex items-start gap-1.5 text-xs font-medium">
               <Hourglass className="mt-px h-3.5 w-3.5 shrink-0" /> <span className="leading-tight">Hộp thời gian</span>
@@ -115,7 +115,10 @@ export default function VaultPage() {
         <Tabs tabs={TABS} value={tab} onChange={setTab} className="w-max" />
       </ScrollStrip>
       
-      <div className="relative pt-2">
+      {/* A tray behind whichever panel is open. The panels' own headings,
+          descriptions and column labels sat straight on the backdrop artwork
+          and sank into it; one card under all of them fixes every tab at once. */}
+      <div className="border-border/70 bg-card/90 relative rounded-3xl border p-4 shadow-sm backdrop-blur-sm sm:p-5">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={tab}
