@@ -6,7 +6,7 @@ import type { ArtName } from "@/lib/tone";
  * The page container and its title banner, in one place.
  *
  * Four screens had grown their own copy of the same two blocks — the
- * `max-w-[1400px]` column and the gradient banner — so a spacing change
+ * `max-w-[87.5rem]` column and the gradient banner — so a spacing change
  * meant four edits and they had already drifted apart.
  *
  * The header is outside the scrollable area, not pinned over it. MainWrapper
@@ -53,7 +53,7 @@ export function PageShell({
       // of every other screen.
       <div className={cn(gutterCls, "flex min-h-0 flex-1 flex-col")}>
         <div className="shrink-0 px-[var(--page-gutter)] pt-6 short:pt-3">
-          <div className="mx-auto w-full max-w-[1400px]">{header}</div>
+          <div className="mx-auto w-full max-w-[87.5rem]">{header}</div>
         </div>
 
         {/*
@@ -83,7 +83,7 @@ export function PageShell({
         <div className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-[var(--page-gutter)]">
           <div
             className={cn(
-              "mx-auto w-full max-w-[1400px] space-y-6 pb-6 pt-2",
+              "mx-auto w-full max-w-[87.5rem] space-y-6 pb-6 pt-2",
               "short:space-y-4 shorter:space-y-3",
               className,
             )}
@@ -110,7 +110,7 @@ export function PageShell({
     >
       <div
         className={cn(
-          "mx-auto w-full max-w-[1400px] space-y-6 pb-6 pt-6",
+          "mx-auto w-full max-w-[87.5rem] space-y-6 pb-6 pt-6",
           "short:space-y-4 short:pt-3 shorter:space-y-3",
         )}
       >
@@ -240,10 +240,16 @@ export function PageHeader({
         <h1 className="text-accent truncate text-2xl font-semibold short:text-xl shorter:text-lg">
           {title}
         </h1>
-        {subtitle ? (
-          // Dropped rather than shrunk: at this height every line is a
-          // trade against content, and the title already says where you are.
+        {/* Dropped rather than shrunk at the `short` height: every line there is a
+            trade against content, and the title already says where you are.
+            A <div>, not a <p>, when the subtitle is a node: HomeGreeting hands
+            in a Skeleton (a div) while loading, and a div inside a p is invalid
+            HTML — React logged a hydration error on every /home load and
+            re-rendered the tree on the client. */}
+        {typeof subtitle === "string" ? (
           <p className="text-muted-foreground mt-0.5 text-sm short:hidden">{subtitle}</p>
+        ) : subtitle ? (
+          <div className="text-muted-foreground mt-0.5 text-sm short:hidden">{subtitle}</div>
         ) : null}
       </div>
       {/* Wraps on a narrow screen instead of crushing its contents. The

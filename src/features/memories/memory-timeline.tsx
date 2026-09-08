@@ -283,7 +283,7 @@ export function MemoryTimeline() {
               stretching it to match its neighbour, so nothing about the cards
               themselves changes — only where they sit.
             */}
-            <StaggerList className="grid items-start gap-3 sm:grid-cols-2">
+            <StaggerList className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {items.map((m) => {
                 const photoCount = m.photos.length;
                 const embedCount = (m.embeds ?? []).length;

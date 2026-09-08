@@ -1,13 +1,19 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { NAV_HIDDEN_ON } from "./nav-items";
+import { NAV_HIDDEN_ON, isPublicChrome } from "./nav-items";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
 
 export function MainWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const hidden = NAV_HIDDEN_ON.includes(pathname);
+  /*
+   * The blog counts as public chrome too. It used to fall through to the app
+   * frame: the sidebar returned null but this wrapper still reserved its
+   * `md:pl-72`, so every blog page sat ~144px right of centre — read as "lệch
+   * phải" on a wide Mac. The blog has its own header (see app/blog/layout).
+   */
+  const hidden = NAV_HIDDEN_ON.includes(pathname) || isPublicChrome(pathname);
   const { isCollapsed, ready } = useSidebar();
 
   return (

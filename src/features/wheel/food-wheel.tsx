@@ -181,7 +181,7 @@ export function FoodWheel() {
         the bottom of the screen. min() picks whichever limit binds: the 400px
         cap, the width on a narrow phone, or the height when zoomed in.
       */}
-      <div className="relative h-[min(400px,70vw,48vh)] w-[min(400px,70vw,48vh)]">
+      <div className="relative h-[min(26rem,70vw,48vh)] w-[min(26rem,70vw,48vh)]">
         {/* Pointer (fixed, above the spinning wheel). */}
         <div className="border-t-accent absolute top-0 left-1/2 z-20 h-0 w-0 -translate-x-1/2 border-x-[11px] border-t-[18px] border-x-transparent drop-shadow" />
 

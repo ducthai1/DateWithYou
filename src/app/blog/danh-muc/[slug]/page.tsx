@@ -16,6 +16,15 @@ import { SITE_NAME } from "@/lib/site";
  * follow; a URL per category costs nothing and reads better.
  */
 export const revalidate = 300;
+/*
+ * Without this the page was rendered on EVERY request. The root layout reads
+ * the tone cookie, which makes each route dynamic by default; `revalidate` and
+ * generateStaticParams alone do not override that (the build table even showed
+ * ● for this route while the prerender manifest had no entry for it). Forcing
+ * static is what the index already did — the posts now prerender at build,
+ * are served from the CDN, and a new one renders once on first request.
+ */
+export const dynamic = "force-static";
 
 export async function generateStaticParams() {
   try {
@@ -62,7 +71,7 @@ export default async function BlogCategoryPage({ params }: { params: Promise<{ s
   const labelOf = (s: string) => cats.find((c) => c.slug === s)?.name ?? CATEGORY_LABEL[s] ?? s;
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-8 sm:pt-12">
+    <main className="mx-auto w-full max-w-6xl 2xl:max-w-7xl px-4 pb-16 pt-8 sm:pt-12">
       <header className="mb-8">
         <nav className="text-muted-foreground text-sm">
           <Link href="/blog" className="hover:text-accent">

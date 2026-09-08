@@ -271,7 +271,7 @@ export function SpaceSettings() {
       On the container rather than on that button, so the next control dropped
       in here does not have to rediscover this.
     */
-    <div className="mx-auto flex min-h-0 w-full max-w-[1400px] flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-4 pt-12 pb-12 md:px-[30px] short:gap-4 short:pt-5 short:pb-6 [&>*]:shrink-0">
+    <div className="mx-auto flex min-h-0 w-full max-w-[87.5rem] flex-1 flex-col gap-6 overflow-y-auto overscroll-contain px-4 pt-12 pb-12 md:px-[30px] short:gap-4 short:pt-5 short:pb-6 [&>*]:shrink-0">
       <h1 className="text-2xl font-semibold">Cài đặt</h1>
 
       {/*

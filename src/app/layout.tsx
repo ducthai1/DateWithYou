@@ -232,10 +232,12 @@ export default async function RootLayout({
       {/* Scroll reveals hide their content until an observer flips them on.
           With JavaScript off nothing would ever flip, so the whole landing page
           below the hero would render as a blank column. */}
-      <noscript>
-        <style>{`[data-reveal]{opacity:1 !important;animation:none !important}`}</style>
-      </noscript>
       <head>
+        {/* Inside <head>: a <noscript> straight under <html> is invalid HTML and
+            React reported a hydration mismatch for it on every page. */}
+        <noscript>
+          <style>{`[data-reveal]{opacity:1 !important;animation:none !important}`}</style>
+        </noscript>
         {/*
           Open the connection to the tile server before anything asks for it.
           The map needs a style, a sprite, six font ranges and then tiles from

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { cldThumb } from "@/lib/cloudinary-url";
+import { coverAt } from "@/lib/blog-image";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { CATEGORY_LABEL } from "@/features/blog/post-card";
@@ -194,7 +194,7 @@ export function BlogAdminList() {
                       tabIndex={-1}
                     >
                       {p.coverImage ? (
-                        <img src={cldThumb(p.coverImage, 240)} alt="" className="h-full w-full object-cover" />
+                        <img src={coverAt(p.coverImage, 640)} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <div className="from-accent-soft to-muted h-full w-full bg-gradient-to-br" />
                       )}

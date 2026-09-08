@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { cldThumb } from "@/lib/cloudinary-url";
+import { coverAt } from "@/lib/blog-image";
+import { LinkPending } from "./link-pending";
 
 export type PostCard = {
   slug: string;
@@ -28,8 +29,8 @@ function viDate(d: string | Date | null): string {
 
 /**
  * One article in a list. A Server Component: the cover is a plain <img> at a
- * thumbnail size (Cloudinary resizes; no client image component pulled in), so
- * a list of these ships no JavaScript.
+ * thumbnail size (Cloudinary resizes, static covers have a -640 twin), so the
+ * only JavaScript a list of these ships is the tiny pending spinner.
  */
 export function ArticleCard({
   post,
@@ -43,12 +44,13 @@ export function ArticleCard({
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group border-border bg-card hover:border-accent/40 flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-colors"
+      className="group border-border bg-card hover:border-accent/40 relative flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-colors"
     >
+      <LinkPending />
       <div className="bg-muted relative aspect-[16/9] overflow-hidden">
         {post.coverImage ? (
           <img
-            src={cldThumb(post.coverImage, 640)}
+            src={coverAt(post.coverImage, 640)}
             alt=""
             loading={priority ? "eager" : "lazy"}
             decoding="async"

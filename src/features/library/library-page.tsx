@@ -166,7 +166,7 @@ export function LibraryPage() {
       {isGame ? (
         <GamesPanel />
       ) : list.isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           <Skeleton className="h-40" />
           <Skeleton className="h-40" />
         </div>
@@ -192,7 +192,7 @@ export function LibraryPage() {
           action={{ label: "Xoá lọc", onClick: () => { setTagFilter(""); setProviderFilter(""); } }}
         />
       ) : (
-        <StaggerList className="grid gap-3 sm:grid-cols-2">
+        <StaggerList className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {items.map((it) => (
             <MediaCard key={it.id} item={it} queue={items} onOpen={() => setRecipe(it)} />
           ))}

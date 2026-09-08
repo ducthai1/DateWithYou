@@ -114,7 +114,7 @@ export function SearchScreen() {
         />
       }
     >
-      <div className="mx-auto w-full max-w-3xl space-y-5">
+      <div className="mx-auto w-full max-w-3xl space-y-5 xl:max-w-4xl">
 
       <div className="relative">
         <Search

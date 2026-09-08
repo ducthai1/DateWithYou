@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { READING_PATH, type ReadingStep } from "./reading-path";
+import { LinkPending } from "./link-pending";
 
 /**
  * "Mới dùng? Đọc theo thứ tự này" — the guided path through the blog.
@@ -54,8 +55,9 @@ export function ReadingPathStrip({
           <li key={s.slug}>
             <Link
               href={`/blog/${s.slug}`}
-              className="group border-border bg-card hover:border-accent/40 flex h-full gap-3 rounded-2xl border p-3.5 transition-colors"
+              className="group border-border bg-card hover:border-accent/40 relative flex h-full gap-3 rounded-2xl border p-3.5 transition-colors"
             >
+              <LinkPending className="rounded-2xl" />
               <span className="text-accent/70 w-6 shrink-0 text-xl font-bold leading-none tabular-nums">
                 {i + 1}
               </span>

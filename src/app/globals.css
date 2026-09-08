@@ -89,6 +89,14 @@ body:has([data-chromeless]) [data-app-main] {
 
 @custom-variant short (@media (max-height: 700px));
 @custom-variant shorter (@media (max-height: 620px));
+/*
+ * Width, for the other end of the range. A 1400px column in a 2560px window
+ * (or a 4K window at 75% zoom) reads as a strip pinned to the middle of a
+ * blank screen. Above these widths the whole interface scales up — see the
+ * root font-size blocks after the tokens — and grids gain columns.
+ */
+@custom-variant wide (@media (min-width: 1920px));
+@custom-variant ultrawide (@media (min-width: 2560px));
 
 /*
  * Design token foundation for Vivu No Plan.
@@ -208,6 +216,52 @@ body:has([data-chromeless]) [data-app-main] {
 
   /* Legacy alias — keeps existing `rounded-xl` / radius-base consumers happy */
   --radius: 0.75rem;
+}
+
+/* ─── Large screens: scale the interface, do not just centre it ──────────── */
+/*
+ * Every Tailwind size, gap, radius and max-width is in rem, so the root
+ * font-size is the one dial that grows the whole layout together. The type
+ * tokens above are px on purpose (the compact `short` variants need exact
+ * values), so they are raised here in the same proportion. Nothing else in
+ * the app needs to know: a 1400px page column becomes ~1490px at 1920 and
+ * ~1660px at 2560, cards get roomier, text stays the same number of words per
+ * line. Breakpoints are also rem, so they shift with it — harmless this far
+ * above every one of them.
+ */
+@media (min-width: 1920px) {
+  html { font-size: 17px; }
+  :root {
+    --text-display: 700 44px/48px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --text-h1:      600 31px/38px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --text-h2:      600 22px/29px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --text-body:    400 16.5px/24px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --text-sm:      400 14.5px/20px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --text-xs:      400 12px/16px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --font-size-display: 44px; --line-height-display: 48px;
+    --font-size-h1: 31px;      --line-height-h1: 38px;
+    --font-size-h2: 22px;      --line-height-h2: 29px;
+    --font-size-body: 16.5px;  --line-height-body: 24px;
+    --font-size-sm-scale: 14.5px; --line-height-sm-scale: 20px;
+    --font-size-xs-scale: 12px;   --line-height-xs-scale: 16px;
+  }
+}
+@media (min-width: 2560px) {
+  html { font-size: 19px; }
+  :root {
+    --text-display: 700 50px/55px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --text-h1:      600 35px/43px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --text-h2:      600 25px/32px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --text-body:    400 18.5px/27px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --text-sm:      400 16px/22px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --text-xs:      400 13.5px/18px var(--font-sans-inter), ui-sans-serif, system-ui, sans-serif;
+    --font-size-display: 50px; --line-height-display: 55px;
+    --font-size-h1: 35px;      --line-height-h1: 43px;
+    --font-size-h2: 25px;      --line-height-h2: 32px;
+    --font-size-body: 18.5px;  --line-height-body: 27px;
+    --font-size-sm-scale: 16px;   --line-height-sm-scale: 22px;
+    --font-size-xs-scale: 13.5px; --line-height-xs-scale: 18px;
+  }
 }
 
 /* ─── 2. Tailwind v4 @theme mapping ───────────────────────────────────────── */

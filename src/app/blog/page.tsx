@@ -6,6 +6,8 @@ import { ArticleCard, CATEGORY_LABEL } from "@/features/blog/post-card";
 import { CategoryTabs } from "@/features/blog/category-tabs";
 import { ReadingPathStrip } from "@/features/blog/reading-path-strip";
 import { READING_PATH } from "@/features/blog/reading-path";
+import { LinkPending } from "@/features/blog/link-pending";
+import { coverAt } from "@/lib/blog-image";
 import { SITE_NAME } from "@/lib/site";
 
 /*
@@ -40,13 +42,6 @@ export const metadata: Metadata = {
   },
 };
 
-/** Cover at the hero size; Cloudinary resizes its own, anything else is served as-is. */
-function heroCover(url: string): string {
-  return url.includes("res.cloudinary.com")
-    ? url.replace("/upload/", "/upload/c_fill,w_900,h_600,f_auto,q_auto/")
-    : url;
-}
-
 export default async function BlogIndexPage() {
   const [featured, popular, recent, cats, pathPosts] = await Promise.all([
     publicCaller.blog.featured({ limit: 1 }),
@@ -75,7 +70,7 @@ export default async function BlogIndexPage() {
   const steps = READING_PATH.filter((s) => liveTitles[s.slug]);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-8 sm:pt-12">
+    <main className="mx-auto w-full max-w-6xl 2xl:max-w-7xl px-4 pb-16 pt-8 sm:pt-12">
       <header className="mb-6">
         <p className="text-accent text-sm font-semibold">Blog</p>
         <h1 className="text-foreground mt-1 text-3xl font-bold sm:text-4xl [font-family:var(--font-display)]">
@@ -109,12 +104,13 @@ export default async function BlogIndexPage() {
             {hero && (
               <Link
                 href={`/blog/${hero.slug}`}
-                className="group border-border bg-card hover:border-accent/40 mb-8 grid overflow-hidden rounded-3xl border shadow-sm transition-colors sm:grid-cols-2"
+                className="group border-border bg-card hover:border-accent/40 relative mb-8 grid overflow-hidden rounded-3xl border shadow-sm transition-colors sm:grid-cols-2"
               >
+                <LinkPending />
                 <div className="bg-muted relative aspect-[16/10] overflow-hidden sm:aspect-auto">
                   {hero.coverImage ? (
                     <img
-                      src={heroCover(hero.coverImage)}
+                      src={coverAt(hero.coverImage, 1200)}
                       alt=""
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                     />
