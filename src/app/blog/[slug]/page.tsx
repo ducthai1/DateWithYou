@@ -8,6 +8,7 @@ import { ViewBeacon } from "@/features/blog/view-beacon";
 import { ArticleView } from "@/features/blog/article-view";
 import { withHeadingAnchors } from "@/features/blog/toc";
 import { SmartBackLink } from "@/components/marketing/smart-back-link";
+import { TocRail } from "@/features/blog/toc-rail";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import "@/features/blog/blog-body.css";
 
@@ -101,26 +102,12 @@ export default async function ArticlePage({
   };
 
   /*
-   * Two columns from lg up: the article, and the table of contents kept in
-   * view beside it. A lone 48rem column looked like a strip left in the middle
-   * of a wide screen; the second column is what makes the width feel used
-   * rather than empty. Below lg the contents sit above the article as before.
+   * Two columns from lg up: the article, and a side column that follows the
+   * reader down the page. A lone 48rem column looked like a strip left in the
+   * middle of a wide screen; the second column is what makes the width feel
+   * used rather than empty. Below lg the contents collapse into a <details>
+   * above the article — always-open it cost a whole screen on a phone.
    */
-  const contents = toc.length >= 3 && (
-    <nav aria-label="Mục lục" className="border-border bg-card rounded-2xl border p-4 shadow-sm">
-      <p className="text-foreground mb-2 text-sm font-semibold">Mục lục</p>
-      <ul className="space-y-1 text-sm">
-        {toc.map((h) => (
-          <li key={h.id} className={h.level === 3 ? "ml-4" : ""}>
-            <a href={`#${h.id}`} className="text-muted-foreground hover:text-accent">
-              {h.text}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-
   return (
     <main className="mx-auto w-full max-w-6xl 2xl:max-w-7xl px-4 pb-16 pt-6 sm:pt-10">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
@@ -143,12 +130,37 @@ export default async function ArticlePage({
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start">
         <div className="min-w-0">
-          {contents && <div className="mb-4 lg:hidden">{contents}</div>}
+          {toc.length >= 3 && (
+            <details className="border-border bg-card mb-4 rounded-2xl border p-4 shadow-sm lg:hidden">
+              <summary className="text-foreground cursor-pointer text-sm font-semibold">Mục lục</summary>
+              <ul className="mt-3 space-y-1.5 text-sm">
+                {toc.map((h) => (
+                  <li key={h.id} className={h.level === 3 ? "ml-4" : ""}>
+                    <a href={`#${h.id}`} className="text-muted-foreground hover:text-accent">
+                      {h.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           <ArticleView post={{ ...post, body: bodyHtml }} categoryLabel={labelOf(post.category)} />
         </div>
-        <aside className="hidden lg:block">
-          <div className="sticky top-24 space-y-6">
-            {contents}
+        {/*
+          Sticky, and scrollable inside its own box: a ten-heading contents plus
+          "Đọc nhiều" is taller than a laptop viewport, and a sticky block that
+          overflows simply hides its own bottom half.
+        */}
+        {/*
+          `sticky` goes on the grid ITEM, not on a child of it. With
+          `lg:items-start` the column shrinks to its content, so a sticky child
+          has no room to travel inside it and simply scrolls away with the page
+          — which is exactly what happened here: measured at -3437px halfway
+          down the article. A sticky grid item travels its whole grid area.
+        */}
+        <aside className="hidden space-y-5 lg:sticky lg:top-24 lg:block lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:[scrollbar-width:thin]">
+          <div className="space-y-5">
+            {toc.length >= 3 && <TocRail items={toc} />}
             {popular.length > 0 && (
               <section className="border-border bg-card rounded-2xl border p-4 shadow-sm">
                 <h2 className="text-foreground mb-2 text-sm font-semibold">Đọc nhiều</h2>

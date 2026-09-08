@@ -99,7 +99,7 @@ export default async function BlogIndexPage() {
           Chưa có bài viết nào. Ghé lại sau nhé 💛
         </p>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-[1fr_18rem]">
+        <div className="grid gap-8 lg:grid-cols-[1fr_18rem] lg:items-start">
           <div>
             {hero && (
               <Link
@@ -142,7 +142,8 @@ export default async function BlogIndexPage() {
                 static routes rather than a ?page query that turns this dynamic. */}
           </div>
 
-          <aside className="space-y-5 lg:pt-2">
+          {/* Follows the reader down the list, like the article's contents rail. */}
+          <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:space-y-5 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:[scrollbar-width:thin] space-y-5">
             {popular.length > 0 && (
               <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
                 <h2 className="text-foreground mb-3 text-sm font-semibold">Đọc nhiều</h2>
