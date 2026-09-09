@@ -1,5 +1,39 @@
 # Vivu No Plan — quy ước khi sửa repo này
 
+## Deploy là tài nguyên có hạn — CHỈ push khi chủ repo yêu cầu
+
+Mỗi lần đẩy code lên remote là một deployment trên Vercel, và deployment nào cũng
+để lại dấu: Vercel giữ output của nó suốt thời gian lưu trữ, nên hóa đơn không
+tính theo lần deploy mà tính theo **số deployment còn được giữ nhân với dung
+lượng mỗi cái**. Đo ngày 2026-09-10: Functions Storage 7,5 GB trên hạn mức 10 GB,
+Fluid Active CPU 8h46m trên 4h được bao gồm. Hobby giữ mặc định 30 ngày, và dù có
+xóa tay thì byte vẫn nằm đó trọn 30 ngày hồi phục. Push bừa là tự bóp mình.
+
+**Luật:**
+
+1. **Không bao giờ `git push` khi chủ repo chưa yêu cầu trong đúng lượt đó.**
+   "Làm xong tính năng X" nghĩa là commit xong, không phải push xong.
+2. **Commit thì thoải mái.** Commit không tốn gì, và commit nhỏ theo từng việc vẫn
+   là cách đúng. Chỉ có push là tốn.
+3. **Tối đa 3 lần push mỗi ngày.** Gom nhiều tính năng hoặc nhiều bug fix vào một
+   lần push. Nếu hôm đó đã đủ ba lần mà lại có yêu cầu push nữa, phải nói rõ số
+   lần đã dùng rồi để chủ repo tự quyết, đừng im lặng push.
+4. **Luật này áp cho mọi thứ tạo ra deployment**, không riêng `main`: push một
+   nhánh cũng sinh preview deployment, và `vercel deploy` từ CLI cũng vậy.
+5. **Chạy gate trước khi push** (`tsc`, `eslint`, `npm run build` phải exit 0).
+   Một deployment fail vẫn ăn hạn mức như deployment thành công, nên push code
+   chưa chắc chắn là đốt tài nguyên hai lần.
+6. **Kết thúc lượt phải nói thẳng trạng thái**: đã commit những gì, và **chưa
+   push, đang chờ yêu cầu**. Không để chủ repo tưởng code đã lên prod.
+
+Kiểm nhanh hôm nay đã đẩy lên bao nhiêu commit (chỉ là số gần đúng, một lần push
+có thể mang nhiều commit — số deployment thật nằm ở tab Deployments của Vercel):
+
+```bash
+git log origin/main --since="00:00" --oneline | wc -l
+```
+
+
 ## Tài sản thương hiệu — tông, giờ, và các bẫy đã trả giá
 
 > **Đính chính đã đo (2026-08-31):** 8 file trong `common-page/` **KHÔNG trong
