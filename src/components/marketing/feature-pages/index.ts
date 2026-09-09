@@ -1,12 +1,24 @@
 import type { FeaturePage } from "./types";
-import { FEATURE_PAGE_SLUGS, type FeaturePageSlug } from "./slugs";
+import {
+  FEATURE_PAGE_SLUGS,
+  INTENT_PAGE_SLUGS,
+  type FeaturePageSlug,
+  type IntentPageSlug,
+} from "./slugs";
 import { HOM_NAY_AN_GI } from "./hom-nay-an-gi";
 import { LUU_DIA_DIEM_DA_DI } from "./luu-dia-diem-da-di";
 import { NHAT_KY_DU_LICH } from "./nhat-ky-du-lich";
 import { THU_GUI_TUONG_LAI } from "./thu-gui-tuong-lai";
+import { DI_CHOI_KHONG_KE_HOACH } from "./di-choi-khong-ke-hoach";
+import { KHONG_BIET_DI_DAU } from "./khong-biet-di-dau";
 
 export type { FeaturePage, FeaturePageSection, RelatedLink } from "./types";
-export { FEATURE_PAGE_SLUGS, type FeaturePageSlug } from "./slugs";
+export {
+  FEATURE_PAGE_SLUGS,
+  INTENT_PAGE_SLUGS,
+  type FeaturePageSlug,
+  type IntentPageSlug,
+} from "./slugs";
 
 /** Content for each page, keyed by slug. */
 const BY_SLUG: Record<FeaturePageSlug, FeaturePage> = {
@@ -26,6 +38,16 @@ export const FEATURE_PAGES: FeaturePage[] = FEATURE_PAGE_SLUGS.map(
   (slug) => BY_SLUG[slug],
 );
 
+/** Content for the intent pages, same shape, same rule about missing slugs. */
+const INTENT_BY_SLUG: Record<IntentPageSlug, FeaturePage> = {
+  "di-choi-khong-ke-hoach": DI_CHOI_KHONG_KE_HOACH,
+  "khong-biet-di-dau": KHONG_BIET_DI_DAU,
+};
+
+export const INTENT_PAGES: FeaturePage[] = INTENT_PAGE_SLUGS.map(
+  (slug) => INTENT_BY_SLUG[slug],
+);
+
 /**
  * Where the page's secondary button goes — the actual screen in the app.
  *
@@ -39,6 +61,11 @@ export const FEATURE_PAGE_APP_HREF: Record<string, string> = {
   "luu-dia-diem-da-di": "/map",
   "nhat-ky-du-lich": "/trips",
   "thu-gui-tuong-lai": "/vault",
+  // Both intent pages send the reader to the map: the list of places is what
+  // answers either question, and /trips would be an odd landing for someone
+  // who just read that no itinerary is required.
+  "di-choi-khong-ke-hoach": "/map",
+  "khong-biet-di-dau": "/map",
 };
 
 /**
@@ -54,6 +81,8 @@ export const FEATURE_PAGE_OG_IMAGE: Record<string, string> = {
   "luu-dia-diem-da-di": "/og-card.jpg",
   "nhat-ky-du-lich": "/og-card.jpg",
   "thu-gui-tuong-lai": "/og-card.jpg",
+  "di-choi-khong-ke-hoach": "/og-card.jpg",
+  "khong-biet-di-dau": "/og-card.jpg",
 };
 
 /**

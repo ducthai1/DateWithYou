@@ -100,9 +100,9 @@ export const LUU_DIA_DIEM_DA_DI: FeaturePage = {
       blurb: "Chuyến đi xa thì có lịch trình và ngân sách riêng.",
     },
     {
-      href: "/thu-gui-tuong-lai",
-      label: "Thư gửi tương lai",
-      blurb: "Viết một lá thư, niêm phong tới ngày bạn chọn.",
+      href: "/di-choi-khong-ke-hoach",
+      label: "Đi chơi không kế hoạch",
+      blurb: "Ghim trước, quyết vào hôm đi, vẫn giữ lại được.",
     },
   ],
 };

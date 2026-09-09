@@ -16,6 +16,19 @@ import {
  * metadata and emit JSON-LD — the previous version was "use client", which
  * silently forfeits both.
  */
+/*
+ * Served from the CDN, not rendered per request.
+ *
+ * Without this the page is dynamic — the root layout reads the tone cookie,
+ * which makes every route dynamic by default — so each visit and each crawl
+ * paid for a server render of a page whose content is a constant. That is the
+ * same trap the blog fell into, and the same one line fixes it. The cost is
+ * that a returning visitor's saved tone is not in the first HTML; ToneProvider
+ * applies it on the client, and a first-time visitor from a search result has
+ * no tone cookie to honour anyway.
+ */
+export const dynamic = "force-static";
+
 export const metadata: Metadata = {
   title: {
     absolute: SITE_TITLE,
@@ -48,7 +61,9 @@ export const metadata: Metadata = {
     url: "/",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: [{ url: "/og-card.jpg", width: 1200, height: 630, alt: SITE_TITLE }],
+    images: [
+      { url: "/og-card.jpg", width: 1200, height: 630, alt: SITE_TITLE },
+    ],
   },
 };
 
@@ -142,7 +157,10 @@ function StructuredData() {
       // Serialised through JSON.stringify, and every value is our own copy —
       // no user input reaches this string.
       dangerouslySetInnerHTML={{
-        __html: JSON.stringify({ "@context": "https://schema.org", "@graph": graph }),
+        __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": graph,
+        }),
       }}
     />
   );

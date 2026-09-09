@@ -114,9 +114,9 @@ export const HOM_NAY_AN_GI: FeaturePage = {
       blurb: "Lịch trình, ngân sách, và ảnh sau chuyến đi.",
     },
     {
-      href: "/thu-gui-tuong-lai",
-      label: "Thư gửi tương lai",
-      blurb: "Viết một lá thư, niêm phong tới ngày bạn chọn.",
+      href: "/khong-biet-di-dau",
+      label: "Không biết đi đâu",
+      blurb: "Cùng câu hỏi đó, nhưng là đi chứ không phải ăn.",
     },
   ],
 };

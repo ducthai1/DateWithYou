@@ -133,6 +133,16 @@ export const FAQ: FaqItem[] = [
       "Là một không gian riêng để giữ lại những chỗ bạn đã đi, món đã ăn, những hôm đáng nhớ — và lên kế hoạch cho lần tới. Đi chơi gần nhà hay du lịch xa ngày cũng ghi lại được, kể cả khi chuyến đi chẳng có plan nào. Lịch chung, bản đồ địa điểm, album kỷ niệm, lịch trình chuyến đi, công thức nấu ăn và một chiếc két giữ những điều bí mật. Thay vì để mọi thứ trôi mất trong tin nhắn, tất cả nằm gọn ở một chỗ. Nhiều người còn gõ tên nó thành Vivu Plan, VivuNoPlan hay “vi vu không cần plan” — cùng một ứng dụng cả.",
   },
   {
+    question: "Không biết đi đâu thì mở app lên có gì?",
+    answer:
+      "Danh sách chỗ bạn từng ghim là muốn tới, lọc được theo khu vực và loại hình, và vòng quay bốc giúp trong số đang mở cửa nếu vẫn không chọn được. Nói trước cho khỏi kỳ vọng sai: app không có kho địa điểm sẵn và không gợi ý chỗ lạ quanh bạn — nó nhớ đúng những chỗ bạn đã để ý, thứ mà mọi trang cẩm nang đều không biết. Có một trang nói kỹ chuyện này ở /khong-biet-di-dau.",
+  },
+  {
+    question: "Đi chơi không kế hoạch thì app giúp được gì?",
+    answer:
+      "Đúng việc mà đi không plan hay làm mất: cái ghi lại. Ghim sẵn chỗ muốn tới lúc rảnh rỗi, quyết vào đúng hôm đi, rồi đường đã đi cùng tổng số ki lô mét được giữ lại, ảnh thả vào là thành một dòng kỷ niệm có ngày tháng. Khi nào thật sự cần lịch trình và ngân sách thì vẫn có, nhưng không bắt buộc. Xem thêm ở /di-choi-khong-ke-hoach.",
+  },
+  {
     question: "Đi một mình có dùng được không?",
     answer:
       "Được, và không thiếu thứ gì. Góc này là của bạn ngay khi tạo xong, chẳng phải đợi ai gật đầu. Ghim quán vừa tìm ra, viết lại chuyến đi chơi tuần rồi, quay thử vòng chọn món khi không nghĩ ra tối nay ăn gì, viết một lá thư cho chính mình mở vào năm sau — chạy hết. Lúc nào muốn có người cùng thì gửi mã mời, không thì thôi.",

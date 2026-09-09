@@ -25,6 +25,19 @@ const TITLE = "Tính năng — Vivu No Plan làm được những gì";
 const DESCRIPTION =
   "Bốn thứ dùng nhiều nhất, mỗi thứ một trang nói kỹ: vòng quay chọn quán, bản đồ nơi đã đi, nhật ký du lịch và hộp thời gian. Miễn phí, chạy trên trình duyệt.";
 
+/*
+ * Served from the CDN, not rendered per request.
+ *
+ * Without this the page is dynamic — the root layout reads the tone cookie,
+ * which makes every route dynamic by default — so each visit and each crawl
+ * paid for a server render of a page whose content is a constant. That is the
+ * same trap the blog fell into, and the same one line fixes it. The cost is
+ * that a returning visitor's saved tone is not in the first HTML; ToneProvider
+ * applies it on the client, and a first-time visitor from a search result has
+ * no tone cookie to honour anyway.
+ */
+export const dynamic = "force-static";
+
 export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
@@ -73,7 +86,12 @@ function StructuredData() {
       "@type": "BreadcrumbList",
       "@id": `${url}#breadcrumb`,
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: SITE_NAME, item: `${SITE_URL}/` },
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: SITE_NAME,
+          item: `${SITE_URL}/`,
+        },
         { "@type": "ListItem", position: 2, name: "Tính năng", item: url },
       ],
     },
@@ -82,7 +100,10 @@ function StructuredData() {
     <script
       type="application/ld+json"
       dangerouslySetInnerHTML={{
-        __html: JSON.stringify({ "@context": "https://schema.org", "@graph": graph }),
+        __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": graph,
+        }),
       }}
     />
   );
@@ -123,8 +144,11 @@ export default function Page() {
                     paragraph in the other, which on a wide screen is two blocks
                     of text pretending to be a layout. */}
                 <div className="mt-7">
-                  <ToneArt name="heroDesk" sizes="(max-width: 1024px) 100vw, 560px"   framed
-            />
+                  <ToneArt
+                    name="heroDesk"
+                    sizes="(max-width: 1024px) 100vw, 560px"
+                    framed
+                  />
                 </div>
               </div>
             </div>
@@ -136,12 +160,23 @@ export default function Page() {
           <Reveal delay={140}>
             <dl className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-[#d8cfc1]/70 bg-[#d8cfc1]/70 sm:grid-cols-3">
               {[
-                ["Miễn phí", "Không giới hạn thời gian, không quảng cáo, không cần thẻ."],
-                ["Không cần tải app", "Chạy thẳng trên trình duyệt, thêm vào màn hình chính nếu muốn."],
-                ["Riêng tư", "Không bảng tin, không người lạ, không thuật toán gợi ý."],
+                [
+                  "Miễn phí",
+                  "Không giới hạn thời gian, không quảng cáo, không cần thẻ.",
+                ],
+                [
+                  "Không cần tải app",
+                  "Chạy thẳng trên trình duyệt, thêm vào màn hình chính nếu muốn.",
+                ],
+                [
+                  "Riêng tư",
+                  "Không bảng tin, không người lạ, không thuật toán gợi ý.",
+                ],
               ].map(([term, detail]) => (
                 <div key={term} className="bg-[#fdfaf6] px-6 py-5">
-                  <dt className="text-[15px] font-medium text-[#3b322a]">{term}</dt>
+                  <dt className="text-[15px] font-medium text-[#3b322a]">
+                    {term}
+                  </dt>
                   <dd className="mt-1.5 text-[13.5px] font-light leading-relaxed text-[#7a6d60]">
                     {detail}
                   </dd>
@@ -160,7 +195,8 @@ export default function Page() {
                 Mở góc riêng của bạn
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-[15px] font-light leading-relaxed text-[#BFD9DE]">
-                Mất chừng một phút để tạo xong, và bạn không cần rủ ai để bắt đầu.
+                Mất chừng một phút để tạo xong, và bạn không cần rủ ai để bắt
+                đầu.
               </p>
               <div className="mt-9 flex flex-col items-center justify-center gap-3.5 sm:flex-row">
                 <Link

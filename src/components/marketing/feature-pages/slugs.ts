@@ -21,6 +21,22 @@ export const FEATURE_PAGE_SLUGS = [
 export type FeaturePageSlug = (typeof FEATURE_PAGE_SLUGS)[number];
 
 /**
+ * Pages that answer a question people type, rather than describing a feature.
+ *
+ * Kept apart from FEATURE_PAGE_SLUGS on purpose. The hub at /tinh-nang renders
+ * that list, and these are not features — putting them in the grid would say
+ * "không biết đi đâu" is a thing the app has, next to the wheel and the map.
+ * They still need everything the list confers: the public chrome, the sitemap
+ * and the robots check, all of which read MARKETING_ROUTES below.
+ */
+export const INTENT_PAGE_SLUGS = [
+  "di-choi-khong-ke-hoach",
+  "khong-biet-di-dau",
+] as const;
+
+export type IntentPageSlug = (typeof INTENT_PAGE_SLUGS)[number];
+
+/**
  * Every publicly indexable marketing route, feature pages plus the hub that
  * lists them and the landing page itself.
  *
@@ -35,4 +51,5 @@ export const MARKETING_ROUTES: string[] = [
   "/",
   "/tinh-nang",
   ...FEATURE_PAGE_SLUGS.map((slug) => `/${slug}`),
+  ...INTENT_PAGE_SLUGS.map((slug) => `/${slug}`),
 ];
