@@ -66,11 +66,21 @@ export function BlogAdminList() {
   // A new filter starts from its first page — page 3 of "Nháp" rarely exists.
   useEffect(() => setPageNo(1), [filter]);
   const remove = trpc.blog.remove.useMutation({
-    onSuccess: () => {
-      utils.blog.adminList.invalidate();
-      toast("Đã xoá bài", "success");
+    // The row leaves on the tap, not on the answer — `invalidate` refetches
+    // but keeps serving the list it already has, so a deleted post sat there
+    // looking undeleted for a round trip.
+    onMutate: async ({ id }) => {
+      await utils.blog.adminList.cancel();
+      const prev = utils.blog.adminList.getData();
+      utils.blog.adminList.setData(undefined, (old) => old?.filter((p) => p.id !== id));
+      return { prev };
     },
-    onError: () => toast("Không xoá được", "error"),
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) utils.blog.adminList.setData(undefined, ctx.prev);
+      toast("Không xoá được", "error");
+    },
+    onSuccess: () => toast("Đã xoá bài", "success"),
+    onSettled: () => utils.blog.adminList.invalidate(),
   });
 
   const posts = useMemo(() => list.data ?? [], [list.data]);

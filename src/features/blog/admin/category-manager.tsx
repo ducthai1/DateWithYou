@@ -34,8 +34,20 @@ export function CategoryManager() {
     onError: () => toast("Không đổi được", "error"),
   });
   const remove = trpc.blog.categoryRemove.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã xoá danh mục", "success"); },
-    onError: (e) => toast(e.message || "Không xoá được", "error"),
+    // Same reason as the post list: the chip disappears on the tap, and comes
+    // back only if the server refuses (it refuses a category still in use).
+    onMutate: async ({ slug }) => {
+      await utils.blog.categories.cancel();
+      const prev = utils.blog.categories.getData();
+      utils.blog.categories.setData(undefined, (old) => old?.filter((c) => c.slug !== slug));
+      return { prev };
+    },
+    onError: (e, _v, ctx) => {
+      if (ctx?.prev) utils.blog.categories.setData(undefined, ctx.prev);
+      toast(e.message || "Không xoá được", "error");
+    },
+    onSuccess: () => toast("Đã xoá danh mục", "success"),
+    onSettled: () => invalidate(),
   });
 
   const cats = q.data ?? [];

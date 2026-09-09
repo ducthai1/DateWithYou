@@ -48,12 +48,30 @@ export function TripForm({
     },
   });
 
+  /*
+   * Drop the trip from the list before leaving the page.
+   *
+   * `invalidate` marks the list stale and refetches; it does not forget what
+   * it holds. So deleting a trip and landing on /trips showed the trip that
+   * had just been deleted, for as long as the refetch took — which reads as
+   * "the delete did not work" and invites a second attempt at something that
+   * has already happened.
+   */
   const removeMut = trpc.trip.remove.useMutation({
+    onMutate: async ({ id }) => {
+      await ctx.trip.list.cancel();
+      const prev = ctx.trip.list.getData();
+      ctx.trip.list.setData(undefined, (old) => old?.filter((t) => t.id !== id));
+      return { prev };
+    },
+    onError: (_e, _v, context) => {
+      if (context?.prev) ctx.trip.list.setData(undefined, context.prev);
+    },
     onSuccess: () => {
-      ctx.trip.list.invalidate();
       onSuccess();
       router.push("/trips");
     },
+    onSettled: () => ctx.trip.list.invalidate(),
   });
 
   /*
