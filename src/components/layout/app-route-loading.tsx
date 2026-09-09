@@ -1,48 +1,43 @@
-import { Skeleton } from "@/components/ui/skeleton";
-
 /**
- * The loading boundary every screen inside the app was missing.
+ * What the app's screens show while their payload is in flight.
  *
- * It is not really about the skeleton. In the App Router a `<Link>` to a
- * DYNAMIC route with no loading boundary cannot be prefetched, and the
- * navigation does not commit until the server's payload arrives — so the URL
- * does not change, `usePathname()` does not change, and the bottom-nav tab the
- * person just tapped does not light up. Every route here is dynamic, because
- * the root layout reads the theme and tone cookies.
+ * ── Why this draws no skeleton ─────────────────────────────────────────────
  *
- * Measured on a production build at 150ms RTT / 1.5 Mbps / 4× CPU, tapping a
- * tab:
+ * It used to: one shared column of grey bones. That was wrong three ways at
+ * once, and all three were visible on a desktop the moment it shipped.
  *
- *   without a boundary   URL changes 207–298ms after the tap (/home: 723ms)
- *   with one            URL changes  20– 67ms
+ * 1. **Two skeletons in a row.** Every screen here already has its own
+ *    loading state, shaped like its own content (library-page, memory-timeline,
+ *    calendar-view, the vault panels…). A route-level skeleton plays first and
+ *    is then replaced by the real one — the same wait, told twice.
+ * 2. **It could not match the layout.** The real frame is PageShell: a
+ *    `max-w-[87.5rem]` column with a 30px gutter and a header row above it.
+ *    The bones were `max-w-2xl` — a 672px column adrift in a 1400px page.
+ * 3. **So it moved the page.** Different width, different padding, different
+ *    vertical rhythm: the bones landed in one box and the content arrived in
+ *    another, which reads as the UI jumping under your hands.
  *
- * The content still takes its round trip either way. What changes is that the
- * tap is acknowledged now instead of later, which on a phone was the whole
- * complaint: "I press it and a second later the tab lights up".
+ * A route boundary does not have to draw anything to do its job. Its job is to
+ * exist: without one, App Router cannot prefetch a dynamic route and will not
+ * commit the navigation until the server answers, so the tapped tab stays
+ * unlit for a whole round trip (measured at 150ms RTT: 207–298ms, and 723ms
+ * for /home; with a boundary, 20–67ms). All of that still holds with nothing
+ * on screen.
  *
- * ── Why this is a shared component and not one root `loading.tsx` ──────────
- *
- * A root boundary is one file instead of fifteen, and that was the first
- * attempt. But it also wraps the marketing landing page, and its HTML then
- * carried this skeleton ahead of the real content in the stream — a flash of
- * grey bones on the page that exists to make a first impression. Route groups
- * would fix that by moving eighteen directories; re-exporting this from the
- * app screens fixes it by adding a line to each.
- *
- * Every screen in this app is a column of cards inside the same frame, so one
- * shape serves them all. A route with a truer shape of its own writes its own
- * `loading.tsx` instead — see /map, which shows the map veil.
+ * So this is one hairline bar, positioned out of the flow. It cannot mismatch
+ * a layout it does not occupy, it cannot shift anything, and it leaves the
+ * screen's own skeleton to be the only skeleton.
  */
 export default function AppRouteLoading() {
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
-      {/* The app's real rhythm: a hero band, then list rows, fading out down
-          the page so it reads as "more below" rather than as a wall. */}
-      <Skeleton className="h-28 w-full" />
-      <Skeleton className="h-20 w-full" />
-      <Skeleton className="h-20 w-full" />
-      <Skeleton className="h-20 w-full opacity-60" />
-      <Skeleton className="h-20 w-full opacity-30" />
+    /* Zero height: the bar hangs off this box rather than taking a row of its
+       own, so the content that follows starts exactly where it always does. */
+    <div aria-hidden="true" className="pointer-events-none relative h-0">
+      <span className="bg-accent-soft absolute inset-x-0 top-0 h-[3px] overflow-hidden">
+        {/* The same indeterminate segment the map veil uses — one animation,
+            declared once in globals.css. */}
+        <span className="vivu-bar-slide bg-accent absolute inset-y-0 w-1/3" />
+      </span>
     </div>
   );
 }
