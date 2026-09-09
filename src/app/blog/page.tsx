@@ -8,6 +8,7 @@ import { CategoryTabs } from "@/features/blog/category-tabs";
 import { ReadingPathStrip } from "@/features/blog/reading-path-strip";
 import { READING_PATH } from "@/features/blog/reading-path";
 import { LinkPending } from "@/features/blog/link-pending";
+import { FadeScroll } from "@/components/ui/fade-scroll";
 import { coverAt } from "@/lib/blog-image";
 import { SITE_NAME } from "@/lib/site";
 
@@ -64,10 +65,13 @@ export default async function BlogIndexPage() {
       ),
     ),
   ]);
-  const labelOf = (slug: string) => cats.find((c) => c.slug === slug)?.name ?? CATEGORY_LABEL[slug] ?? slug;
+  const labelOf = (slug: string) =>
+    cats.find((c) => c.slug === slug)?.name ?? CATEGORY_LABEL[slug] ?? slug;
   const hero = featured[0] ?? recent.items[0] ?? null;
   const rest = recent.items.filter((p) => p.slug !== hero?.slug);
-  const liveTitles = Object.fromEntries(pathPosts.flatMap((p) => (p ? [[p.slug, p.title]] : [])));
+  const liveTitles = Object.fromEntries(
+    pathPosts.flatMap((p) => (p ? [[p.slug, p.title]] : [])),
+  );
   const steps = READING_PATH.filter((s) => liveTitles[s.slug]);
 
   return (
@@ -81,7 +85,11 @@ export default async function BlogIndexPage() {
         {/* Stacked on a phone — the tab row needs the whole width to scroll —
             and one row from sm up, search on the right. */}
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <CategoryTabs categories={cats} active={null} className="sm:min-w-0 sm:flex-1" />
+          <CategoryTabs
+            categories={cats}
+            active={null}
+            className="sm:min-w-0 sm:flex-1"
+          />
           <Link
             href="/blog/tim-kiem"
             className="border-border bg-card hover:border-accent/40 text-muted-foreground inline-flex shrink-0 items-center gap-2 self-start rounded-full border px-4 py-1.5 text-sm shadow-sm sm:self-auto"
@@ -93,14 +101,16 @@ export default async function BlogIndexPage() {
 
       {/* The path first, before anything sorted by date: a first-time visitor
           needs "where do I start", not "what is newest". */}
-      {steps.length > 0 && <ReadingPathStrip steps={steps} titles={liveTitles} className="mb-8" />}
+      {steps.length > 0 && (
+        <ReadingPathStrip steps={steps} titles={liveTitles} className="mb-8" />
+      )}
 
       {recent.items.length === 0 ? (
         <p className="text-muted-foreground rounded-2xl border border-dashed border-border p-10 text-center">
           Chưa có bài viết nào. Ghé lại sau nhé 💛
         </p>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-[1fr_18rem] lg:items-start xl:gap-10 xl:grid-cols-[1fr_21rem] 2xl:grid-cols-[1fr_24rem]">
+        <div className="grid gap-8 lg:grid-cols-[1fr_20rem] lg:items-start xl:gap-10 xl:grid-cols-[1fr_24rem] 2xl:grid-cols-[1fr_28rem]">
           <div>
             {hero && (
               <Link
@@ -126,15 +136,24 @@ export default async function BlogIndexPage() {
                   <h2 className="text-foreground text-2xl font-bold leading-tight group-hover:text-accent">
                     {hero.title}
                   </h2>
-                  {hero.excerpt && <p className="text-muted-foreground">{hero.excerpt}</p>}
+                  {hero.excerpt && (
+                    <p className="text-muted-foreground">{hero.excerpt}</p>
+                  )}
                 </div>
               </Link>
             )}
 
-            <h2 className="text-foreground mb-3 text-sm font-semibold">Mới nhất</h2>
+            <h2 className="text-foreground mb-3 text-sm font-semibold">
+              Mới nhất
+            </h2>
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {rest.map((post, i) => (
-                <ArticleCard key={post.slug} post={post} priority={i < 2} categoryLabel={labelOf(post.category)} />
+                <ArticleCard
+                  key={post.slug}
+                  post={post}
+                  priority={i < 2}
+                  categoryLabel={labelOf(post.category)}
+                />
               ))}
             </div>
 
@@ -143,44 +162,63 @@ export default async function BlogIndexPage() {
                 static routes rather than a ?page query that turns this dynamic. */}
           </div>
 
-          {/* Follows the reader down the list, like the article's contents rail.
-              Short enough to never need a scroll box of its own. */}
-          <aside className="space-y-5 lg:sticky lg:top-24">
-            {popular.length > 0 && (
+          {/* Follows the reader down the list, and never taller than the
+              screen: capped, it scrolls inside with a fade at the edge that
+              still hides something, rather than being cut off out of reach. */}
+          <aside className="lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col">
+            <FadeScroll
+              className="space-y-5 lg:pr-0.5"
+              fadeClassName="from-background"
+              hideScrollbar
+            >
+              {popular.length > 0 && (
+                <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
+                  <h2 className="text-foreground mb-3 text-sm font-semibold">
+                    Đọc nhiều
+                  </h2>
+                  <ol className="space-y-3">
+                    {popular.map((post, i) => (
+                      <li key={post.slug}>
+                        <Link
+                          href={`/blog/${post.slug}`}
+                          className="group flex gap-3"
+                        >
+                          <span className="text-accent/40 text-lg font-bold leading-none tabular-nums">
+                            {i + 1}
+                          </span>
+                          <span className="text-foreground group-hover:text-accent line-clamp-2 text-sm font-medium xl:line-clamp-3">
+                            {post.title}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
               <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
-                <h2 className="text-foreground mb-3 text-sm font-semibold">Đọc nhiều</h2>
-                <ol className="space-y-3">
-                  {popular.map((post, i) => (
-                    <li key={post.slug}>
-                      <Link href={`/blog/${post.slug}`} className="group flex gap-3">
-                        <span className="text-accent/40 text-lg font-bold leading-none tabular-nums">{i + 1}</span>
-                        <span className="text-foreground group-hover:text-accent line-clamp-2 text-sm font-medium xl:line-clamp-3">
-                          {post.title}
+                <h2 className="text-foreground mb-3 text-sm font-semibold">
+                  Danh mục
+                </h2>
+                <ul className="space-y-1.5">
+                  {cats.map((c) => (
+                    <li key={c.slug}>
+                      <Link
+                        href={`/blog/danh-muc/${c.slug}`}
+                        className="text-foreground hover:text-accent flex items-center justify-between text-sm"
+                      >
+                        <span>{c.name}</span>
+                        <span className="text-muted-foreground text-xs tabular-nums">
+                          {
+                            recent.items.filter((p) => p.category === c.slug)
+                              .length
+                          }
                         </span>
                       </Link>
                     </li>
                   ))}
-                </ol>
+                </ul>
               </div>
-            )}
-            <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
-              <h2 className="text-foreground mb-3 text-sm font-semibold">Danh mục</h2>
-              <ul className="space-y-1.5">
-                {cats.map((c) => (
-                  <li key={c.slug}>
-                    <Link
-                      href={`/blog/danh-muc/${c.slug}`}
-                      className="text-foreground hover:text-accent flex items-center justify-between text-sm"
-                    >
-                      <span>{c.name}</span>
-                      <span className="text-muted-foreground text-xs tabular-nums">
-                        {recent.items.filter((p) => p.category === c.slug).length}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            </FadeScroll>
           </aside>
         </div>
       )}

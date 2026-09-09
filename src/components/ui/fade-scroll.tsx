@@ -18,10 +18,20 @@ export function FadeScroll({
   children,
   className,
   fadeClassName = "from-card",
+  hideScrollbar = false,
 }: {
   children: React.ReactNode;
   className?: string;
   fadeClassName?: string;
+  /**
+   * Drop the scrollbar and let the fades do the telling.
+   *
+   * For a column of links beside an article, a bar is noise — it reads as a
+   * second page inside the page. Not for a form in a dialog, where people
+   * reach for the bar to see how much is left, which is why this is a choice
+   * and not the default.
+   */
+  hideScrollbar?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ top: false, bottom: false });
@@ -59,7 +69,12 @@ export function FadeScroll({
       />
       <div
         ref={ref}
-        className={cn("min-h-0 flex-1 overflow-y-auto", className)}
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto",
+          hideScrollbar &&
+            "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          className,
+        )}
       >
         {children}
       </div>

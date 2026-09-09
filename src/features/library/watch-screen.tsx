@@ -10,6 +10,7 @@ import {
   SkipBack,
   SkipForward,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { SmartBackLink } from "@/components/marketing/smart-back-link";
 import { previousRoute } from "@/components/navigation/route-trail";
@@ -169,154 +170,190 @@ export function WatchScreen({ id }: { id: string }) {
 
   return (
     /*
-     * Every block is a grid item of its own, not grouped into a left column.
-     * On a phone the video is `sticky`, and a sticky element can travel only
-     * within its parent: grouped, it would stop at the end of the left column
-     * — just where the playlist begins, the one part worth scrolling under it.
-     * With the grid as the parent it stays pinned for the whole page.
+     * Two different frames, one markup.
+     *
+     * On a phone the video does not move at all: it sits outside anything that
+     * scrolls, and only the strip beneath it — title, buttons, playlist —
+     * scrolls. It used to be `sticky` inside the page's scroll box, and the
+     * result was a video that shivered: the frame is not part of this page (it
+     * belongs to the floating player, which script lays over the box), so
+     * every scroll left it chasing a box that had already moved — measured at
+     * up to 14px behind. There is nothing to chase now.
+     *
+     * From lg up the page scrolls as one, as before, and the wrapper around
+     * the lower half becomes `display: contents` so its two children are grid
+     * items of this grid rather than a column of their own.
      */
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_auto_1fr] lg:items-start lg:gap-x-6 xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
-      <div className="mb-3 flex items-center justify-between gap-3 lg:col-start-1 lg:row-start-1">
-        <SmartBackLink fallback="/library" tone="app" />
-        <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
-          {item ? KIND_LABEL[item.kind] : "Bộ sưu tập"}
-        </span>
-      </div>
-
-      {/* On a phone the video stays put while the playlist scrolls under it,
-            like the YouTube app. From lg up the two columns share the height
-            and nothing needs pinning. */}
-      <div className="bg-background sticky top-0 z-30 -mx-[var(--page-gutter)] px-[var(--page-gutter)] pb-2 lg:static lg:col-start-1 lg:row-start-2 lg:mx-0 lg:px-0 lg:pb-0">
-        <div
-          ref={slotRef}
-          data-watch-slot=""
-          className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-[0_18px_50px_rgba(0,0,0,0.28)]"
-        >
-          {/* What shows in the box before the frame arrives, and behind it. */}
-          {item?.thumbnailUrl && (
-            <img
-              src={item.thumbnailUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover opacity-60"
-            />
-          )}
-          <div className="absolute inset-0 flex items-center justify-center text-white/80">
-            {missing ? (
-              <p className="px-6 text-center text-sm">
-                Bài này không còn trong bộ sưu tập.
-              </p>
-            ) : !item || !item.embed.embedUrl ? (
-              <Loader2 className="h-8 w-8 animate-spin" aria-hidden="true" />
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 min-w-0 lg:col-start-1 lg:row-start-3">
-        <h1 className="text-foreground text-xl leading-snug font-bold sm:text-2xl [text-wrap:balance]">
-          {item?.title ?? (missing ? "Không tìm thấy" : "Đang mở…")}
-        </h1>
-        {item && (
-          <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 text-sm">
-            <span>{item.providerLabel}</span>
-            {total > 1 && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span className="tabular-nums">
-                  Bài {position}/{total}
-                </span>
-              </>
-            )}
-          </p>
+    <div
+      className={cn(
+        "[--page-gutter:1rem] md:[--page-gutter:30px]",
+        "flex min-h-0 flex-1 flex-col overflow-hidden px-[var(--page-gutter)] pt-4",
+        "lg:block lg:overflow-x-hidden lg:overflow-y-auto lg:overscroll-contain lg:pt-6",
+      )}
+    >
+      <div
+        className={cn(
+          "mx-auto flex min-h-0 w-full max-w-[87.5rem] flex-1 flex-col",
+          // The playlist is capped and scrolls inside, so it never needs extra
+          // width — and every rem taken from the video is felt.
+          "lg:grid lg:flex-none lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_auto_1fr] lg:items-start lg:gap-x-6 lg:pb-6",
+          "xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]",
         )}
+      >
+        <div className="mb-3 flex shrink-0 items-center justify-between gap-3 lg:col-start-1 lg:row-start-1">
+          <SmartBackLink fallback="/library" tone="app" />
+          <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+            {item ? KIND_LABEL[item.kind] : "Bộ sưu tập"}
+          </span>
+        </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={shrink}
-            className="bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition-colors"
+        {/* Immovable on a phone — see the note on the wrapper above. */}
+        <div className="relative shrink-0 pb-2 lg:col-start-1 lg:row-start-2 lg:pb-0">
+          {/* The strip below scrolls right up to the video. Without this the
+              first row was cut through the middle of its title by a hard edge;
+              now it dissolves into the page instead. */}
+          <div
+            aria-hidden="true"
+            className="from-background pointer-events-none absolute inset-x-0 -bottom-4 z-20 h-4 bg-gradient-to-b to-transparent lg:hidden"
+          />
+          <div
+            ref={slotRef}
+            data-watch-slot=""
+            className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-[0_18px_50px_rgba(0,0,0,0.28)]"
           >
-            <PictureInPicture2 className="h-4 w-4" aria-hidden="true" />
-            Thu nhỏ, nghe tiếp
-          </button>
-          {total > 1 && (
-            <div className="border-border bg-card inline-flex items-center rounded-full border shadow-sm">
-              <button
-                type="button"
-                onClick={prev}
-                disabled={!hasPrev}
-                aria-label="Bài trước"
-                className="text-foreground hover:bg-muted flex h-9 w-10 items-center justify-center rounded-l-full transition-colors disabled:opacity-40"
-              >
-                <SkipBack className="h-4 w-4" />
-              </button>
-              <span className="bg-border h-5 w-px" aria-hidden="true" />
-              <button
-                type="button"
-                onClick={next}
-                disabled={!hasNext}
-                aria-label="Bài sau"
-                className="text-foreground hover:bg-muted flex h-9 w-10 items-center justify-center rounded-r-full transition-colors disabled:opacity-40"
-              >
-                <SkipForward className="h-4 w-4" />
-              </button>
+            {/* What shows in the box before the frame arrives, and behind it. */}
+            {item?.thumbnailUrl && (
+              <img
+                src={item.thumbnailUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover opacity-60"
+              />
+            )}
+            <div className="absolute inset-0 flex items-center justify-center text-white/80">
+              {missing ? (
+                <p className="px-6 text-center text-sm">
+                  Bài này không còn trong bộ sưu tập.
+                </p>
+              ) : !item || !item.embed.embedUrl ? (
+                <Loader2 className="h-8 w-8 animate-spin" aria-hidden="true" />
+              ) : null}
             </div>
-          )}
-          {item?.embed.url && (
-            <a
-              href={item.embed.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium shadow-sm transition-colors"
-            >
-              <ExternalLink className="h-4 w-4" aria-hidden="true" />
-              Mở trên {item.providerLabel}
-            </a>
-          )}
+          </div>
         </div>
 
-        {canListen && item && listen && (
-          <div className="mt-3 max-w-sm">
-            <ListenTogetherControls
-              listen={listen}
-              queue={queue}
-              index={index}
-              size="md"
-              getState={() => {
-                const r = listen.positionReader.current?.();
-                return {
-                  positionSec: r?.positionSec ?? 0,
-                  isPlaying: r?.isPlaying ?? false,
-                };
-              }}
-            />
-          </div>
-        )}
-      </div>
+        {/* The one thing that scrolls on a phone. `lg:contents` dissolves it on
+          a wide screen so its two children sit in the grid above. */}
+        <div className="min-h-0 flex-1 overflow-y-auto pb-6 lg:contents lg:overflow-visible lg:pb-0">
+          <div className="mt-4 min-w-0 lg:col-start-1 lg:row-start-3">
+            <h1 className="text-foreground text-xl leading-snug font-bold sm:text-2xl [text-wrap:balance]">
+              {item?.title ?? (missing ? "Không tìm thấy" : "Đang mở…")}
+            </h1>
+            {item && (
+              <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 text-sm">
+                <span>{item.providerLabel}</span>
+                {total > 1 && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="tabular-nums">
+                      Bài {position}/{total}
+                    </span>
+                  </>
+                )}
+              </p>
+            )}
 
-      {/* From lg up the card takes the height of the screen — the list scrolls
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={shrink}
+                className="bg-accent text-accent-foreground hover:bg-accent/90 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition-colors"
+              >
+                <PictureInPicture2 className="h-4 w-4" aria-hidden="true" />
+                Thu nhỏ, nghe tiếp
+              </button>
+              {total > 1 && (
+                <div className="border-border bg-card inline-flex items-center rounded-full border shadow-sm">
+                  <button
+                    type="button"
+                    onClick={prev}
+                    disabled={!hasPrev}
+                    aria-label="Bài trước"
+                    className="text-foreground hover:bg-muted flex h-9 w-10 items-center justify-center rounded-l-full transition-colors disabled:opacity-40"
+                  >
+                    <SkipBack className="h-4 w-4" />
+                  </button>
+                  <span className="bg-border h-5 w-px" aria-hidden="true" />
+                  <button
+                    type="button"
+                    onClick={next}
+                    disabled={!hasNext}
+                    aria-label="Bài sau"
+                    className="text-foreground hover:bg-muted flex h-9 w-10 items-center justify-center rounded-r-full transition-colors disabled:opacity-40"
+                  >
+                    <SkipForward className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {item?.embed.url && (
+                <a
+                  href={item.embed.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium shadow-sm transition-colors"
+                >
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  Mở trên {item.providerLabel}
+                </a>
+              )}
+            </div>
+
+            {canListen && item && listen && (
+              <div className="mt-3 max-w-sm">
+                <ListenTogetherControls
+                  listen={listen}
+                  queue={queue}
+                  index={index}
+                  size="md"
+                  getState={() => {
+                    const r = listen.positionReader.current?.();
+                    return {
+                      positionSec: r?.positionSec ?? 0,
+                      isPlaying: r?.isPlaying ?? false,
+                    };
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* From lg up the card takes the height of the screen — the list scrolls
           inside it and fades at the edges — and stays put should the left
           side ever be the taller one. A card the height of its six rows
           looked cut short next to the video. */}
-      <aside className="mt-6 min-w-0 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:mt-0 lg:self-start">
-        <div
-          data-watch-playlist=""
-          className="border-border bg-card flex flex-col overflow-hidden rounded-2xl border shadow-sm lg:h-[calc(100dvh-3rem)]"
-        >
-          <div className="border-border flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
-            <h2 className="text-foreground flex items-center gap-2 text-sm font-semibold">
-              <ListMusic className="text-accent h-4 w-4" aria-hidden="true" />
-              Danh sách phát
-            </h2>
-            {total > 0 && (
-              <span className="text-muted-foreground text-xs tabular-nums">
-                {position}/{total}
-              </span>
-            )}
-          </div>
-          <WatchPlaylist queue={queue} index={index} onPick={jumpTo} />
+          <aside className="mt-6 min-w-0 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:mt-0 lg:self-start">
+            <div
+              data-watch-playlist=""
+              className="border-border bg-card flex flex-col overflow-hidden rounded-2xl border shadow-sm lg:h-[calc(100dvh-3rem)]"
+            >
+              <div className="border-border flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
+                <h2 className="text-foreground flex items-center gap-2 text-sm font-semibold">
+                  <ListMusic
+                    className="text-accent h-4 w-4"
+                    aria-hidden="true"
+                  />
+                  Danh sách phát
+                </h2>
+                {total > 0 && (
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    {position}/{total}
+                  </span>
+                )}
+              </div>
+              <WatchPlaylist queue={queue} index={index} onPick={jumpTo} />
+            </div>
+          </aside>
         </div>
-      </aside>
+      </div>
     </div>
   );
 }

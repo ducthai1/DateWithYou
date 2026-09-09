@@ -17,7 +17,13 @@ import type { TocItem } from "./toc";
  * before hydration, without JavaScript, and for keyboard and screen-reader
  * users. The observer only decides which one is marked current.
  */
-export function TocRail({ items, className }: { items: TocItem[]; className?: string }) {
+export function TocRail({
+  items,
+  className,
+}: {
+  items: TocItem[];
+  className?: string;
+}) {
   const [active, setActive] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,7 +55,10 @@ export function TocRail({ items, className }: { items: TocItem[]; className?: st
       setActive(current);
     };
 
-    const io = new IntersectionObserver(pick, { rootMargin: `-${LINE}px 0px 0px 0px`, threshold: 0 });
+    const io = new IntersectionObserver(pick, {
+      rootMargin: `-${LINE}px 0px 0px 0px`,
+      threshold: 0,
+    });
     targets.forEach((el) => io.observe(el));
     pick();
     window.addEventListener("resize", pick);
@@ -64,8 +73,16 @@ export function TocRail({ items, className }: { items: TocItem[]; className?: st
   const activeIndex = items.findIndex((h) => h.id === active);
 
   return (
-    <nav aria-label="Mục lục" className={cn("border-border bg-card rounded-2xl border p-4 shadow-sm", className)}>
-      <p className="text-muted-foreground mb-3 text-[11px] font-semibold uppercase tracking-[0.14em]">Mục lục</p>
+    <nav
+      aria-label="Mục lục"
+      className={cn(
+        "border-border bg-card rounded-2xl border p-4 shadow-sm",
+        className,
+      )}
+    >
+      <p className="text-muted-foreground mb-3 text-[11px] font-semibold uppercase tracking-[0.14em]">
+        Mục lục
+      </p>
       {/*
        * The one place a scrollbar is allowed, and only when a very long
        * contents genuinely does not fit: capped so the card below it stays on
@@ -81,15 +98,20 @@ export function TocRail({ items, className }: { items: TocItem[]; className?: st
        * scrolls itself and then hands the rest to the page, which is what a
        * reader expects.
        */}
-      <ol className="relative max-h-[46vh] overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar]:w-1">
+      <ol className="relative pr-1">
         {/* The spine, with the read part of it filled in. */}
-        <span aria-hidden="true" className="bg-border absolute bottom-1.5 left-[3.5px] top-1.5 w-px" />
+        <span
+          aria-hidden="true"
+          className="bg-border absolute bottom-1.5 left-[3.5px] top-1.5 w-px"
+        />
         <span
           aria-hidden="true"
           className="bg-accent/50 absolute left-[3.5px] top-1.5 w-px transition-[height] duration-300"
           style={{
             height:
-              activeIndex < 0 ? 0 : `calc((100% - 0.75rem) * ${(activeIndex + 0.5) / items.length})`,
+              activeIndex < 0
+                ? 0
+                : `calc((100% - 0.75rem) * ${(activeIndex + 0.5) / items.length})`,
           }}
         />
         {items.map((h, i) => {

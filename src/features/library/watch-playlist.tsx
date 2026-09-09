@@ -47,7 +47,7 @@ export function WatchPlaylist({
   }
 
   return (
-    <FadeScroll className="p-2">
+    <FadeScroll className="p-2" hideScrollbar>
       <ol className="space-y-1">
         {queue.map((q, i) => {
           const active = i === index;

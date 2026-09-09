@@ -8,6 +8,7 @@ import { ArticleCard, CATEGORY_LABEL } from "@/features/blog/post-card";
 import { ViewBeacon } from "@/features/blog/view-beacon";
 import { ArticleView } from "@/features/blog/article-view";
 import { withHeadingAnchors } from "@/features/blog/toc";
+import { FadeScroll } from "@/components/ui/fade-scroll";
 import { SmartBackLink } from "@/components/marketing/smart-back-link";
 import { TocRail } from "@/features/blog/toc-rail";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -66,7 +67,9 @@ export async function generateMetadata({
       title,
       description,
       images: [{ url: image, width: 1200, height: 630, alt: title }],
-      publishedTime: post.publishedAt ? new Date(post.publishedAt).toISOString() : undefined,
+      publishedTime: post.publishedAt
+        ? new Date(post.publishedAt).toISOString()
+        : undefined,
     },
   };
 }
@@ -85,7 +88,8 @@ export default async function ArticlePage({
     publicCaller.blog.list({ category: post.category, page: 1, pageSize: 4 }),
     publicCaller.blog.categories(),
   ]);
-  const labelOf = (slug: string) => cats.find((c) => c.slug === slug)?.name ?? CATEGORY_LABEL[slug] ?? slug;
+  const labelOf = (slug: string) =>
+    cats.find((c) => c.slug === slug)?.name ?? CATEGORY_LABEL[slug] ?? slug;
   const related = more.items.filter((p) => p.slug !== post.slug).slice(0, 3);
 
   const { html: bodyHtml, toc } = withHeadingAnchors(post.body);
@@ -96,7 +100,9 @@ export default async function ArticlePage({
     headline: post.title,
     description: post.excerpt || undefined,
     image: post.coverImage || `${SITE_URL}/og-card.jpg`,
-    datePublished: post.publishedAt ? new Date(post.publishedAt).toISOString() : undefined,
+    datePublished: post.publishedAt
+      ? new Date(post.publishedAt).toISOString()
+      : undefined,
     author: { "@type": "Organization", name: SITE_NAME },
     publisher: { "@type": "Organization", name: SITE_NAME },
     mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
@@ -111,7 +117,10 @@ export default async function ArticlePage({
    */
   return (
     <main className={`mx-auto w-full ${SITE_WIDTH} px-4 pb-16 pt-6 sm:pt-10`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <ViewBeacon slug={post.slug} />
 
       {/* A back button that returns where the reader came from — the feature
@@ -123,21 +132,29 @@ export default async function ArticlePage({
             Blog
           </Link>
           <span className="px-1.5">/</span>
-          <Link href={`/blog/danh-muc/${post.category}`} className="hover:text-accent">
+          <Link
+            href={`/blog/danh-muc/${post.category}`}
+            className="hover:text-accent"
+          >
             {labelOf(post.category)}
           </Link>
         </nav>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start xl:gap-10 xl:grid-cols-[minmax(0,1fr)_21rem] 2xl:grid-cols-[minmax(0,1fr)_25rem]">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start xl:gap-10 xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:grid-cols-[minmax(0,1fr)_28rem]">
         <div className="min-w-0">
           {toc.length >= 3 && (
             <details className="border-border bg-card mb-4 rounded-2xl border p-4 shadow-sm lg:hidden">
-              <summary className="text-foreground cursor-pointer text-sm font-semibold">Mục lục</summary>
+              <summary className="text-foreground cursor-pointer text-sm font-semibold">
+                Mục lục
+              </summary>
               <ul className="mt-3 space-y-1.5 text-sm">
                 {toc.map((h) => (
                   <li key={h.id} className={h.level === 3 ? "ml-4" : ""}>
-                    <a href={`#${h.id}`} className="text-muted-foreground hover:text-accent">
+                    <a
+                      href={`#${h.id}`}
+                      className="text-muted-foreground hover:text-accent"
+                    >
                       {h.text}
                     </a>
                   </li>
@@ -145,7 +162,10 @@ export default async function ArticlePage({
               </ul>
             </details>
           )}
-          <ArticleView post={{ ...post, body: bodyHtml }} categoryLabel={labelOf(post.category)} />
+          <ArticleView
+            post={{ ...post, body: bodyHtml }}
+            categoryLabel={labelOf(post.category)}
+          />
         </div>
         {/*
           Sticky, and scrollable inside its own box: a ten-heading contents plus
@@ -165,37 +185,66 @@ export default async function ArticlePage({
           contents list caps its own height instead (see TocRail), so only that
           list ever scrolls and everything under it stays in place.
         */}
-        <aside className="hidden space-y-5 lg:sticky lg:top-24 lg:block">
-          <div className="space-y-5">
+        {/*
+          Follows the reader down, and never taller than the screen.
+
+          A sticky column that outgrows the viewport is cut off at the bottom —
+          the last few links, unreachable, because the page scrolls and the
+          column does not. Capped to the height the screen actually has, it
+          scrolls inside instead, with a fade at whichever edge still hides
+          something and no scrollbar, which in a column of links reads as a
+          second page inside the page.
+        */}
+        <aside className="hidden lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col">
+          <FadeScroll
+            className="space-y-5 lg:pr-0.5"
+            fadeClassName="from-background"
+            hideScrollbar
+          >
             {toc.length >= 3 && <TocRail items={toc} />}
             {popular.length > 0 && (
               <section className="border-border bg-card rounded-2xl border p-4 shadow-sm">
-                <h2 className="text-foreground mb-2 text-sm font-semibold">Đọc nhiều</h2>
+                <h2 className="text-foreground mb-2 text-sm font-semibold">
+                  Đọc nhiều
+                </h2>
                 <ol className="space-y-2">
                   {popular
                     .filter((p) => p.slug !== post.slug)
                     .slice(0, 3)
                     .map((p, i) => (
                       <li key={p.slug}>
-                        <Link href={`/blog/${p.slug}`} className="group flex gap-2 text-sm">
-                          <span className="text-accent/40 font-bold tabular-nums">{i + 1}</span>
-                          <span className="text-muted-foreground group-hover:text-accent line-clamp-2 xl:line-clamp-3">{p.title}</span>
+                        <Link
+                          href={`/blog/${p.slug}`}
+                          className="group flex gap-2 text-sm"
+                        >
+                          <span className="text-accent/40 font-bold tabular-nums">
+                            {i + 1}
+                          </span>
+                          <span className="text-muted-foreground group-hover:text-accent line-clamp-2 xl:line-clamp-3">
+                            {p.title}
+                          </span>
                         </Link>
                       </li>
                     ))}
                 </ol>
               </section>
             )}
-          </div>
+          </FadeScroll>
         </aside>
       </div>
 
       {related.length > 0 && (
         <section className="border-border mt-12 border-t pt-8">
-          <h2 className="text-foreground mb-4 text-lg font-bold">Bài viết liên quan</h2>
+          <h2 className="text-foreground mb-4 text-lg font-bold">
+            Bài viết liên quan
+          </h2>
           <div className="grid gap-5 sm:grid-cols-3">
             {related.map((p) => (
-              <ArticleCard key={p.slug} post={p} categoryLabel={labelOf(p.category)} />
+              <ArticleCard
+                key={p.slug}
+                post={p}
+                categoryLabel={labelOf(p.category)}
+              />
             ))}
           </div>
         </section>
@@ -209,7 +258,10 @@ export default async function ArticlePage({
               .filter((p) => p.slug !== post.slug)
               .map((p) => (
                 <li key={p.slug}>
-                  <Link href={`/blog/${p.slug}`} className="text-accent hover:underline">
+                  <Link
+                    href={`/blog/${p.slug}`}
+                    className="text-accent hover:underline"
+                  >
                     {p.title}
                   </Link>
                 </li>
