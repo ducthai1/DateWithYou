@@ -104,7 +104,11 @@ const LocationMapView = dynamic(
   () => import("./location-mapview").then((m) => m.LocationMapView),
   {
     ssr: false,
-    loading: () => <div className="bg-muted/40 absolute inset-0" />,
+    // The same veil the map itself uses while it draws, so the wait is ONE
+    // continuous state: this covers the seconds before the maplibre chunk has
+    // even arrived, and the map's own copy takes over from the first frame it
+    // renders. Two different placeholders here read as two separate loads.
+    loading: () => <MapLoadingVeil show />,
   },
 );
 import { useNavigationInvitesContext } from "./navigation-invites-context";
@@ -114,6 +118,7 @@ import { LocationForm, type LocationFormValues } from "./location-form";
 import { useToast } from "@/components/ui/toast";
 import { MeetingFlare } from "./meeting-flare";
 import { MapSheet } from "./map-sheet";
+import { MapLoadingVeil } from "./map-loading-veil";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { PlaceSearchBox } from "./place-search-box";
 import { buzz } from "@/lib/haptics";

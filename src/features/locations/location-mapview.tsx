@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { useIsMobile } from "@/hooks/use-media-query";
 import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
 import { VietnamSovereigntyMarkers } from "./vietnam-sovereignty-markers";
+import { MapLoadingVeil } from "./map-loading-veil";
 import { applyEastSeaLabel } from "./east-sea-label";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { geodesicCircle, type LatLng } from "@/lib/maps";
@@ -34,6 +35,16 @@ import { buzz } from "@/lib/haptics";
  * commit 30e6902 for the groundwork.
  */
 const MAP_STYLE_DAY = "https://tiles.openfreemap.org/styles/liberty";
+
+/*
+ * Has a map finished drawing anywhere in this page session?
+ *
+ * Module scope on purpose: it must outlive the component (route changes
+ * unmount it) and it must NOT outlive the document (a fresh load has to build
+ * a map from nothing again, and that build deserves the veil). Read where
+ * `drawn` is initialised.
+ */
+let hasEverDrawn = false;
 // Ho Chi Minh City centre.
 const DEFAULT_CENTER = { longitude: 106.7009, latitude: 10.7769, zoom: 12 };
 
@@ -463,11 +474,41 @@ function LocationMapViewImpl({
    * The timer is the safety net: a tile that never arrives must not leave the
    * screen blank forever, so after 6s it is shown in whatever state it reached.
    */
-  const [drawn, setDrawn] = useState(false);
+  /*
+   * The veil is for the FIRST map of a page session only.
+   *
+   * It lifts on MapLibre's `load` (see the <Map> prop below), which is the
+   * first visually complete frame — not on `idle`, which waits for the label
+   * and fade work behind it.
+   *
+   * `reuseMaps` (see the <Map> below) hands the same MapLibre instance to the
+   * next mount, canvas and all — so on a second visit the last frame the
+   * person saw is on screen before React has finished mounting. Measured on a
+   * production build: `#map-view`, its canvas and the veil all appear together
+   * at ~215ms, and MapLibre's `idle` (which re-fires because the camera is
+   * re-applied and the new viewport's tiles are re-checked) lands at ~890ms.
+   * Veiling that gap covers a perfectly good map with a "still loading" state
+   * for two thirds of a second, every single time — which is the complaint
+   * that started this, seen from the other side.
+   *
+   * So the flag lives at module scope: it survives the unmount that route
+   * changes cause, and it resets on a real page load, which is exactly when a
+   * map has to be built from nothing again. Nothing about it is per-instance,
+   * so the mini navigation window benefits too.
+   */
+  const [drawn, setDrawn] = useState(hasEverDrawn);
   useEffect(() => {
+    if (drawn) return;
+    // The safety net: a tile that never arrives must not leave the screen
+    // covered forever, so after 6s the map is shown in whatever state it
+    // reached. (`onIdle` is the normal way out — see the prop below.)
     const t = setTimeout(() => setDrawn(true), 6000);
     return () => clearTimeout(t);
-  }, []);
+  }, [drawn]);
+
+  useEffect(() => {
+    if (drawn) hasEverDrawn = true;
+  }, [drawn]);
 
   /*
    * Applied on every style event, not once at startup: MapLibre replaces the
@@ -557,15 +598,53 @@ function LocationMapViewImpl({
         actionLabel="Đã hiểu"
       />
 
-      <div
-        aria-hidden="true"
-        className={cn(
-          "bg-muted pointer-events-none absolute inset-0 z-[1] transition-opacity duration-500",
-          drawn ? "opacity-0" : "opacity-100",
-        )}
-      />
+      <MapLoadingVeil show={!drawn} />
       <Map
         ref={mapRef}
+        /*
+         * Keep the instance alive across route changes.
+         *
+         * Leaving this screen used to destroy the map — WebGL context, parsed
+         * style, glyph atlas, decoded tiles, all of it — and coming back built
+         * a new one from scratch. The service worker made the BYTES local
+         * (public/sw.js: ~6.4s cold, ~1.6s warm) but nothing made the work
+         * local, so every visit after the first still spent that second and a
+         * half behind a grey rectangle.
+         *
+         * `reuseMaps` hands the same instance to the next mount: react-map-gl
+         * reparents its canvas into the new container, re-applies props and
+         * jumps to `initialViewState` (which is the camera this page
+         * remembered, so the view does not move). Nothing is re-downloaded and
+         * nothing is re-parsed.
+         *
+         * The cost is one retained WebGL context and its tiles while the
+         * person is elsewhere in the app. For the screen this app is mostly
+         * about, on a device that just paid for those tiles, that is the right
+         * trade — and it is the same reasoning that already keeps ONE map
+         * mounted for a ride instead of building a second one.
+         */
+        reuseMaps
+        /*
+         * Three defaults that only cost time on this screen.
+         *
+         * `fadeDuration` is MapLibre's 300ms crossfade for tiles and labels.
+         * It is `idle`'s last piece of work, so it sits between "the map is
+         * drawn" and "the map is shown" — twice over, since the veil then
+         * fades as well. Zero here, and the veil's own 500ms fade is the only
+         * transition left.
+         *
+         * `refreshExpiredTiles` re-requests tiles whose cache headers have
+         * expired. This tile pyramid is versioned by path and served
+         * `immutable` for years (see public/sw.js), so a revalidation can only
+         * ever return the same bytes.
+         *
+         * `renderWorldCopies` draws the world repeated east and west of the
+         * antimeridian. At city zoom on a phone-width viewport there is
+         * nothing to repeat, and the app never leaves that range.
+         */
+        fadeDuration={0}
+        refreshExpiredTiles={false}
+        renderWorldCopies={false}
         initialViewState={initialView}
         onStyleData={(e) => dressStyle(e.target)}
         onLoad={(e) => {
@@ -580,7 +659,43 @@ function LocationMapViewImpl({
           // The sea carries its Vietnamese name, in the position the base map
           // chose for that label rather than a plate guessing at it.
           dressStyle(e.target);
+          /*
+           * A backstop for the veil, not the normal way out.
+           *
+           * `load` means "every necessary resource is downloaded and the first
+           * rendering is visually complete" — which includes the glyph atlas
+           * and the label passes. Measured on a production build with a warm
+           * cache it lands at ~1.56s, all but identical to `idle` at ~1.58s:
+           * the wait is not in the label tail, it is in the style parse and
+           * the first tile decode ahead of both. So the veil now lifts on the
+           * first parsed tile (`onSourceData` below) and this is only here for
+           * a view that somehow has no tiles to report.
+           */
+          setDrawn(true);
         }}
+        /*
+         * The veil lifts HERE: the first vector tile that finishes parsing.
+         *
+         * `e.tile` is only set on a source-data event that carries a tile, so
+         * this is the moment there is real geometry to draw — roads, water,
+         * ground. MapLibre paints it on the next frame, and the labels arrive
+         * over the following few hundred milliseconds as the glyph atlas
+         * finishes.
+         *
+         * This reverses the earlier decision to wait for `idle` so the map
+         * would appear once, complete, rather than assembling in front of the
+         * person. The owner chose the trade knowingly (2026-09-09): a second
+         * and a half of grey rectangle is worse than watching street names
+         * arrive on a map that is already there. `onIdle` and `onLoad` stay
+         * wired as backstops, and together they are the whole of the old
+         * behaviour if it is ever wanted back.
+         */
+        onSourceData={(e) => {
+          if (e.tile) setDrawn(true);
+        }}
+        // Still wired: on a reused instance neither `load` nor a new tile is
+        // guaranteed, and a style reload after a failure comes back through
+        // here.
         onIdle={() => setDrawn(true)}
         onMoveEnd={(e) => {
           // Every move, programmatic ones included: following a ride is exactly
