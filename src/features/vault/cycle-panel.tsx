@@ -11,6 +11,9 @@ import { shortDateLabel } from "@/lib/cycle-copy";
 import { CYCLE_PEAK_DISC, CYCLE_WINDOW_TEXT } from "@/lib/cycle-day-style";
 import { cn } from "@/lib/utils";
 import { addDaysKey, daysBetweenKeys, todayKey } from "@/lib/date-keys";
+// The same pure function the server predicts with, so an optimistic list and
+// the answer that comes back cannot drift apart.
+import { predictNextStart } from "@/lib/cycle-prediction";
 import { Plus, Info } from "lucide-react";
 import { CycleLogList } from "./cycle-log-list";
 
@@ -51,21 +54,60 @@ export function CyclePanel() {
     void utils.calendar.monthSummary.invalidate();
     void utils.calendar.dayDetail.invalidate();
   };
+  /*
+   * Patch the list on the tap, and recompute the prediction from it.
+   *
+   * The three numbers this panel shows — next date, rhythm, days to go — are
+   * DERIVED, never stored: the server runs `predictNextStart` over the dates
+   * and returns the answer. That is why the wait was so visible here, with
+   * nothing changing on screen until a write AND a read had both come back.
+   * Calling the same pure function on the patched list gives the identical
+   * answer immediately, and `onSettled` still reconciles with the server, so a
+   * disagreement can never outlive one round trip.
+   */
+  const patchStarts = (next: (starts: readonly string[]) => string[]) =>
+    utils.cycle.get.setData(undefined, (old) => {
+      if (!old) return old;
+      const starts = next(old.starts);
+      return { ...old, starts, prediction: predictNextStart(starts) };
+    });
+
   const add = trpc.cycle.addStart.useMutation({
-    onSuccess: (r) => {
-      if (!r.ok) return toast("Ngày đó không hợp lệ (không thể ở tương lai)", "error");
+    onMutate: async ({ date }) => {
+      await utils.cycle.get.cancel();
+      const prev = utils.cycle.get.getData();
+      patchStarts((starts) => [...new Set([...starts, date])].sort());
+      return { prev };
+    },
+    onSuccess: (r, _v, ctx) => {
+      if (!r.ok) {
+        // The server refused the date (it is in the future). Put the list back
+        // rather than leaving a mark the server does not have.
+        if (ctx?.prev) utils.cycle.get.setData(undefined, ctx.prev);
+        return toast("Ngày đó không hợp lệ (không thể ở tương lai)", "error");
+      }
       setDraft(today);
-      invalidate();
       toast("Đã lưu", "success");
     },
-    onError: () => toast("Chưa lưu được, thử lại nhé", "error"),
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) utils.cycle.get.setData(undefined, ctx.prev);
+      toast("Chưa lưu được, thử lại nhé", "error");
+    },
+    onSettled: () => invalidate(),
   });
   const remove = trpc.cycle.removeStart.useMutation({
-    onSuccess: () => {
-      invalidate();
-      toast("Đã xoá mốc này", "success");
+    onMutate: async ({ date }) => {
+      await utils.cycle.get.cancel();
+      const prev = utils.cycle.get.getData();
+      patchStarts((starts) => starts.filter((d) => d !== date));
+      return { prev };
     },
-    onError: () => toast("Chưa xoá được", "error"),
+    onSuccess: () => toast("Đã xoá mốc này", "success"),
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) utils.cycle.get.setData(undefined, ctx.prev);
+      toast("Chưa xoá được", "error");
+    },
+    onSettled: () => invalidate(),
   });
 
   if (q.isLoading) {

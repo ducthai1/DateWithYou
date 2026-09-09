@@ -42,13 +42,75 @@ export function RewardsPanel() {
     onSuccess: () => { setVTitle(""); invalidate(); toast("Đã thêm voucher", "success"); },
     onError: (err) => toast(readableFormError(err.message), "error")
   });
+  /*
+   * Both of these move the number on the tap, not on the answer.
+   *
+   * They used to wait for the mutation and then `invalidate()`, which is two
+   * round trips before anything changed on screen: one to write, one to read
+   * the total back. On a phone that is the better part of a second of a tap
+   * that appears to have done nothing — and the same mistake this app already
+   * fixed for the plan-item tick, the wishlist and the checklist. Same shape
+   * of fix here: patch the cache, roll it back if the server disagrees, and
+   * reconcile with the server's own numbers when it settles.
+   */
   const complete = trpc.reward.completeTask.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã cộng điểm ✓", "success"); },
-    onError: (err) => toast("Cộng điểm thất bại: " + readableFormError(err.message), "error"),
+    onMutate: async ({ taskId, forUserId }) => {
+      await utils.reward.overview.cancel();
+      const prev = utils.reward.overview.getData();
+      const points = prev?.tasks.find((t) => t.id === taskId)?.points ?? 0;
+      utils.reward.overview.setData(undefined, (old) =>
+        old
+          ? {
+              ...old,
+              balances: old.balances.map((b) =>
+                b.userId === forUserId ? { ...b, balance: b.balance + points } : b,
+              ),
+            }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (err, _v, ctx) => {
+      if (ctx?.prev) utils.reward.overview.setData(undefined, ctx.prev);
+      toast("Cộng điểm thất bại: " + readableFormError(err.message), "error");
+    },
+    onSuccess: () => toast("Đã cộng điểm ✓", "success"),
+    // The log list and the exact totals come from the server; the balance above
+    // is only the part worth guessing.
+    onSettled: () => invalidate(),
   });
   const redeem = trpc.reward.redeem.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã đổi voucher 🎉", "success"); },
-    onError: (err) => toast(err.message === "INSUFFICIENT_POINTS" ? "Không đủ điểm để đổi voucher này." : "Lỗi đổi voucher: " + readableFormError(err.message), "error"),
+    onMutate: async ({ voucherId, forUserId }) => {
+      await utils.reward.overview.cancel();
+      const prev = utils.reward.overview.getData();
+      const cost = prev?.vouchers.find((v) => v.id === voucherId)?.cost ?? 0;
+      utils.reward.overview.setData(undefined, (old) =>
+        old
+          ? {
+              ...old,
+              vouchers: old.vouchers.map((v) =>
+                v.id === voucherId ? { ...v, redeemed: true, redeemedBy: forUserId } : v,
+              ),
+              balances: old.balances.map((b) =>
+                b.userId === forUserId ? { ...b, balance: b.balance - cost } : b,
+              ),
+            }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (err, _v, ctx) => {
+      /*
+       * Rollback matters more here than anywhere else in this panel: the
+       * server refuses a redeem it cannot charge (INSUFFICIENT_POINTS) and
+       * un-claims the voucher, so a guess left on screen would show a voucher
+       * as spent that is still available.
+       */
+      if (ctx?.prev) utils.reward.overview.setData(undefined, ctx.prev);
+      toast(err.message === "INSUFFICIENT_POINTS" ? "Không đủ điểm để đổi voucher này." : "Lỗi đổi voucher: " + readableFormError(err.message), "error");
+    },
+    onSuccess: () => toast("Đã đổi voucher 🎉", "success"),
+    onSettled: () => invalidate(),
   });
 
   const celebrate = useCelebrate();
