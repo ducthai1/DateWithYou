@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ExternalLink,
@@ -161,6 +161,16 @@ export function WatchScreen({ id }: { id: string }) {
 
   const shrink = () => router.push(previousRoute(pathname) ?? "/library");
 
+  /*
+   * Whether the strip under the video has been scrolled at all.
+   *
+   * The soft edge below the video is only honest when something is actually
+   * hidden behind it. Painted unconditionally it was just a pale band sitting
+   * under the picture, which is the sort of gradient that reads as a mistake.
+   * The flag flips at most twice, since the setter is guarded.
+   */
+  const [stripScrolled, setStripScrolled] = useState(false);
+
   const item = playing;
   const controllable =
     item?.embed.provider === "youtube" && Boolean(item.embed.embedUrl);
@@ -209,12 +219,17 @@ export function WatchScreen({ id }: { id: string }) {
 
         {/* Immovable on a phone — see the note on the wrapper above. */}
         <div className="relative shrink-0 pb-2 lg:col-start-1 lg:row-start-2 lg:pb-0">
-          {/* The strip below scrolls right up to the video. Without this the
-              first row was cut through the middle of its title by a hard edge;
-              now it dissolves into the page instead. */}
+          {/* The strip below scrolls right up to the video, so a row would be
+              cut through the middle of its title by a hard edge. This dissolves
+              it into the page — and only once there is something under there
+              to dissolve. */}
           <div
             aria-hidden="true"
-            className="from-background pointer-events-none absolute inset-x-0 -bottom-4 z-20 h-4 bg-gradient-to-b to-transparent lg:hidden"
+            data-video-fade={stripScrolled ? "on" : "off"}
+            className={cn(
+              "from-background pointer-events-none absolute inset-x-0 -bottom-4 z-20 h-4 bg-gradient-to-b to-transparent transition-opacity duration-200 lg:hidden",
+              stripScrolled ? "opacity-100" : "opacity-0",
+            )}
           />
           <div
             ref={slotRef}
@@ -243,7 +258,13 @@ export function WatchScreen({ id }: { id: string }) {
 
         {/* The one thing that scrolls on a phone. `lg:contents` dissolves it on
           a wide screen so its two children sit in the grid above. */}
-        <div className="min-h-0 flex-1 overflow-y-auto pb-6 lg:contents lg:overflow-visible lg:pb-0">
+        <div
+          onScroll={(e) => {
+            const next = e.currentTarget.scrollTop > 4;
+            setStripScrolled((cur) => (cur === next ? cur : next));
+          }}
+          className="min-h-0 flex-1 overflow-y-auto pb-6 lg:contents lg:overflow-visible lg:pb-0"
+        >
           <div className="mt-4 min-w-0 lg:col-start-1 lg:row-start-3">
             <h1 className="text-foreground text-xl leading-snug font-bold sm:text-2xl [text-wrap:balance]">
               {item?.title ?? (missing ? "Không tìm thấy" : "Đang mở…")}
