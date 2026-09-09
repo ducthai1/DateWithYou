@@ -78,33 +78,33 @@ const DIR: Record<Tone, string> = {
 
 export const ART = {
   /* ── In both tones ────────────────────────────────────────────────────── */
-  heroDesk: { file: "hero-desk.png", tones: BOTH },
-  appShowcase: { file: "app-showcase.png", tones: BOTH },
-  mapIsland: { file: "map-island.png", tones: BOTH },
-  memoriesScrapbook: { file: "memories-scrapbook.png", tones: BOTH },
-  wheelFood: { file: "wheel-food.png", tones: BOTH },
+  heroDesk: { file: "hero-desk.webp", tones: BOTH },
+  appShowcase: { file: "app-showcase.webp", tones: BOTH },
+  mapIsland: { file: "map-island.webp", tones: BOTH },
+  memoriesScrapbook: { file: "memories-scrapbook.webp", tones: BOTH },
+  wheelFood: { file: "wheel-food.webp", tones: BOTH },
   // Ten roles that used to be afternoon-only. The morning set was drawn to
   // match them, so the tone switch finally changes every picture on screen
   // instead of leaving two thirds of them on the warm palette all morning.
-  mapTreasure: { file: "map-treasure.png", tones: BOTH },
-  tripPlanner: { file: "trip-planner.png", tones: BOTH },
-  vaultSafe: { file: "vault-safe.png", tones: BOTH },
-  emptyBackpack: { file: "empty-backpack.png", tones: BOTH },
-  emptyCompass: { file: "empty-compass.png", tones: BOTH },
-  emptyCanvas: { file: "empty-canvas.png", tones: BOTH },
-  emptyMap: { file: "empty-map.png", tones: BOTH },
-  bannerWide: { file: "banner-wide.png", tones: BOTH },
-  bannerOurPage: { file: "banner-our-page.png", tones: BOTH },
-  bannerSub: { file: "banner-sub.png", tones: BOTH },
+  mapTreasure: { file: "map-treasure.webp", tones: BOTH },
+  tripPlanner: { file: "trip-planner.webp", tones: BOTH },
+  vaultSafe: { file: "vault-safe.webp", tones: BOTH },
+  emptyBackpack: { file: "empty-backpack.webp", tones: BOTH },
+  emptyCompass: { file: "empty-compass.webp", tones: BOTH },
+  emptyCanvas: { file: "empty-canvas.webp", tones: BOTH },
+  emptyMap: { file: "empty-map.webp", tones: BOTH },
+  bannerWide: { file: "banner-wide.webp", tones: BOTH },
+  bannerOurPage: { file: "banner-our-page.webp", tones: BOTH },
+  bannerSub: { file: "banner-sub.webp", tones: BOTH },
 
   /* ── One tone only, and honest about it ───────────────────────────────── */
-  calendarTablet: { file: "calendar-tablet.png", tones: ONLY_MORNING },
+  calendarTablet: { file: "calendar-tablet.webp", tones: ONLY_MORNING },
 
   /* ── Morning-only additions with no afternoon counterpart yet ─────────── */
-  heroDeskWide: { file: "hero-desk-wide.png", tones: ONLY_MORNING },
-  skyWordmark: { file: "sky-wordmark.png", tones: ONLY_MORNING },
-  giftReveal: { file: "gift-reveal.png", tones: ONLY_MORNING },
-  wheelFoodAlt: { file: "wheel-food-alt.png", tones: BOTH },
+  heroDeskWide: { file: "hero-desk-wide.webp", tones: ONLY_MORNING },
+  skyWordmark: { file: "sky-wordmark.webp", tones: ONLY_MORNING },
+  giftReveal: { file: "gift-reveal.webp", tones: ONLY_MORNING },
+  wheelFoodAlt: { file: "wheel-food-alt.webp", tones: BOTH },
 } satisfies Record<string, ArtEntry>;
 
 /* ── Spot illustrations: one object, no scene, and tone-neutral ──────────
@@ -125,14 +125,14 @@ export const ART = {
  * and the placements can move onto any surface.
  */
 export const SPOT = {
-  mailboxOpen: "mailbox-open.png",
-  mailboxOpen2: "mailbox-open-2.png",
-  starRibbon: "star-ribbon.png",
-  pinTicket: "pin-ticket.png",
-  planeTrail: "plane-trail.png",
-  islandCampsite: "island-campsite.png",
-  backpackScrapbook: "backpack-scrapbook.png",
-  flatlayCameraMap: "flatlay-camera-map.png",
+  mailboxOpen: "mailbox-open.webp",
+  mailboxOpen2: "mailbox-open-2.webp",
+  starRibbon: "star-ribbon.webp",
+  pinTicket: "pin-ticket.webp",
+  planeTrail: "plane-trail.webp",
+  islandCampsite: "island-campsite.webp",
+  backpackScrapbook: "backpack-scrapbook.webp",
+  flatlayCameraMap: "flatlay-camera-map.webp",
 } as const;
 
 export type SpotName = keyof typeof SPOT;
@@ -226,10 +226,10 @@ const ICON: Record<Tone, readonly [string, string]> = {
 export function logoSrc(variant: LogoVariant, tone: Tone, hour?: number): string {
   const pair = variant === "wordmark" ? WORDMARK[tone] : ICON[tone];
   const file = hour === undefined ? pair[0] : pair[hour % 2];
-  return `/brand-image/logo-icon/${file}.png`;
+  return `/brand-image/logo-icon/${file}.webp`;
 }
 
 /** The tone-agnostic wordmark, for anywhere the tone has not resolved yet. */
 export function logoDualSrc(): string {
-  return "/brand-image/logo-icon/wordmark-dual.png";
+  return "/brand-image/logo-icon/wordmark-dual.webp";
 }
