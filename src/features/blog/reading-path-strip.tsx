@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { READING_PATH, type ReadingStep } from "./reading-path";
-import { LinkPending } from "./link-pending";
+import { LinkPending } from "@/components/ui/link-pending";
 
 /**
  * "Mới dùng? Đọc theo thứ tự này" — the guided path through the blog.

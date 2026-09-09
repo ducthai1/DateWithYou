@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PanelLeftClose, PanelLeftOpen, Lock, Dices, Settings, Newspaper, BookOpen } from "lucide-react";
+import { NavItemState } from "./nav-tap-state";
 import { NAV_ITEMS, isPublicChrome } from "./nav-items";
 import { trpc } from "@/lib/trpc";
 import { UnreadBadge, unreadLabel, useUnreadActivity } from "@/features/activity/unread-badge";
@@ -83,38 +84,54 @@ export function SideNav() {
             // badge renders nothing.
             const unread = it.href === "/activity" ? unreadActivity : 0;
             return (
+              /*
+               * The row's own box moved INSIDE the link, and the reason is the
+               * same one the bottom nav has: the highlight has to follow the
+               * tap, and `useLinkStatus` only answers to a component that
+               * sits inside the `<Link>`. So the link is a bare block and the
+               * `<div>` under it is the row — same padding, same radius, same
+               * hit area, since it fills the link completely.
+               */
               <Link
                 key={it.href}
                 href={it.href}
                 aria-label={unread > 0 ? unreadLabel(it.label, unread) : undefined}
-                className={cn(
-                  "group flex shrink-0 items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 short:py-1.5",
-                  active
-                    ? "bg-accent-soft font-medium text-accent shadow-sm"
-                    : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-                  // No gap when collapsed: the zero-width label still counts as a
-                  // flex item, so a gap would shove the icon off-centre.
-                  isCollapsed ? "justify-center px-0" : "gap-3"
-                )}
+                className="block shrink-0"
                 title={isCollapsed ? it.label : undefined}
               >
-                {/* The icon gets a positioning context of its own so the badge
-                    can hang off its corner whether the rail is open or
-                    collapsed — anchoring to the row instead would put the
-                    number beside the label in one state and nowhere near the
-                    icon in the other. */}
-                <span className="relative flex shrink-0">
-                  <Icon className={cn("shrink-0", isCollapsed ? "h-[22px] w-[22px]" : "h-5 w-5")} />
-                  <UnreadBadge count={unread} className="absolute -right-2 -top-1.5" />
-                </span>
-                <span
-                  className={cn(
-                    "overflow-hidden whitespace-nowrap transition-all duration-300",
-                    isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                <NavItemState active={active}>
+                  {(on) => (
+                    <div
+                      className={cn(
+                        "group flex w-full items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 short:py-1.5",
+                        on
+                          ? "bg-accent-soft font-medium text-accent shadow-sm"
+                          : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
+                        // No gap when collapsed: the zero-width label still counts as a
+                        // flex item, so a gap would shove the icon off-centre.
+                        isCollapsed ? "justify-center px-0" : "gap-3"
+                      )}
+                    >
+                      {/* The icon gets a positioning context of its own so the badge
+                          can hang off its corner whether the rail is open or
+                          collapsed — anchoring to the row instead would put the
+                          number beside the label in one state and nowhere near the
+                          icon in the other. */}
+                      <span className="relative flex shrink-0">
+                        <Icon className={cn("shrink-0", isCollapsed ? "h-[22px] w-[22px]" : "h-5 w-5")} />
+                        <UnreadBadge count={unread} className="absolute -right-2 -top-1.5" />
+                      </span>
+                      <span
+                        className={cn(
+                          "overflow-hidden whitespace-nowrap transition-all duration-300",
+                          isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                        )}
+                      >
+                        {it.label}
+                      </span>
+                    </div>
                   )}
-                >
-                  {it.label}
-                </span>
+                </NavItemState>
               </Link>
             );
           })}

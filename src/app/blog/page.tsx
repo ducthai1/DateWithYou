@@ -7,7 +7,7 @@ import { ArticleCard, CATEGORY_LABEL } from "@/features/blog/post-card";
 import { CategoryTabs } from "@/features/blog/category-tabs";
 import { ReadingPathStrip } from "@/features/blog/reading-path-strip";
 import { READING_PATH } from "@/features/blog/reading-path";
-import { LinkPending } from "@/features/blog/link-pending";
+import { LinkPending } from "@/components/ui/link-pending";
 import { FadeScroll } from "@/components/ui/fade-scroll";
 import { coverAt } from "@/lib/blog-image";
 import { SITE_NAME } from "@/lib/site";

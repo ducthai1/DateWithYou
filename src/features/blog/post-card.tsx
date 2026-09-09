@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { coverAt } from "@/lib/blog-image";
-import { LinkPending } from "./link-pending";
+import { LinkPending } from "@/components/ui/link-pending";
 
 export type PostCard = {
   slug: string;

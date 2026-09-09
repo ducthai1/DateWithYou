@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { LinkPending } from "@/components/ui/link-pending";
 import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plane, Plus, CalendarDays, Wallet, CheckSquare } from "lucide-react";
@@ -73,6 +74,10 @@ export function TripList() {
                 href={`/trips/${trip.id}`}
                 className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md hover:border-accent/40 active:scale-[0.98]"
               >
+                {/* The trip detail page is server-rendered, so the tap has a
+                    round trip in front of it. Say so on the card that was
+                    tapped rather than leaving the screen still. */}
+                <LinkPending className="rounded-2xl" />
                 {/* Cover — was a flat gradient tint plus a 10%-opacity Map
                     icon; the strip always had the right shape for a photo,
                     it just never had one. The tint survives as a scrim so the

@@ -3,13 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, isPublicChrome } from "./nav-items";
+import { NavItemState } from "./nav-tap-state";
 import { UnreadBadge, unreadLabel, useUnreadActivity } from "@/features/activity/unread-badge";
 import { cn } from "@/lib/utils";
 
 /** Mobile-only bottom nav (hidden on md+, where the sidebar takes over). The
  *  center item ("Hôm nay") is raised into a floating accent disc as the app's
  *  hub. Items flagged `mobileHidden` are dropped here — six targets is the most
- *  this bar fits at 390px — and stay reachable from the sidebar and top bar. */
+ *  this bar fits at 390px — and stay reachable from the sidebar and top bar.
+ *
+ *  Every active-state class below reads the value `NavItemState` hands down,
+ *  not `pathname` directly: the tab has to light up on the tap, not one round
+ *  trip later. See nav-tap-state.tsx for the measurements. That is also why
+ *  the `<Link>` elements carry only layout classes — anything that changes
+ *  with the state has to live inside them, where the hook can reach. */
 export function BottomNav() {
   const pathname = usePathname();
   const unreadActivity = useUnreadActivity();
@@ -29,7 +36,7 @@ export function BottomNav() {
       {NAV_ITEMS.filter((it) => !it.mobileHidden).map((it) => {
         // Only Hoạt động carries a count; the badge renders nothing for 0.
         const unread = it.href === "/activity" ? unreadActivity : 0;
-        const active = pathname.startsWith(it.href);
+        const onRoute = pathname.startsWith(it.href);
         const Icon = it.Icon;
 
         if (it.center) {
@@ -40,19 +47,25 @@ export function BottomNav() {
               aria-label={it.label}
               className="relative -top-3 flex flex-1 flex-col items-center"
             >
-              <span
-                className={cn(
-                  "ring-background flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-4 transition-all duration-200 active:scale-90 active:shadow-xl",
-                  active
-                    ? "bg-accent text-accent-foreground shadow-accent/30"
-                    : "bg-accent/90 text-accent-foreground",
+              <NavItemState active={onRoute}>
+                {(active) => (
+                  <>
+                    <span
+                      className={cn(
+                        "ring-background flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-4 transition-all duration-200 active:scale-90 active:shadow-xl",
+                        active
+                          ? "bg-accent text-accent-foreground shadow-accent/30"
+                          : "bg-accent/90 text-accent-foreground",
+                      )}
+                    >
+                      <Icon className="h-6 w-6" />
+                    </span>
+                    <span className={cn("mt-0.5 text-[11px]", active ? "text-accent" : "text-muted-foreground")}>
+                      {it.label}
+                    </span>
+                  </>
                 )}
-              >
-                <Icon className="h-6 w-6" />
-              </span>
-              <span className={cn("mt-0.5 text-[11px]", active ? "text-accent" : "text-muted-foreground")}>
-                {it.label}
-              </span>
+              </NavItemState>
             </Link>
           );
         }
@@ -68,23 +81,35 @@ export function BottomNav() {
               // leave about 51px each, and "Bộ sưu tập" is wider than that.
               "flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 transition-colors",
               "text-[10px] leading-tight",
-              active ? "text-accent" : "text-muted-foreground",
             )}
           >
-            {/* Icon sits in a pill that fills with accent-soft when active — a
-                clearer "you are here" cue than colour alone, and it animates. */}
-            <span
-              className={cn(
-                "relative flex h-8 w-9 items-center justify-center rounded-full transition-all duration-200 active:scale-90",
-                active ? "bg-accent-soft scale-100" : "scale-95",
+            <NavItemState active={onRoute}>
+              {(active) => (
+                <>
+                  {/* Icon sits in a pill that fills with accent-soft when active — a
+                      clearer "you are here" cue than colour alone, and it animates. */}
+                  <span
+                    className={cn(
+                      "relative flex h-8 w-9 items-center justify-center rounded-full transition-all duration-200 active:scale-90",
+                      active ? "bg-accent-soft scale-100 text-accent" : "scale-95 text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <UnreadBadge count={unread} className="absolute -right-1 -top-0.5" />
+                  </span>
+                  {/* Truncated rather than wrapped: two lines would make this row
+                      taller than the raised centre disc and the bar would look bent. */}
+                  <span
+                    className={cn(
+                      "w-full truncate px-0.5 text-center transition-colors",
+                      active ? "text-accent" : "text-muted-foreground",
+                    )}
+                  >
+                    {it.label}
+                  </span>
+                </>
               )}
-            >
-              <Icon className="h-5 w-5" />
-              <UnreadBadge count={unread} className="absolute -right-1 -top-0.5" />
-            </span>
-            {/* Truncated rather than wrapped: two lines would make this row
-                taller than the raised centre disc and the bar would look bent. */}
-            <span className="w-full truncate px-0.5 text-center">{it.label}</span>
+            </NavItemState>
           </Link>
         );
       })}

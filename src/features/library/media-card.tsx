@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { PendingOverlay } from "@/components/ui/link-pending";
 import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Card } from "@/components/ui/card";
@@ -257,11 +258,21 @@ function PlayableEmbed({
    * what to play and shows that it is playing; the dock above the router owns
    * the only frame and keeps it alive across the whole app.
    */
+  /*
+   * Both taps below change screen, and the screen they open is rendered on the
+   * server — so there is a round trip between the tap and anything moving. A
+   * transition gives that wait a name (`navPending`), and the overlay at the
+   * bottom of this component paints it on the poster that was tapped. Without
+   * it the poster sat there looking untouched and people tapped twice, which
+   * for the invite path means asking the other person twice.
+   */
+  const [navPending, startNav] = useTransition();
+
   const handleActivate = () => {
     // TikTok is not a track in a queue; it is a feed to swipe. Its screen owns
     // its own frames and never involves the dock (see tiktok-feed).
     if (isFeedProvider(item.provider)) {
-      router.push(`/library/luot/${item.id}`);
+      startNav(() => router.push(`/library/luot/${item.id}`));
       return;
     }
     const { list, at } = buildQueue();
@@ -269,7 +280,7 @@ function PlayableEmbed({
     start(list, at);
     // …and the watch page opens around that frame: video large, title under
     // it, the playlist beside it. Leaving the page lets the frame float again.
-    router.push(`/library/phat/${item.id}`);
+    startNav(() => router.push(`/library/phat/${item.id}`));
   };
 
   /*
@@ -285,7 +296,7 @@ function PlayableEmbed({
     const tracks = list.map(toListenTrack).filter((t) => t.embedUrl);
     // Nothing is playing yet: both sides start when the invite is accepted.
     void listen.start(tracks, at, 0, false);
-    router.push(`/library/phat/${item.id}`);
+    startNav(() => router.push(`/library/phat/${item.id}`));
   };
 
   const pill =
@@ -293,6 +304,7 @@ function PlayableEmbed({
 
   return (
     <div className="group border-border bg-accent-soft relative aspect-video w-full overflow-hidden rounded-xl border">
+      {navPending ? <PendingOverlay className="rounded-xl" /> : null}
       {/* The whole poster plays — the label pill in the middle is only that,
           a label; the click goes through it to this button. */}
       <button
