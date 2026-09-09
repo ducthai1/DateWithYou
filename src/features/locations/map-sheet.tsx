@@ -201,11 +201,24 @@ export function MapSheet({
     const ro = new ResizeObserver(publish);
     ro.observe(el);
     el.addEventListener("transitionend", publish);
+    /*
+     * `animationend` as well as `transitionend`, and it is not decoration.
+     *
+     * The arrival animation (`.vivu-sheet-in`) translates the sheet up from
+     * below its own height. Nothing else here notices that: the element's SIZE
+     * never changes, so the ResizeObserver stays quiet, and an animation does
+     * not fire `transitionend`. The first `publish()` above therefore measured
+     * the sheet while it was still one sheet-height down the screen, wrote a
+     * gap of ~0, and the map's locate button spent the rest of the visit
+     * sitting where the sheet was not.
+     */
+    el.addEventListener("animationend", publish);
     window.addEventListener("resize", publish);
     desktop.addEventListener("change", publish);
     return () => {
       ro.disconnect();
       el.removeEventListener("transitionend", publish);
+      el.removeEventListener("animationend", publish);
       window.removeEventListener("resize", publish);
       desktop.removeEventListener("change", publish);
       document.documentElement.style.removeProperty("--map-sheet-h");
@@ -234,6 +247,11 @@ export function MapSheet({
         // every route, so it, not the sheet, gets the higher number. On desktop
         // it is a panel beside the toolbar, not over it, so it drops to lg:z-30.
         "fixed inset-x-0 z-[45] flex flex-col rounded-t-3xl border-t border-border bg-card shadow-[0_-8px_30px_rgba(0,0,0,0.18)] lg:z-30",
+        // Arrives by rising from the bottom edge, once, on mount. A sheet that
+        // simply blinks into existence on a screen that is still drawing its
+        // map reads as a glitch; this is the motion the shape already implies.
+        // The class is inert at lg and above, where this is a static panel.
+        "vivu-sheet-in",
         // Desktop: not a sheet at all. `!` beats the inline height below.
         // Desktop: still not a sheet, but no longer a bare block either. It is the
         // scrolling body of the floating panel that sits over the map, so it keeps

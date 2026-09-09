@@ -664,3 +664,130 @@ select {
   /* Room for the arrow plus its gap, so a long option cannot run under it. */
   padding-right: 2.25rem;
 }
+
+/* ---------------------------------------------------------------------------
+   Map screen: the wait, and the sheet's arrival.
+
+   Both are CSS rather than framer-motion for the same reason the landing
+   entrances are: /map already waits on a 267 KB maplibre chunk, and the last
+   thing its first paint needs is another animation library in front of it.
+   --------------------------------------------------------------------------- */
+
+/* The route entrance (src/app/template.tsx).
+ *
+ * The `from` opacity lives in the KEYFRAME, never on the element: a base rule
+ * of `opacity: 0` would hide server-rendered HTML for anyone whose stylesheet
+ * arrives before the animation can run, and hiding server HTML until
+ * JavaScript boots is exactly the bug this replaced. With no fill-mode the
+ * element is at its own opacity (1) before and after.
+ */
+@keyframes vivu-page-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.vivu-page-in {
+  animation: vivu-page-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* The route's pre-hydration map veil, retired the moment the client tree is
+   mounted and painting its own identical copy (see src/app/map/map-client.tsx).
+   `display: none` rather than opacity, because the point is to stop its two
+   infinite animations, not just to hide them. */
+[data-map-client="1"] #map-boot-veil {
+  display: none;
+}
+
+/* A veil that has faded out must not keep animating. `opacity: 0` hides an
+   element, it does not stop its animations, and these two are infinite — so
+   without this they ran on the compositor for as long as the map screen was
+   open. The element stays in place for its own fade-out; only the motion
+   stops. */
+[data-veil-idle] .vivu-map-sheen,
+[data-veil-idle] .vivu-bar-slide {
+  animation: none;
+}
+
+/* A single pale sweep across the loading veil. Transform only — a blur or a
+   filter here costs a full repaint on the phone GPUs this screen runs on. */
+@keyframes vivu-map-sheen {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+.vivu-map-sheen {
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgb(255 255 255 / 0.35) 50%,
+    transparent 80%
+  );
+  animation: vivu-map-sheen 1.8s ease-in-out infinite;
+}
+
+/* Indeterminate progress: a segment that crosses its track and starts again.
+   Deliberately not a percentage — see MapLoadingVeil for why there is no
+   honest number to show. */
+@keyframes vivu-bar-slide {
+  from { transform: translateX(-120%); }
+  to   { transform: translateX(320%); }
+}
+
+.vivu-bar-slide {
+  animation: vivu-bar-slide 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* The veil's second line, which explains a wait only once the wait is long
+   enough to need explaining. A delayed animation rather than a timer in React:
+   the veil is rendered into the route's server HTML and has to work before any
+   of this screen's JavaScript exists. */
+@keyframes vivu-veil-hint {
+  to { opacity: 1; }
+}
+
+.vivu-veil-hint {
+  opacity: 0;
+  animation: vivu-veil-hint 400ms ease-out 1.4s forwards;
+}
+
+/* The saved-places sheet rising into place on arrival.
+ *
+ * It exists because the sheet used to APPEAR TO FALL FROM ABOVE on every
+ * navigation to /map. That was never the sheet's own animation: the route
+ * template animated the page wrapper with a transform, a transformed ancestor
+ * becomes the containing block for `position: fixed`, and the wrapper's bottom
+ * edge sits one bottom-nav higher than the viewport's — so for the length of
+ * that transition the sheet was anchored ~76px too high and then dropped when
+ * the transform was removed. The template no longer transforms (see
+ * src/app/template.tsx); this replaces the accident with the motion a bottom
+ * sheet is supposed to have, which is upward, from the edge it lives on.
+ *
+ * Not applied at lg and above: there the same element is a static side panel,
+ * and a panel that slides up out of the page frame on every visit is wrong.
+ */
+@keyframes vivu-sheet-in {
+  from { transform: translateY(100%); }
+  to   { transform: none; }
+}
+
+/* `backwards`, never `forwards`/`both`: a filled animation keeps its final
+   declaration applied for good, and an animation outranks an inline style — so
+   a `forwards` fill would pin `transform: none` on the sheet and the drag
+   handler, which works by writing an inline translate, would silently stop
+   moving it. Backwards only covers the frames before the animation starts. */
+.vivu-sheet-in {
+  animation: vivu-sheet-in 340ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (min-width: 1024px) {
+  .vivu-sheet-in { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vivu-map-sheen,
+  .vivu-bar-slide { animation: none; }
+  /* Not `animation: none` — that would leave the hint at opacity 0 forever.
+     Reduced motion means no movement, not no message. */
+  .vivu-veil-hint { opacity: 1; animation: none; }
+  .vivu-sheet-in { animation: none; }
+}
