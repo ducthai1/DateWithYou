@@ -155,13 +155,38 @@ export function SpaceSettings() {
     ...PRESET_AVATARS,
   ];
 
+  /*
+   * Switching space reloads the document. It has to.
+   *
+   * This used to write the cookie, call `utils.invalidate()` and
+   * `router.refresh()`. Three things survive that, and each one belongs to the
+   * space being left:
+   *
+   * 1. **The cached rows.** `invalidate` means "stale, refetch" — not
+   *    "forget". React Query keeps serving what it holds while the refetch is
+   *    in flight, so opening Bộ sưu tập straight after a switch showed the
+   *    OTHER couple's collection for about a second before correcting itself.
+   *    No query key here carries the space id — the server reads it from the
+   *    cookie — so nothing in the key tells the cache these are different rows.
+   * 2. **The requests already in the air.** Anything sent before the cookie
+   *    changed answers for the old space and lands after the switch, so even
+   *    emptying the cache leaves a window where the old answer refills it.
+   * 3. **The live stream.** `/api/navigation-invites/stream` reads the cookie
+   *    once, when the EventSource connects, and that connection is opened once
+   *    per document. A soft switch therefore keeps delivering the old space's
+   *    navigation and listening invites — a correctness bug, not a flash.
+   *
+   * A document load ends all three at once: clean cache, cancelled requests,
+   * new stream, and the server components re-render with the new cookie. It
+   * costs one reload on an action taken a handful of times a year, and it is
+   * what `enterSpace` in onboarding and `recoverFromStaleSpace` in
+   * providers.tsx already do, for this same reason.
+   */
   function handleSpaceSwitch(spaceId: string) {
     const maxAge = 60 * 60 * 24 * 365;
     const secure = window.location.protocol === "https:" ? "; Secure" : "";
     document.cookie = `active_space_id=${spaceId}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
-    // Force a full TRPC cache invalidate and React refresh to use the new space context
-    utils.invalidate();
-    router.refresh();
+    window.location.assign("/settings");
   }
 
   useEffect(() => {
