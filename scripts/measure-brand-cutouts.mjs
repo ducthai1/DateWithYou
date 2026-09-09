@@ -38,7 +38,7 @@ async function isCutout(file) {
 
 const cutouts = [];
 for (const dir of (await readdir(ROOT, { withFileTypes: true })).filter((d) => d.isDirectory())) {
-  for (const name of (await readdir(join(ROOT, dir.name))).filter((n) => /\.(png|webp)$/.test(n))) {
+  for (const name of (await readdir(join(ROOT, dir.name))).filter((n) => /\.(png|webp|avif)$/.test(n))) {
     const rel = `${dir.name}/${name}`;
     if (await isCutout(join(ROOT, rel))) cutouts.push(rel);
   }
