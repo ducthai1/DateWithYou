@@ -2,6 +2,30 @@ import type { NextConfig } from "next";
 import { NOINDEX_ROUTES, PRIVATE_ROUTES } from "./src/lib/site";
 
 const nextConfig: NextConfig = {
+  /*
+   * Where the build lands, overridable by env.
+   *
+   * The default is Next's own build directory, so a normal build or a deploy
+   * is unchanged. The override exists because `next build` and `next dev`
+   * share that directory: running a production build to verify something while
+   * a dev server is up kills the dev server mid-session — measured, and it
+   * fails in the confusing way, with the port still held afterwards.
+   *
+   *   NEXT_DIST_DIR=tmp/vivu-verify npx next build
+   *   NEXT_DIST_DIR=tmp/vivu-verify npx next start -p 4491
+   *
+   * Two things to know before using it:
+   *
+   * 1. The path is resolved relative to the PROJECT ROOT even when it looks
+   *    absolute — `/tmp/vivu-verify` produced `<repo>/tmp/vivu-verify`, which
+   *    is not in .gitignore and which `npm run lint` then walked (3,184 errors
+   *    out of generated code). Use a relative path and delete it when done.
+   * 2. `next build` rewrites `tsconfig.json` on every run, and with an
+   *    override it adds the override's `types/**` to `include` and reformats
+   *    the file. Check `git diff tsconfig.json` afterwards and restore it.
+   */
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+
   // Run these as native Node modules instead of bundling them. Better Auth ships
   // optional sqlite (kysely) dialects we don't use; bundling them pulls in a
   // mismatched kysely export and breaks the build. mongoose/mongodb also prefer
