@@ -25,7 +25,12 @@ const BASE = process.env.E2E_BASE ?? "http://localhost:4488";
 const DB_NAME = process.env.E2E_DB ?? "DateWithYou_Local";
 const SHOT_DIR = join(tmpdir(), "vivu-e2e");
 
-const SUITES = [{ id: "images", load: () => import("./images.mjs") }];
+const SUITES = [
+  { id: "images", load: () => import("./images.mjs") },
+  { id: "watch", load: () => import("./watch.mjs") },
+  { id: "listen", load: () => import("./listen-together.mjs") },
+  { id: "calendar", load: () => import("./calendar.mjs") },
+];
 
 /** Never point the suites at anything that could be production data. */
 function assertLocalDatabase(name) {

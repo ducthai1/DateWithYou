@@ -46,6 +46,16 @@ export async function openPage(port = DEFAULT_PORT) {
     listeners.push(l);
   });
   await send("Page.enable"); await send("Runtime.enable");
+  /*
+   * Treat the tab as focused and visible.
+   *
+   * Two headless pages are two unfocused windows, and React Query's polling
+   * intervals do not run in an unfocused window — so a two-device check would
+   * sit waiting for news that the app had decided not to fetch. On two real
+   * phones both apps are in the foreground; this makes the harness match that
+   * instead of testing a state no user is in.
+   */
+  await send("Emulation.setFocusEmulationEnabled", { enabled: true }).catch(() => {});
   const page = {
     send, waitForEvent,
     on(method, fn) { const l = (m) => { if (m.method === method) fn(m.params); }; listeners.push(l); return () => { const i = listeners.indexOf(l); if (i >= 0) listeners.splice(i, 1); }; },

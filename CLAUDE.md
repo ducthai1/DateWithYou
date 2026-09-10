@@ -42,9 +42,11 @@ hãy chạy cái đang có, và bổ sung vào đó.
 
 | Lệnh | Chạy gì | Khi nào |
 |---|---|---|
-| `npm run verify` | `tsc --noEmit` + `eslint` + test đơn vị | liên tục trong lúc làm; nhanh, không đụng dev server |
-| `npm run verify:build` | như trên, cộng `next build` | **bắt buộc trước khi push** |
-| `npm run e2e` | Chrome thật qua giao thức DevTools | khi đụng tới UI, ảnh, hoặc luồng nhiều màn hình |
+| `npm run verify` | `tsc --noEmit` + `eslint` + 92 test đơn vị | liên tục trong lúc làm; ~10s, không mạng, không DB |
+| `npm run test:api` | 81 test gọi thẳng router tRPC trên database dùng một lần | khi đụng tới `src/server/` — cách ly không gian, listen, lời mời, blog, ngày tháng |
+| `npm run verify:api` | `verify` + `test:api` | trước khi commit một thay đổi ở tầng server |
+| `npm run verify:build` | `verify:api` + `next build` | **bắt buộc trước khi push** |
+| `npm run e2e` | 43 phép kiểm trong Chrome thật qua giao thức DevTools | khi đụng tới UI, ảnh, hoặc luồng nhiều màn hình |
 
 Vài điều đã tính sẵn, đừng phá:
 
@@ -52,11 +54,28 @@ Vài điều đã tính sẵn, đừng phá:
   server. Chạy thẳng `next build` sẽ ghi đè và giết `npm run dev` đang chạy.
 - **Test đơn vị không cần thư viện nào.** Node 22 chạy thẳng TypeScript, nên
   `node --test` là đủ. Đừng thêm Vitest hay Jest chỉ để có cú pháp quen tay.
-- **Test nằm ở `tests/unit/`**, import bằng đường dẫn tương đối kèm đuôi `.ts`.
-  Chỉ đặt được ở đó những hàm thuần, không dính React/DB. Hai hàm rất đáng test
-  là `targetPosition` (đồng bộ nghe cùng nhau) và `previousRoute` (đường lùi) hiện
-  chưa test được vì nằm trong file `"use client"`; tách chúng ra file thuần rồi
-  hãy viết test.
+- **Test đơn vị nằm ở `tests/unit/`**, import bằng đường dẫn tương đối kèm đuôi
+  `.ts`. Chỉ đặt được ở đó những hàm thuần, không dính React/DB. Hai hàm rất
+  đáng test là `targetPosition` (đồng bộ nghe cùng nhau) và `previousRoute`
+  (đường lùi) hiện chưa test được vì nằm trong file `"use client"`; tách chúng
+  ra file thuần rồi hãy viết test.
+- **Test API nằm ở `tests/api/`, gọi router thật, không giả lập gì.**
+  `createCallerFactory` cho một caller có đúng hình dạng context mà adapter
+  fetch dựng, nên `protectedProcedure` — chỗ duy nhất chặn không gian này đọc
+  dữ liệu không gian khác — chạy nguyên vẹn. Cái mở được cửa cho việc đó là
+  `tests/shims/mongoose.mjs` (mongoose là CommonJS, Node không thấy named
+  export của nó) cộng nhánh `mongoose` trong `tests/alias-resolver.mjs`. Không
+  cần Vitest, và `npm i -D vitest` trong repo này còn **chết** vì lỗi arborist
+  của npm 10.9.8 (`#loadPeerSet`, TypeError trên `edgesOut` null).
+- **Test API dùng database `DateWithYou_Test`, xoá ở ĐẦU mỗi file.** Xoá ở đầu
+  chứ không phải ở cuối: một lần chạy bị ngắt giữa đường sẽ để lại dữ liệu, và
+  lần sau phải bắt đầu từ chỗ sạch. `tests/api/_env.ts` đổi `MONGODB_URI` trước
+  khi bất cứ module nào của app nạp (vì `@/lib/env` đọc `process.env` một lần
+  lúc load) và **từ chối chạy** nếu tên database trông giống production.
+- **Đợt kiểm nào tìm ra bug thì viết luôn test cho nó.** `tests/api/partial-update.test.ts`
+  ra đời như vậy: nó gửi đúng payload mà app gửi thật (xoá một ảnh trong kỷ
+  niệm chỉ gửi `{ id, photos }`) và bắt được việc bản vá ghi đè mọi trường có
+  `.default()`.
 - **`tests/unit/brand-assets.test.ts` là cái chốt cho ảnh.** Nó đọc registry
   trong `tone.ts` như văn bản rồi đối chiếu với đĩa, nên đổi định dạng ảnh mà
   quên sửa registry là fail ngay, thay vì 404 âm thầm trên một màn hình nào đó.
@@ -66,6 +85,26 @@ Vài điều đã tính sẵn, đừng phá:
 - **Đổi tệp trong `public/` xong phải khởi động lại dev trước khi chạy `e2e`.**
   Dev server phục vụ ảnh tối ưu từ cache, nên phép kiểm có thể đi qua chính
   những tệp bạn vừa xóa mà vẫn báo đạt.
+- **Bốn bộ e2e, chạy riêng được bằng `npm run e2e -- <tên>`:** `images` (ảnh
+  không 404 và giải mã được, 6 trang), `watch` (bố cục trang phát, khung video
+  không giật khi cuộn trên điện thoại, mép mờ, nút phóng to và nút X),
+  `listen` (**hai trình duyệt thật**: rủ, chờ, đồng ý, đổi bài, dừng),
+  `calendar` (ảnh xem trước xin đúng kích thước theo mật độ màn hình).
+- **Chờ theo điều kiện, đừng `setTimeout`.** Bộ `watch` từng đạt khi chạy một
+  mình và fail khi chạy sau ba bộ khác, chỉ vì 2500ms không đủ để hàng đợi tải
+  xong — nó đo một danh sách rỗng rồi báo là lỗi bố cục. Nay chờ `li` đủ số và
+  chờ `iframe` xuất hiện. Khung phát còn **animate** vào ô video, nên phép so
+  toạ độ cũng phải chờ nó dừng, không đọc ngay lúc vừa hiện.
+- **Bấm nút thì phải nhắm đúng nút.** Chữ "Nghe cùng" có ở cả nút mời trên
+  từng thẻ nhạc lẫn nút đồng ý trong hộp thoại, và thẻ nhạc đứng trước trong
+  DOM — bấm theo chữ trần đã gửi một lời mời NGƯỢC chiều và làm cả lượt chạy
+  trông như lỗi sản phẩm. `clickInCard(heading, label)` trong
+  `scripts/e2e/listen-together.mjs` là cách khoanh vùng.
+- **Hai trang headless là hai cửa sổ KHÔNG focus**, và React Query không chạy
+  `refetchInterval` trong cửa sổ mất focus — nên phép kiểm hai máy sẽ ngồi chờ
+  tin mà app đã quyết định không lấy. `cdp.mjs` bật
+  `Emulation.setFocusEmulationEnabled` cho mọi trang: hai điện thoại thật đều
+  đang mở app, harness phải giống thế.
 
 
 ## Tài sản thương hiệu — tông, giờ, và các bẫy đã trả giá
