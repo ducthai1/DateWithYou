@@ -293,33 +293,28 @@ describe("deleting a space", () => {
 
   test("deleting takes every space-scoped row with it", async () => {
     /*
-     * A ratchet, deliberately exact.
+     * Nothing may survive — checked by sweeping the whole database, not by
+     * re-reading the list the cascade itself uses.
      *
-     * `delete-space-cascade.ts` lists the collections to clear by hand — its
-     * own comment says adding a feature collection must be a deliberate edit
-     * to that list "and can never be silently left behind on delete". Two
-     * have been: `trips` and `rides` are space-scoped and are not on the
-     * list, so deleting a space leaves them behind, invisible (every query
-     * scopes by spaceId) but still stored.
-     *
-     * So this asserts the leftovers are EXACTLY that known gap. Fix the
-     * cascade and this test fails, telling you to shorten the list below;
-     * add a new space-scoped collection and forget the cascade and it fails
-     * too, naming the collection. Either way nobody finds out from a
-     * storage bill.
+     * `delete-space-cascade.ts` names the collections to clear by hand, and
+     * its own comment says adding a feature collection must be a deliberate
+     * edit to that list "and can never be silently left behind on delete".
+     * Three had been left behind anyway — the cycle log, then trips and
+     * rides, the last two found by exactly this sweep. A test that read the
+     * same list would have agreed with it and proved nothing; asking the
+     * database what is actually left is what catches the next one.
      */
-    const KNOWN_GAP = ["rides", "trips"];
-
     const c = await furnished("Góc sẽ xoá sạch");
     const spaceId = c.spaceId;
-    assert.ok((await leftovers(spaceId)).length > 8, "the fixture must actually write something");
+    const wrote = await leftovers(spaceId);
+    assert.ok(wrote.length > 10, `the fixture must write across the app (wrote to ${wrote.length})`);
 
     await c.a.caller.space.delete({ confirmName: "Góc sẽ xoá sạch" });
 
     assert.deepEqual(
       await leftovers(spaceId),
-      KNOWN_GAP,
-      "the cascade's coverage changed — update delete-space-cascade.ts or this list",
+      [],
+      "a collection is missing from SPACE_SCOPED_MODELS in delete-space-cascade.ts",
     );
     assert.equal(await c.a.caller.space.getMine(), null, "the space document itself is gone");
   });

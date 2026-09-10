@@ -43,7 +43,7 @@ hãy chạy cái đang có, và bổ sung vào đó.
 | Lệnh | Chạy gì | Khi nào |
 |---|---|---|
 | `npm run verify` | `tsc --noEmit` + `eslint` + 92 test đơn vị | liên tục trong lúc làm; ~10s, không mạng, không DB |
-| `npm run test:api` | 209 test gọi thẳng router tRPC trên database dùng một lần, phủ **128/135 procedure** | khi đụng tới `src/server/` — 7 cái còn lại đều gọi geocoder/routing qua mạng, cố tình để ngoài |
+| `npm run test:api` | 209 test gọi thẳng router tRPC trên database dùng một lần, phủ **127/135 procedure** | khi đụng tới `src/server/` — 8 cái còn lại đều gọi geocoder/routing qua mạng, cố tình để ngoài |
 | `npm run verify:api` | `verify` + `test:api` | trước khi commit một thay đổi ở tầng server |
 | `npm run verify:build` | `verify:api` + `next build` | **bắt buộc trước khi push** |
 | `npm run e2e` | 52 phép kiểm trong Chrome thật qua giao thức DevTools | khi đụng tới UI, ảnh, hoặc luồng nhiều màn hình |
@@ -76,16 +76,17 @@ Vài điều đã tính sẵn, đừng phá:
   ra đời như vậy: nó gửi đúng payload mà app gửi thật (xoá một ảnh trong kỷ
   niệm chỉ gửi `{ id, photos }`) và bắt được việc bản vá ghi đè mọi trường có
   `.default()`.
-- **`tests/api/space-admin.test.ts` có một phép kiểm kiểu bánh răng.** Sau khi
-  xoá một không gian, nó quét **mọi** collection trong database tìm document
-  còn mang `spaceId` đó, rồi so danh sách sót lại với một hằng số
-  `KNOWN_GAP`. Hôm nay hằng số đó là `["rides", "trips"]` — hai collection
-  space-scoped **chưa** có trong `delete-space-cascade.ts`, nên xoá không gian
-  là để lại chúng trong DB, vô hình vì mọi truy vấn đều lọc theo `spaceId`.
-  Thêm model vào cascade thì test đỏ và nhắc anh xoá tên khỏi `KNOWN_GAP`;
-  thêm collection space-scoped mới mà quên cascade thì test cũng đỏ và gọi
-  đúng tên collection. Đừng "sửa" test bằng cách nới hằng số đó ra.
-- **Bảy procedure của `location` cố tình không test:** `suggestPlaces`,
+- **Xoá không gian được canh bằng cách quét cả database, không bằng cách đọc
+  lại danh sách của chính nó.** `tests/api/space-admin.test.ts` dựng một không
+  gian có dữ liệu ở khắp các feature, xoá nó, rồi soát **mọi** collection tìm
+  document còn mang `spaceId` đó — phải là **rỗng**. Không đọc
+  `SPACE_SCOPED_MODELS` ra để so, vì một test đọc cùng danh sách với code thì
+  luôn đồng ý với code và chẳng chứng minh gì; hỏi thẳng database mới bắt được
+  cái sót tiếp theo. Danh sách đó viết tay và đã sót **ba** lần: cycle log,
+  rồi `trips` và `rides` (hai cái sau do đúng phép quét này tìm ra, sửa cùng
+  ngày 2026-09-10). Thêm collection space-scoped mới mà quên thêm một dòng vào
+  `delete-space-cascade.ts` là test đỏ ngay và gọi đúng tên collection.
+- **Tám procedure của `location` cố tình không test:** `suggestPlaces`,
   `placeCoords`, `placeDetail`, `searchAreas`, `areaAt`, `geoFromUrl`,
   `getRoute`, `rankMeetingPoints` đều gọi Stadia/Google/Mapbox. Một bộ test
   tiêu hạn mức API của chủ repo và đỏ khi bên thứ ba chậm thì tệ hơn là không

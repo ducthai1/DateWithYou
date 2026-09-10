@@ -25,6 +25,8 @@ import { NoteModel } from "./models/note";
 import { MemberStateModel } from "./models/member-state";
 import { ListenSessionModel } from "./models/listen-session";
 import { CycleLogModel } from "./models/cycle-log";
+import { TripModel } from "./models/trip";
+import { RideModel } from "./models/ride";
 import { SpaceModel } from "./models/space";
 
 // Structural type — every Mongoose model exposes deleteMany(filter).
@@ -59,6 +61,19 @@ const SPACE_SCOPED_MODELS: Deletable[] = [
    * listening session beside it.
    */
   CycleLogModel,
+  /*
+   * Trips and rides were missing too, and for the same reason: a hand-kept
+   * list is exactly the thing it was written to prevent. Found by sweeping
+   * every collection in the database for the deleted space's id — the trips
+   * (with their checklists) and the recorded rides were the only rows left,
+   * unreachable because every query filters by spaceId, and permanent.
+   *
+   * tests/api/space-admin.test.ts does that sweep on every run and asserts
+   * nothing survives, so the next collection added without a line here fails
+   * a test instead of quietly accumulating.
+   */
+  TripModel,
+  RideModel,
 ];
 
 /**
