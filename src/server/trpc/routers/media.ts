@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
+import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { MediaItemModel } from "@/server/db/models/media-item";
 import { resolveEmbed } from "@/server/lib/resolve-embed";
@@ -88,7 +89,7 @@ export const mediaRouter = router({
   }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string() }).and(mediaInput.partial()))
+    .input(z.object({ id: z.string() }).and(patchOf(mediaInput)))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       const { id, ...patch } = input;

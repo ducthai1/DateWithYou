@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
+import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { TripModel } from "@/server/db/models/trip";
 import { tripStatus } from "@/lib/trip-status";
@@ -74,7 +75,7 @@ export const tripRouter = router({
   }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string() }).and(tripInput.partial()))
+    .input(z.object({ id: z.string() }).and(patchOf(tripInput)))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       const { id, ...patch } = input;

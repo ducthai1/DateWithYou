@@ -2,6 +2,7 @@ import { z } from "zod";
 import { readUserBirthday, setUserBirthday } from "@/server/lib/birthday-sync";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
+import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { SpecialDateModel } from "@/server/db/models/special-date";
 import { daysUntil, todayKey } from "@/lib/date-keys";
@@ -76,7 +77,7 @@ export const specialDateRouter = router({
   }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string() }).and(input.partial()))
+    .input(z.object({ id: z.string() }).and(patchOf(input)))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       const { id, ...patch } = input;

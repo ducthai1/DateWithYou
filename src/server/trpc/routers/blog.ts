@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, authedProcedure, adminProcedure, isBlogAdmin } from "@/server/trpc/trpc";
+import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { BlogPostModel } from "@/server/db/models/blog-post";
 import { BlogCategoryModel } from "@/server/db/models/blog-category";
@@ -312,7 +313,7 @@ export const blogRouter = router({
   }),
 
   update: adminProcedure
-    .input(postInput.partial().extend({ id: z.string() }))
+    .input(patchOf(postInput).extend({ id: z.string() }))
     .mutation(async ({ input }) => {
       await connectToDatabase();
       const { id, slug, status, ...rest } = input;

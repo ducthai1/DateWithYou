@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
+import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { MemoryModel } from "@/server/db/models/memory";
 import { LocationModel } from "@/server/db/models/location";
@@ -302,7 +303,7 @@ export const memoryRouter = router({
     }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string() }).and(memoryInput.partial()))
+    .input(z.object({ id: z.string() }).and(patchOf(memoryInput)))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       const { id, ...patch } = input;

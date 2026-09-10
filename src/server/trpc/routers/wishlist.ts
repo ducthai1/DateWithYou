@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
+import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { WishlistItemModel } from "@/server/db/models/wishlist-item";
 import { RewardAccountModel, RewardLogModel } from "@/server/db/models/reward-models";
@@ -50,7 +51,7 @@ export const wishlistRouter = router({
     }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string() }).and(wishlistInput.partial()))
+    .input(z.object({ id: z.string() }).and(patchOf(wishlistInput)))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       const { id, ...patch } = input;

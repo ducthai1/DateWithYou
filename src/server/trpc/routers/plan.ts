@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
+import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { RoadmapPlanModel } from "@/server/db/models/roadmap-plan";
 
@@ -43,7 +44,7 @@ export const planRouter = router({
     }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string() }).and(planInput.partial()))
+    .input(z.object({ id: z.string() }).and(patchOf(planInput)))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       const { id, ...patch } = input;
