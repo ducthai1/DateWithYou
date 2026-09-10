@@ -20,9 +20,9 @@ xóa tay thì byte vẫn nằm đó trọn 30 ngày hồi phục. Push bừa là
    lần đã dùng rồi để chủ repo tự quyết, đừng im lặng push.
 4. **Luật này áp cho mọi thứ tạo ra deployment**, không riêng `main`: push một
    nhánh cũng sinh preview deployment, và `vercel deploy` từ CLI cũng vậy.
-5. **Chạy gate trước khi push** (`tsc`, `eslint`, `npm run build` phải exit 0).
-   Một deployment fail vẫn ăn hạn mức như deployment thành công, nên push code
-   chưa chắc chắn là đốt tài nguyên hai lần.
+5. **Chạy `npm run verify:build` trước khi push** — phải exit 0. Một deployment
+   fail vẫn ăn hạn mức như deployment thành công, nên push code chưa chắc chắn
+   là đốt tài nguyên hai lần.
 6. **Kết thúc lượt phải nói thẳng trạng thái**: đã commit những gì, và **chưa
    push, đang chờ yêu cầu**. Không để chủ repo tưởng code đã lên prod.
 
@@ -32,6 +32,40 @@ có thể mang nhiều commit — số deployment thật nằm ở tab Deploymen
 ```bash
 git log origin/main --since="00:00" --oneline | wc -l
 ```
+
+
+## Kiểm chứng: chạy cái có sẵn, đừng dựng lại từ đầu
+
+Repo có sẵn ba mức kiểm. Trước khi tự viết script đối soát trong thư mục tạm —
+việc đã lặp lại nhiều lần và lần nào cũng mất trắng khi phiên làm việc kết thúc —
+hãy chạy cái đang có, và bổ sung vào đó.
+
+| Lệnh | Chạy gì | Khi nào |
+|---|---|---|
+| `npm run verify` | `tsc --noEmit` + `eslint` + test đơn vị | liên tục trong lúc làm; nhanh, không đụng dev server |
+| `npm run verify:build` | như trên, cộng `next build` | **bắt buộc trước khi push** |
+| `npm run e2e` | Chrome thật qua giao thức DevTools | khi đụng tới UI, ảnh, hoặc luồng nhiều màn hình |
+
+Vài điều đã tính sẵn, đừng phá:
+
+- **`verify:build` build vào `tmp/vivu-verify`**, không vào thư mục build của dev
+  server. Chạy thẳng `next build` sẽ ghi đè và giết `npm run dev` đang chạy.
+- **Test đơn vị không cần thư viện nào.** Node 22 chạy thẳng TypeScript, nên
+  `node --test` là đủ. Đừng thêm Vitest hay Jest chỉ để có cú pháp quen tay.
+- **Test nằm ở `tests/unit/`**, import bằng đường dẫn tương đối kèm đuôi `.ts`.
+  Chỉ đặt được ở đó những hàm thuần, không dính React/DB. Hai hàm rất đáng test
+  là `targetPosition` (đồng bộ nghe cùng nhau) và `previousRoute` (đường lùi) hiện
+  chưa test được vì nằm trong file `"use client"`; tách chúng ra file thuần rồi
+  hãy viết test.
+- **`tests/unit/brand-assets.test.ts` là cái chốt cho ảnh.** Nó đọc registry
+  trong `tone.ts` như văn bản rồi đối chiếu với đĩa, nên đổi định dạng ảnh mà
+  quên sửa registry là fail ngay, thay vì 404 âm thầm trên một màn hình nào đó.
+- **Sửa bug thì kèm một test fail khi chưa sửa.** Ba test hiện có đã được thử
+  ngược: cố tình đặt lại `dpr_auto`, cố tình quay về endpoint `embed/v2` của
+  TikTok, cố tình đổi tên một ảnh trong registry — cả ba đều bị bắt.
+- **Đổi tệp trong `public/` xong phải khởi động lại dev trước khi chạy `e2e`.**
+  Dev server phục vụ ảnh tối ưu từ cache, nên phép kiểm có thể đi qua chính
+  những tệp bạn vừa xóa mà vẫn báo đạt.
 
 
 ## Tài sản thương hiệu — tông, giờ, và các bẫy đã trả giá
