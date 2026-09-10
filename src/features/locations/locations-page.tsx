@@ -164,7 +164,7 @@ export function LocationsPage() {
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeDistanceMeters, setRouteDistanceMeters] = useState<number | null>(null);
   const [routeDurationSeconds, setRouteDurationSeconds] = useState<number | null>(null);
-  
+
   const [partnerRouteGeometry, setPartnerRouteGeometry] = useState<unknown>(null);
   const [partnerRouteDistanceMeters, setPartnerRouteDistanceMeters] = useState<number | null>(null);
   const [partnerRouteDurationSeconds, setPartnerRouteDurationSeconds] = useState<number | null>(null);
@@ -312,7 +312,7 @@ export function LocationsPage() {
   // ── Traffic Warning ──
   const [showTrafficWarning, setShowTrafficWarning] = useState(false);
   const stationaryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Consume the single shared SSE connection (opened by NavigationInvitesProvider).
   const navInvites = useNavigationInvitesContext();
   // Track accepted trip from the store (populated by GlobalInviteListener when
@@ -683,7 +683,7 @@ export function LocationsPage() {
     onSuccess: () => { utils.location.list.invalidate(); toast("Đã xoá địa điểm", "success"); },
     onError: (err) => toast(readableFormError(err.message), "error")
   });
-  
+
   // Detect if partner is stuck
   useEffect(() => {
     // Only for a trip taken together: on a solo ride the other person standing
@@ -713,7 +713,7 @@ export function LocationsPage() {
   }, []);
   const { data: session } = authClient.useSession();
   const members = trpc.space.members.useQuery();
-  
+
   const userAvatar = session?.user.image || undefined;
   /*
    * Who the other person is. `isSelf` comes from the server, which knows; the
@@ -2384,7 +2384,36 @@ export function LocationsPage() {
 
       {/* Desktop: map + filters pinned left, list scrolls on the right. */}
       {/* Mobile: filters top, list middle, map bottom */}
-      <div className="flex min-h-0 flex-1 flex-col gap-6 lg:gap-3">
+      {/*
+        Where "the tools catch clicks, the gaps do not" is actually decided.
+
+        This wrapper is a layout box: 21rem wide, and on a desktop it stretches
+        to the full height of the column (measured 774px) while holding maybe
+        200px of cards. The map is fixed and full-bleed underneath, so every
+        pixel of that air has to belong to the map — which is why the column
+        above is `pointer-events-none` and this box inherits it.
+
+        The cards then have to ask for events back, and that was being done one
+        card at a time: the action bar asked, the sheet asked, and the search
+        field and the "N địa điểm đã lưu" button never did. On a desktop they
+        were simply dead — every click on them panned the map instead.
+
+        So the rule lives here, once, for every direct child. It cannot be
+        forgotten by the next block added to this column, and it cannot be
+        widened by accident: putting the same rule one level up (on the column)
+        hands it to THIS box, and the 774px of air with it, which is the
+        invisible region that used to swallow drags meant for the map.
+
+        Behind `panelOpen` for that same reason: collapsed, the column is
+        invisible, and an invisible card that still eats clicks is the other
+        half of this bug.
+      */}
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col gap-6 lg:gap-3",
+          panelOpen && "lg:[&>*]:pointer-events-auto",
+        )}
+      >
         <div className="contents lg:block lg:shrink-0 lg:space-y-2">
           {/* Name search. Sits above the selects because it is the fastest way
               to reach a specific pin once there are more than a screenful. */}
@@ -2644,7 +2673,7 @@ export function LocationsPage() {
             on desktop, where it is simply the right-hand column. */}
         <MapSheet
           count={(list.data ?? []).length}
-          className={cn("order-2 lg:order-none", panelOpen && "lg:pointer-events-auto", !listOpen && "lg:hidden")}
+          className={cn("order-2 lg:order-none", !listOpen && "lg:hidden")}
           // No `raiseTo` any more: the add/edit form is its own dialog, so the
           // sheet no longer has to be dragged up to reveal it.
           collapseSignal={sheetCollapseTick}
@@ -3150,7 +3179,7 @@ export function LocationsPage() {
                       Gợi ý #{midpointIndex + 1}
                     </div>
                     <h4 className="text-xl font-bold leading-tight">{midpointRecommendations[midpointIndex].name}</h4>
-                    
+
                     <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Navigation className="h-3.5 w-3.5" /> 
@@ -3186,7 +3215,7 @@ export function LocationsPage() {
                     </Button>
                   </motion.div>
                 </AnimatePresence>
-                
+
                 {/* Carousel Dots */}
                 {midpointRecommendations.length > 1 && (
                   <div className="mt-6 flex justify-center gap-1.5">
@@ -3436,7 +3465,7 @@ export function LocationsPage() {
                 <p className="text-xs text-muted-foreground bg-muted/40 border border-border/60 rounded-lg px-3 py-2 leading-snug">
                   Lên lộ trình chung: Bạn → (đón {partnerName} / điểm dừng) → Đích. {partnerName} sẽ nhận lời mời và cùng được chỉ đường.
                 </p>
-                
+
                 <TripStopPlanner
                   stops={plannedStops}
                   onChange={setPlannedStops}
