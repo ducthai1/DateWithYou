@@ -9,10 +9,12 @@
     "start": "next start -p 4488",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/alias-hook.mjs --test \"tests/**/*.test.ts\"",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/alias-hook.mjs --test \"tests/unit/**/*.test.ts\"",
     "verify": "npm run typecheck && npm run lint && npm run test",
-    "verify:build": "npm run verify && node scripts/verify-build.mjs",
-    "e2e": "node --env-file-if-exists=.env scripts/e2e/run.mjs"
+    "verify:build": "npm run verify:api && node scripts/verify-build.mjs",
+    "e2e": "node --env-file-if-exists=.env scripts/e2e/run.mjs",
+    "test:api": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --conditions=react-server --env-file-if-exists=.env --test-concurrency=1 --import ./tests/alias-hook.mjs --test \"tests/api/**/*.test.ts\"",
+    "verify:api": "npm run verify && npm run test:api"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.0",

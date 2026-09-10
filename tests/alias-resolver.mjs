@@ -34,7 +34,17 @@ function finish(path, ctx, next) {
   return next(url, ctx);
 }
 
+const MONGOOSE_SHIM = new URL("./shims/mongoose.mjs", import.meta.url).href;
+
 export async function resolve(specifier, context, next) {
+  /*
+   * mongoose is CommonJS and Node cannot see its named exports; the shim
+   * unpacks them. Skipped for the shim's own import, or it would resolve to
+   * itself for ever.
+   */
+  if (specifier === "mongoose" && context.parentURL !== MONGOOSE_SHIM) {
+    return { url: MONGOOSE_SHIM, shortCircuit: true };
+  }
   if (specifier.startsWith("@/")) {
     const hit = pick(SRC + specifier.slice(2));
     if (hit) return finish(hit, context, next);
