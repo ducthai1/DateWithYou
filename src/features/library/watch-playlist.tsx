@@ -26,8 +26,33 @@ export function WatchPlaylist({
   onPick: (index: number) => void;
 }) {
   const activeRef = useRef<HTMLLIElement | null>(null);
+  const listRef = useRef<HTMLOListElement | null>(null);
+
+  /*
+   * Bring the playing row into view inside the LIST's own box, never the
+   * page's.
+   *
+   * `scrollIntoView` climbs to the nearest scrollable ancestor. From lg up
+   * that is the FadeScroll around this list, which is what was wanted. On a
+   * phone the card has no height of its own and so no box, and the climb
+   * reached the strip that carries the title, the transport buttons and the
+   * whole list — so opening the watch page for a track near the end of the
+   * queue scrolled that strip down to it on arrival (measured 704px on a
+   * 390px screen), and the title under the video was off screen before the
+   * reader had touched anything. A phone shows the whole strip anyway; there
+   * is nothing to bring into view there, so it is left alone.
+   */
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: "nearest" });
+    const row = activeRef.current;
+    const box = listRef.current?.parentElement;
+    if (!row || !box) return;
+    if (box.scrollHeight <= box.clientHeight + 4) return;
+
+    // `block: "nearest"`, by hand: move only if the row is outside the box.
+    const r = row.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    if (r.top < b.top) box.scrollTop -= b.top - r.top;
+    else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom;
   }, [index]);
 
   if (queue.length === 0) {
@@ -48,7 +73,7 @@ export function WatchPlaylist({
 
   return (
     <FadeScroll className="p-2" hideScrollbar>
-      <ol className="space-y-1">
+      <ol ref={listRef} className="space-y-1">
         {queue.map((q, i) => {
           const active = i === index;
           return (
