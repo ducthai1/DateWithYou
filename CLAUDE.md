@@ -43,10 +43,10 @@ hãy chạy cái đang có, và bổ sung vào đó.
 | Lệnh | Chạy gì | Khi nào |
 |---|---|---|
 | `npm run verify` | `tsc --noEmit` + `eslint` + 92 test đơn vị | liên tục trong lúc làm; ~10s, không mạng, không DB |
-| `npm run test:api` | 81 test gọi thẳng router tRPC trên database dùng một lần | khi đụng tới `src/server/` — cách ly không gian, listen, lời mời, blog, ngày tháng |
+| `npm run test:api` | 209 test gọi thẳng router tRPC trên database dùng một lần, phủ **128/135 procedure** | khi đụng tới `src/server/` — 7 cái còn lại đều gọi geocoder/routing qua mạng, cố tình để ngoài |
 | `npm run verify:api` | `verify` + `test:api` | trước khi commit một thay đổi ở tầng server |
 | `npm run verify:build` | `verify:api` + `next build` | **bắt buộc trước khi push** |
-| `npm run e2e` | 43 phép kiểm trong Chrome thật qua giao thức DevTools | khi đụng tới UI, ảnh, hoặc luồng nhiều màn hình |
+| `npm run e2e` | 52 phép kiểm trong Chrome thật qua giao thức DevTools | khi đụng tới UI, ảnh, hoặc luồng nhiều màn hình |
 
 Vài điều đã tính sẵn, đừng phá:
 
@@ -76,6 +76,22 @@ Vài điều đã tính sẵn, đừng phá:
   ra đời như vậy: nó gửi đúng payload mà app gửi thật (xoá một ảnh trong kỷ
   niệm chỉ gửi `{ id, photos }`) và bắt được việc bản vá ghi đè mọi trường có
   `.default()`.
+- **`tests/api/space-admin.test.ts` có một phép kiểm kiểu bánh răng.** Sau khi
+  xoá một không gian, nó quét **mọi** collection trong database tìm document
+  còn mang `spaceId` đó, rồi so danh sách sót lại với một hằng số
+  `KNOWN_GAP`. Hôm nay hằng số đó là `["rides", "trips"]` — hai collection
+  space-scoped **chưa** có trong `delete-space-cascade.ts`, nên xoá không gian
+  là để lại chúng trong DB, vô hình vì mọi truy vấn đều lọc theo `spaceId`.
+  Thêm model vào cascade thì test đỏ và nhắc anh xoá tên khỏi `KNOWN_GAP`;
+  thêm collection space-scoped mới mà quên cascade thì test cũng đỏ và gọi
+  đúng tên collection. Đừng "sửa" test bằng cách nới hằng số đó ra.
+- **Bảy procedure của `location` cố tình không test:** `suggestPlaces`,
+  `placeCoords`, `placeDetail`, `searchAreas`, `areaAt`, `geoFromUrl`,
+  `getRoute`, `rankMeetingPoints` đều gọi Stadia/Google/Mapbox. Một bộ test
+  tiêu hạn mức API của chủ repo và đỏ khi bên thứ ba chậm thì tệ hơn là không
+  có test; phần thuần của chúng (câu chữ rẽ hướng, giải mã polyline) đã có
+  trong `tests/unit`. Cũng vì vậy: **gieo địa điểm có `geo` thì ghi thẳng vào
+  DB**, đừng gọi `location.create` — nó tra ngược toạ độ ra tên khu vực.
 - **`tests/unit/brand-assets.test.ts` là cái chốt cho ảnh.** Nó đọc registry
   trong `tone.ts` như văn bản rồi đối chiếu với đĩa, nên đổi định dạng ảnh mà
   quên sửa registry là fail ngay, thay vì 404 âm thầm trên một màn hình nào đó.
@@ -85,11 +101,13 @@ Vài điều đã tính sẵn, đừng phá:
 - **Đổi tệp trong `public/` xong phải khởi động lại dev trước khi chạy `e2e`.**
   Dev server phục vụ ảnh tối ưu từ cache, nên phép kiểm có thể đi qua chính
   những tệp bạn vừa xóa mà vẫn báo đạt.
-- **Bốn bộ e2e, chạy riêng được bằng `npm run e2e -- <tên>`:** `images` (ảnh
+- **Năm bộ e2e, chạy riêng được bằng `npm run e2e -- <tên>`:** `images` (ảnh
   không 404 và giải mã được, 6 trang), `watch` (bố cục trang phát, khung video
   không giật khi cuộn trên điện thoại, mép mờ, nút phóng to và nút X),
   `listen` (**hai trình duyệt thật**: rủ, chờ, đồng ý, đổi bài, dừng),
-  `calendar` (ảnh xem trước xin đúng kích thước theo mật độ màn hình).
+  `calendar` (ảnh xem trước xin đúng kích thước theo mật độ màn hình),
+  `map` (cột công cụ bắt được click, khoảng trống trong cột thuộc về bản đồ —
+  đo bằng `elementFromPoint`, quét cả dải sau khi thu gọn).
 - **Chờ theo điều kiện, đừng `setTimeout`.** Bộ `watch` từng đạt khi chạy một
   mình và fail khi chạy sau ba bộ khác, chỉ vì 2500ms không đủ để hàng đợi tải
   xong — nó đo một danh sách rỗng rồi báo là lỗi bố cục. Nay chờ `li` đủ số và
