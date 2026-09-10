@@ -108,7 +108,21 @@ Vài điều đã tính sẵn, đừng phá:
   `listen` (**hai trình duyệt thật**: rủ, chờ, đồng ý, đổi bài, dừng),
   `calendar` (ảnh xem trước xin đúng kích thước theo mật độ màn hình),
   `map` (cột công cụ bắt được click, khoảng trống trong cột thuộc về bản đồ —
-  đo bằng `elementFromPoint`, quét cả dải sau khi thu gọn).
+  đo bằng `elementFromPoint`, quét cả dải sau khi thu gọn, và một lượt ở
+  390px).
+- **Vào `/map` phải kiểm là đã vào thật.** Lần điều hướng đầu sau khi server
+  vừa khởi động đôi khi rơi về `/` — thấy 2 lần trong lúc hit-test bản fix cột
+  công cụ, cookie session hợp lệ, `curl` cùng cookie thì `/map` trả 200 nên
+  không phải middleware chặn. Chưa rõ là bug app hay artefact harness. Dùng
+  `gotoMap()` trong `scripts/e2e/map.mjs`: điều hướng, kiểm `location.pathname`,
+  thử lại tối đa 3 lần, và **in ra số lần đã thử** — con số đó tăng lên là dấu
+  hiệu chuyện này thành thật.
+- **Luật `pointer-events` của cột công cụ chỉ áp từ `lg:`.** Dưới đó cột là một
+  sheet bình thường nằm trên bản đồ, nên câu hỏi "khoảng trống thuộc về ai"
+  không có nghĩa ở mobile. Lượt 390px vì vậy chỉ kiểm ô tìm kiếm còn nhận
+  được tap; nút "N địa điểm đã lưu" ở đó **đo được 0×0** (nằm sau nút mở bảng
+  điều khiển) nên cố tình không assert — đừng thêm assert cho một thứ không
+  có trên màn hình.
 - **Chờ theo điều kiện, đừng `setTimeout`.** Bộ `watch` từng đạt khi chạy một
   mình và fail khi chạy sau ba bộ khác, chỉ vì 2500ms không đủ để hàng đợi tải
   xong — nó đo một danh sách rỗng rồi báo là lỗi bố cục. Nay chờ `li` đủ số và

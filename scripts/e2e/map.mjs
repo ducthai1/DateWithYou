@@ -69,6 +69,35 @@ const AT = `(x, y) => {
   return tag + (label ? ": " + label : "");
 }`;
 
+/**
+ * Land on /map, and be sure of it.
+ *
+ * The first navigation after a server start sometimes ends up on `/` instead
+ * — seen twice while the tool-column fix was being hit-tested, with a valid
+ * session cookie, and `curl` on the same cookie answering 200 for /map, so it
+ * is not the middleware turning it away. Whether that is the app or the
+ * harness is still open; either way a suite that navigates once and asserts
+ * immediately goes red for a reason that has nothing to do with what it is
+ * testing.
+ *
+ * So: navigate, check where we actually ARE, and try again. Returns how many
+ * attempts it took, which is worth printing — if that number starts climbing,
+ * the redirect is real and getting worse.
+ */
+async function gotoMap(page, base) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.goto(`${base}/map`);
+    const arrived = await page
+      .until(`location.pathname === '/map' && !!document.querySelector('[aria-label="Tìm địa điểm"]')`, {
+        timeout: 20000,
+      })
+      .then(() => true)
+      .catch(() => false);
+    if (arrived) return attempt;
+  }
+  return 0;
+}
+
 export async function run({ base, profileDir, port, db, shotDir }) {
   const chrome = await launchChrome(profileDir, port, { width: 1600, height: 900 });
   const page = await openPage(port);
@@ -80,7 +109,14 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     const { uid, spaceId } = await signIn(page, base, db);
     await seedPins(db, spaceId, uid);
 
-    await page.goto(`${base}/map`);
+    const attempts = await gotoMap(page, base);
+    ok(
+      `vào được /map${attempts > 1 ? ` (phải thử ${attempts} lần)` : ""}`,
+      attempts > 0,
+      attempts === 0 ? "ba lần điều hướng đều không ở lại /map" : "",
+    );
+    if (!attempts) return results;
+
     // MapLibre's first draw on this machine takes several seconds; the veil
     // marks itself idle when the map settles, which is the honest signal.
     const booted = await page
@@ -223,6 +259,56 @@ export async function run({ base, profileDir, port, db, shotDir }) {
       if (shotDir) await page.shot(`${shotDir}/map-panel-collapsed.png`);
     } else {
       ok("thu gọn xong thì chỗ của cột trả về bản đồ", false, "không thấy nút thu gọn");
+    }
+
+    /*
+     * The phone, where the desktop rule does not apply at all.
+     *
+     * The `pointer-events` dance above is behind `lg:`, so below that the
+     * column is an ordinary sheet over the map and the air question is
+     * meaningless. What IS worth checking is the half nobody had measured:
+     * the search field must still take a tap at 390px. Measured, the
+     * "N địa điểm đã lưu" button is 0x0 there — it lives behind the panel
+     * toggle — so it is deliberately not asserted on this pass rather than
+     * asserted against something that is not on screen.
+     */
+    await page.viewport(390, 844, true);
+    const phoneAttempts = await gotoMap(page, base);
+    if (!phoneAttempts) {
+      ok("điện thoại: vào được /map", false, "ba lần điều hướng đều không ở lại /map");
+    } else {
+      await page
+        .until(`!!document.querySelector('canvas') && !!document.querySelector('[data-veil-idle]')`, {
+          timeout: 90000,
+        })
+        .catch(() => {});
+      const phone = JSON.parse(
+        await page.eval(`(() => {
+          const at = ${AT};
+          const search = document.querySelector('[aria-label="Tìm địa điểm"]');
+          const r = search ? search.getBoundingClientRect() : null;
+          const c = document.querySelector('canvas');
+          const cr = c ? c.getBoundingClientRect() : null;
+          return JSON.stringify({
+            searchHit:
+              r && r.width > 0
+                ? at(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2))
+                : "missing",
+            canvasW: cr ? Math.round(cr.width) : 0,
+            canvasH: cr ? Math.round(cr.height) : 0,
+          });
+        })()`),
+      );
+      ok(
+        `điện thoại: ô tìm kiếm nhận được tap (${phone.searchHit})`,
+        phone.searchHit !== "missing" && !phone.searchHit.startsWith("canvas"),
+        phone.searchHit.startsWith("canvas") ? "bản đồ đang nằm trên ô tìm kiếm" : "",
+      );
+      ok(
+        `điện thoại: bản đồ trải kín màn hình (${phone.canvasW}×${phone.canvasH})`,
+        phone.canvasW >= 380 && phone.canvasH > 600,
+      );
+      if (shotDir) await page.shot(`${shotDir}/map-phone.png`);
     }
   } finally {
     page.close();
