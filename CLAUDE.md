@@ -46,7 +46,7 @@ hãy chạy cái đang có, và bổ sung vào đó.
 | `npm run test:api` | 209 test gọi thẳng router tRPC trên database dùng một lần, phủ **127/135 procedure** | khi đụng tới `src/server/` — 8 cái còn lại đều gọi geocoder/routing qua mạng, cố tình để ngoài |
 | `npm run verify:api` | `verify` + `test:api` | trước khi commit một thay đổi ở tầng server |
 | `npm run verify:build` | `verify:api` + `next build` | **bắt buộc trước khi push** |
-| `npm run e2e` | 52 phép kiểm trong Chrome thật qua giao thức DevTools | khi đụng tới UI, ảnh, hoặc luồng nhiều màn hình |
+| `npm run e2e` | 63 phép kiểm trong Chrome thật qua giao thức DevTools | khi đụng tới UI, ảnh, hoặc luồng nhiều màn hình |
 
 Vài điều đã tính sẵn, đừng phá:
 
@@ -109,7 +109,8 @@ Vài điều đã tính sẵn, đừng phá:
   `calendar` (ảnh xem trước xin đúng kích thước theo mật độ màn hình),
   `map` (cột công cụ bắt được click, khoảng trống trong cột thuộc về bản đồ —
   đo bằng `elementFromPoint`, quét cả dải sau khi thu gọn, và một lượt ở
-  390px).
+  390px), `nav` (**hai máy đang đi cùng nhau**: mọi nút cảm xúc và nút thu nhỏ
+  đều bấm được ở 844/667/560px — xem mục "Đo màn hình đang đi" bên dưới).
 - **Vào `/map` phải kiểm là đã vào thật.** Lần điều hướng đầu sau khi server
   vừa khởi động đôi khi rơi về `/` — thấy 2 lần trong lúc hit-test bản fix cột
   công cụ, cookie session hợp lệ, `curl` cùng cookie thì `/map` trả 200 nên
@@ -1556,6 +1557,77 @@ Tệ hơn cả im lặng, vì nó sai một cách tự tin.
 `legGeometries ?? routeLegs` (bản mà reroute giữ mới nhất đứng trước), và nhánh một-điểm-đến cũng
 gọi `setRouteLegs`. Khi thêm state phái sinh từ một API, hãy **grep tất cả chỗ gọi API đó**, đừng chỉ
 chỗ đầu tiên.
+
+## Lệch tuyến: một nhịp GPS không phải bằng chứng
+
+Luật cũ là một dòng — `deviation > 50` trên nhịp GPS thô — nên **một** fix nhiễu ở
+ngã tư là vẽ lại đường ngay. Người lái rẽ đúng, nhìn đường vẽ vòng qua con đường
+mình KHÔNG đi, rồi vài giây sau vẽ lại lần nữa về đúng đường. Hai tuyến sai và hai
+lần đọc "vẽ lại đường" cho một khúc rẽ làm đúng.
+
+Ngã tư chính là chỗ tệ nhất của GPS (nhà cao, điện thoại trong túi, sai số 40–60 m)
+**và** là chỗ quan trọng nhất phải đúng. Nay quyết định nằm ở `src/lib/off-route.ts`,
+thuần, và cần cả ba điều kiện:
+
+| | vì sao |
+|---|---|
+| **ngưỡng theo sai số** `max(50, accuracy × 1.5)`, trần 120 m | fix báo "±50 m" thì không thể kết tội lệch 60 m. `accuracy` đã được đo sẵn ngay phía trên trong `use-live-navigation` nhưng trước đây **không ai dùng** |
+| **dai dẳng**: ≥3 nhịp liên tiếp VÀ ≥4 giây | đếm nhịp không đủ — điện thoại có thể phun mấy fix xấu trong một giây lúc bắt lại sóng |
+| **quay lại là xoá sạch** | cua rộng ở ngã tư trông đúng như vậy: hai fix xấu rồi bình thường |
+
+Ngoại lệ: lệch **quá 120 m** thì vẽ lại ngay, không chờ — không sai số nào giải thích
+được 120 m, đó là con đường khác; chờ 4 giây ở đó là chạy sai thêm 4 giây.
+
+Và chỉ bắn **một lần mỗi lần lệch** (`declared`), vì lần thứ hai sẽ gửi đi trong lúc
+tuyến mới còn đang tải, từ một điểm người ta đã rời khỏi. `setRouteInfo` reset trạng
+thái này — mang cờ cũ sang tuyến mới chính là vòng lặp "vẽ rồi vẽ lại".
+
+⚠️ `useLiveNavigation` **không còn** tuỳ chọn `offRouteThresholdMeters`. Một con số
+cố định chính là thứ đã biến ngã tư nhiễu thành khúc rẽ sai. Đừng thêm lại.
+
+Ngã tư gây ra chuyện này được **phát lại nguyên văn** trong `tests/unit/off-route.test.ts`,
+kèm một phép kiểm chứng minh luật cũ ĐÃ vẽ lại ở chính chuỗi fix đó còn luật mới thì không.
+
+## Lớp phủ lúc đang đi: ba hàng flex, không phải bốn hộp absolute
+
+Mọi thứ trong lớp phủ điều hướng từng là `absolute` trong một hộp cao full: HUD ở
+`top-0`, đồng hồ tốc độ `top-[40%]`, bốn nút cảm xúc `top-[60%]`, thanh điều khiển
+`bottom-0`. Không cái nào biết cái nào. Trên máy 667px, bốn nút cảm xúc chạy tới
+614px trong khi thanh điều khiển bắt đầu ở 567px — nút cuối ("Nhanh lên!") nằm
+**dưới** nó và không bấm được. Đó là "bấm vào cứ cảm giác như không có gì xảy ra".
+
+Nay là ba hàng: HUD (`shrink-0`) · rail phải (`flex-1`, `overflow-y-auto`) · dock
+(`shrink-0`). Hàng giữa **chính là phần còn lại** giữa hai hàng kia, nên rail không
+thể với xuống dock dù HUD có mọc thêm bao nhiêu huy hiệu. Phần trăm không diễn đạt
+được điều đó; flex thì có.
+
+**Ba thẻ trạng thái lời mời** (chờ đồng ý / bị từ chối / đã đồng ý) từng mang class
+`fixed bottom-6 left-1/2 z-50 w-[90%] max-w-sm` **giống nhau từng ký tự**, nên hai cái
+cùng đúng là đè khít lên nhau và thứ tự DOM quyết định ai được thấy. Chúng cũng `z-50`
+như dock và đứng SAU trong DOM, nên lúc "đi cùng nhau" thẻ "đồng ý rồi" ngồi lên đúng
+hàng nút và nuốt cú chạm. Nay gom thành một cột xếp chồng, nâng theo `--nav-dock-h` —
+biến mà dock tự công bố và các nút của bản đồ đã theo từ trước.
+
+**Nút thu nhỏ còn một bệnh riêng:** `miniWindow.open()` trả `false` khi trình duyệt từ
+chối picture-in-picture, và cú click `void` mất câu trả lời đó. Đúng bệnh mà bốn nút
+cảm xúc từng mắc (xem `sendPingAction` trả lý do). Nay từ chối thì có toast.
+
+## Đo màn hình đang đi mà không tốn một lệnh gọi Stadia
+
+`npm run e2e -- nav` lái được tới trạng thái **hai máy đang đi cùng nhau** rồi hit-test
+từng nút, ở 844 / 667 / 560px. Cách làm, vì nó tái dùng được:
+
+1. Ghi thẳng một dòng vào `navigationinvites` — luồng SSE nhặt lên như mọi lời mời thật,
+   không phải lái UI bên gửi.
+2. **Chặn** `*location.getRoute*` bằng `Network.setBlockedURLs`, và gieo sẵn
+   `localStorage["vivu.ride.route"]` — trang rơi vào nhánh dự phòng "tuyến đã lưu"
+   (`saved-route.ts`) và đi được mà không hỏi Stadia câu nào.
+3. `Emulation.setGeolocationOverride` + `Browser.grantPermissions(["geolocation"])`.
+
+⚠️ **`document.elementFromPoint` ở bản dev trả về `nextjs-portal`** ở góc dưới bên trái —
+đó là dev-tools của Next, nó dựng chỉ báo trong shadow root nên hit-test nhận về phần tử
+host. Bản production không có nó. Bộ `nav` cố tình **không** tính nó là vật che; tính thì
+suite đỏ vì một thứ không người dùng nào gặp.
 
 ## Bám đường: vẽ vị trí TRÊN đường, và lấy hướng từ con đường
 
