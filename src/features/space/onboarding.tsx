@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Link2, Loader2, AlertCircle } from "lucide-react";
+import { Users, Link2, Loader2, AlertCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,9 +87,9 @@ export function Onboarding() {
           className="hidden h-16 w-16 items-center justify-center rounded-2xl short:flex"
           style={{ background: "var(--accent-soft)" }}
         >
-          <Heart
+          <Users
             className="h-8 w-8"
-            style={{ fill: "var(--accent)", color: "var(--accent)" }}
+            style={{ color: "var(--accent)" }}
             aria-hidden="true"
           />
         </div>
@@ -129,14 +129,14 @@ export function Onboarding() {
             <ToneArt name="mapTreasure" sizes="384px" />
           </div>
 
-          {/* Heart motif — the short-viewport stand-in for the artwork above. */}
+          {/* The two-people motif — the short-viewport stand-in for the artwork above. */}
           <div
             className="relative z-10 hidden h-12 w-12 items-center justify-center rounded-2xl short:flex lg:hidden"
             style={{ background: "var(--accent-soft)" }}
           >
-            <Heart
+            <Users
               className="h-6 w-6"
-              style={{ fill: "var(--accent)", color: "var(--accent)" }}
+              style={{ color: "var(--accent)" }}
               aria-hidden="true"
             />
           </div>
@@ -209,7 +209,7 @@ export function Onboarding() {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: "var(--accent)" }}>
-                        <Heart className="h-3.5 w-3.5" style={{ fill: "var(--accent)", color: "var(--accent)" }} />
+                        <Users className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
                         {createStep === 1 ? "Tên không gian của tụi mình" : "Mật khẩu không gian"}
                       </div>
                       {createStep === 2 && (

@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-media-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { useCelebrate } from "@/components/ui/celebrate";
-import { Sparkles, CalendarHeart, Flower2 } from "lucide-react";
+import { CalendarDays, Flower2, Sparkles } from "lucide-react";
 import { cycleDayNote } from "@/lib/cycle-copy";
 import { BUCKETS, mergeTags, type BucketKey } from "@/lib/plan-meta";
 import { MemoryForm } from "@/features/memories/memory-form";
@@ -136,7 +136,7 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
               <div className="relative">
                 {items.length === 0 && (
                   <div className="absolute inset-0 z-0 flex flex-col items-center justify-center opacity-20 pointer-events-none select-none text-muted-foreground mix-blend-multiply">
-                    <CalendarHeart className="h-20 w-20 text-muted-foreground" strokeWidth={1.5} />
+                    <CalendarDays className="h-20 w-20 text-muted-foreground" strokeWidth={1.5} />
                   </div>
                 )}
                 <div className="relative z-10 space-y-6">

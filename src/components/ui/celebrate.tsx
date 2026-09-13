@@ -37,7 +37,9 @@ function ensureStyles() {
   document.head.appendChild(s);
 }
 
-const GLYPHS = ["❤️", "✨", "💕", "⭐", "💗"];
+// Neutral celebration: this fires for a finished task or a redeemed voucher
+// as often as for an anniversary, so nothing here should read as romance.
+const GLYPHS = ["✨", "⭐", "🎉", "🌟", "🎊"];
 
 /**
  * Imperatively fires a one-shot heart-burst anchored to the given element

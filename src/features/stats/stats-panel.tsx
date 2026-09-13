@@ -1,18 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import {
-  CalendarHeart,
-  ChefHat,
-  Heart,
-  Hourglass,
-  Images,
-  Map,
-  MapPin,
-  Plane,
-  RotateCw,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarDays, ChefHat, Hourglass, Images, Map, MapPin, Plane, RotateCw, Users, type LucideIcon } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -90,7 +79,7 @@ export function StatsPanel({ className }: { className?: string }) {
   if (data.daysTogether !== null) {
     tiles.push({
       key: "days",
-      Icon: Heart,
+      Icon: Users,
       label: "Ngày cùng nhau",
       value: vi(data.daysTogether),
       hint: data.anniversaryDate
@@ -161,7 +150,7 @@ export function StatsPanel({ className }: { className?: string }) {
   if (data.busiestMonth) {
     tiles.push({
       key: "busiest",
-      Icon: CalendarHeart,
+      Icon: CalendarDays,
       label: "Tháng nhiều kỷ niệm nhất",
       value: monthLabel(data.busiestMonth.key),
       hint: `${vi(data.busiestMonth.count)} kỷ niệm trong tháng đó`,

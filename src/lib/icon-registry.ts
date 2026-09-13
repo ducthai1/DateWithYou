@@ -22,6 +22,7 @@ import {
   // Special-date icons — added to support the icon picker in SpecialDatesPanel
   Cake,
   CalendarHeart,
+  CalendarDays,
   Star,
   MapPin,
   type LucideIcon,
@@ -53,6 +54,7 @@ export type IconKey =
   // Special-date picker icons
   | "cake"
   | "calendar-heart"
+  | "calendar-days"
   | "star"
   // Places
   | "map-pin";
@@ -81,6 +83,7 @@ const ICON_MAP: Record<IconKey, LucideIcon> = {
   // Special-date picker
   cake: Cake,
   "calendar-heart": CalendarHeart,
+  "calendar-days": CalendarDays,
   star: Star,
   // Places (also the neutral fallback glyph)
   "map-pin": MapPin,

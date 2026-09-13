@@ -128,7 +128,7 @@ export function CalendarView() {
 
       {specialsOpen && (
         <Modal open onClose={() => setSpecialsOpen(false)} className="max-w-lg">
-          <ModalHeader title="Ngày đặc biệt 💞" onClose={() => setSpecialsOpen(false)} />
+          <ModalHeader title="Ngày đặc biệt" onClose={() => setSpecialsOpen(false)} />
           <SpecialDatesPanel />
         </Modal>
       )}

@@ -2,7 +2,7 @@
 
 import { useMemo, memo } from "react";
 import { cldThumb, cldThumbSrcSet } from "@/lib/cloudinary-url";
-import { Heart, Flower2 } from "lucide-react";
+import { Flower2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GridCell } from "@/lib/date-keys";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
@@ -297,7 +297,7 @@ export const CalendarCell = memo(function CalendarCell({
           </span>
         ) : (
           hasSpecial && (
-            <Heart className="h-3.5 w-3.5 shrink-0 fill-pink-400 text-pink-400 md:hidden" />
+            <Star className="fill-accent text-accent h-3.5 w-3.5 shrink-0 md:hidden" />
           )
         )}
       </div>

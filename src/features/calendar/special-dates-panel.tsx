@@ -24,7 +24,7 @@ const SPECIAL_DATE_ICON_KEYS = [
   "plane",
   "star",
   "sparkles",
-  "calendar-heart",
+  "calendar-days",
 ] as const;
 
 type SpecialDateIconKey = (typeof SPECIAL_DATE_ICON_KEYS)[number];
@@ -36,10 +36,18 @@ const ICON_LABELS: Record<SpecialDateIconKey, string> = {
   plane: "Du lịch",
   star: "Cột mốc",
   sparkles: "Đặc biệt",
-  "calendar-heart": "Ngày trọng đại",
+  "calendar-days": "Ngày trọng đại",
 };
 
-const DEFAULT_ICON: SpecialDateIconKey = "heart";
+/*
+ * A milestone, not a romance, unless the person says so.
+ *
+ * Every date created here used to arrive wearing a heart, which reads as a
+ * claim about the relationship rather than about the date. "Cột mốc" says
+ * only that something matters. The heart is still the first option in the
+ * picker for anyone whose date really is one.
+ */
+const DEFAULT_ICON: SpecialDateIconKey = "star";
 
 /** Manage recurring/one-off special dates (anniversary, birthdays…). */
 export function SpecialDatesPanel() {
@@ -52,7 +60,7 @@ export function SpecialDatesPanel() {
     utils.calendar.monthSummary.invalidate();
   };
   const create = trpc.specialDate.create.useMutation({
-    onSuccess: () => { invalidate(); toast("Đã lưu ngày đặc biệt 💖", "success"); },
+    onSuccess: () => { invalidate(); toast("Đã lưu ngày đặc biệt ✨", "success"); },
     onError: (err) => toast(readableFormError(err.message), "error"),
   });
   const remove = trpc.specialDate.remove.useMutation({

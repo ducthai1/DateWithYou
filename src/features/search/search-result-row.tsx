@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Ref } from "react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/trpc/root";
-import { CalendarHeart, Images, Library, MapPin, Plane, type LucideIcon } from "lucide-react";
+import { CalendarDays, Images, Library, MapPin, Plane, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Highlight } from "./highlight";
 
@@ -18,7 +18,7 @@ export const KIND_META: Record<SearchKind, { label: string; Icon: LucideIcon }> 
   memory: { label: "Kỷ niệm", Icon: Images },
   location: { label: "Địa điểm", Icon: MapPin },
   media: { label: "Bộ sưu tập", Icon: Library },
-  plan: { label: "Lịch trình", Icon: CalendarHeart },
+  plan: { label: "Lịch trình", Icon: CalendarDays },
   trip: { label: "Chuyến đi", Icon: Plane },
 };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Heart } from "lucide-react";
+import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DaySummary } from "@/server/trpc/routers/calendar";
 import { CYCLE_PEAK_DISC, CYCLE_WINDOW_TEXT, CYCLE_DOT } from "@/lib/cycle-day-style";
@@ -102,8 +102,8 @@ export function CalendarWeekStrip({
                 <span className={cn("h-1.5 w-1.5 rounded-full", CYCLE_DOT)} aria-hidden="true" />
               )}
               {s?.special && (
-                <Heart
-                  className="h-2.5 w-2.5 fill-pink-400 text-pink-400"
+                <Star
+                  className="fill-accent text-accent h-2.5 w-2.5"
                   aria-label="Ngày đặc biệt"
                 />
               )}

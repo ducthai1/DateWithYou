@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-shell";
 import { viNumber } from "./home-format";
@@ -68,7 +68,7 @@ export function HomeGreeting({ daysTogether, pending }: HomeGreetingProps) {
 
         {!pending && daysTogether !== null && (
           <p className="text-foreground/80 flex items-center gap-1.5 pt-1 text-sm">
-            <Heart className="text-accent h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+            <Users className="text-accent h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
             <span>
               Tụi mình đã đi cùng nhau{" "}
               <strong className="font-semibold">{viNumber(daysTogether)} ngày</strong>

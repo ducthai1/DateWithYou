@@ -101,7 +101,7 @@ export function WelcomeIntro() {
 
         <div className="border-border bg-card shrink-0 border-t px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
           <Button onClick={dismiss} className="w-full">
-            Bắt đầu nào 💕
+            Bắt đầu nào ✨
           </Button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { Heart } from "lucide-react";
+import { Stamp } from "lucide-react";
 
 /** An embossed wine-red wax seal with a gold rim and a heart motif. Pure CSS
  *  (radial gradients + insets) so it scales crisply. Used small on the opened
@@ -24,7 +24,7 @@ export function WaxSeal({ size = 96, className = "" }: { size?: number; classNam
           border: `${Math.max(1, size * 0.02)}px dashed rgba(214,178,96,0.7)`,
         }}
       />
-      <Heart
+      <Stamp
         aria-hidden
         className="relative text-amber-300/90"
         style={{ width: size * 0.4, height: size * 0.4 }}

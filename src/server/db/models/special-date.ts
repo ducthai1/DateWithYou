@@ -3,7 +3,7 @@ import { Schema, model, models, type InferSchemaType } from "mongoose";
 /**
  * A meaningful date for the couple (anniversary, birthday, first kiss…). Stored
  * as a `YYYY-MM-DD` key; `recurYearly` events match by month/day every year and
- * drive the in-app countdown + ♥/★ markers on the calendar.
+ * drive the in-app countdown + ★ markers on the calendar.
  */
 const specialDateSchema = new Schema(
   {

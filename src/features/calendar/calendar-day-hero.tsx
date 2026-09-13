@@ -5,7 +5,7 @@ import { PhotoView } from "react-photo-view";
 import { cldFull } from "@/lib/cloudinary-url";
 import { Photo } from "@/components/ui/photo";
 import Link from "next/link";
-import { CalendarHeart, ChevronRight, Plane, Plus, Sparkles, Flower2 } from "lucide-react";
+import { CalendarDays, ChevronRight, Flower2, Plane, Plus, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { colorsForTags, mergeTags } from "@/lib/plan-meta";
@@ -217,7 +217,7 @@ export function CalendarDayHero({
             onClick={onOpenDay}
             className="border-border text-muted-foreground hover:border-accent hover:text-accent flex w-full flex-col items-center gap-1 rounded-2xl border border-dashed py-6 transition-colors touch-manipulation active:scale-[0.99]"
           >
-            <CalendarHeart className="h-7 w-7" strokeWidth={1.5} />
+            <CalendarDays className="h-7 w-7" strokeWidth={1.5} />
             <span className="text-sm font-medium">Chưa có gì ngày này — thêm kế hoạch nhé</span>
           </button>
         )}
