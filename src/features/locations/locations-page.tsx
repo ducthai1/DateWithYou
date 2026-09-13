@@ -1032,7 +1032,7 @@ export function LocationsPage() {
     setAcceptedMessage(
       role === "receiver"
         ? "Cùng xuất phát nào 🛵"
-        : `Yayy! ${partnerName} đồng ý rồi, mình xuất phát thôi 💞`,
+        : `Yayy! ${partnerName} đồng ý rồi, mình xuất phát thôi 🎉`,
     );
     setTimeout(() => setAcceptedMessage(null), 4000);
     setTimeout(() => {
@@ -3622,7 +3622,7 @@ export function LocationsPage() {
             className="w-full"
           >
             <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 text-emerald-700 px-5 py-3 shadow-xl border border-emerald-200">
-              <span className="shrink-0 text-lg">💞</span>
+              <span className="shrink-0 text-lg">🎉</span>
               <span className="text-sm font-medium">{acceptedMessage}</span>
             </div>
           </motion.div>
