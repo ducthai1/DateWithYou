@@ -31,6 +31,7 @@ const SUITES = [
   { id: "listen", load: () => import("./listen-together.mjs") },
   { id: "calendar", load: () => import("./calendar.mjs") },
   { id: "map", load: () => import("./map.mjs") },
+  { id: "nav", load: () => import("./nav-overlay.mjs") },
 ];
 
 /** Never point the suites at anything that could be production data. */

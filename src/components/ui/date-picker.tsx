@@ -4,6 +4,15 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./button";
+import {
+  dayKey,
+  parseDayKey,
+  openingMonth,
+  yearOptions,
+  isOutOfRange,
+  monthGrid,
+  formatDisplay,
+} from "@/lib/date-picker-range";
 
 type DatePickerProps = {
   value: string; // YYYY-MM-DD
@@ -53,8 +62,8 @@ export function DatePicker({ value, onChange, max, min, defaultView, ariaLabel, 
 
   // Parse current value; an empty value opens the calendar on `defaultView`
   // (or today) but selects nothing.
-  const currentDate = value ? new Date(value) : new Date();
-  const openingDate = () => new Date(value || defaultView || new Date());
+  const currentDate = parseDayKey(value);
+  const openingDate = () => openingMonth(value, defaultView);
   const [viewDate, setViewDate] = useState(openingDate);
 
   /*
@@ -75,8 +84,7 @@ export function DatePicker({ value, onChange, max, min, defaultView, ariaLabel, 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
 
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDay = new Date(year, month, 1).getDay();
+  const { daysInMonth, firstWeekday } = monthGrid(year, month);
 
   const [rect, setRect] = useState<DOMRect | null>(null);
 
@@ -113,17 +121,8 @@ export function DatePicker({ value, onChange, max, min, defaultView, ariaLabel, 
     };
   }, [open]);
 
-  // Format YYYY-MM-DD
-  const formatStr = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  };
-
   const handleSelect = (day: number) => {
-    const selected = new Date(year, month, day);
-    onChange(formatStr(selected));
+    onChange(dayKey(new Date(year, month, day)));
     setOpen(false);
   };
 
@@ -138,20 +137,14 @@ export function DatePicker({ value, onChange, max, min, defaultView, ariaLabel, 
    * means one list that is never wrong for the caller, instead of a fixed
    * range that is always wrong for someone.
    */
-  const thisYear = new Date().getFullYear();
-  const maxYear = max ? Number(max.slice(0, 4)) : thisYear + 10;
-  const minYear = min ? Number(min.slice(0, 4)) : maxYear - 100;
-  const years: number[] = [];
-  for (let y = minYear; y <= Math.max(maxYear, year); y++) years.push(y);
+  const years = yearOptions({ min, max, viewYear: year });
 
   /** Clamp the day too: jumping to a month shorter than the current day
    *  (31 Jan → Feb) must not roll the view into the month after. */
   const goTo = (y: number, m: number) => setViewDate(new Date(y, m, 1));
 
   // Display value for the button
-  const displayVal = value
-    ? `${currentDate.getDate().toString().padStart(2, "0")}/${(currentDate.getMonth() + 1).toString().padStart(2, "0")}/${currentDate.getFullYear()}`
-    : (placeholder ?? "Chọn ngày");
+  const displayVal = formatDisplay(value, placeholder ?? "Chọn ngày");
 
   return (
     <div className="relative" ref={containerRef}>
@@ -235,16 +228,16 @@ export function DatePicker({ value, onChange, max, min, defaultView, ariaLabel, 
           </div>
 
           <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: firstDay }).map((_, i) => (
+            {Array.from({ length: firstWeekday }).map((_, i) => (
               <div key={`empty-${i}`} />
             ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
-              const isSelected = !!value && year === currentDate.getFullYear() && month === currentDate.getMonth() && day === currentDate.getDate();
+              const isSelected = !!currentDate && year === currentDate.getFullYear() && month === currentDate.getMonth() && day === currentDate.getDate();
               const isToday = year === new Date().getFullYear() && month === new Date().getMonth() && day === new Date().getDate();
               // Compared as day keys, so no timezone enters into it.
-              const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-              const disabled = (max ? key > max : false) || (min ? key < min : false);
+              const key = dayKey(new Date(year, month, day));
+              const disabled = isOutOfRange(key, { min, max });
 
               return (
                 <button

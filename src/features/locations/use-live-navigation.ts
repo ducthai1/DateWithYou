@@ -7,6 +7,7 @@ import type { Maneuver } from "@/lib/maneuver-vi";
  * route-geometry.ts. The windowed match there is 9x cheaper than the full scan
  * this hook used to run on every GPS fix, and returns identical numbers. */
 import { cumulativeMetres, remainingAlongRoute, SNAP_MAX_M } from "@/lib/route-geometry";
+import { initialOffRouteState, stepOffRoute, type OffRouteState } from "@/lib/off-route";
 
 /** How long the emotion buttons stay refused after one is sent. */
 const PING_COOLDOWN_MS = 2500;
@@ -143,11 +144,25 @@ export type LiveNavigation = {
  * remaining distance/time along the route polyline.
  */
 export function useLiveNavigation(options?: {
+  /*
+   * Called once per detour, after the deviation has been confirmed against the
+   * fix's own accuracy and held for several seconds. There is deliberately no
+   * threshold option any more: a single number was what made a noisy junction
+   * look like a wrong turn. See src/lib/off-route.ts.
+   */
   onOffRoute?: (userGeo: LatLng) => void;
-  offRouteThresholdMeters?: number;
 }): LiveNavigation {
   const optionsRef = useRef(options);
   optionsRef.current = options;
+
+  /*
+   * How long the rider has been off the line, carried between fixes.
+   *
+   * A ref, not state: it changes on every GPS fix and nothing renders from it,
+   * so making it state would re-render the whole map page once a second for
+   * nobody's benefit.
+   */
+  const offRouteRef = useRef<OffRouteState>(initialOffRouteState());
 
   const [isNavigating, setIsNavigating] = useState(false);
   const [userGeo, setUserGeo] = useState<LatLng | null>(null);
@@ -432,6 +447,12 @@ export function useLiveNavigation(options?: {
       // exactly when a stale hint would send the window looking the wrong way.
       routeCumRef.current = coords.length > 1 ? cumulativeMetres(coords) : null;
       matchIdxRef.current = 0;
+      /*
+       * And a fresh judgement about being ON it. Carrying the old strikes over
+       * would let the detour that caused THIS line immediately declare a
+       * detour from it, which is the loop the rider saw: redraw, redraw back.
+       */
+      offRouteRef.current = initialOffRouteState();
       routeTotalMetersRef.current = totalMeters;
       routeTotalSecondsRef.current = totalSeconds;
       if (routeLegs) setLegs(routeLegs);
@@ -534,8 +555,26 @@ export function useLiveNavigation(options?: {
           }
           setRemainingMeters(Math.round(remaining));
 
-          if (optionsRef.current?.onOffRoute && deviation > (optionsRef.current.offRouteThresholdMeters ?? 50)) {
-            optionsRef.current.onOffRoute(g);
+          /*
+           * One fix is not evidence of a detour.
+           *
+           * This used to be `deviation > 50` on the raw fix, so a single wide
+           * reading at a junction — where a phone between buildings is at its
+           * worst, and where turning correctly is at its most important — drew
+           * a new line around a road the rider was not on, then drew it back a
+           * few seconds later. The decision now weighs the fix's own accuracy,
+           * waits for the deviation to persist, and fires once per detour.
+           * See src/lib/off-route.ts; the junction is replayed in
+           * tests/unit/off-route.test.ts.
+           */
+          if (optionsRef.current?.onOffRoute) {
+            const decision = stepOffRoute(offRouteRef.current, {
+              deviationM: deviation,
+              accuracyM: pos.coords.accuracy,
+              at: pos.timestamp || Date.now(),
+            });
+            offRouteRef.current = decision.state;
+            if (decision.shouldReroute) optionsRef.current.onOffRoute(g);
           }
 
           // Estimate remaining time proportionally.

@@ -1897,10 +1897,26 @@ export function LocationsPage() {
           controls, and lets touches through to the map everywhere else.
         */
         <div className="pointer-events-none fixed inset-0 z-50 flex flex-col">
-          <div className="relative flex-1">
+          {/*
+            Three rows, not four absolutely-positioned boxes.
+
+            Everything in here used to be `absolute` inside one full-height
+            box, so nothing knew about anything else: the HUD grew downwards as
+            badges appeared, the speed dial sat at `top-[40%]`, the emotion
+            buttons at `top-[60%]`, and the dock at `bottom-0`. On a 667px
+            phone the four emotion buttons ran from 400px to 614px and the dock
+            started at 567px — the last button ("Nhanh lên!") was underneath it
+            and could not be tapped at all, which is what "bấm vào cứ cảm giác
+            như không có gì xảy ra" was.
+
+            As rows, the middle one is simply whatever is left between the HUD
+            and the dock, so the rail cannot reach into either however much
+            either of them grows. Percentages cannot express that; flex can.
+          */}
+          <div className="flex min-h-0 flex-1 flex-col">
             {/* ── Navigation HUD: distance + ETA + Speed ── */}
             <div
-              className="pointer-events-auto absolute inset-x-0 top-0 flex items-center justify-center p-3"
+              className="pointer-events-auto flex shrink-0 items-center justify-center p-3"
               style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
             >
               <div className="flex w-full max-w-md flex-col items-center gap-2">
@@ -2055,10 +2071,20 @@ export function LocationsPage() {
               </div>
             </div>
 
+            {/*
+              The right-hand rail: speed, then the emotion buttons.
+
+              One column in the row's own space rather than two boxes pinned to
+              percentages of the screen. `overflow-y-auto` is the floor under
+              it: on a short screen in landscape the rail scrolls instead of
+              growing under the dock, so the last button is always reachable.
+            */}
+            <div className="flex min-h-0 flex-1 items-center justify-end overflow-y-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex flex-col items-center gap-2">
             {/* Floating Speed Indicator */}
             {nav.speedKmH != null && (
               <div 
-                className="absolute right-4 top-[40%] flex flex-col items-center justify-center rounded-full border-[3px] border-accent bg-white/95 shadow-lg backdrop-blur-sm h-16 w-16"
+                className="flex shrink-0 flex-col items-center justify-center rounded-full border-[3px] border-accent bg-white/95 shadow-lg backdrop-blur-sm h-16 w-16"
               >
                 <span className="text-xl font-bold leading-none tracking-tighter text-slate-800">{nav.speedKmH}</span>
                 <span className="text-[9px] font-bold text-muted-foreground uppercase leading-none mt-0.5">km/h</span>
@@ -2069,7 +2095,7 @@ export function LocationsPage() {
                 solo trip there is nobody on the other end, and these sat there
                 offering to send one anyway. */}
             {isCompanionTrip && (
-            <div className="pointer-events-auto absolute right-4 top-[60%] flex flex-col items-center gap-2">
+            <div className="pointer-events-auto flex shrink-0 flex-col items-center gap-2">
                <p className="text-[9px] font-semibold text-white/80 bg-black/30 rounded-full px-2 py-0.5 text-center leading-tight backdrop-blur-sm">Gửi cảm xúc<br/>cho {partnerName}:</p>
                {PING_BUTTONS.map((p) => (
                  <button
@@ -2092,14 +2118,18 @@ export function LocationsPage() {
                ))}
             </div>
             )}
+              </div>
+            </div>
 
-            {/* Floating stop button — always visible over the map.
-                Measured, because the map's own "Về vị trí của tôi" pill sits at
-                the bottom too and was landing on top of these. The height is
-                not a constant to hard-code: the reroute banner, the leg
-                progress row and an error line all come and go from this stack. */}
+            {/* The dock — a row of its own now, so the rail above it is bounded
+                by it rather than free to grow underneath it.
+                Its height is still published as --nav-dock-h: the map's own
+                "Về vị trí của tôi" pill sits at the bottom too and used to land
+                on top of these, and the height is not a constant to hard-code —
+                the reroute banner, the leg progress row and an error line all
+                come and go from this stack. */}
             <div ref={navDockRef}
-                 className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4"
+                 className="pointer-events-auto flex shrink-0 flex-col items-center gap-2 p-4"
                  style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
             >
               {/* Multi-leg progress + per-leg arrival prompt */}
@@ -2158,7 +2188,27 @@ export function LocationsPage() {
                     aria-label={miniWindow.active ? "Đóng khung nhỏ" : "Thu nhỏ thành khung nổi"}
                     title={miniWindow.active ? "Đóng khung nhỏ" : "Thu nhỏ thành khung nổi"}
                     className="bg-white/90 shadow-lg backdrop-blur-sm"
-                    onClick={() => void (miniWindow.active ? miniWindow.close() : miniWindow.open())}
+                    /*
+                     * Say when it is refused.
+                     *
+                     * `open()` answers false whenever the browser turns
+                     * picture-in-picture down — no fresh gesture, a video that
+                     * has not produced a frame yet, or a browser that simply
+                     * does not do it — and the click used to `void` that answer
+                     * away. The button then looked live and did nothing, which
+                     * is the same disease the emotion buttons had and the same
+                     * cure: report the refusal instead of swallowing it.
+                     */
+                    onClick={async () => {
+                      if (miniWindow.active) {
+                        await miniWindow.close();
+                        return;
+                      }
+                      const opened = await miniWindow.open();
+                      if (!opened) {
+                        toast("Trình duyệt này không cho thu nhỏ bản đồ thành khung nổi.", "error");
+                      }
+                    }}
                   >
                     <PictureInPicture2 className="h-4 w-4" />
                   </Button>
@@ -3503,6 +3553,26 @@ export function LocationsPage() {
         )}
       </AnimatePresence>
 
+      {/*
+        One stack, above the dock — not three boxes at the same spot.
+
+        These three were `fixed bottom-6 left-1/2 z-50 w-[90%] max-w-sm`,
+        character for character identical, so any two that were true at once
+        landed exactly on top of each other and DOM order decided which one you
+        got to see. Worse, the ride's own dock (Thu nhỏ · Tạm dừng · Kết thúc)
+        is also at the bottom and also z-50, and these come later in the DOM —
+        so during a shared ride the "đồng ý rồi 💞" card sat on the buttons and
+        swallowed the taps.
+
+        Stacked in one column now, and lifted by --nav-dock-h, the height the
+        dock publishes as it grows and shrinks. The map's own controls already
+        follow that variable (see location-mapview); this is the same rule,
+        applied to the one thing that was ignoring it.
+      */}
+      <div
+        className="pointer-events-none fixed left-1/2 z-50 flex w-[90%] max-w-sm -translate-x-1/2 flex-col items-stretch gap-2 [&>*]:pointer-events-auto"
+        style={{ bottom: "calc(var(--nav-dock-h, 0px) + 1.5rem)" }}
+      >
       {/* ── Waiting for partner to accept ── */}
       <AnimatePresence>
         {pendingSentInviteId && (
@@ -3510,7 +3580,7 @@ export function LocationsPage() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-6 left-1/2 z-50 w-[90%] max-w-sm -translate-x-1/2"
+            className="w-full"
           >
             <div className="flex items-center gap-3 rounded-2xl bg-card px-5 py-3 shadow-xl border border-border">
               <Loader2 className="h-5 w-5 animate-spin text-accent shrink-0" />
@@ -3534,7 +3604,7 @@ export function LocationsPage() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-6 left-1/2 z-50 w-[90%] max-w-sm -translate-x-1/2"
+            className="w-full"
           >
             <div className="flex items-center gap-3 rounded-2xl bg-rose-50 text-rose-600 px-5 py-3 shadow-xl border border-rose-200">
               <span className="shrink-0 text-lg">💔</span>
@@ -3549,7 +3619,7 @@ export function LocationsPage() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-6 left-1/2 z-50 w-[90%] max-w-sm -translate-x-1/2"
+            className="w-full"
           >
             <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 text-emerald-700 px-5 py-3 shadow-xl border border-emerald-200">
               <span className="shrink-0 text-lg">💞</span>
@@ -3558,6 +3628,7 @@ export function LocationsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </>
   );
 }
