@@ -20,6 +20,20 @@ type DatePickerProps = {
    */
   placeholder?: string;
   /**
+   * Earliest selectable day, `YYYY-MM-DD`. Also the floor of the year list.
+   */
+  min?: string;
+  /**
+   * Which month to OPEN on when there is no value yet, `YYYY-MM-DD`.
+   *
+   * Not a value: nothing is selected and nothing is saved until a day is
+   * tapped. It only decides where the calendar starts, which for a birthday is
+   * the difference between landing in the right decade and paging through
+   * three hundred months. Empty value with no `defaultView` still opens on
+   * today, which is right for a date near now and wrong for a date of birth.
+   */
+  defaultView?: string;
+  /**
    * Accessible name for the trigger. A <label htmlFor> cannot point at a
    * button, so a field labelled visually beside this needs the name here or
    * the control announces itself as just a date.
@@ -33,14 +47,30 @@ const MONTHS = [
 ];
 const DAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
-export function DatePicker({ value, onChange, max, ariaLabel, placeholder }: DatePickerProps) {
+export function DatePicker({ value, onChange, max, min, defaultView, ariaLabel, placeholder }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Parse current value; an empty value opens the calendar on today but
-  // selects nothing.
+  // Parse current value; an empty value opens the calendar on `defaultView`
+  // (or today) but selects nothing.
   const currentDate = value ? new Date(value) : new Date();
-  const [viewDate, setViewDate] = useState(() => (value ? new Date(value) : new Date()));
+  const openingDate = () => new Date(value || defaultView || new Date());
+  const [viewDate, setViewDate] = useState(openingDate);
+
+  /*
+   * Follow the value when it arrives, and reset the view on every open.
+   *
+   * The view used to be read once, at mount. Settings seeds the birthday from
+   * a query, so the field mounted empty and the date landed a moment later —
+   * and the calendar stayed on the month it had opened with, which was the
+   * current one. Opening it showed today while the button underneath said
+   * 1998. Re-syncing on open also means a picker that was left on some other
+   * month is back where it belongs the next time it is used.
+   */
+  useEffect(() => {
+    if (open) setViewDate(openingDate());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, value, defaultView]);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -100,6 +130,24 @@ export function DatePicker({ value, onChange, max, ariaLabel, placeholder }: Dat
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
   const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
 
+  /*
+   * The year list, and why it is bounded by the same props as the days.
+   *
+   * A birthday passes `max` = today and reaches back a century; a trip passes
+   * neither and wants the next few years. Deriving both ends from `min`/`max`
+   * means one list that is never wrong for the caller, instead of a fixed
+   * range that is always wrong for someone.
+   */
+  const thisYear = new Date().getFullYear();
+  const maxYear = max ? Number(max.slice(0, 4)) : thisYear + 10;
+  const minYear = min ? Number(min.slice(0, 4)) : maxYear - 100;
+  const years: number[] = [];
+  for (let y = minYear; y <= Math.max(maxYear, year); y++) years.push(y);
+
+  /** Clamp the day too: jumping to a month shorter than the current day
+   *  (31 Jan → Feb) must not roll the view into the month after. */
+  const goTo = (y: number, m: number) => setViewDate(new Date(y, m, 1));
+
   // Display value for the button
   const displayVal = value
     ? `${currentDate.getDate().toString().padStart(2, "0")}/${(currentDate.getMonth() + 1).toString().padStart(2, "0")}/${currentDate.getFullYear()}`
@@ -134,7 +182,7 @@ export function DatePicker({ value, onChange, max, ariaLabel, placeholder }: Dat
       {open && rect && typeof document !== "undefined" && createPortal(
         <div
           data-calendar-popup
-          className="fixed z-[100] mt-2 w-72 rounded-xl border border-border bg-card p-4 shadow-xl"
+          className="fixed z-[100] mt-2 w-80 rounded-xl border border-border bg-card p-4 shadow-xl"
           style={{
             top: (() => {
               const estimatedHeight = 320;
@@ -142,15 +190,38 @@ export function DatePicker({ value, onChange, max, ariaLabel, placeholder }: Dat
                 ? Math.max(0, rect.top - estimatedHeight - 8)
                 : rect.bottom + 8;
             })(),
-            left: Math.min(rect.left, window.innerWidth - 288 - 8),
+            left: Math.max(8, Math.min(rect.left, window.innerWidth - 320 - 8)),
           }}
         >
           <div className="flex items-center justify-between mb-4">
             <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-muted transition-colors touch-manipulation" onClick={prevMonth}>
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <div className="font-medium text-sm">
-              {MONTHS[month]} năm {year}
+            {/* Two selects, not a label. Native on purpose: on a phone this
+                opens the platform wheel, and typing "1998" in the year list
+                jumps straight there — the arrows either side stay for the
+                ±1 month case they are good at. */}
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5">
+              <select
+                aria-label="Tháng"
+                className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-card px-2 text-sm font-medium text-foreground"
+                value={month}
+                onChange={(e) => goTo(year, Number(e.target.value))}
+              >
+                {MONTHS.map((label, i) => (
+                  <option key={label} value={i}>{label}</option>
+                ))}
+              </select>
+              <select
+                aria-label="Năm"
+                className="h-9 w-[5.5rem] shrink-0 rounded-lg border border-border bg-card px-2 text-sm font-medium text-foreground"
+                value={year}
+                onChange={(e) => goTo(Number(e.target.value), month)}
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
             </div>
             <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-muted transition-colors touch-manipulation" onClick={nextMonth}>
               <ChevronRight className="h-5 w-5" />
@@ -172,9 +243,8 @@ export function DatePicker({ value, onChange, max, ariaLabel, placeholder }: Dat
               const isSelected = !!value && year === currentDate.getFullYear() && month === currentDate.getMonth() && day === currentDate.getDate();
               const isToday = year === new Date().getFullYear() && month === new Date().getMonth() && day === new Date().getDate();
               // Compared as day keys, so no timezone enters into it.
-              const disabled = max
-                ? `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` > max
-                : false;
+              const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+              const disabled = (max ? key > max : false) || (min ? key < min : false);
 
               return (
                 <button

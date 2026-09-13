@@ -527,10 +527,23 @@ export function SpaceSettings() {
               <p className="text-muted-foreground text-xs">Hiện trên lịch của mọi không gian bạn ở.</p>
               <div className="flex gap-2">
                 <div className="min-w-0 flex-1">
+                  {/*
+                    Opens on January 2000 when nothing is set yet, and reaches
+                    back to 1920.
+
+                    A date of birth is the one field where "today" is never the
+                    answer, and the picker used to open there — a hundred years
+                    of arrow-tapping away from anybody's real year. It is a
+                    starting point, not a value: nothing is saved until a day
+                    is tapped, because a birthday nobody typed is exactly the
+                    kind of invented fact this app refuses to store.
+                  */}
                   <DatePicker
                     value={bdayDraft}
                     onChange={setBdayDraft}
                     max={todayKey()}
+                    min="1920-01-01"
+                    defaultView="2000-01-01"
                     placeholder="Chưa đặt"
                     ariaLabel="Ngày sinh của bạn"
                   />
@@ -689,7 +702,7 @@ export function SpaceSettings() {
             <p className="text-sm font-medium">Mời người đồng hành</p>
         {full ? (
           <p className="text-muted-foreground text-sm">
-            Không gian đã đủ 2 người 💞
+            Không gian đã đủ 2 người ✨
           </p>
         ) : (
           <>
