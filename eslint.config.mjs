@@ -17,6 +17,17 @@ const eslintConfig = [
       ".next/**",
       "out/**",
       "build/**",
+      /*
+       * Build output under another name.
+       *
+       * `next build` writes wherever NEXT_DIST_DIR points, and this repo aims
+       * it at tmp/ on purpose so a gate build cannot delete the running dev
+       * server's .next (see scripts/verify-build.mjs). Unignored, eslint then
+       * lints the minified bundles: two sessions hit that on the same evening
+       * and got "18,605 problems" from code nobody wrote. Build output is
+       * never linted, whatever it is called.
+       */
+      "tmp/**",
       "next-env.d.ts",
       // Non-app tooling/content — not part of the Next.js app
       ".claude/**",
