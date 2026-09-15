@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Loader2, MapPin, Navigation, Sparkles, Users, Wallet } from "lucide-react";
+import { CalendarDays, CloudRain, Loader2, MapPin, Navigation, Sparkles, Users, Wallet } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -83,7 +83,9 @@ export function DayPlanScreen() {
   const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
 
   const [stops, setStops] = useState<Stop[]>([]);
-  const [meta, setMeta] = useState<{ seed: string; needsMorePlaces: boolean } | null>(null);
+  const [meta, setMeta] = useState<
+    { seed: string; needsMorePlaces: boolean; weatherNote: string | null } | null
+  >(null);
   const [outOfHours, setOutOfHours] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<{ tripId: string; locationIds: string[] } | null>(null);
 
@@ -124,7 +126,11 @@ export function DayPlanScreen() {
           return;
         }
         setStops(out.stops);
-        setMeta({ seed: out.seed, needsMorePlaces: out.needsMorePlaces });
+        setMeta({
+          seed: out.seed,
+          needsMorePlaces: out.needsMorePlaces,
+          weatherNote: out.weatherNote,
+        });
         setStep("result");
       } catch (err) {
         toast(readableFormError((err as Error).message, "Chưa lên được kế hoạch"), "error");
@@ -386,6 +392,14 @@ export function DayPlanScreen() {
                   <Wallet className="h-4 w-4" aria-hidden />
                   {moneyBand(band)}
                 </p>
+                {/* Only when there is something to say. A forecast line on a
+                    dry afternoon is noise. */}
+                {meta?.weatherNote && (
+                  <p className="text-muted-foreground flex w-full items-center gap-1.5 text-xs">
+                    <CloudRain className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    {meta.weatherNote}
+                  </p>
+                )}
               </Card>
 
               {pins.length > 0 && <PlanPreviewMap pins={pins} />}

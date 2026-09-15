@@ -3,6 +3,7 @@
 import { Clock, MapPin, RefreshCw, Star, Trash2, Utensils, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { rideLabel } from "@/lib/ride-minutes";
 
 /** đ, grouped — "180.000đ" rather than a bare number nobody can read at a glance. */
 export function money(v: number): string {
@@ -13,10 +14,19 @@ export function moneyBand(band: { min: number; max: number }): string {
   return band.min === band.max ? money(band.max) : `${money(band.min)}–${money(band.max)}`;
 }
 
-export function walkLabel(m: number | null): string | null {
+/**
+ * How far the next stop is, in the terms a person actually thinks in.
+ *
+ * Metres were what the draft had, and metres are not what anybody asks: "600m"
+ * needs converting in your head to "is that worth getting the bike out for".
+ * The distance stays alongside, because the two answer different questions.
+ */
+export function hopLabel(m: number | null, isFirst: boolean): string | null {
   if (m == null) return null;
-  if (m < 950) return `${Math.round(m / 10) * 10}m`;
-  return `${(m / 1000).toFixed(1)}km`;
+  const time = rideLabel(m);
+  const distance = m < 950 ? `${Math.round(m / 10) * 10}m` : `${(m / 1000).toFixed(1)}km`;
+  const from = isFirst ? "cách bạn" : "cách chặng trước";
+  return time ? `${from} ${distance} · ${time}` : `${from} ${distance}`;
 }
 
 export type StopView = {
@@ -57,7 +67,7 @@ export function PlanStopCard({
   onDrop: () => void;
   canSwap: boolean;
 }) {
-  const walk = walkLabel(stop.travelM);
+  const hop = hopLabel(stop.travelM, index === 0);
   return (
     <div className="relative pl-10">
       {/* The spine of the timeline, and this stop's bead on it. */}
@@ -107,13 +117,7 @@ export function PlanStopCard({
                   {stop.district}
                 </span>
               )}
-              {walk && (
-                <span className="tabular-nums">
-                  {/* There is no stop before the first one: that distance is
-                      measured from where the person actually is. */}
-                  {index === 0 ? "cách bạn" : "cách chặng trước"} ~{walk}
-                </span>
-              )}
+              {hop && <span className="tabular-nums">{hop}</span>}
               <span className="flex items-center gap-1 tabular-nums">
                 <Wallet className="h-3 w-3" aria-hidden />
                 {moneyBand(stop.cost)}

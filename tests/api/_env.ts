@@ -74,3 +74,10 @@ process.env.ADMIN_EMAILS = process.env.TEST_ADMIN_EMAILS ?? TEST_ADMIN_EMAIL;
 for (const key of ["GOOGLE_MAPS_API_KEY", "STADIA_API_KEY", "DAY_PLAN_LLM_URL", "DAY_PLAN_LLM_KEY"]) {
   delete process.env[key];
 }
+/*
+ * The forecast needs no key, so deleting one cannot switch it off. Its
+ * endpoint is configurable — Open-Meteo is open source and people self-host it
+ * — and an empty one means "no forecast", which is exactly what a test suite
+ * wants. A test that WANTS weather points this at a fixture server.
+ */
+process.env.WEATHER_API_BASE = "";

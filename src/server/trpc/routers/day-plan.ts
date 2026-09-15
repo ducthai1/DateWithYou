@@ -11,6 +11,8 @@ import { planDay, reasonFor, SLOT_KINDS, type Candidate, type SlotKind } from "@
 import { BUDGET_KEYS, costBandFor } from "@/lib/day-planner-taxonomy";
 import { searchPlacesNearby } from "@/server/lib/search-places-nearby";
 import { narrateDayPlan } from "@/server/lib/narrate-day-plan";
+import { fetchForecast } from "@/server/lib/fetch-weather";
+import { rainHeadline, rainWarningFor } from "@/lib/weather";
 
 /**
  * "Hôm nay đi đâu?" — two procedures, and a hard line between them.
@@ -297,6 +299,27 @@ export const dayPlanRouter = router({
       });
 
       /*
+       * The weather, which can change what a good afternoon looks like.
+       *
+       * Only ever a warning — a walk by the river at 100% rain gets a line
+       * saying so, and the plan is left exactly as it is. Rearranging somebody's
+       * day behind their back because of a forecast reads as a bug, not as help.
+       * No key, no account, and a failure here costs nothing.
+       */
+      let weatherNote: string | null = null;
+      if (near) {
+        const hours = await fetchForecast(near, input.date);
+        if (hours.length) {
+          weatherNote = rainHeadline(hours, stops.map((s) => s.startTime));
+          for (const stop of stops) {
+            if (stop.unfilled) continue;
+            const warning = rainWarningFor(hours, { kind: stop.kind, startTime: stop.startTime });
+            if (warning) stop.warnings = [...stop.warnings, warning];
+          }
+        }
+      }
+
+      /*
        * Last, and allowed to fail.
        *
        * The plan above is complete before this line runs, and stays complete
@@ -320,6 +343,7 @@ export const dayPlanRouter = router({
       return {
         ok: true as const,
         dayName,
+        weatherNote,
         skeleton: draft.skeleton,
         date: draft.date,
         startAt: draft.startAt,
