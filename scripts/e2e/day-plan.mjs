@@ -67,6 +67,9 @@ const AUDIT = `(() => {
     if (r.width === 0 || r.height === 0) continue;
     const name = (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30);
     if (!name || seen.has(name)) continue;
+    // Map attribution is a legal credit, not a control: it is meant to be
+    // small and nobody needs to hit it with a thumb.
+    if (el.closest('.maplibregl-ctrl-attrib')) continue;
     seen.add(name);
     el.scrollIntoView({ block: 'center' });
     r = el.getBoundingClientRect();
@@ -143,15 +146,35 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     // Run this at 03:00 and the app correctly refuses to invent a day. Take
     // the way back that it offers, which is also worth exercising.
     await recoverFromOutOfHours(page);
-    const guided = await page
-      .until(`/thêm vài chỗ|Thêm vài chỗ/i.test(document.body.innerText)`, { timeout: 60000 })
-      .then(() => true)
-      .catch(() => false);
-    ok("space rỗng ra màn “thêm vài chỗ”, KHÔNG phải lỗi", guided);
-    const noError = await page.eval(
-      `!/(Đã xảy ra lỗi|Something went wrong|hết lượt)/i.test(document.body.innerText)`,
+    /*
+     * An empty space has TWO correct endings, and which one appears depends on
+     * the server's environment rather than on anything this suite controls.
+     * With a places provider configured it now fills the day with real
+     * suggestions — which is the better arrival path from the two SEO pages,
+     * and the reason the provider exists. With no key it offers "thêm vài chỗ".
+     *
+     * So the invariant, not the screen: an empty space never ends in an error
+     * and never ends in a dead end. Asserting one specific screen made this
+     * suite fail the day the app got better at the case it was testing.
+     */
+    await page.until(
+      `/thêm vài chỗ|Thêm vài chỗ|Chốt kế hoạch này/i.test(document.body.innerText)`,
+      { timeout: 60000 },
+    ).catch(() => {});
+    const empty = JSON.parse(await page.eval(`(() => {
+      const t = document.body.innerText;
+      return JSON.stringify({
+        offersPlaces: /thêm vài chỗ/i.test(t),
+        offersPlan: /Chốt kế hoạch này/.test(t),
+        errored: /(Đã xảy ra lỗi|Something went wrong|hết lượt)/i.test(t),
+      });
+    })()`));
+    ok(
+      "space rỗng vẫn có đường đi tiếp (gợi ý quán, hoặc rủ thêm chỗ)",
+      empty.offersPlaces || empty.offersPlan,
+      JSON.stringify(empty),
     );
-    ok("và không có chữ lỗi nào trên màn đó", noError === true);
+    ok("và không có chữ lỗi nào trên màn đó", empty.errored === false);
     if (shotDir) await page.shot(`${shotDir}/day-plan-empty.png`);
 
     /* ——— with places saved ——————————————————————————————————— */

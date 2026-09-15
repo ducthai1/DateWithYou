@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { useIsMobile } from "@/hooks/use-media-query";
 import Map, { Marker, Source, Layer, AttributionControl, type MapRef } from "react-map-gl/maplibre";
 import { VietnamSovereigntyMarkers } from "./vietnam-sovereignty-markers";
+import { initialFollowState, stepFollow, type FollowState } from "@/lib/follow-camera";
 import { MapLoadingVeil } from "./map-loading-veil";
 import { applyEastSeaLabel } from "./east-sea-label";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -85,6 +86,18 @@ function rememberView(map: { getCenter(): { lng: number; lat: number }; getZoom(
     /* Storage full or unavailable — the default is still there next time. */
   }
 }
+
+/**
+ * How far the map tilts while following.
+ *
+ * 60° was chosen for the 3-D navigation feel, and it is also the most
+ * expensive projection MapLibre has: the collision boxes for every label have
+ * to be projected through the perspective, which is why
+ * `projectAndGetPerspectiveRatio` and `_projectCollisionBox` sat near the top
+ * of the profile. Less tilt, less of that, and at this zoom the difference in
+ * feel is small.
+ */
+const NAV_PITCH = 45;
 
 export type MapPin = {
   id: string;
@@ -319,7 +332,9 @@ function LocationMapViewImpl({
         center: [target.lng, target.lat],
         zoom: 18.5,
         bearing: heading ?? 0,
-        pitch: 60,
+        // Same tilt the follow effect uses, so pressing recentre does not
+        // quietly move the camera to a more expensive angle than it was at.
+        pitch: NAV_PITCH,
         duration: 500,
       });
     }
@@ -386,19 +401,122 @@ function LocationMapViewImpl({
     if (g) rememberLastFix(g);
   }, [followGeo, userGeo]);
 
-  // Follow mode: keep the live position centred as the user moves.
-  // When heading is available, rotate the map so "up" = direction of travel.
+  /*
+   * Follow mode: keep the live position centred as the rider moves.
+   *
+   * This used to order a 600 ms `easeTo` on EVERY fix and every compass
+   * reading. At one fix a second that left the camera animating about 60% of
+   * the time, and MapLibre re-runs its label-collision pass on every animating
+   * frame — measured at 6,507 ms of placement work in 30 seconds, against
+   * React's 524 ms. Standing still the same screen cost nothing at all, which
+   * is what pointed at the camera rather than at the app.
+   *
+   * `stepFollow` decides whether this fix is worth a move: a phone wandering a
+   * few metres at a red light is not, three degrees of compass noise is not,
+   * and the glide is sized so it finishes before the next fix arrives instead
+   * of being restarted mid-flight. See src/lib/follow-camera.ts.
+   */
+  const followRef = useRef<FollowState>(initialFollowState());
   useEffect(() => {
-    if (followGeo && !isUserInteracting) {
-      mapRef.current?.easeTo({
-        center: [followGeo.lng, followGeo.lat],
-        zoom: 18.5,
-        bearing: heading ?? 0,
-        pitch: 60,       // tilted 3-D perspective for navigation feel
-        duration: 600,
-      });
+    if (!followGeo) {
+      followRef.current = initialFollowState();   // a later ride starts fresh
+      return;
     }
+    if (isUserInteracting) return;
+    const { state, move } = stepFollow(followRef.current, {
+      geo: followGeo,
+      heading: heading ?? null,
+      at: Date.now(),
+    });
+    followRef.current = state;
+    if (!move) return;
+    mapRef.current?.easeTo({
+      center: move.center,
+      zoom: 18.5,
+      pitch: NAV_PITCH,
+      // Omitted when the turn was too small: handing MapLibre the same bearing
+      // back still counts as a rotation to animate, and a rotation re-projects
+      // every label on screen.
+      ...(move.bearing === undefined ? {} : { bearing: move.bearing }),
+      duration: move.durationMs,
+    });
   }, [followGeo, heading, isUserInteracting]);
+
+  /*
+   * Take the label-collision work away from the map while riding.
+   *
+   * This is where the freeze actually lives. MapLibre decides, on every
+   * animating frame, which labels may be drawn without overlapping each other
+   * — projecting a collision box for each one through the camera, which at
+   * `pitch` is the most expensive projection it has. Measured on a production
+   * build at phone-class CPU, that pass was 6,507 ms out of 30 seconds.
+   *
+   * Two things are done to it, and the second matters more than the first:
+   *
+   *   1. **Shop labels go away.** Cafés, ATMs and pharmacies are not what
+   *      somebody following directions is reading, and in a city centre at
+   *      zoom 18.5 they are most of the symbols on screen. Street names stay.
+   *   2. **The rest stop colliding.** `*-allow-overlap` plus
+   *      `*-ignore-placement` tells MapLibre to draw a label without asking
+   *      whether it fits — so the collision index has nothing left to compute.
+   *      The cost is that two street names can overlap for a moment while the
+   *      camera turns, which is a far better trade than a map that does not
+   *      respond to touch.
+   *
+   * Every original value is remembered and put back when the ride ends, so
+   * this is a mode the map is in rather than damage done to the style.
+   */
+  // A plain object, not a Map: `Map` here is react-map-gl's component.
+  const labelTweaks = useRef<Record<string, Record<string, unknown>>>({});
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map) return;
+    const riding = Boolean(followGeo);
+    /** Layers whose labels are noise while navigating. */
+    const HIDE_SOURCE_LAYERS = new Set(["poi", "place"]);
+    const RELAX = [
+      "text-allow-overlap",
+      "icon-allow-overlap",
+      "text-ignore-placement",
+      "icon-ignore-placement",
+    ] as const;
+
+    const apply = () => {
+      if (!map.isStyleLoaded()) return;
+      for (const layer of map.getStyle()?.layers ?? []) {
+        if (layer.type !== "symbol") continue;
+        const sourceLayer = (layer as { "source-layer"?: string })["source-layer"];
+        try {
+          if (HIDE_SOURCE_LAYERS.has(sourceLayer ?? "")) {
+            map.setLayoutProperty(layer.id, "visibility", riding ? "none" : "visible");
+            continue;
+          }
+          if (riding) {
+            if (!labelTweaks.current[layer.id]) {
+              const before: Record<string, unknown> = {};
+              for (const prop of RELAX) before[prop] = map.getLayoutProperty(layer.id, prop);
+              labelTweaks.current[layer.id] = before;
+            }
+            for (const prop of RELAX) map.setLayoutProperty(layer.id, prop, true);
+          } else {
+            const before = labelTweaks.current[layer.id];
+            if (!before) continue;
+            for (const prop of RELAX) map.setLayoutProperty(layer.id, prop, before[prop]);
+            delete labelTweaks.current[layer.id];
+          }
+        } catch {
+          /* A layer that went away with a style swap is not an error. */
+        }
+      }
+    };
+
+    apply();
+    // A tone change swaps the whole style out from under this.
+    map.on("styledata", apply);
+    return () => {
+      map.off("styledata", apply);
+    };
+  }, [followGeo]);
 
   // In-app "Chỉ đường": glide the map to the chosen pin instead of leaving the app.
   useEffect(() => {
