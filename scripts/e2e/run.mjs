@@ -35,6 +35,7 @@ const SUITES = [
   { id: "suggested", load: () => import("./suggested-places.mjs") },
   { id: "day-plan", load: () => import("./day-plan.mjs") },
   { id: "invite", load: () => import("./invite.mjs") },
+  { id: "onboarding", load: () => import("./onboarding.mjs") },
 ];
 
 /** Never point the suites at anything that could be production data. */
