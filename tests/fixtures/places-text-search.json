@@ -1,0 +1,61 @@
+{
+  "_provenance": "NOT a recorded live response. Shaped by hand from the documented schema of Google Places API (New) places:searchText, because this machine has no GOOGLE_MAPS_API_KEY and a fixture invented quietly would be worse than one that says so. Replace it with a real recorded body the first time the key exists — the mapper's tests are written against the shape, so a real body should drop straight in. Entries 3-6 are deliberately damaged, each in a different way, because the damage is what the mapper is for.",
+  "places": [
+    {
+      "id": "ChIJexample0000000000000001",
+      "displayName": { "text": "Cà phê Vợt Phan Đình Phùng", "languageCode": "vi" },
+      "formattedAddress": "330 Phan Đình Phùng, Phường Xuân Hòa, TP.HCM",
+      "location": { "latitude": 10.7905, "longitude": 106.6842 },
+      "rating": 4.4,
+      "userRatingCount": 1820,
+      "priceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "regularOpeningHours": {
+        "openNow": true,
+        "periods": [
+          { "open": { "day": 0, "hour": 6, "minute": 0 }, "close": { "day": 0, "hour": 22, "minute": 30 } },
+          { "open": { "day": 1, "hour": 6, "minute": 0 }, "close": { "day": 1, "hour": 22, "minute": 30 } },
+          { "open": { "day": 2, "hour": 6, "minute": 30 }, "close": { "day": 2, "hour": 23, "minute": 0 } },
+          { "open": { "day": 3, "hour": 6, "minute": 0 }, "close": { "day": 3, "hour": 22, "minute": 30 } },
+          { "open": { "day": 4, "hour": 6, "minute": 0 }, "close": { "day": 4, "hour": 22, "minute": 30 } },
+          { "open": { "day": 5, "hour": 6, "minute": 0 }, "close": { "day": 5, "hour": 23, "minute": 30 } },
+          { "open": { "day": 6, "hour": 6, "minute": 0 }, "close": { "day": 6, "hour": 23, "minute": 30 } }
+        ]
+      }
+    },
+    {
+      "id": "ChIJexample0000000000000002",
+      "displayName": { "text": "Quán Nướng Sài Gòn", "languageCode": "vi" },
+      "formattedAddress": "12 Lê Thánh Tôn, Phường Sài Gòn, TP.HCM",
+      "location": { "latitude": 10.7772, "longitude": 106.7018 },
+      "rating": 4.1,
+      "priceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "regularOpeningHours": {
+        "periods": [
+          { "open": { "day": 2, "hour": 17, "minute": 0 }, "close": { "day": 3, "hour": 1, "minute": 0 } }
+        ]
+      }
+    },
+    {
+      "id": "ChIJexample0000000000000003",
+      "displayName": { "text": "Chỗ không có toạ độ" },
+      "formattedAddress": "ở đâu đó",
+      "rating": 4.9
+    },
+    {
+      "id": "ChIJexample0000000000000004",
+      "displayName": { "text": "Quán trống trơn" },
+      "location": { "latitude": 10.78, "longitude": 106.69 }
+    },
+    {
+      "displayName": { "text": "Không có id" },
+      "location": { "latitude": 10.78, "longitude": 106.69 }
+    },
+    {
+      "id": "ChIJexample0000000000000006",
+      "displayName": { "text": "Giờ mở cửa hỏng" },
+      "location": { "latitude": 10.781, "longitude": 106.691 },
+      "priceLevel": "PRICE_LEVEL_UNSPECIFIED",
+      "regularOpeningHours": { "periods": [{ "open": { "day": 2 } }] }
+    }
+  ]
+}
