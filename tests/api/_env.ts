@@ -58,3 +58,19 @@ export const TEST_URI = process.env.MONGODB_URI;
  */
 export const TEST_ADMIN_EMAIL = "admin@example.test";
 process.env.ADMIN_EMAILS = process.env.TEST_ADMIN_EMAILS ?? TEST_ADMIN_EMAIL;
+
+/*
+ * No test may spend a real API call.
+ *
+ * `npm run test:api` loads the app's own `.env`, which carries live provider
+ * keys — so the day planner's "find somewhere new" branch would quietly call
+ * Google or Stadia for real, from a suite that runs on every push. That is
+ * somebody's money and somebody's rate limit, spent by a test.
+ *
+ * Cleared here rather than remembered in each file: "no network in the tests"
+ * has to be a property of the harness, not a habit. A test that WANTS a
+ * provider sets its own key after importing this, and says so out loud.
+ */
+for (const key of ["GOOGLE_MAPS_API_KEY", "STADIA_API_KEY", "DAY_PLAN_LLM_URL", "DAY_PLAN_LLM_KEY"]) {
+  delete process.env[key];
+}

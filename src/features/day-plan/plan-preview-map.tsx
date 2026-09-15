@@ -50,7 +50,10 @@ export function PlanPreviewMap({ pins }: { pins: PreviewPin[] }) {
         initialViewState={view}
         mapStyle={MAP_STYLE_DAY}
         style={{ width: "100%", height: "100%" }}
-        attributionControl={false}
+        /* Attribution stays ON. Suggested places come from OpenStreetMap via
+           Stadia, and ODbL requires crediting the source wherever that data is
+           shown — this little map is exactly where it is shown. */
+        attributionControl={{ compact: true }}
         dragRotate={false}
         pitchWithRotate={false}
       >

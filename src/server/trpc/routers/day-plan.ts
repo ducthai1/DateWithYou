@@ -198,6 +198,7 @@ export const dayPlanRouter = router({
         const area = input.areas[0];
         const found = await searchPlacesNearby({
           spaceId: ctx.spaceId,
+          kind: firstGap.slot.kind,
           query: area
             ? `${QUERY_FOR[firstGap.slot.kind]} ở ${area}`
             : QUERY_FOR[firstGap.slot.kind],

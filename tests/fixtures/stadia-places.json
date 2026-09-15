@@ -1,0 +1,1619 @@
+{
+ "_provenance": "Bản ghi THẬT từ Stadia Maps Pelias (/geocoding/v1/search, layers=venue) quanh 10.7769,106.7009 — ghi ngày 15/09/2026. Khối `geocoding` đã bị xoá vì nó lặp lại api_key. Năm truy vấn ứng với năm loại chặng; chúng chứa cả kết quả rác thật (Quận ủy, Cá sấu) — đó chính là thứ bộ lọc phải loại.",
+ "queries": {
+  "cafe": {
+   "bbox": [
+    106.677654,
+    10.758791,
+    106.708476,
+    10.812283
+   ],
+   "features": [
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.69208,
+       10.766606
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "brand": "Cộng Cà Phê"
+       }
+      },
+      "housenumber": "129",
+      "street": "Đường Bùi Viện",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/4385092389",
+      "id": "node/4385092389",
+      "label": "Cộng Cà Phê, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Cộng Cà Phê",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/4385092389"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.680886,
+       10.761819
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 10:00-23:00",
+        "operator": "Huỳnh Hoàng Thâm & Cao Xuân Khánh",
+        "phone": "0909795512",
+        "website": "https://www.utcamau.com/"
+       }
+      },
+      "housenumber": "512",
+      "postalcode": "70000",
+      "street": "Đường Nguyễn Thị Minh Khai",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/4676482492",
+      "id": "node/4676482492",
+      "label": "Nhà Hàng Út Cà Mau, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Nhà Hàng Út Cà Mau",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/4676482492"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.677654,
+       10.797213
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "street": "Trần Huy Liệu",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/6120689986",
+      "id": "node/6120689986",
+      "label": "Nhà Cà phê Du Lich, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Nhà Cà phê Du Lich",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Phu Nhuan",
+      "county_gid": "whosonfirst:county:1108782025",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/6120689986"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.708476,
+       10.786256
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/6045633961",
+      "id": "node/6045633961",
+      "label": "Cá sấu, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Cá sấu",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/6045633961"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.70478,
+       10.812283
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "24/7",
+        "phone": "+84902246498",
+        "website": "http://www.richycaffe.com"
+       }
+      },
+      "housenumber": "138",
+      "postalcode": "+10000",
+      "street": "Đường Nguyễn Xis",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/4885457021",
+      "id": "node/4885457021",
+      "label": "Cà Phê Richy, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Cà Phê Richy",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Binh Thanh",
+      "county_gid": "whosonfirst:county:1108782019",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/4885457021"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.685149,
+       10.758791
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 09:00-21:00",
+        "phone": "0903878254",
+        "website": "http://caphenha.store/"
+       }
+      },
+      "housenumber": "385E3",
+      "postalcode": "700000",
+      "street": "Hẻm 385 Đường Nguyễn Trãi",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/13913454078",
+      "id": "node/13913454078",
+      "label": "Cà phê Nha, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Cà phê Nha",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/13913454078"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.702969,
+       10.7751
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 07:00-23:00",
+        "phone": "+8438231130",
+        "website": "https://ciaocafe.vn/"
+       }
+      },
+      "housenumber": "74-76",
+      "street": "Nguyễn Huệ",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/1770305118",
+      "id": "node/1770305118",
+      "label": "Cà Phê Ciao, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Cà Phê Ciao",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/1770305118"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.69776,
+       10.773667
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 09:00-00:00",
+        "phone": "+84909502530",
+        "website": "http://facebook.com/saigonfriendscafe"
+       }
+      },
+      "housenumber": "24/8",
+      "street": "Hẻm Thủ Khoa Huân",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/5290098121",
+      "id": "node/5290098121",
+      "label": "Cà Phê F.r.i.e.n.d.s, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Cà Phê F.r.i.e.n.d.s",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/5290098121"
+     }
+    }
+   ],
+   "type": "FeatureCollection"
+  },
+  "meal": {
+   "bbox": [
+    106.689229,
+    10.773102,
+    106.719433,
+    10.797777
+   ],
+   "features": [
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.69946,
+       10.773102
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "07:00-22:30",
+        "phone": "+84835210702",
+        "website": "https://lusinespace.com/"
+       }
+      },
+      "housenumber": "70B",
+      "street": "Lê Lợi",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/4245717091",
+      "id": "node/4245717091",
+      "label": "Nhà Hàng L'usine, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Nhà Hàng L'usine",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/4245717091"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.7041,
+       10.774395
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 09:00-00:00",
+        "phone": "+84 1252026241"
+       }
+      },
+      "housenumber": "90",
+      "street": "Hung Vuong",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/1770597616",
+      "id": "node/1770597616",
+      "label": "Nhà Hàng Alibaba, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Nhà Hàng Alibaba",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/1770597616"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.689229,
+       10.797777
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 10:00-22:00",
+        "phone": "(08)35178283"
+       }
+      },
+      "housenumber": "198",
+      "street": "Phan Xích Long",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/4310134635",
+      "id": "node/4310134635",
+      "label": "Nhà Hàng Gogi, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Nhà Hàng Gogi",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Binh Thanh",
+      "county_gid": "whosonfirst:county:1108782019",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/4310134635"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.690791,
+       10.77811
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 08:00-22:30",
+        "website": "https://vietheritage.com.vn/"
+       }
+      },
+      "housenumber": "48",
+      "street": "Võ Văn Tần",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/4773740647",
+      "id": "node/4773740647",
+      "label": "Nhà Hàng Vietheritage, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Nhà Hàng Vietheritage",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/4773740647"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.704249,
+       10.777235
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "10:00-22:00"
+       }
+      },
+      "housenumber": "91",
+      "street": "Hai Bà Trưng",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/6300904389",
+      "id": "node/6300904389",
+      "label": "Nhà Hàng Gánh, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Nhà Hàng Gánh",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/6300904389"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.719433,
+       10.795037
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 09:00-21:00"
+       }
+      },
+      "housenumber": "208",
+      "postalcode": "700000",
+      "street": "Nguyễn Hữu Cảnh",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/10548304054",
+      "id": "node/10548304054",
+      "label": "Nhà Hàng Bornga, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Nhà Hàng Bornga",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Binh Thanh",
+      "county_gid": "whosonfirst:county:1108782019",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/10548304054"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.701163,
+       10.781405
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 06:30-21:30"
+       }
+      },
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/3756711935",
+      "id": "node/3756711935",
+      "label": "Nhà Hàng Basilico, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Nhà Hàng Basilico",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/3756711935"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.703917,
+       10.778073
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "phone": "08 3822 2188",
+        "website": "https://www.beirut.vn/",
+        "wheelchair": "yes"
+       }
+      },
+      "housenumber": "74/13D",
+      "street": "Hai Bà Trưng",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/2139900977",
+      "id": "node/2139900977",
+      "label": "Nhà Hàng Beirut, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Nhà Hàng Beirut",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/2139900977"
+     }
+    }
+   ],
+   "type": "FeatureCollection"
+  },
+  "drink": {
+   "bbox": [
+    106.674965,
+    10.762135,
+    106.705443,
+    10.791699
+   ],
+   "features": [
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.700586,
+       10.791699
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "confidence": 0.8,
+      "gid": "foursquare:venue:5cb7493d4acb19002cc94c15",
+      "id": "5cb7493d4acb19002cc94c15",
+      "label": "Baron, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Baron",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "foursquare",
+      "source_id": "5cb7493d4acb19002cc94c15"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.701846,
+       10.788998
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 18:00-05:00",
+        "operator": "shin wakai",
+        "wheelchair": "no"
+       }
+      },
+      "street": "5C/5 Nguyen Dinh Chieu",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/7092158109",
+      "id": "node/7092158109",
+      "label": "Quán Bar Manosu, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Quán Bar Manosu",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/7092158109"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.691926,
+       10.766431
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "24/7",
+        "phone": "+84815135137",
+        "website": "https://www.stationsportbar.com/"
+       }
+      },
+      "housenumber": "135",
+      "street": "Bùi Viện",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/13760293401",
+      "id": "node/13760293401",
+      "label": "Station Sports Bar, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Station Sports Bar",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/13760293401"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.705211,
+       10.782881
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "phone": "+84 0 9 1863 0742"
+       }
+      },
+      "housenumber": "2",
+      "street": "Lý Tự Trọng",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/4466559291",
+      "id": "node/4466559291",
+      "label": "Quán Bar Lush, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Quán Bar Lush",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/4466559291"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.674965,
+       10.762135
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "Mo-Su 15:00-23:00"
+       }
+      },
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/5837915365",
+      "id": "node/5837915365",
+      "label": "Quán Bar Phoenix, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Quán Bar Phoenix",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/5837915365"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.694036,
+       10.767216
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "opening_hours": "24/7"
+       }
+      },
+      "housenumber": "185",
+      "street": "Ðề Thám",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/5853812887",
+      "id": "node/5853812887",
+      "label": "Happy Life Bar, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Happy Life Bar",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 4",
+      "county_gid": "whosonfirst:county:1108782037",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/5853812887"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.705443,
+       10.779758
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/11515859475",
+      "id": "node/11515859475",
+      "label": "Umi Bar, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "Umi Bar",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/11515859475"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.690258,
+       10.770401
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "confidence": 0.8,
+      "gid": "openstreetmap:venue:node/12307223177",
+      "id": "node/12307223177",
+      "label": "22z10 Bar, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "fallback",
+      "name": "22z10 Bar",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/12307223177"
+     }
+    }
+   ],
+   "type": "FeatureCollection"
+  },
+  "stroll": {
+   "bbox": [
+    106.6732172,
+    10.7591145,
+    106.725046,
+    10.796055
+   ],
+   "features": [
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.725046,
+       10.771269
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/4384760684",
+      "id": "node/4384760684",
+      "label": "Công Viên Sala, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Công Viên Sala",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 2",
+      "county_gid": "whosonfirst:county:1108782029",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/4384760684"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.715506,
+       10.796055
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "operator": "Ban Quản lý Đường sắt đô thị Thành phố Hồ Chí Minh",
+        "wikidata": "Q60314194",
+        "wikipedia": "vi:Ga Công viên Văn Thánh"
+       }
+      },
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/11586280298",
+      "id": "node/11586280298",
+      "label": "Công viên Văn Thánh, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Công viên Văn Thánh",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Binh Thanh",
+      "county_gid": "whosonfirst:county:1108782019",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/11586280298"
+     }
+    },
+    {
+     "type": "Feature",
+     "bbox": [
+      106.6969161,
+      10.7793261,
+      106.6983122,
+      10.7807153
+     ],
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.697677,
+       10.780165
+      ]
+     },
+     "properties": {
+      "accuracy": "centroid",
+      "addendum": {
+       "osm": {
+        "wikidata": "Q66585294",
+        "wikipedia": "vi:Công viên 30 tháng 4"
+       }
+      },
+      "confidence": 1,
+      "gid": "openstreetmap:venue:relation/11084516",
+      "id": "relation/11084516",
+      "label": "Công viên 30/4, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Công viên 30/4",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "relation/11084516"
+     }
+    },
+    {
+     "type": "Feature",
+     "bbox": [
+      106.690265,
+      10.7722371,
+      106.6959068,
+      10.7773401
+     ],
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.691707,
+       10.774542
+      ]
+     },
+     "properties": {
+      "accuracy": "centroid",
+      "addendum": {
+       "osm": {
+        "wikidata": "Q10752055",
+        "wikipedia": "en:Tao Đàn Park"
+       }
+      },
+      "confidence": 1,
+      "gid": "openstreetmap:venue:way/500888743",
+      "id": "way/500888743",
+      "label": "Công viên Tao Đàn, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Công viên Tao Đàn",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "way/500888743"
+     }
+    },
+    {
+     "type": "Feature",
+     "bbox": [
+      106.6732172,
+      10.7602164,
+      106.6743888,
+      10.7609199
+     ],
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.673642,
+       10.760608
+      ]
+     },
+     "properties": {
+      "accuracy": "centroid",
+      "addendum": {
+       "osm": {
+        "wikipedia": "vi:Công viên Hòa Bình"
+       }
+      },
+      "confidence": 1,
+      "gid": "openstreetmap:venue:way/164922736",
+      "id": "way/164922736",
+      "label": "Công viên Hòa Bình, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Công viên Hòa Bình",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 8",
+      "county_gid": "whosonfirst:county:1108782041",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "way/164922736"
+     }
+    },
+    {
+     "type": "Feature",
+     "bbox": [
+      106.7011571,
+      10.7773933,
+      106.7020049,
+      10.7781984
+     ],
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.701534,
+       10.777754
+      ]
+     },
+     "properties": {
+      "accuracy": "centroid",
+      "addendum": {
+       "osm": {
+        "wikidata": "Q66439466"
+       }
+      },
+      "confidence": 1,
+      "gid": "openstreetmap:venue:way/165491103",
+      "id": "way/165491103",
+      "label": "Công viên Chi Lăng, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Công viên Chi Lăng",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "way/165491103"
+     }
+    },
+    {
+     "type": "Feature",
+     "bbox": [
+      106.6753917,
+      10.7591145,
+      106.6761091,
+      10.759907
+     ],
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.675667,
+       10.759449
+      ]
+     },
+     "properties": {
+      "accuracy": "centroid",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:way/1395672672",
+      "id": "way/1395672672",
+      "label": "Công viên Chợ Quán, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Công viên Chợ Quán",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 8",
+      "county_gid": "whosonfirst:county:1108782041",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "way/1395672672"
+     }
+    },
+    {
+     "type": "Feature",
+     "bbox": [
+      106.7056264,
+      10.7721042,
+      106.7062467,
+      10.7728774
+     ],
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.706014,
+       10.772618
+      ]
+     },
+     "properties": {
+      "accuracy": "centroid",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:way/193142040",
+      "id": "way/193142040",
+      "label": "Công viên Majestic Hotel, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Công viên Majestic Hotel",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "way/193142040"
+     }
+    }
+   ],
+   "type": "FeatureCollection"
+  },
+  "entertain": {
+   "bbox": [
+    106.676136,
+    10.754072,
+    106.701785,
+    10.79248
+   ],
+   "features": [
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.69824,
+       10.78254
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/6909743951",
+      "id": "node/6909743951",
+      "label": "Rạp Phim Cinestar, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Rạp Phim Cinestar",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/6909743951"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.695281,
+       10.791999
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/2230333450",
+      "id": "node/2230333450",
+      "label": "Rạp Phim Cầu Bông, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Rạp Phim Cầu Bông",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/2230333450"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.69386,
+       10.792449
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/2230350591",
+      "id": "node/2230350591",
+      "label": "Rạp Phim Văn Hoa, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Rạp Phim Văn Hoa",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/2230350591"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.69334,
+       10.765805
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/5423964222",
+      "id": "node/5423964222",
+      "label": "Rạp phim Trần Hưng Đạo, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Rạp phim Trần Hưng Đạo",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 4",
+      "county_gid": "whosonfirst:county:1108782037",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/5423964222"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.693978,
+       10.79248
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "brand": "rạp chiếu phim CGV",
+        "website": "https://www.betacinemas.vn/beta-imc-tran-quang-khai.htm"
+       }
+      },
+      "housenumber": "62",
+      "street": "Trần Quang Khải",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/9584833482",
+      "id": "node/9584833482",
+      "label": "Rạp Phim Beta Cinemas - Trần Quang Khải, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Rạp Phim Beta Cinemas - Trần Quang Khải",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/9584833482"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.701785,
+       10.778186
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "osm": {
+        "brand": "rạp chiếu phim CGV",
+        "website": "https://www.cgv.vn/default/cinox/site/cgv-vincom-dong-khoi/"
+       }
+      },
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/4451914689",
+      "id": "node/4451914689",
+      "label": "rạp chiếu phim CGV, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "rạp chiếu phim CGV",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 1",
+      "county_gid": "whosonfirst:county:1108782007",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/4451914689"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.68286451406304,
+       10.781494574017916
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "addendum": {
+       "foursquare": {
+        "website": "http://phimgiaiphong.com.vn"
+       }
+      },
+      "confidence": 1,
+      "gid": "foursquare:venue:4f137d08e4b0472046d9e52a",
+      "id": "4f137d08e4b0472046d9e52a",
+      "label": "Hảng phim giải phóng, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Hảng phim giải phóng",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 3",
+      "county_gid": "whosonfirst:county:1108782031",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "foursquare",
+      "source_id": "4f137d08e4b0472046d9e52a"
+     }
+    },
+    {
+     "type": "Feature",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       106.676136,
+       10.754072
+      ]
+     },
+     "properties": {
+      "accuracy": "point",
+      "confidence": 1,
+      "gid": "openstreetmap:venue:node/9470342579",
+      "id": "node/9470342579",
+      "label": "Rạp Đồng Tháp, Ho Chi Minh City, Ho Chi Minh, Vietnam",
+      "layer": "venue",
+      "match_type": "exact",
+      "name": "Rạp Đồng Tháp",
+      "country": "Vietnam",
+      "country_a": "VNM",
+      "country_code": "VN",
+      "country_gid": "whosonfirst:country:85632763",
+      "county": "Quan 8",
+      "county_gid": "whosonfirst:county:1108782041",
+      "locality": "Ho Chi Minh City",
+      "locality_gid": "whosonfirst:locality:421176809",
+      "region": "Ho Chi Minh",
+      "region_a": "HC",
+      "region_gid": "whosonfirst:region:85680809",
+      "source": "openstreetmap",
+      "source_id": "node/9470342579"
+     }
+    }
+   ],
+   "type": "FeatureCollection"
+  }
+ }
+}

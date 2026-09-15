@@ -97,18 +97,23 @@ describe("today's allowance", () => {
   });
 });
 
-describe("with no API key configured", () => {
+describe("with no provider configured at all", () => {
   test("it reports why, and does not spend the allowance doing it", async () => {
     /*
-     * This machine has no GOOGLE_MAPS_API_KEY, which is the case this test
-     * wants: the feature must degrade to "plan from what you saved" rather
-     * than erroring — and a key that is missing must not silently burn the
-     * three calls a real key would have had.
+     * Both keys absent is a supported state: the feature degrades to "plan
+     * from what you saved" rather than erroring, and a key that is missing
+     * must not silently burn the three calls a real one would have had.
+     *
+     * Cleared rather than assumed — this machine HAS a Stadia key, which the
+     * planner will happily use, so leaving it set would make this test measure
+     * the wrong thing.
      */
-    assert.equal(process.env.GOOGLE_MAPS_API_KEY, undefined, "this test assumes no key is set");
+    assert.equal(process.env.GOOGLE_MAPS_API_KEY, undefined, "_env clears this");
+    assert.equal(process.env.STADIA_API_KEY, undefined, "_env clears this too");
     const me = await makeMember({ name: "Keyless" });
     const out = await searchPlacesNearby({
       spaceId: me.spaceId,
+      kind: "cafe",
       query: "quán cà phê",
       near: { lat: 10.776, lng: 106.7 },
       weekday: 2,
@@ -116,6 +121,7 @@ describe("with no API key configured", () => {
     });
     assert.deepEqual(out.places, []);
     assert.equal(out.reason, "no-key");
+    assert.equal(out.provider, null);
     assert.equal(out.spent, false);
     assert.equal(await configOf(me.spaceId).then((c) => c?.placesSearchCount ?? 0), 0);
   });
