@@ -77,13 +77,23 @@ export const statsRouter = router({
 
         LocationModel.aggregate<{
           pinned: Counted;
+          suggested: Counted;
           visited: Counted;
           districts: Counted;
         }>([
           { $match: { spaceId } },
           {
             $facet: {
-              pinned: [{ $count: "count" }],
+              /*
+               * Places the couple chose, and places the day planner found,
+               * counted apart — "12 chỗ · 4 gợi ý" rather than one number that
+               * quietly grows without anyone deciding anything.
+               *
+               * `$ne: "suggested"` rather than `= "user"`, because every row
+               * written before the field existed has no source at all.
+               */
+              pinned: [{ $match: { source: { $ne: "suggested" } } }, { $count: "count" }],
+              suggested: [{ $match: { source: "suggested" } }, { $count: "count" }],
               visited: [{ $match: { status: "visited" } }, { $count: "count" }],
               districts: [
                 { $match: { status: "visited", district: { $nin: [null, ""] } } },
@@ -139,6 +149,7 @@ export const statsRouter = router({
       memories: memoryTotals?.count ?? 0,
       photos: memoryTotals?.photos ?? 0,
       placesPinned: loc?.pinned[0]?.count ?? 0,
+      placesSuggested: loc?.suggested[0]?.count ?? 0,
       placesVisited: loc?.visited[0]?.count ?? 0,
       districtsCovered: loc?.districts[0]?.count ?? 0,
       trips: trip?.total[0]?.count ?? 0,

@@ -229,6 +229,19 @@ export const locationRouter = router({
            * broken search, not as two features.
            */
           q: z.string().trim().max(80).optional(),
+          /*
+           * Whose choice this place was.
+           *
+           * "user" is somewhere the couple added; "suggested" is somewhere the
+           * day planner found and saved when they confirmed a plan containing
+           * it. Screens that are about "chỗ của tụi mình" — the wheel above
+           * all — ask for "user"; the list screen asks for neither and badges
+           * what comes back.
+           *
+           * Omitting it returns both, which is what every caller written
+           * before this field existed does, on purpose.
+           */
+          source: z.enum(["user", "suggested"]).optional(),
         })
         .optional(),
     )
@@ -238,6 +251,13 @@ export const locationRouter = router({
       if (input?.district) filter.district = input.district;
       if (input?.category) filter.category = input.category;
       if (input?.status) filter.status = input.status;
+      /*
+       * Every row written before this field existed has no `source` at all, so
+       * "user" has to mean "user or absent". Matching only the literal would
+       * empty the wheel for every existing space on the day this ships.
+       */
+      if (input?.source === "user") filter.source = { $ne: "suggested" };
+      else if (input?.source === "suggested") filter.source = "suggested";
       if (input?.q) {
         const pattern = buildPattern(input.q);
         // A query that folds to nothing (a lone combining mark) means no
@@ -264,7 +284,27 @@ export const locationRouter = router({
         openTime: d.openTime ?? null,
         closeTime: d.closeTime ?? null,
         note: d.note ?? null,
+        source: d.source === "suggested" ? ("suggested" as const) : ("user" as const),
+        priceLevel: d.priceLevel ?? null,
       }));
+    }),
+
+  /**
+   * "Giữ lại" — a place the planner suggested becomes one of the couple's own.
+   *
+   * The Google id stays: it is what stops the same place being saved a second
+   * time by a later plan, and it is the only field their terms let us keep.
+   */
+  keepSuggested: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const res = await LocationModel.updateOne(
+        { _id: input.id, spaceId: ctx.spaceId, source: "suggested" },
+        { $set: { source: "user" } },
+      );
+      if (!res.matchedCount) throw new TRPCError({ code: "NOT_FOUND", message: "NO_SUGGESTION" });
+      return { id: input.id };
     }),
 
   create: protectedProcedure

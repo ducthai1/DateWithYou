@@ -12,7 +12,7 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { List as ListIcon, Volume2, VolumeX, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, Loader2, LocateOff, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, PictureInPicture2, Pencil, Play, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
+import { List as ListIcon, Volume2, VolumeX, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Circle, Clock, ExternalLink, Link2, Loader2, LocateOff, MapPinned, Navigation, PanelLeftClose, PanelLeftOpen, Pause, PictureInPicture2, Pencil, Play, Route, Satellite, Settings, Square, Trash2, UserRound, Users, Utensils, WifiOff, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { type LegInfo } from "./use-live-navigation";
@@ -682,6 +682,22 @@ export function LocationsPage() {
   const remove = trpc.location.remove.useMutation({
     onSuccess: () => { utils.location.list.invalidate(); toast("Đã xoá địa điểm", "success"); },
     onError: (err) => toast(readableFormError(err.message), "error")
+  });
+
+  /*
+   * "Giữ lại" — a place the day planner found becomes one of ours.
+   *
+   * Until this is pressed the row is visible here but held back everywhere
+   * else: the wheel skips it, the stats count it apart, the map pins it in
+   * another colour. This is the one screen where the couple decides.
+   */
+  const keepSuggested = trpc.location.keepSuggested.useMutation({
+    onSuccess: () => {
+      utils.location.list.invalidate();
+      utils.stats.overview.invalidate();
+      toast("Đã giữ lại — giờ nó là chỗ của mình", "success");
+    },
+    onError: (err) => toast(readableFormError(err.message), "error"),
   });
 
   // Detect if partner is stuck
@@ -1601,6 +1617,7 @@ export function LocationsPage() {
         name: l.name,
         geo: l.geo,
         status: l.status,
+        source: l.source,
       })),
     [list.data],
   );
@@ -2763,7 +2780,14 @@ export function LocationsPage() {
                 return (
                   <Card
                     key={l.id}
-                    className={`flex h-full flex-col gap-3 p-4 transition-shadow hover:shadow-md ${selectedId === l.id ? "ring-accent ring-2" : ""}`}
+                    className={cn(
+                      "flex h-full flex-col gap-3 p-4 transition-shadow hover:shadow-md",
+                      selectedId === l.id && "ring-accent ring-2",
+                      // Somewhere the planner found, not somewhere either of
+                      // them chose. Marked on the card itself, because the
+                      // difference decides whether it belongs on their map.
+                      l.source === "suggested" && "border-dashed border-sky-400/60 bg-sky-50/40 dark:bg-sky-950/20",
+                    )}
                   >
                     <div className="flex items-start gap-3">
                       <span
@@ -2786,6 +2810,11 @@ export function LocationsPage() {
                         */}
                         <div className="flex flex-col gap-1">
                           <p className="font-medium leading-tight">{l.name}</p>
+                          {l.source === "suggested" && (
+                            <span className="self-start rounded-full border border-sky-400/50 bg-sky-100/70 px-2 py-0.5 text-[10px] font-semibold leading-none text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                              Gợi ý — chưa phải chỗ của mình
+                            </span>
+                          )}
                           <button
                             onClick={() => toggle.mutate({ id: l.id })}
                             className={cn(
@@ -2959,6 +2988,15 @@ export function LocationsPage() {
                       >
                         <Pencil className="h-3.5 w-3.5" /> Sửa
                       </button>
+                      {l.source === "suggested" && (
+                        <button
+                          className={`${ACTION_CLS} border border-sky-400/50 text-sky-700 hover:bg-sky-100 dark:text-sky-300`}
+                          onClick={() => keepSuggested.mutate({ id: l.id })}
+                          disabled={keepSuggested.isPending}
+                        >
+                          <Check className="h-3.5 w-3.5" /> Giữ lại
+                        </button>
+                      )}
                       <ConfirmButton
                         className={`${ACTION_CLS} ml-auto hover:bg-destructive-soft`}
                         icon={<Trash2 className="h-3.5 w-3.5" />}

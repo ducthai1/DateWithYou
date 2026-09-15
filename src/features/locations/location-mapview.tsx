@@ -91,6 +91,8 @@ export type MapPin = {
   name: string;
   geo: LatLng | null;
   status: "want_to_go" | "visited";
+  /** "suggested" = the day planner found it; nobody has kept it yet. */
+  source?: "user" | "suggested";
 };
 
 // Generates a distinctly different color for coordinates, even if they are very close.
@@ -832,14 +834,30 @@ function LocationMapViewImpl({
                   {p.name}
                 </span>
 
-                {/* Dot */}
+                {/*
+                  Dot.
+
+                  A place the day planner suggested is drawn hollow, in one
+                  fixed blue, instead of taking a colour from its coordinates
+                  like the couple's own pins do. Two reasons it is not just a
+                  different hue: the per-place colours already use the whole
+                  wheel, so no hue is free; and "not yet ours" is a different
+                  KIND of thing from "which place is this", so it reads better
+                  as a different shape of pin than as one more colour.
+                */}
                 <span
                   className={cn(
-                    "block h-4 w-4 rounded-full border-2 border-white shadow transition-all duration-200",
+                    "block h-4 w-4 rounded-full border-2 shadow transition-all duration-200",
+                    p.source === "suggested" ? "border-sky-500 border-dashed" : "border-white",
                     selectedId === p.id ? "scale-125 ring-2 ring-black/20 ring-offset-1" : "group-hover:scale-110"
                   )}
-                  style={{ backgroundColor: getPinColor(p.geo!.lat, p.geo!.lng, p.status) }}
-                  title={p.name}
+                  style={{
+                    backgroundColor:
+                      p.source === "suggested"
+                        ? "rgba(255,255,255,0.85)"
+                        : getPinColor(p.geo!.lat, p.geo!.lng, p.status),
+                  }}
+                  title={p.source === "suggested" ? `${p.name} — gợi ý, chưa giữ lại` : p.name}
                 />
               </div>
             </Marker>

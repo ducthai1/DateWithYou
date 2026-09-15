@@ -8,6 +8,7 @@ import { predictNextStart } from "@/lib/cycle-prediction";
 import { cycleReminderCopy, shortDateLabel } from "@/lib/cycle-copy";
 import { daysBetweenKeys, todayKey } from "@/lib/date-keys";
 import { sendPushToUser } from "@/server/lib/push";
+import { sweepStaleSuggestions } from "@/server/lib/sweep-stale-suggestions";
 
 /**
  * The daily nudge behind the gentle day.
@@ -114,5 +115,18 @@ export async function GET(request: Request) {
     notified++;
   }
 
-  return NextResponse.json({ ok: true, today, notified, skipped, delivered });
+  /*
+   * The daily sweep rides along here rather than taking a cron slot of its
+   * own: same schedule, same authentication, and the deployment plan allows
+   * few of them. A failure must not fail the reminder — the reminder is the
+   * thing somebody is waiting for.
+   */
+  let sweptSuggestions = 0;
+  try {
+    sweptSuggestions = await sweepStaleSuggestions();
+  } catch (err) {
+    console.error("cron: sweeping stale suggestions failed", err);
+  }
+
+  return NextResponse.json({ ok: true, today, notified, skipped, delivered, sweptSuggestions });
 }

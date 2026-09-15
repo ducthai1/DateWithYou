@@ -178,6 +178,16 @@ export const searchRouter = router({
           .limit(limit)
           .lean<MemoryRow[]>(),
 
+        /*
+         * Places the day planner suggested are searchable, deliberately.
+         *
+         * They are rows in this space and they show on the list screen, so a
+         * name that is visible there and not findable here does not read as
+         * "that one is different" — it reads as search being broken, which is
+         * the same reasoning that put the `q` filter on `location.list` next to
+         * the other filters. The wheel is the one place they are held back,
+         * because the wheel makes a promise about whose choice it is offering.
+         */
         LocationModel.find({
           spaceId,
           $or: [{ name: rx }, { district: rx }, { note: rx }, { mustTry: rx }],

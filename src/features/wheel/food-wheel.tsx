@@ -42,8 +42,17 @@ export function FoodWheel() {
    */
   const config = trpc.location.getConfig.useQuery();
   const categories = config.data?.categories ?? [];
+  /*
+   * Only places the two of them chose.
+   *
+   * The day planner can save places Google found, into this same list. Letting
+   * the wheel land on one would break the only promise the wheel makes — that
+   * whatever it lands on is somewhere you two already liked the look of. A
+   * suggestion becomes eligible the moment somebody presses "Giữ lại".
+   */
   const places = trpc.location.list.useQuery({
     status: "want_to_go",
+    source: "user",
     category: (category || undefined) as Category | undefined,
   });
   const recipes = trpc.media.list.useQuery({ kind: "recipe" });
