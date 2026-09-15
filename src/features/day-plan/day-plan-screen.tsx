@@ -89,8 +89,18 @@ export function DayPlanScreen() {
 
   const date = todayKey();
 
+  /*
+   * `startAt` may be passed in, and that is not a convenience.
+   *
+   * The out-of-hours card sets the new time and asks for a plan in the same
+   * handler — and the `run` that handler closed over still holds the OLD time,
+   * so "Lên kế hoạch từ 14:00" quietly asked for 22:00 again and was refused
+   * again. The state update is still made, for the screen; the request uses
+   * the value directly.
+   */
   const run = useCallback(
-    async (opts: { useLocation: boolean; seed?: string }) => {
+    async (opts: { useLocation: boolean; seed?: string; startAt?: string }) => {
+      const at = opts.startAt ?? startAt;
       setOutOfHours(null);
       setConfirmed(null);
       let where = origin;
@@ -101,7 +111,7 @@ export function DayPlanScreen() {
       try {
         const out = await generate.mutateAsync({
           date,
-          startAt,
+          startAt: at,
           areas,
           kinds: kinds as Stop["kind"][],
           budget,
@@ -321,7 +331,21 @@ export function DayPlanScreen() {
 
       {step === "result" && (
         <div className="mx-auto max-w-xl space-y-5 py-2">
-          {outOfHours ? (
+          {busy ? (
+            /*
+             * A plan being fetched is not a plan with nothing in it.
+             *
+             * Asking again clears the previous answer first, and for the
+             * second that took, the screen showed "Kế hoạch chiều nay · 0
+             * chặng · 0đ" with a Chốt button under it — which reads as the
+             * app having failed, not as it working. Found by the e2e, which
+             * pressed Chốt during exactly that gap.
+             */
+            <div className="space-y-3 py-10 text-center">
+              <Loader2 className="text-accent mx-auto h-8 w-8 animate-spin" aria-hidden />
+              <p className="text-muted-foreground text-sm">Đang xếp một buổi cho bạn…</p>
+            </div>
+          ) : outOfHours ? (
             <EmptyState
               art="emptyCompass"
               icon="clock"
@@ -329,7 +353,10 @@ export function DayPlanScreen() {
               subtitle={`Mình lên kế hoạch cho buổi chiều và buổi tối. Thử lại từ ${outOfHours} nhé.`}
               action={{
                 label: `Lên kế hoạch từ ${outOfHours}`,
-                onClick: () => { setStartAt(outOfHours); void run({ useLocation: true, seed: undefined }); },
+                onClick: () => {
+                  setStartAt(outOfHours);
+                  void run({ useLocation: true, startAt: outOfHours });
+                },
               }}
             />
           ) : meta?.needsMorePlaces ? (
@@ -352,7 +379,7 @@ export function DayPlanScreen() {
                 <div>
                   <p className="text-sm font-semibold">Kế hoạch chiều nay</p>
                   <p className="text-muted-foreground text-xs">
-                    {kept.length} chặng · bắt đầu {startAt}
+                    {kept.length} chặng · bắt đầu {stops[0]?.startTime ?? startAt}
                   </p>
                 </div>
                 <p className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">

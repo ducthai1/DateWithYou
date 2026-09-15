@@ -273,6 +273,46 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     );
     if (shotDir) await page.shot(`${shotDir}/day-plan-done.png`);
 
+    /* ——— the refusal, and the way back out of it ————————————— */
+    /*
+     * Forced, not waited for: the template is chosen by the clock, so this
+     * path only happens by accident late at night — and that is exactly when
+     * it was found broken. "Lên kế hoạch từ 14:00" was asking for the OLD time
+     * again, because the handler had closed over it, so the card offered a way
+     * out that led straight back to itself.
+     */
+    await page.goto(`${base}/hom-nay-di-dau`);
+    await page.until(`document.body.innerText.includes("Cứ đi thôi")`, { timeout: 60000 });
+    await page.eval(`[...document.querySelectorAll('button')].find(b => /Tôi có ý rồi/.test(b.textContent||''))?.click()`);
+    await page.until(`document.body.innerText.includes("Bắt đầu lúc")`, { timeout: 30000 });
+    await page.eval(`[...document.querySelectorAll('button')].find(b => /^\\d{2}:\\d{2}$|--:--/.test((b.textContent||'').trim()))?.click()`);
+    await page.until(`!!document.querySelector('[data-time-popup]')`, { timeout: 10000 });
+    await page.eval(`(() => {
+      const pop = document.querySelector('[data-time-popup]');
+      const cells = [...pop.querySelectorAll('button')];
+      cells.find(b => b.textContent.trim() === '03')?.click();
+    })()`);
+    await page.until(`!!document.querySelector('[data-time-popup]')`, { timeout: 10000 }).catch(() => {});
+    await page.eval(`(() => {
+      const pop = document.querySelector('[data-time-popup]');
+      if (!pop) return;
+      [...pop.querySelectorAll('button')].find(b => b.textContent.trim() === '00')?.click();
+    })()`);
+    await page.eval(`[...document.querySelectorAll('button')].find(b => /Lên kế hoạch$/.test((b.textContent||'').trim()))?.click()`);
+    const refused = await page
+      .until(`/hơi khuya/i.test(document.body.innerText)`, { timeout: 60000 })
+      .then(() => true)
+      .catch(() => false);
+    ok("03:00 thì từ chối, không bịa ra một ngày vô lý", refused);
+    if (refused) {
+      await page.eval(`[...document.querySelectorAll('button')].find(b => /Lên kế hoạch từ/.test(b.textContent||''))?.click()`);
+      const recovered = await page
+        .until(`document.body.innerText.includes("Chốt kế hoạch này")`, { timeout: 60000 })
+        .then(() => true)
+        .catch(() => false);
+      ok("và nút “Lên kế hoạch từ …” thật sự ra được kế hoạch", recovered);
+    }
+
     /* ——— the doors in ——————————————————————————————————————— */
     const doors = [
       ["/khong-biet-di-dau", "trang SEO không-biết-đi-đâu"],

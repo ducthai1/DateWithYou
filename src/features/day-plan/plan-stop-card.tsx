@@ -109,7 +109,9 @@ export function PlanStopCard({
               )}
               {walk && (
                 <span className="tabular-nums">
-                  cách chặng trước ~{walk}
+                  {/* There is no stop before the first one: that distance is
+                      measured from where the person actually is. */}
+                  {index === 0 ? "cách bạn" : "cách chặng trước"} ~{walk}
                 </span>
               )}
               <span className="flex items-center gap-1 tabular-nums">
