@@ -19,7 +19,7 @@
 import test, { describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import mongoose from "mongoose";
-import { freshDatabase, closeDatabase, makeMember, rejects, must } from "./_harness.ts";
+import { freshDatabase, closeDatabase, makeMember, makeCouple, rejects, must } from "./_harness.ts";
 import { sweepStaleSuggestions, SUGGESTION_TTL_DAYS } from "../../src/server/lib/sweep-stale-suggestions.ts";
 
 before(freshDatabase);
@@ -210,5 +210,51 @@ describe("suggestions nobody wanted", () => {
     await sweepStaleSuggestions();
     assert.equal(await mongoose.connection.collection("locations")
       .countDocuments({ _id: new mongoose.Types.ObjectId(id) }), 1);
+  });
+});
+
+describe("the partner's feed", () => {
+  /*
+   * The reader that was missed the first time round.
+   *
+   * The audit before this feature shipped grepped for `location.list` — but
+   * `activity.ts` queries `LocationModel` directly, so it never came up. The
+   * result: confirming a plan told the other person "đã thêm địa điểm" about
+   * a place neither of them added, and bumped their unread badge by one for
+   * each suggestion. Grep for the MODEL, not for the procedure.
+   */
+  test("a suggestion is not announced as somewhere they added", async () => {
+    const { a, b } = await makeCouple({ a: "FeedA", b: "FeedB" });
+    await seed(a.spaceId, { name: "Chỗ mình chọn", createdBy: a.userId });
+    await seed(a.spaceId, {
+      name: "Chỗ máy gợi ý", source: "suggested", externalId: "ChIJ-feed-1", createdBy: a.userId,
+    });
+
+    const feed = await b.caller.activity.feed({ limit: 20 });
+    const names = feed.items.map((i: { title?: string }) => i.title);
+    assert.ok(names.includes("Chỗ mình chọn"), "a place they chose still shows");
+    assert.ok(!names.includes("Chỗ máy gợi ý"), `suggestion leaked into the feed: ${names.join(" · ")}`);
+  });
+
+  test("and does not light up their unread badge", async () => {
+    const { a, b } = await makeCouple({ a: "BadgeA", b: "BadgeB" });
+    const before = await b.caller.activity.unreadCount();
+    await seed(a.spaceId, {
+      name: "Gợi ý lặng lẽ", source: "suggested", externalId: "ChIJ-feed-2", createdBy: a.userId,
+    });
+    const after = await b.caller.activity.unreadCount();
+    assert.equal(after.count, before.count, "a suggestion is not news");
+  });
+
+  test("keeping it makes it news like any other place", async () => {
+    const { a, b } = await makeCouple({ a: "KeepA", b: "KeepB" });
+    const id = await seed(a.spaceId, {
+      name: "Giữ rồi mới kể", source: "suggested", externalId: "ChIJ-feed-3", createdBy: a.userId,
+    });
+    assert.ok(!(await b.caller.activity.feed({ limit: 20 })).items
+      .some((i: { title?: string }) => i.title === "Giữ rồi mới kể"));
+    await a.caller.location.keepSuggested({ id });
+    assert.ok((await b.caller.activity.feed({ limit: 20 })).items
+      .some((i: { title?: string }) => i.title === "Giữ rồi mới kể"), "now it is theirs");
   });
 });

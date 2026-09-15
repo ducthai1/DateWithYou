@@ -112,7 +112,19 @@ export const activityRouter = router({
         MemoryModel.find(base, null, page)
           .select("_id createdBy title createdAt")
           .lean<Row<{ createdBy: string; title: string }>[]>(),
-        LocationModel.find(base, null, page)
+        /*
+         * Places the couple chose — not the ones the day planner found.
+         *
+         * Confirming a plan can create a row for somewhere Google suggested,
+         * and the feed would announce it as "đã thêm địa điểm": a place
+         * neither of them added, credited to whoever pressed Chốt. What
+         * actually happened is already in the feed as the trip and its items;
+         * the location row is how that was stored, not a thing anybody did.
+         *
+         * Pressing "Giữ lại" makes it an ordinary place and it becomes
+         * feed-worthy like any other.
+         */
+        LocationModel.find({ ...base, source: { $ne: "suggested" } }, null, page)
           .select("_id createdBy name district createdAt")
           .lean<Row<{ createdBy: string; name: string; district: string }>[]>(),
         PlanItemModel.find(base, null, page)
@@ -265,7 +277,9 @@ export const activityRouter = router({
 
     const counts = await Promise.all([
       MemoryModel.countDocuments(byCreatedBy, opts),
-      LocationModel.countDocuments(byCreatedBy, opts),
+      // Same reason as the feed: a suggestion the planner saved is not a thing
+      // the other person did, and it must not light up their badge.
+      LocationModel.countDocuments({ ...byCreatedBy, source: { $ne: "suggested" } }, opts),
       PlanItemModel.countDocuments(byCreatedBy, opts),
       TripModel.countDocuments(byCreatedBy, opts),
       TimeCapsuleModel.countDocuments({ ...base, creatorId: notMine }, opts),
