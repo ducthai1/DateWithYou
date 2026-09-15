@@ -21,6 +21,16 @@ const tripSchema = new Schema(
      * disagree with the first. Documents written before this keep a stray
      * `status` key; nothing reads it.
      */
+    /*
+     * Set only by the day planner: a fingerprint of the plan that was
+     * confirmed (the day, and each stop's time and place).
+     *
+     * It exists so that a flaky connection and a second tap produce one trip
+     * rather than two. Confirming a DIFFERENT plan on the same day is a
+     * different fingerprint and correctly makes a second trip. Trips created
+     * by hand never have one.
+     */
+    sourceKey: { type: String },
     createdBy: { type: String, required: true },
     checklists: [tripChecklistSchema],
   },
@@ -31,6 +41,12 @@ const tripSchema = new Schema(
 // .sort({ createdAt: -1 }).limit(n) — and activity.unreadCount, which adds
 // an equality-free createdAt range on the same prefix.
 tripSchema.index({ spaceId: 1, createdAt: -1 });
+// Partial, not sparse: a sparse COMPOUND index still indexes every hand-made
+// trip under a null sourceKey, and the second one collides.
+tripSchema.index(
+  { spaceId: 1, sourceKey: 1 },
+  { unique: true, partialFilterExpression: { sourceKey: { $type: "string" } } },
+);
 
 export type Trip = InferSchemaType<typeof tripSchema>;
 export type TripChecklist = InferSchemaType<typeof tripChecklistSchema>;

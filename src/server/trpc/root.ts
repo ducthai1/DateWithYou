@@ -23,6 +23,7 @@ import { blogRouter } from "@/server/trpc/routers/blog";
 import { uploadRouter } from "@/server/trpc/routers/upload";
 import { profileRouter } from "@/server/trpc/routers/profile";
 import { cycleRouter } from "@/server/trpc/routers/cycle";
+import { dayPlanRouter } from "@/server/trpc/routers/day-plan";
 import { listenRouter } from "./routers/listen";
 
 /** Root tRPC router. Each feature registers its own sub-router here. */
@@ -51,6 +52,7 @@ export const appRouter = router({
   upload: uploadRouter,
   profile: profileRouter,
   cycle: cycleRouter,
+  dayPlan: dayPlanRouter,
   listen: listenRouter,
 });
 
