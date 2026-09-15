@@ -88,7 +88,18 @@ export function isPublicChrome(pathname: string): boolean {
   return (
     NAV_HIDDEN_ON.includes(pathname) ||
     pathname === "/blog" ||
-    pathname.startsWith("/blog/")
+    pathname.startsWith("/blog/") ||
+    /*
+     * An invite link, which is the one page that MUST work for somebody with
+     * no account and no space.
+     *
+     * Without this the guard reads "/moi/ABC" as a feature page, sees a
+     * brand-new account with no couple space, and replaces it with
+     * /onboarding — throwing away the invitation at the exact moment it was
+     * about to be accepted. The whole point of the link is that it survives
+     * the trip through sign-up.
+     */
+    pathname.startsWith("/moi/")
   );
 }
 

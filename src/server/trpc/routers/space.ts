@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { TRPCError } from "@trpc/server";
-import { router, authedProcedure, protectedProcedure } from "@/server/trpc/trpc";
+import { router, authedProcedure, protectedProcedure, publicProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { SpaceModel } from "@/server/db/models/space";
 import { SpecialDateModel } from "@/server/db/models/special-date";
@@ -280,12 +280,32 @@ export const spaceRouter = router({
     if (!space) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
     if (space.members.length >= 2)
       throw new TRPCError({ code: "CONFLICT", message: "SPACE_FULL" });
-    
+
     const code = generateInviteCode();
     space.inviteCodeHash = hashCode(code);
-    space.inviteCodeExpiresAt = new Date(Date.now() + INVITE_TTL_MS);
+    const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+    space.inviteCodeExpiresAt = expiresAt;
     await space.save();
-    return { code };
+    /*
+     * A PATH, not a full URL — the browser supplies the origin.
+     *
+     * The obvious version built the absolute link here from SITE_URL, and
+     * SITE_URL is the canonical production host by design: correct for
+     * sitemaps and share cards, and wrong for this. An invite created on a
+     * preview deployment, or on a developer's laptop, would hand out a link
+     * to production, where the code does not exist. The e2e suite caught it
+     * by following its own link and arriving at the live site.
+     *
+     * Wherever somebody is using the app is where their partner should land,
+     * so the origin comes from the window. The QR and the copy button both
+     * read that one value, so they still cannot disagree.
+     */
+    return {
+      code,
+      path: `/moi/${code}`,
+      expiresAt,
+      spaceName: space.name,
+    };
   }),
 
   // Atomic join: matches a live code, space not full, not already a member,
@@ -316,16 +336,72 @@ export const spaceRouter = router({
         throw e;
       }
 
-      if (!joined)
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "INVALID_OR_EXPIRED_CODE",
-        });
+      /*
+       * Say WHICH of the four things went wrong.
+       *
+       * The atomic update above matches on four conditions at once, which is
+       * what makes joining race-free — but it also means every failure looked
+       * identical, and "mã không hợp lệ hoặc đã hết hạn" is the wrong thing to
+       * tell somebody who is already in the space, or who arrived at a space
+       * that has since filled up. Those people did nothing wrong and the
+       * message sent them to ask for a new code that would not have helped.
+       *
+       * One extra read, only on the failure path, to tell them the truth.
+       */
+      if (!joined) {
+        const space = await SpaceModel.findOne({ inviteCodeHash: hashCode(input.code) })
+          .select("_id members inviteCodeExpiresAt")
+          .lean<{ _id: unknown; members: string[]; inviteCodeExpiresAt?: Date }>();
+
+        if (!space) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_OR_EXPIRED_CODE" });
+        }
+        if (space.members.includes(ctx.userId)) {
+          throw new TRPCError({ code: "CONFLICT", message: "ALREADY_MEMBER" });
+        }
+        if (space.members.length >= 2) {
+          throw new TRPCError({ code: "CONFLICT", message: "SPACE_FULL" });
+        }
+        if (space.inviteCodeExpiresAt && space.inviteCodeExpiresAt <= new Date()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "EXPIRED_CODE" });
+        }
+        throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_OR_EXPIRED_CODE" });
+      }
       // ...and into a space you join. Best-effort: the join itself is done.
       await seedBirthdayRow(String(joined._id), ctx.userId).catch((err) =>
         console.error("joinByCode: birthday seed failed", err),
       );
       return { id: String(joined._id) };
+    }),
+
+  /**
+   * What an invite link points at, without spending it.
+   *
+   * The join page needs to say "Bình mời bạn vào Góc của hai đứa" BEFORE
+   * anybody signs up — and somebody who is not logged in has to be able to
+   * read that, or the link is a wall. So this is public, and deliberately
+   * thin: a name and whether the code still works. It never says who is in
+   * the space, never returns an id, and cannot be used to join.
+   *
+   * It is also what makes "hết hạn rồi, nhờ tạo mã mới" possible to say on
+   * arrival rather than after a failed attempt.
+   */
+  previewInvite: publicProcedure
+    .input(z.object({ code: z.string().trim().min(1).max(32) }))
+    .query(async ({ input }) => {
+      await connectToDatabase();
+      const space = await SpaceModel.findOne({ inviteCodeHash: hashCode(input.code) })
+        .select("name members inviteCodeExpiresAt")
+        .lean<{ name: string; members: string[]; inviteCodeExpiresAt?: Date }>();
+
+      if (!space) return { status: "unknown" as const, spaceName: null };
+      if (space.inviteCodeExpiresAt && space.inviteCodeExpiresAt <= new Date()) {
+        return { status: "expired" as const, spaceName: space.name };
+      }
+      if (space.members.length >= 2) {
+        return { status: "full" as const, spaceName: space.name };
+      }
+      return { status: "open" as const, spaceName: space.name };
     }),
 
   // Creator-only, irreversible. A space with a delete-PIN requires the exact

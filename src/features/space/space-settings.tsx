@@ -6,6 +6,8 @@ import { TonePicker } from "@/components/theme/tone-picker";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
+import { InvitePanel } from "./invite-panel";
+import { inviteCodeFromInput, inviteErrorMessage } from "@/lib/invite-errors";
 import { authClient } from "@/lib/auth-client";
 import { LogOut, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -132,7 +134,6 @@ export function SpaceSettings() {
   const [name, setName] = useState("");
   // Active preset key — initialised from DB, updated optimistically on swatch click
   const [activePreset, setActivePreset] = useState<ThemePresetKey>("terracotta");
-  const [invite, setInvite] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState("");
   const [newSpaceName, setNewSpaceName] = useState("");
   const [newSpacePin, setNewSpacePin] = useState("");
@@ -205,17 +206,19 @@ export function SpaceSettings() {
     },
     onError: (err) => toast(readableFormError(err.message), "error")
   });
-  const createInvite = trpc.space.createInvite.useMutation({
-    onSuccess: (d) => { setInvite(d.code); toast("Đã tạo mã mời", "success"); },
-    onError: (err) => toast(readableFormError(err.message), "error")
-  });
   const createSpace = trpc.space.create.useMutation({
     onSuccess: (data) => { toast("Đã tạo không gian", "success"); handleSpaceSwitch(data.id); },
     onError: (err) => toast(readableFormError(err.message), "error")
   });
   const joinSpace = trpc.space.joinByCode.useMutation({
     onSuccess: (data) => { toast("Đã tham gia không gian", "success"); handleSpaceSwitch(data.id); },
-    onError: (err) => toast(readableFormError(err.message), "error")
+    /*
+     * `readableFormError` cannot help here: it translates Zod's JSON and
+     * returns anything else untouched, so the four codes `joinByCode` now
+     * raises arrived on screen as themselves — a person pasting a stale code
+     * was shown the word EXPIRED_CODE.
+     */
+    onError: (err) => toast(inviteErrorMessage(err.message), "error"),
   });
   const deleteSpace = trpc.space.delete.useMutation({
     onSuccess: () => {
@@ -705,24 +708,7 @@ export function SpaceSettings() {
             Không gian đã đủ 2 người ✨
           </p>
         ) : (
-          <>
-            <Button
-              variant="outline"
-              disabled={createInvite.isPending}
-              onClick={() => createInvite.mutate()}
-            >
-              {createInvite.isPending ? "Đang tạo…" : "Tạo mã mời"}
-            </Button>
-            <p className="text-xs text-muted-foreground">Mã dùng 1 lần, hết hạn sau 7 ngày.</p>
-            {invite && (
-              <div className="border-border bg-muted rounded-xl border p-3 text-center">
-                <p className="text-muted-foreground text-xs">
-                  Mã mời (dùng 1 lần, hết hạn sau 7 ngày)
-                </p>
-                <p className="font-mono text-2xl tracking-widest">{invite}</p>
-              </div>
-            )}
-          </>
+          <InvitePanel />
         )}
           </div>
         </Card>
@@ -783,10 +769,12 @@ export function SpaceSettings() {
             Bạn của bạn tạo mã mời rồi gửi cho bạn — dán vào đây.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
+            {/* Accepts a pasted LINK as well as a code — that is what most
+                people have in their clipboard now that invites are links. */}
             <Input
-              placeholder="Nhập mã mời"
+              placeholder="Dán đường liên kết hoặc nhập mã"
               value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              onChange={(e) => setJoinCode(inviteCodeFromInput(e.target.value))}
             />
             <Button
               disabled={!joinCode.trim() || joinSpace.isPending}
@@ -796,7 +784,9 @@ export function SpaceSettings() {
               Tham gia
             </Button>
           </div>
-          {joinSpace.isError && <p className="text-xs text-destructive">{joinSpace.error.message}</p>}
+          {joinSpace.isError && (
+            <p className="text-destructive text-xs">{inviteErrorMessage(joinSpace.error.message)}</p>
+          )}
         </div>
         </Card>
 

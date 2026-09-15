@@ -42,7 +42,16 @@ export function SpaceGuard() {
   useEffect(() => {
     if (sessionPending || !userId) return;
     if (!AUTH_ROUTES.includes(pathname)) return;
-    router.replace(POST_LOGIN_REDIRECT);
+    /*
+     * …unless they came here to accept an invitation.
+     *
+     * Somebody already signed in who opens an invite link is sent to sign-up
+     * with the code in the query string. Bouncing them to the home screen
+     * would drop the invitation on the floor and they would never know why
+     * the link "did nothing".
+     */
+    const code = new URLSearchParams(window.location.search).get("moi");
+    router.replace(code && /^[A-Z0-9]{4,32}$/.test(code) ? `/moi/${code}` : POST_LOGIN_REDIRECT);
   }, [sessionPending, userId, pathname, router]);
 
   const mine = trpc.space.getMine.useQuery(undefined, {

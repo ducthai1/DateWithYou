@@ -46,6 +46,7 @@
     "nanoid": "^5.1.11",
     "next": "15.5.19",
     "nodemailer": "^9.0.3",
+    "qrcode-generator": "^2.0.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-map-gl": "^8.1.1",

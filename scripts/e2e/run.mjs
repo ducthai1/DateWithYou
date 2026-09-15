@@ -34,6 +34,7 @@ const SUITES = [
   { id: "nav", load: () => import("./nav-overlay.mjs") },
   { id: "suggested", load: () => import("./suggested-places.mjs") },
   { id: "day-plan", load: () => import("./day-plan.mjs") },
+  { id: "invite", load: () => import("./invite.mjs") },
 ];
 
 /** Never point the suites at anything that could be production data. */

@@ -77,8 +77,10 @@ const AUDIT = (labels) => `(() => {
 export async function run({ base, profileDir, port, db, shotDir }) {
   const chromeA = await launchChrome(`${profileDir}-a`, port, { width: 390, height: 844 });
   const A = await openPage(port);
-  const chromeB = await launchChrome(`${profileDir}-b`, port + 1, { width: 390, height: 844 });
-  const B = await openPage(port + 1);
+  // port + 100 for the same reason invite.mjs uses it: `port + 1` is the port
+  // the runner hands to the NEXT suite.
+  const chromeB = await launchChrome(`${profileDir}-b`, port + 100, { width: 390, height: 844 });
+  const B = await openPage(port + 100);
 
   const results = [];
   const ok = (name, pass, detail = "") => results.push({ ok: pass, name, detail });

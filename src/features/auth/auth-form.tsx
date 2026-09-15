@@ -34,6 +34,55 @@ const GoogleIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+/**
+ * The invite this sign-up came from, as a path to return to.
+ *
+ * Deliberately strict: the value decides where the browser is sent next, so
+ * anything that is not one of our own codes is ignored rather than followed.
+ * The alphabet matches `generateInviteCode` in the space router.
+ */
+/** The same path, keeping the invite code in the query string if there is one. */
+function withInvite(path: string): string {
+  if (typeof window === "undefined") return path;
+  try {
+    const code = new URLSearchParams(window.location.search).get("moi");
+    if (code && /^[A-Z0-9]{4,32}$/.test(code)) return `${path}?moi=${encodeURIComponent(code)}`;
+  } catch {
+    /* Fall through to the plain path. */
+  }
+  return path;
+}
+
+/**
+ * Reading only — never clearing.
+ *
+ * The Google button has to know the destination BEFORE it leaves, and the
+ * person may well come back without ever completing it. A function that
+ * consumed the code on read would throw the invitation away on a cancelled
+ * sign-in. Clearing happens once, where the navigation actually occurs.
+ */
+function invitePath(): string | null {
+  if (typeof window === "undefined") return null;
+  let code: string | null = null;
+  try {
+    code = new URLSearchParams(window.location.search).get("moi");
+    if (!code) code = sessionStorage.getItem("vivu.pendingInvite");
+  } catch {
+    return null;
+  }
+  if (!code || !/^[A-Z0-9]{4,32}$/.test(code)) return null;
+  return `/moi/${code}`;
+}
+
+/** Forget the stored code, once it has done its job. */
+function clearPendingInvite() {
+  try {
+    sessionStorage.removeItem("vivu.pendingInvite");
+  } catch {
+    /* Nothing to clean up in private mode. */
+  }
+}
+
 export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   return (
     <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
@@ -93,10 +142,21 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
       }
     }
     setLoading(false);
-    // Hard-navigate (not client-side push) so the entire React tree + Query
-    // cache resets. This prevents stale space data from a previous login from
-    // causing a flash of app chrome before SpaceGuard can redirect to /onboarding.
-    window.location.href = POST_LOGIN_REDIRECT;
+    /*
+     * Back to the invitation, if that is what brought them here.
+     *
+     * Somebody who opened an invite link with no account is sent to sign up,
+     * and the whole point is that they end up in the space that invited them —
+     * not on the home screen of a brand-new empty one, which looks exactly
+     * like the link having failed. The code travels in the query string, and
+     * sessionStorage is the fallback for a redirect that dropped it.
+     *
+     * Validated before use: this value decides where the browser goes next, so
+     * it must be a code, never a path somebody appended to the link.
+     */
+    const next = invitePath();
+    clearPendingInvite();
+    window.location.href = next ?? POST_LOGIN_REDIRECT;
   }
 
   return (
@@ -171,7 +231,16 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
         onClick={() =>
           authClient.signIn.social({
             provider: "google",
-            callbackURL: POST_LOGIN_REDIRECT,
+            /*
+             * Google comes back to wherever it is told, and it used to be told
+             * the home screen unconditionally — so somebody who opened an
+             * invite link and then chose Google landed on /home, where
+             * SpaceGuard sees no couple space and sends them to onboarding.
+             * The invitation is dropped on the way, with nothing to explain
+             * it. The email path reads the same value after it resolves; this
+             * one has to decide before it leaves.
+             */
+            callbackURL: invitePath() ?? POST_LOGIN_REDIRECT,
           })
         }
       >
@@ -290,8 +359,14 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
 
       <p className="text-muted-foreground text-center text-sm">
         {isSignUp ? "Đã có tài khoản? " : "Chưa có tài khoản? "}
+        {/*
+          Carry the invite across, or somebody who opened /sign-up?moi=CODE and
+          realised they already have an account arrives at a sign-in page that
+          has forgotten why they came. sessionStorage covers the trip from
+          /moi/, but not a link opened straight into sign-up.
+        */}
         <Link
-          href={isSignUp ? "/sign-in" : "/sign-up"}
+          href={withInvite(isSignUp ? "/sign-in" : "/sign-up")}
           className="font-medium"
           style={{ color: "var(--accent)" }}
         >

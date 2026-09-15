@@ -77,10 +77,17 @@ describe("joining a space", () => {
     );
   });
 
-  test("you cannot join a space you are already in", async () => {
+  test("you cannot join a space you are already in, and you are told THAT", async () => {
+    /*
+     * It used to be a flat BAD_REQUEST, which the screen rendered as "mã không
+     * hợp lệ hoặc đã hết hạn" — alarming and false for somebody who is already
+     * exactly where the link was taking them. Re-opening your own invite link
+     * is the common way to arrive here.
+     */
     const host = await makeMember({ name: "Hoa", spaceName: "Góc của Hoa" });
     const { code } = await host.caller.space.createInvite();
-    await rejects(() => host.caller.space.joinByCode({ code }), "BAD_REQUEST");
+    const err = await rejects(() => host.caller.space.joinByCode({ code }), "CONFLICT");
+    assert.equal(err.message, "ALREADY_MEMBER");
   });
 
   test("no Google account means no avatar, not an error", async () => {
