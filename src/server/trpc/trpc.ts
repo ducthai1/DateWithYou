@@ -6,6 +6,7 @@ import { auth } from "@/server/auth/auth";
 import { connectToDatabase } from "@/server/db/connect";
 import { SpaceModel } from "@/server/db/models/space";
 import { env } from "@/lib/env";
+import { logServerError } from "@/server/lib/log-error";
 
 /**
  * tRPC context resolves the logged-in user from the session cookie.
@@ -40,11 +41,43 @@ const t = initTRPC.context<TRPCContext>().create({
 });
 
 export const router = t.router;
-export const publicProcedure = t.procedure;
 export const createCallerFactory = t.createCallerFactory;
 
+/*
+ * Every procedure reports its own failures.
+ *
+ * Attached at the base so nothing has to remember to — a feature added next
+ * month is watched the day it ships, which is the only way this stays true.
+ *
+ * Only unexpected failures are recorded. A FORBIDDEN, a NOT_FOUND, a
+ * BAD_REQUEST: those are the app working, and logging them would bury the one
+ * error that means something under a thousand that do not.
+ */
+const EXPECTED = new Set([
+  "BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND",
+  "CONFLICT", "PRECONDITION_FAILED", "TOO_MANY_REQUESTS", "PARSE_ERROR",
+]);
+
+const reportFailures = t.middleware(async ({ ctx, path, next }) => {
+  const result = await next();
+  if (!result.ok) {
+    const code = (result.error as { code?: string }).code;
+    if (!code || !EXPECTED.has(code)) {
+      // Deliberately not awaited: a slow write must not hold up the response
+      // that is already on its way to somebody.
+      void logServerError(`trpc:${path}`, result.error, {
+        userId: ctx.userId,
+        spaceId: (ctx as { spaceId?: string }).spaceId ?? null,
+      });
+    }
+  }
+  return result;
+});
+
+export const publicProcedure = t.procedure.use(reportFailures);
+
 /** Requires an authenticated user (no space membership required). */
-export const authedProcedure = t.procedure.use(async ({ ctx, next }) => {
+export const authedProcedure = publicProcedure.use(async ({ ctx, next }) => {
   if (!ctx.userId) throw new TRPCError({ code: "UNAUTHORIZED" });
   return next({ ctx: { userId: ctx.userId } });
 });
