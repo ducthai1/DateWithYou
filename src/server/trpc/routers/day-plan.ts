@@ -10,6 +10,7 @@ import { bucketForTime } from "@/lib/plan-meta";
 import { planDay, reasonFor, SLOT_KINDS, type Candidate, type SlotKind } from "@/lib/day-planner";
 import { BUDGET_KEYS, costBandFor } from "@/lib/day-planner-taxonomy";
 import { searchPlacesNearby } from "@/server/lib/search-places-nearby";
+import { narrateDayPlan } from "@/server/lib/narrate-day-plan";
 
 /**
  * "Hôm nay đi đâu?" — two procedures, and a hard line between them.
@@ -294,8 +295,30 @@ export const dayPlanRouter = router({
         };
       });
 
+      /*
+       * Last, and allowed to fail.
+       *
+       * The plan above is complete before this line runs, and stays complete
+       * if it returns nothing — which is the normal case today, since no
+       * provider is configured. A model may improve the sentences; it may not
+       * become a dependency of having a plan at all.
+       */
+      const filled = stops.filter((s) => !s.unfilled);
+      let dayName: string | null = null;
+      if (filled.length) {
+        const { narration } = await narrateDayPlan(
+          filled.map((s) => ({ title: s.title, kind: s.kind, reason: s.reason })),
+          input.vibe,
+        );
+        if (narration) {
+          dayName = narration.dayName;
+          filled.forEach((s, i) => { s.reason = narration.whys[i] ?? s.reason; });
+        }
+      }
+
       return {
         ok: true as const,
+        dayName,
         skeleton: draft.skeleton,
         date: draft.date,
         startAt: draft.startAt,

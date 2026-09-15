@@ -387,6 +387,27 @@ describe("places Google found", () => {
   });
 });
 
+describe("the words, when there is no model to write them", () => {
+  test("every stop still explains itself, and the day has no invented name", async () => {
+    /*
+     * No LLM provider is configured — deliberately, until somebody measures a
+     * real free tier. The plan has to be complete anyway: sentences come from
+     * templates built out of facts already on the record, and `dayName` stays
+     * null rather than being made up.
+     */
+    assert.equal(process.env.DAY_PLAN_LLM_URL, undefined, "this test assumes no provider");
+    const me = await makeMember({ name: "NoModel" });
+    await stockUp(me);
+    const draft = await me.caller.dayPlan.generate({ date: DATE, startAt: START });
+    assert.equal(draft.ok, true);
+    if (!draft.ok) return;
+    assert.equal(draft.dayName, null);
+    for (const s of draft.stops.filter((x) => !x.unfilled)) {
+      assert.ok(s.reason.trim().length > 0, "a stop with no sentence is just a list entry");
+    }
+  });
+});
+
 describe("somewhere you have just been", () => {
   test("a place visited yesterday is passed over for one you have not", async () => {
     /*
