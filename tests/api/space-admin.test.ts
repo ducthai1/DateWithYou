@@ -17,6 +17,7 @@ import test, { after, before, describe } from "node:test";
 import assert from "node:assert/strict";
 import mongoose from "mongoose";
 import { freshDatabase, closeDatabase, callerFor, makeCouple, makeMember, must, rejects } from "./_harness.ts";
+import { logServerError } from "../../src/server/lib/log-error.ts";
 
 let couple: Awaited<ReturnType<typeof makeCouple>>;
 let outsider: Awaited<ReturnType<typeof makeMember>>;
@@ -306,6 +307,19 @@ describe("deleting a space", () => {
      */
     const c = await furnished("Góc sẽ xoá sạch");
     const spaceId = c.spaceId;
+    /*
+     * An error row too, because the sweep can only find what exists.
+     *
+     * The error log carries a spaceId, and in a run where nothing fails there
+     * are no rows at all — so the collection was invisible to this test and
+     * could have been left out of the cascade indefinitely. Writing one here
+     * makes the sweep see it. (It is UNLINKED rather than deleted: one row is
+     * one bug, shared across everybody who hit it.)
+     */
+    await logServerError("trpc:test.cascade", new Error("left behind?"), {
+      spaceId,
+      userId: c.a.userId,
+    });
     const wrote = await leftovers(spaceId);
     assert.ok(wrote.length > 10, `the fixture must write across the app (wrote to ${wrote.length})`);
 

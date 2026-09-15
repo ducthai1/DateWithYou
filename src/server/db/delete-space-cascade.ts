@@ -28,6 +28,7 @@ import { CycleLogModel } from "./models/cycle-log";
 import { TripModel } from "./models/trip";
 import { RideModel } from "./models/ride";
 import { SpaceModel } from "./models/space";
+import { ErrorLogModel } from "./models/error-log";
 
 // Structural type — every Mongoose model exposes deleteMany(filter).
 type Deletable = { deleteMany(filter: Record<string, unknown>): unknown };
@@ -86,9 +87,24 @@ const SPACE_SCOPED_MODELS: Deletable[] = [
  * link-only — no app-hosted blobs), so removing these rows fully cleans it.
  */
 export async function deleteSpaceAndData(spaceId: string): Promise<void> {
-  const results = await Promise.allSettled(
-    SPACE_SCOPED_MODELS.map((m) => m.deleteMany({ spaceId })),
-  );
+  const results = await Promise.allSettled([
+    ...SPACE_SCOPED_MODELS.map((m) => m.deleteMany({ spaceId })),
+    /*
+     * The error log is unlinked rather than deleted, and it is the only thing
+     * here treated that way.
+     *
+     * Its rows are shared: one row is one BUG, deduplicated by fingerprint
+     * across everybody who hit it, so deleting the row because one space is
+     * going would throw away a defect's whole history on behalf of somebody
+     * who was merely one of the people it happened to. What has to go is the
+     * link to them — which is all `spaceId` is for.
+     *
+     * The sweep in tests/api/space-admin.test.ts counts documents carrying the
+     * deleted spaceId, so unsetting satisfies it for the same reason deleting
+     * would: nothing is left pointing at the space.
+     */
+    ErrorLogModel.updateMany({ spaceId }, { $unset: { spaceId: "", userId: "" } }),
+  ]);
   const failed = results.filter((r) => r.status === "rejected").length;
   if (failed > 0)
     throw new Error(`Space cascade incomplete: ${failed} collection(s) failed`);
