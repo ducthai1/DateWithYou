@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Link2, Loader2, AlertCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { inviteCodeFromInput, inviteErrorMessage } from "@/lib/invite-errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs } from "@/components/ui/tabs";
 import { ToneArt } from "@/components/theme/tone-art";
+import { POST_LOGIN_REDIRECT } from "@/components/layout/nav-items";
 
 const ONBOARDING_TABS = [
   { key: "create", label: "Tạo mới" },
@@ -40,11 +42,18 @@ export function Onboarding() {
   // page would then read that stale null and bounce the user straight back here —
   // the "stuck on step 2" loop. A full load starts a clean cache that refetches
   // getMine and sees the new space. Mirrors space-settings' handleSpaceSwitch.
+  //
+  // Lands on POST_LOGIN_REDIRECT, which is where accepting an invite link lands
+  // too. It used to land on /settings — at the TOP of a very long settings page,
+  // so the first screen of a brand-new account was avatars and theme swatches,
+  // with the invite panel that supposedly justified the detour far below the
+  // fold. /home opens on its own empty state ("Chỗ này còn trống — mình bắt đầu
+  // nhé") which is the thing worth reading first.
   function enterSpace(id: string) {
     const maxAge = 60 * 60 * 24 * 365;
     const secure = window.location.protocol === "https:" ? "; Secure" : "";
     document.cookie = `active_space_id=${id}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
-    window.location.assign("/settings");
+    window.location.assign(POST_LOGIN_REDIRECT);
   }
 
   const create = trpc.space.create.useMutation({
@@ -54,9 +63,10 @@ export function Onboarding() {
     onSuccess: (d) => enterSpace(d.id),
   });
 
-  // Already in a space → skip onboarding.
+  // Already in a space → skip onboarding. Same destination as finishing it,
+  // and as signing in: there is one front door and this is not a special case.
   useEffect(() => {
-    if (mine.data) router.replace("/settings");
+    if (mine.data) router.replace(POST_LOGIN_REDIRECT);
   }, [mine.data, router]);
 
   if (mine.isLoading) {
@@ -250,14 +260,12 @@ export function Onboarding() {
                         Đặt mã PIN nếu muốn cần mã để xoá không gian sau này. Bỏ trống
                         cũng được — khi đó xoá sẽ cần gõ đúng tên không gian.
                       </p>
+                      {/* Không in thẳng create.error.message: một lỗi tRPC có
+                          thể là mã nội bộ, và "ALREADY_IN_SPACE" mà nhánh cũ
+                          bắt thì máy chủ chưa bao giờ trả về — một người được
+                          phép có nhiều không gian từ lâu rồi. */}
                       {create.error && (
-                        <ErrorCard
-                          message={
-                            create.error.message === "ALREADY_IN_SPACE"
-                              ? "Bạn đã có không gian rồi."
-                              : `Không tạo được: ${create.error.message}`
-                          }
-                        />
+                        <ErrorCard message="Chưa tạo được không gian. Thử lại giúp mình nhé — nếu vẫn vậy thì tải lại trang." />
                       )}
                       <Button
                         className="h-11 w-full touch-manipulation mt-1"
@@ -284,22 +292,19 @@ export function Onboarding() {
                       Vào không gian có sẵn
                     </div>
                   </div>
+                  {/* Nhận cả đường liên kết: cái được gửi qua Zalo là một
+                      LINK, mà ô này thì hỏi "mã" — nên việc tự nhiên nhất là
+                      dán nguyên link vào đây, và trước đó nó trả về "Mã sai
+                      hoặc đã hết hạn" cho một mã hoàn toàn đúng. */}
                   <Input
                     label="Nhập mã mời"
                     value={code}
-                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    onChange={(e) => setCode(inviteCodeFromInput(e.target.value))}
                   />
-                  {join.error && (
-                    <ErrorCard
-                      message={
-                        join.error.message === "INVALID_OR_EXPIRED_CODE"
-                          ? "Mã sai hoặc đã hết hạn."
-                          : join.error.message === "ALREADY_IN_SPACE"
-                            ? "Bạn đã có không gian rồi."
-                            : "Không tham gia được, thử lại nhé."
-                      }
-                    />
-                  )}
+                  <p className="-mt-1 px-1 text-xs text-muted-foreground">
+                    Dán cả đường liên kết người kia gửi cũng được — mình tự lấy mã ra.
+                  </p>
+                  {join.error && <ErrorCard message={inviteErrorMessage(join.error.message)} />}
                   <Button
                     className="h-11 w-full touch-manipulation mt-1"
                     disabled={!code.trim() || join.isPending}

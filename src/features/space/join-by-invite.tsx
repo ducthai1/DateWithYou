@@ -8,6 +8,7 @@ import { ToneArt } from "@/components/theme/tone-art";
 import { useToast } from "@/components/ui/toast";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/lib/trpc";
+import { inviteErrorMessage } from "@/lib/invite-errors";
 
 /**
  * Opening somebody's invite link.
@@ -86,7 +87,7 @@ export function JoinByInvite({ code }: { code: string }) {
         onError: (err) => {
           setState("failed");
           setReason(err.message);
-          toast(messageFor(err.message), "error");
+          toast(inviteErrorMessage(err.message), "error");
         },
       },
     );
@@ -219,24 +220,17 @@ export function JoinByInvite({ code }: { code: string }) {
   return <Shell><Loader2 className="text-accent h-8 w-8 animate-spin" /></Shell>;
 }
 
-/** Codes that mean "ask for a new one", whichever layer reported them. */
+/*
+ * Codes that mean "ask for a new one", whichever layer reported them.
+ *
+ * Only the branch stays here. The words for each failure live in
+ * src/lib/invite-errors.ts, because three screens can refuse an invitation —
+ * this page, the code box in onboarding, and the one in settings — and the
+ * three had already drifted: two of them answered "thử lại nhé" to a full
+ * space, which is advice that can never work.
+ */
 function isDeadReason(reason: string | null): boolean {
   return reason === "EXPIRED_CODE" || reason === "INVALID_OR_EXPIRED_CODE";
-}
-
-function messageFor(reason: string): string {
-  switch (reason) {
-    case "EXPIRED_CODE":
-      return "Lời mời đã hết hạn — nhờ người kia tạo mã mới nhé";
-    case "INVALID_OR_EXPIRED_CODE":
-      return "Lời mời không còn dùng được — nhờ người kia tạo mã mới nhé";
-    case "ALREADY_MEMBER":
-      return "Bạn đã ở trong không gian này rồi";
-    case "SPACE_FULL":
-      return "Không gian đã đủ hai người";
-    default:
-      return "Chưa nhận được lời mời, thử lại giúp mình nhé";
-  }
 }
 
 function Shell({ children }: { children: React.ReactNode }) {

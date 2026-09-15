@@ -24,11 +24,18 @@ export const INVITE_FAILURES = [
 
 export type InviteFailure = (typeof INVITE_FAILURES)[number];
 
+/*
+ * Mỗi câu nói hai điều: chuyện gì đã xảy ra, và làm gì tiếp.
+ *
+ * "Nhờ người kia tạo mã mới" là lời khuyên đúng nhưng người nhận lời mời không
+ * biết cái nút đó nằm ở đâu để mà nhắn lại cho chính xác — nên đường đi được
+ * gọi tên luôn. Chỗ này lấy theo bản đầy đủ của trang /moi, vốn đã nói đúng.
+ */
 const MESSAGES: Record<InviteFailure, string> = {
   EXPIRED_CODE:
-    "Lời mời đã hết hạn — lời mời chỉ dùng được 7 ngày. Nhờ người kia tạo lời mời mới giúp bạn nhé.",
+    "Lời mời đã hết hạn — chỉ dùng được 7 ngày. Nhờ người kia mở Cài đặt → Mời người đồng hành để tạo lời mời mới nhé.",
   INVALID_OR_EXPIRED_CODE:
-    "Mã này không dùng được. Có thể đã có người dùng rồi, hoặc đã bị thay bằng mã mới — nhờ người kia tạo lời mời mới nhé.",
+    "Mã này không dùng được — có thể đã có người dùng rồi, hoặc đã bị thay bằng mã mới. Nhờ người kia tạo lời mời mới nhé.",
   ALREADY_MEMBER: "Bạn đã ở trong không gian này rồi — mở ứng dụng lên là thấy nhau thôi.",
   SPACE_FULL: "Không gian đó đã đủ hai người. Nhắn lại cho người đã mời bạn nhé.",
 };

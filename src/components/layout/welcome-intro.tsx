@@ -35,7 +35,26 @@ export function WelcomeIntro() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (isPublicChrome(pathname) || isAdminRoute(pathname)) return;
+    if (isPublicChrome(pathname) || isAdminRoute(pathname)) {
+      /*
+       * Close it, don't just decline to open it.
+       *
+       * This is the first thing that happens to a new account, and it used to
+       * happen wrong. Signing up lands on /home, which opens this intro; a
+       * split second later SpaceGuard sees an account with no space and
+       * replaces the route with /onboarding. Returning early here left the
+       * intro standing — so the very first screen of the app was a glossary of
+       * seven tabs nobody can reach yet, sitting on top of the one form that
+       * would give them a space. `open` is a route-scoped fact, so it has to be
+       * answered on every route, including the ones that say no.
+       *
+       * Deliberately does not set SEEN_KEY: the intro has not been read, so it
+       * still shows on the first real app screen, once there is a space behind
+       * the tabs it describes.
+       */
+      setOpen(false);
+      return;
+    }
     try {
       if (!localStorage.getItem(SEEN_KEY)) setOpen(true);
     } catch {
