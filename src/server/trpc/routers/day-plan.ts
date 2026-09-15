@@ -331,6 +331,7 @@ export const dayPlanRouter = router({
       let dayName: string | null = null;
       if (filled.length) {
         const { narration } = await narrateDayPlan(
+          ctx.spaceId,
           filled.map((s) => ({ title: s.title, kind: s.kind, reason: s.reason })),
           input.vibe,
         );
@@ -444,6 +445,22 @@ export const dayPlanRouter = router({
         resolved.push(String(row!._id));
       }
 
+      /** The plan items for a trip id — one shape, used by both paths below. */
+      const itemsFor = (tripId: string) =>
+        input.stops.map((s, i) => ({
+          spaceId: ctx.spaceId,
+          title: s.title,
+          date: input.date,
+          bucket: bucketForTime(s.startTime),
+          time: s.startTime,
+          order: i,
+          status: "planned",
+          locationId: resolved[i],
+          tripId,
+          cost: Math.round(s.cost),
+          createdBy: ctx.userId,
+        }));
+
       /*
        * The plan's fingerprint, computed from what arrived rather than taken
        * from the client. Confirming the same draft twice lands on the same
@@ -460,10 +477,23 @@ export const dayPlanRouter = router({
         .select("_id")
         .lean<{ _id: unknown }>();
       if (existing) {
-        return {
-          tripId: String(existing._id), date: input.date,
-          alreadyConfirmed: true, locationIds: resolved,
-        };
+        /*
+         * The trip is there — but are its items?
+         *
+         * Two ways they might not be. `TripModel.create` and `insertMany` are
+         * not one transaction, so a failure between them leaves a trip with an
+         * empty day. And somebody can delete the items by hand. Either way the
+         * early return used to say "Kế hoạch này đã có sẵn rồi" and write
+         * nothing, forever, leaving a calendar day that stays empty with no
+         * way to fix it short of deleting the trip.
+         */
+        const tripId = String(existing._id);
+        const hasItems = await PlanItemModel.exists({ spaceId: ctx.spaceId, tripId });
+        if (hasItems) {
+          return { tripId, date: input.date, alreadyConfirmed: true, locationIds: resolved };
+        }
+        await PlanItemModel.insertMany(itemsFor(tripId));
+        return { tripId, date: input.date, alreadyConfirmed: false, locationIds: resolved };
       }
 
       let tripId: string;
@@ -490,21 +520,7 @@ export const dayPlanRouter = router({
         };
       }
 
-      await PlanItemModel.insertMany(
-        input.stops.map((s, i) => ({
-          spaceId: ctx.spaceId,
-          title: s.title,
-          date: input.date,
-          bucket: bucketForTime(s.startTime),
-          time: s.startTime,
-          order: i,
-          status: "planned",
-          locationId: resolved[i],
-          tripId,
-          cost: Math.round(s.cost),
-          createdBy: ctx.userId,
-        })),
-      );
+      await PlanItemModel.insertMany(itemsFor(tripId));
 
       // The resolved ids travel back so the screen can offer "chỉ đường tới
       // chặng 1" and "rủ người kia" without another round trip.

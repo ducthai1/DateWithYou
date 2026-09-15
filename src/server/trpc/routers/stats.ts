@@ -6,7 +6,7 @@ import { LocationModel } from "@/server/db/models/location";
 import { MediaItemModel } from "@/server/db/models/media-item";
 import { TripModel } from "@/server/db/models/trip";
 import { TimeCapsuleModel } from "@/server/db/models/time-capsule";
-import { SAIGON_OFFSET_MIN, dateKeyFromDate, daysBetweenKeys } from "@/lib/date-keys";
+import { SAIGON_OFFSET_MIN, dateKeyFromDate, daysBetweenKeys, todayKey } from "@/lib/date-keys";
 
 /* Everything here is deliberately a *shared* number for the space. There is no
  * per-member breakdown and no streak: the point is reminiscence ("tụi mình đã
@@ -109,7 +109,21 @@ export const statsRouter = router({
           {
             $facet: {
               total: [{ $count: "count" }],
-              completed: [{ $match: { status: "completed" } }, { $count: "count" }],
+              /*
+               * A finished trip is one whose last day has passed — not one
+               * carrying a `status` field.
+               *
+               * That field was deleted from the trip schema (see the note in
+               * models/trip.ts, which says "nothing reads it" — this did). So
+               * this facet has been counting only rows written before that
+               * change, and a couple with five finished trips reads
+               * "0 chuyến đã đi trọn" forever. Every day-plan trip is finished
+               * by the next morning, which makes it worse, not better.
+               *
+               * Same rule as `tripStatus`, which is pure date arithmetic and
+               * the only definition the UI uses.
+               */
+              completed: [{ $match: { endDate: { $lt: todayKey() } } }, { $count: "count" }],
             },
           },
         ]),

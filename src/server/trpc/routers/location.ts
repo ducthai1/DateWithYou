@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
@@ -39,7 +40,17 @@ const categorySchema = z.string().trim().min(1);
 const statusEnum = z.enum(["want_to_go", "visited"]);
 // Only allow https links (anti stored-XSS / open-redirect on rendered hrefs).
 const httpsUrl = z.string().url().startsWith("https://");
-const geo = z.object({ lat: z.number(), lng: z.number() });
+/*
+ * Coordinates that exist.
+ *
+ * Without the bounds, `{lat: 999, lng: 999}` passed validation and was spent
+ * on a real outbound request to a point that is not on Earth — a billed call
+ * for an answer that cannot exist. zod already rejects NaN and Infinity.
+ */
+const geo = z.object({
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+});
 
 // Mobile clipboards often wrap the share link in prose ("Quán X https://…")
 // and the picker may hand back an http:// form. Pull out the first URL and
@@ -526,6 +537,18 @@ export const locationRouter = router({
       if (!destGeo) {
         if (!input.destinationId)
           throw new TRPCError({ code: "BAD_REQUEST", message: "NO_DESTINATION" });
+        /*
+         * Check the shape before Mongoose does.
+         *
+         * A `destinationId` that is not an ObjectId made Mongoose throw a
+         * CastError, which reached the client as INTERNAL_SERVER_ERROR — a 500
+         * for what is plainly a bad request, and one that puts "Cast to
+         * ObjectId failed for model Location" in front of a user. The
+         * empty-string case already answered cleanly; this makes the rest
+         * match it.
+         */
+        if (!mongoose.Types.ObjectId.isValid(input.destinationId))
+          throw new TRPCError({ code: "BAD_REQUEST", message: "BAD_DESTINATION" });
         const dest = await LocationModel.findOne({
           _id: input.destinationId,
           spaceId: ctx.spaceId,
@@ -541,7 +564,19 @@ export const locationRouter = router({
       // for motorbikes: it obeys one-way streets (no illegal contraflow) yet may
       // use the smaller roads a scooter is allowed on — the realistic Vietnam
       // motorbike route, which no ORS profile offers.
-      const key = requireEnv("STADIA_API_KEY");
+      /*
+       * A missing key is a configuration gap, not a crash.
+       *
+       * `requireEnv` throws a plain Error, which tRPC reports as
+       * INTERNAL_SERVER_ERROR — so an unset variable looked like the server
+       * falling over, and the message shipped the variable's NAME to the
+       * client. Every other provider in this router degrades quietly; this one
+       * is the odd one out, and it is the one people notice because directions
+       * simply stop working.
+       */
+      const key = process.env.STADIA_API_KEY;
+      if (!key)
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "ROUTING_UNAVAILABLE" });
       const locations = [
         { lat: input.origin.lat, lon: input.origin.lng },
         ...(input.waypoints?.map((w) => ({ lat: w.lat, lon: w.lng })) || []),

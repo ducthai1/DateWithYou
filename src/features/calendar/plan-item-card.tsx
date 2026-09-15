@@ -237,7 +237,7 @@ export function PlanItemCard({
               </span>
             )}
             {item.tripId && (
-              <span className="text-accent inline-flex items-center gap-0.5 text-[10px] font-medium" title="Nằm trong một chuyến đi dài ngày">
+              <span className="text-accent inline-flex items-center gap-0.5 text-[10px] font-medium" title="Thuộc một chuyến đi">
                 <Plane className="h-3 w-3" />
               </span>
             )}

@@ -19,7 +19,13 @@ const tripSchema = new Schema(
      * No `status` field. It is a function of startDate/endDate — see
      * tripStatus() — so storing one only created a second answer that could
      * disagree with the first. Documents written before this keep a stray
-     * `status` key; nothing reads it.
+     * `status` key.
+     *
+     * "Nothing reads it" is what this said, and it was false for nine months:
+     * `stats.overview` was still matching on it, so the "chuyến đã đi trọn"
+     * count silently only ever included pre-refactor rows. If a field is
+     * removed, grep the MODEL — the UI having stopped using it proves nothing
+     * about the aggregations.
      */
     /*
      * Set only by the day planner: a fingerprint of the plan that was

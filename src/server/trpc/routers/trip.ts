@@ -4,6 +4,7 @@ import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { TripModel } from "@/server/db/models/trip";
+import { PlanItemModel } from "@/server/db/models/plan-item";
 import { tripStatus } from "@/lib/trip-status";
 
 const tripInput = z.object({
@@ -92,10 +93,30 @@ export const tripRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
+      /*
+       * A trip made by the day planner takes its items with it.
+       *
+       * Items on a HAND-MADE trip are kept on purpose — each one was written
+       * by a person, and losing them because the trip wrapper went would be
+       * destroying work nobody asked to destroy. That is the note below, and
+       * it still stands.
+       *
+       * A planner-made trip is the opposite: nobody wrote those items, they
+       * were generated together and accepted together. Worse, the plan's
+       * fingerprint lives on the trip — so deleting the trip and confirming
+       * the same plan again used to insert a SECOND full set beside the first,
+       * and the evening appeared twice on the calendar. `sourceKey` is what
+       * tells the two kinds apart.
+       */
+      const doomed = await TripModel.findOne({ _id: input.id, spaceId: ctx.spaceId })
+        .select("sourceKey")
+        .lean<{ sourceKey?: string }>();
       const res = await TripModel.deleteOne({ _id: input.id, spaceId: ctx.spaceId });
       if (res.deletedCount === 0) throw new TRPCError({ code: "NOT_FOUND" });
-      // NOTE: Intentionally not cascade-deleting PlanItems here so that they remain on the calendar,
-      // just without a parent trip.
+      if (doomed?.sourceKey) {
+        await PlanItemModel.deleteMany({ spaceId: ctx.spaceId, tripId: input.id });
+      }
+      // Items of a hand-made trip stay on the calendar, just without a parent.
       return { ok: true };
     }),
 

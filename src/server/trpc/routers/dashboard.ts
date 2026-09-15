@@ -251,7 +251,10 @@ export const dashboardRouter = router({
           endDate: { $gte: today },
         })
           .select("title startDate endDate")
-          .sort({ startDate: 1 })
+          // Longer trip wins a same-day tie: a one-day plan from the day
+          // planner must not push a real multi-day itinerary down into
+          // "other plans" just by sharing its start date.
+          .sort({ startDate: 1, endDate: -1 })
           .limit(1)
           .lean<TripDoc[]>(),
 

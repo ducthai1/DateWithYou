@@ -59,7 +59,7 @@ describe("with nobody to ask", () => {
     // Today's normal case: no provider has been chosen, on purpose, and the
     // feature ships anyway.
     unsetProvider();
-    const out = await narrateDayPlan(FACTS);
+    const out = await narrateDayPlan("space-1", FACTS);
     assert.equal(out.narration, null);
     assert.equal(out.reason, "no-provider");
   });
@@ -73,9 +73,44 @@ describe("with a provider", () => {
         whys: ["Ngồi ngắm phố một lúc đã.", "Rồi ăn tối thật no."],
       }))),
     );
-    const out = await narrateDayPlan(FACTS);
+    const out = await narrateDayPlan("space-1", FACTS);
     assert.equal(out.reason, "ok");
     assert.equal(out.narration?.dayName, "Chiều lười");
+  });
+
+  test("one couple's sentences are never served to another", async () => {
+    /*
+     * The cache is process-wide, and the facts it keys on include `mustTry` —
+     * free text one couple typed about a place. Two couples near the same
+     * corner get the same places from the shared search cache, in the same
+     * order, so a key made of place names alone would hand B a sentence the
+     * model wrote from A's private note.
+     */
+    let calls = 0;
+    await fakeProvider((respond) => {
+      calls++;
+      respond(200, said(JSON.stringify({ dayName: `Lần ${calls}`, whys: ["Một.", "Hai."] })));
+    });
+    const a = await narrateDayPlan("space-A", FACTS);
+    const b = await narrateDayPlan("space-B", FACTS);
+    assert.equal(calls, 2, "the second space must not read the first one's cache");
+    assert.notEqual(a.narration?.dayName, b.narration?.dayName);
+  });
+
+  test("a different private note is a different answer, not a cache hit", async () => {
+    // `reason` carries the couple's own words; keying on titles alone would
+    // reuse a sentence written from somebody else's.
+    let calls = 0;
+    await fakeProvider((respond) => {
+      calls++;
+      respond(200, said(JSON.stringify({ dayName: `Lần ${calls}`, whys: ["Một.", "Hai."] })));
+    });
+    await narrateDayPlan("space-A", FACTS);
+    await narrateDayPlan("space-A", [
+      { ...FACTS[0], reason: 'Bạn đã ghi "bún chả" ở đây.' },
+      FACTS[1],
+    ]);
+    assert.equal(calls, 2);
   });
 
   test("the second ask for the same places costs nothing", async () => {
@@ -84,8 +119,8 @@ describe("with a provider", () => {
       calls++;
       respond(200, said(JSON.stringify({ dayName: "Chiều lười", whys: ["Một.", "Hai."] })));
     });
-    await narrateDayPlan(FACTS);
-    await narrateDayPlan(FACTS);
+    await narrateDayPlan("space-1", FACTS);
+    await narrateDayPlan("space-1", FACTS);
     assert.equal(calls, 1, "swapping a stop must not re-ask for sentences already written");
   });
 
@@ -96,7 +131,7 @@ describe("with a provider", () => {
         whys: ['Ghé "Quán Ốc Cô Ba" trước đã.', "Rồi ăn tối."],
       }))),
     );
-    const out = await narrateDayPlan(FACTS);
+    const out = await narrateDayPlan("space-1", FACTS);
     assert.equal(out.narration, null);
     assert.equal(out.reason, "rejected");
   });
@@ -108,19 +143,19 @@ describe("with a provider", () => {
         whys: ["Mở tới 22h nên cứ thong thả.", "Rồi ăn tối."],
       }))),
     );
-    assert.equal((await narrateDayPlan(FACTS)).reason, "rejected");
+    assert.equal((await narrateDayPlan("space-1", FACTS)).reason, "rejected");
   });
 
   test("an error from the provider is not an error for the rider", async () => {
     await fakeProvider((respond) => respond(429, { error: "rate limited" }));
-    const out = await narrateDayPlan(FACTS);
+    const out = await narrateDayPlan("space-1", FACTS);
     assert.equal(out.narration, null);
     assert.equal(out.reason, "http");
   });
 
   test("prose instead of JSON is refused", async () => {
     await fakeProvider((respond) => respond(200, said("Chào bạn! Kế hoạch của bạn đây nhé:")));
-    assert.equal((await narrateDayPlan(FACTS)).reason, "rejected");
+    assert.equal((await narrateDayPlan("space-1", FACTS)).reason, "rejected");
   });
 
   test("slower than two seconds and we stop waiting", async () => {
@@ -133,7 +168,7 @@ describe("with a provider", () => {
       setTimeout(() => respond(200, said(JSON.stringify({ dayName: "Muộn", whys: ["a", "b"] }))), 5_000);
     });
     const started = Date.now();
-    const out = await narrateDayPlan(FACTS);
+    const out = await narrateDayPlan("space-1", FACTS);
     const waited = Date.now() - started;
     assert.equal(out.narration, null);
     assert.equal(out.reason, "timeout");

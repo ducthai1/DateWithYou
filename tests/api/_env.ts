@@ -71,7 +71,16 @@ process.env.ADMIN_EMAILS = process.env.TEST_ADMIN_EMAILS ?? TEST_ADMIN_EMAIL;
  * has to be a property of the harness, not a habit. A test that WANTS a
  * provider sets its own key after importing this, and says so out loud.
  */
-for (const key of ["GOOGLE_MAPS_API_KEY", "STADIA_API_KEY", "DAY_PLAN_LLM_URL", "DAY_PLAN_LLM_KEY"]) {
+for (const key of [
+  "GOOGLE_MAPS_API_KEY",
+  "STADIA_API_KEY",
+  // The key `suggestPlaces`, `placeDetail` and `areaAt` reach for FIRST — and
+  // the one this list forgot, which made "no network" a claim rather than a
+  // property on any machine that had it set.
+  "TRACKASIA_API_KEY",
+  "DAY_PLAN_LLM_URL",
+  "DAY_PLAN_LLM_KEY",
+]) {
   delete process.env[key];
 }
 /*

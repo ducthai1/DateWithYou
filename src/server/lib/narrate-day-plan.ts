@@ -31,8 +31,21 @@ const TIMEOUT_MS = 2_000;
 const cache = new Map<string, Narration>();
 const CACHE_MAX = 300;
 
-function cacheKey(facts: NarrationFact[], vibe?: string | null): string {
-  return `${vibe ?? ""}|${facts.map((f) => f.title).join("|")}`;
+/*
+ * Keyed by SPACE, and by the whole fact — not just the place names.
+ *
+ * The first version keyed on titles and vibe alone, in a process-wide map. Two
+ * couples near the same corner get the same places from the shared search
+ * cache, in the same order, so couple B could be served sentences the model
+ * wrote from couple A's facts — and those facts include `mustTry`, which is
+ * free text one of them typed about a place. Display-only, and dormant while
+ * no provider is configured, but it is somebody's private note leaving their
+ * space, which is not a thing to leave in place because it is currently
+ * unreachable.
+ */
+function cacheKey(spaceId: string, facts: NarrationFact[], vibe?: string | null): string {
+  const shape = facts.map((f) => `${f.title}\u0000${f.kind}\u0000${f.reason}`).join("\u0001");
+  return `${spaceId}|${vibe ?? ""}|${shape}`;
 }
 
 export type NarrateOutcome = {
@@ -49,12 +62,13 @@ export type NarrateOutcome = {
  * URL plus a model name can be repointed without a deploy-shaped decision.
  */
 export async function narrateDayPlan(
+  spaceId: string,
   facts: NarrationFact[],
   vibe?: string | null,
 ): Promise<NarrateOutcome> {
   if (!facts.length) return { narration: null, reason: "no-provider" };
 
-  const key = cacheKey(facts, vibe);
+  const key = cacheKey(spaceId, facts, vibe);
   const hit = cache.get(key);
   if (hit) return { narration: hit, reason: "cached" };
 
