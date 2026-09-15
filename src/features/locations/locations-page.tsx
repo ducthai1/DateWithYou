@@ -5,6 +5,7 @@ import { readableFormError } from "@/lib/form-error";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSidebar } from "@/components/layout/sidebar-context";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 import { trpc } from "@/lib/trpc";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -2754,6 +2755,7 @@ export function LocationsPage() {
               <Skeleton className="h-20" />
             </div>
           ) : pins.length === 0 ? (
+            <div className="space-y-3">
             <EmptyState
               // Only on the genuinely-empty state. A search that found nothing
               // is a different message, and a picture of a full map would
@@ -2768,6 +2770,17 @@ export function LocationsPage() {
               }
               action={{ label: "+ Thêm địa điểm", onClick: () => { setFormInitial({}); setFormOpen(true); } }}
             />
+            {/* The other door out of an empty map. Somebody who does not know
+                where to go is not going to enjoy filling in a form. */}
+            {!debouncedQuery && (
+              <Link
+                href="/hom-nay-di-dau"
+                className="text-accent hover:text-accent-hover block text-center text-sm underline underline-offset-4"
+              >
+                Hoặc để mình gợi ý cả buổi chiều →
+              </Link>
+            )}
+            </div>
           ) : (
             // One across inside the floating panel: two columns in 27rem left
             // each card ~200px and broke the place names one word per line.

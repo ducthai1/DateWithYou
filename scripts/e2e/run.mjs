@@ -33,6 +33,7 @@ const SUITES = [
   { id: "map", load: () => import("./map.mjs") },
   { id: "nav", load: () => import("./nav-overlay.mjs") },
   { id: "suggested", load: () => import("./suggested-places.mjs") },
+  { id: "day-plan", load: () => import("./day-plan.mjs") },
 ];
 
 /** Never point the suites at anything that could be production data. */

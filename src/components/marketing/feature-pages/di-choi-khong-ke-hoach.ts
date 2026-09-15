@@ -102,7 +102,7 @@ export const DI_CHOI_KHONG_KE_HOACH: FeaturePage = {
   cta: {
     heading: "Ghim vài chỗ trước đã",
     body: "Chưa cần biết cuối tuần đi đâu. Ghim ba bốn chỗ bạn từng thấy hay, để đó, hôm nào rảnh mở ra là có sẵn.",
-    label: "Mở bản đồ của bạn",
+    label: "Lên kế hoạch cho chiều nay",
   },
   related: [
     {

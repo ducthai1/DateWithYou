@@ -168,6 +168,15 @@ export type PlanRequest = {
 export type PlannedStop = {
   slot: Slot;
   place: Candidate | null;
+  /*
+   * The next-best places for this same slot, best first.
+   *
+   * Carried with the draft so "Đổi chặng này" is a decision the screen can
+   * make on its own — no second request, and above all no second metered
+   * lookup. They exclude anything already used by another stop, so swapping
+   * can never put the same place on the day twice.
+   */
+  alternatives: Candidate[];
   unfilled: boolean;
   /** Why this place, in one sentence. Phase 6 may rewrite it; it never invents. */
   reason: string;
@@ -208,6 +217,8 @@ const RECENT_DAYS = 30;
 const W_UNKNOWN_KIND = -15;
 /** Tie-break only. With everything else equal this is what the seed moves. */
 const W_JITTER = 2;
+/** How many spare candidates travel with each stop, for "Đổi chặng này". */
+const MAX_ALTERNATIVES = 3;
 
 /** Deterministic 0–1 from a string (FNV-1a, then scrambled). */
 function hash01(s: string): number {
@@ -252,7 +263,7 @@ function scoreOf(
 }
 
 /** One sentence per stop, built only from facts already on the record. */
-function reasonFor(c: Candidate, slot: Slot, now: number): string {
+export function reasonFor(c: Candidate, slot: { startTime: string }, now: number): string {
   if (c.mustTry) return `Bạn đã ghi "${c.mustTry}" ở đây.`;
   if (c.status === "want_to_go" && !c.lastVisitedAt) return "Chỗ hai người lưu mà chưa ghé lần nào.";
   if (recencyPenalty(c.lastVisitedAt, now) === 0 && c.lastVisitedAt) return "Lâu rồi chưa quay lại.";
@@ -303,16 +314,14 @@ export function planDay(req: PlanRequest, pool: Candidate[]): DayPlanDraft | Day
       return isOpenAt(c, localAt(req.date, slot.startTime));
     });
 
-    let best: Candidate | null = null;
-    let bestScore = -Infinity;
-    for (const c of eligible) {
-      const s = scoreOf(c, slot, from, seed, now);
-      if (s > bestScore) { best = c; bestScore = s; }
-    }
+    const ranked = eligible
+      .map((c) => ({ c, score: scoreOf(c, slot, from, seed, now) }))
+      .sort((a, b) => b.score - a.score);
+    const best = ranked[0]?.c ?? null;
 
     if (!best) {
       stops.push({
-        slot, place: null, unfilled: true, reason: "",
+        slot, place: null, alternatives: [], unfilled: true, reason: "",
         travelM: null, cost: { min: 0, max: 0 }, warnings: [],
       });
       continue;
@@ -335,6 +344,7 @@ export function planDay(req: PlanRequest, pool: Candidate[]): DayPlanDraft | Day
     stops.push({
       slot,
       place: best,
+      alternatives: ranked.slice(1, 1 + MAX_ALTERNATIVES).map((r) => r.c),
       unfilled: false,
       reason: reasonFor(best, slot, now),
       travelM,
@@ -343,6 +353,20 @@ export function planDay(req: PlanRequest, pool: Candidate[]): DayPlanDraft | Day
     });
     if (best.geo) from = best.geo;
     isFirstHop = false;
+  }
+
+  /*
+   * Spares are pruned after the whole day exists, not while it is being built.
+   *
+   * A stop's spares are ranked before the LATER stops have chosen anything, so
+   * the first dinner's spare list can contain the place the second dinner ends
+   * up taking. One tap on "Đổi chặng này" would then put the same restaurant
+   * on the day twice. Nothing catches that at the moment the list is built —
+   * the information does not exist yet — so it is fixed here, once.
+   */
+  const chosen = new Set(stops.map((s) => s.place?.id).filter((v): v is string => !!v));
+  for (const stop of stops) {
+    stop.alternatives = stop.alternatives.filter((a) => !chosen.has(a.id));
   }
 
   const band = stops.reduce(

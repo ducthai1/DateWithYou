@@ -61,11 +61,17 @@ export const FEATURE_PAGE_APP_HREF: Record<string, string> = {
   "luu-dia-diem-da-di": "/map",
   "nhat-ky-du-lich": "/trips",
   "thu-gui-tuong-lai": "/vault",
-  // Both intent pages send the reader to the map: the list of places is what
-  // answers either question, and /trips would be an odd landing for someone
-  // who just read that no itinerary is required.
-  "di-choi-khong-ke-hoach": "/map",
-  "khong-biet-di-dau": "/map",
+  /*
+   * Both intent pages now land on the day planner, not the map.
+   *
+   * They were pointed at `/map` because a list of places was the closest thing
+   * the app had to an answer. It was still a dead end: somebody who searched
+   * "không biết đi đâu" read a page agreeing with them and arrived at an empty
+   * map and a "+ Thêm địa điểm" button — more work, not less. `/hom-nay-di-dau`
+   * is literally the thing these two pages promise.
+   */
+  "di-choi-khong-ke-hoach": "/hom-nay-di-dau",
+  "khong-biet-di-dau": "/hom-nay-di-dau",
 };
 
 /**

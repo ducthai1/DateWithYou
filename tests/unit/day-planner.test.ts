@@ -69,6 +69,11 @@ function fullPool(perKind = 3): Candidate[] {
   );
 }
 
+function must<T>(v: T | undefined, what = "row"): T {
+  if (v === undefined) throw new Error(`expected a ${what}`);
+  return v;
+}
+
 function draftOf(req: Parameters<typeof planDay>[0], pool: Candidate[]) {
   const out = planDay(req, pool);
   assert.equal(out.ok, true, `expected a plan, got ${JSON.stringify(out)}`);
@@ -410,5 +415,47 @@ describe("what the person asked for is respected", () => {
     for (const s of d.stops.filter((x) => !x.unfilled)) {
       assert.ok(s.reason.trim().length > 0, "a stop with no reason is just a list");
     }
+  });
+});
+
+describe("something else for this slot", () => {
+  test("each filled stop carries the next best places, in order", () => {
+    // "Đổi chặng này" has to be answerable without another request — and above
+    // all without another metered lookup at Google.
+    const pool = Array.from({ length: 6 }, (_, i) =>
+      place({ id: `meal-${i}`, category: "Ăn tối", rating: 5 - i * 0.5 }),
+    );
+    const d = draftOf({ date: TUESDAY, startAt: "16:00" }, pool);
+    const dinner = must(d.stops.find((s) => s.slot.kind === "meal"));
+    assert.ok(dinner.alternatives.length >= 2);
+    assert.ok(!dinner.alternatives.some((a) => a.id === dinner.place?.id), "never itself");
+    const scores = dinner.alternatives.map((a) => a.rating ?? 0);
+    assert.deepEqual(scores, [...scores].sort((x, y) => y - x), "best first");
+  });
+
+  test("a swap can never put the same place on the day twice", () => {
+    /*
+     * The weekend shape asks for two meals. If the second meal's spares
+     * included the first meal's choice, one tap on "Đổi chặng này" would put
+     * the same restaurant at lunch and at dinner.
+     */
+    const pool = Array.from({ length: 4 }, (_, i) =>
+      place({ id: `meal-${i}`, category: "Ăn tối" }),
+    );
+    const d = draftOf({ date: SATURDAY, startAt: "12:00" }, pool);
+    const meals = d.stops.filter((s) => s.slot.kind === "meal" && !s.unfilled);
+    assert.equal(meals.length, 2);
+    const chosen = new Set(meals.map((m) => m.place!.id));
+    for (const m of meals) {
+      for (const alt of m.alternatives) {
+        const clashes = chosen.has(alt.id) && alt.id !== m.place!.id;
+        assert.ok(!clashes, `${alt.id} is already on the day at another stop`);
+      }
+    }
+  });
+
+  test("an empty slot offers nothing rather than something wrong", () => {
+    const d = draftOf({ date: TUESDAY, startAt: "16:00" }, []);
+    assert.ok(d.stops.every((s) => s.alternatives.length === 0));
   });
 });

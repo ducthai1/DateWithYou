@@ -7,8 +7,8 @@ import { LocationModel } from "@/server/db/models/location";
 import { PlanItemModel } from "@/server/db/models/plan-item";
 import { TripModel } from "@/server/db/models/trip";
 import { bucketForTime } from "@/lib/plan-meta";
-import { planDay, SLOT_KINDS, type Candidate, type SlotKind } from "@/lib/day-planner";
-import { BUDGET_KEYS } from "@/lib/day-planner-taxonomy";
+import { planDay, reasonFor, SLOT_KINDS, type Candidate, type SlotKind } from "@/lib/day-planner";
+import { BUDGET_KEYS, costBandFor } from "@/lib/day-planner-taxonomy";
 import { searchPlacesNearby } from "@/server/lib/search-places-nearby";
 
 /**
@@ -243,6 +243,25 @@ export const dayPlanRouter = router({
         if (extra.length) draft = planDay(req, [...saved, ...extra]) as typeof draft;
       }
 
+      /** One candidate, in the shape the screen shows and sends back. */
+      const asOption = (
+        c: Candidate,
+        slot: { kind: SlotKind; startTime: string },
+        cost: { min: number; max: number },
+      ) => ({
+        title: c.name,
+        reason: reasonFor(c, slot, epochOf(input.date)),
+        category: c.category,
+        district: c.district,
+        geo: c.geo ?? null,
+        rating: c.rating ?? null,
+        mustTry: c.mustTry ?? null,
+        cost,
+        locationId: suggestions.has(c.id) ? undefined : c.id,
+        suggestion: suggestions.get(c.id) ?? null,
+        kind: slot.kind,
+      });
+
       const stops = draft.stops.map((s) => {
         const suggestion = s.place ? suggestions.get(s.place.id) ?? null : null;
         return {
@@ -265,6 +284,13 @@ export const dayPlanRouter = router({
           locationId: s.place && !suggestion ? s.place.id : undefined,
           /** Set for a place Google found, which is not in the database yet. */
           suggestion,
+          /*
+           * The next-best places for this slot, so "Đổi chặng này" costs
+           * nothing — no second request, and no second metered lookup.
+           */
+          alternatives: s.alternatives.map((c) =>
+            asOption(c, s.slot, costBandFor(s.slot.kind, c.priceLevel)),
+          ),
         };
       });
 
@@ -386,7 +412,10 @@ export const dayPlanRouter = router({
         .select("_id")
         .lean<{ _id: unknown }>();
       if (existing) {
-        return { tripId: String(existing._id), date: input.date, alreadyConfirmed: true };
+        return {
+          tripId: String(existing._id), date: input.date,
+          alreadyConfirmed: true, locationIds: resolved,
+        };
       }
 
       let tripId: string;
@@ -407,7 +436,10 @@ export const dayPlanRouter = router({
           .select("_id")
           .lean<{ _id: unknown }>();
         if (!raced) throw err;
-        return { tripId: String(raced._id), date: input.date, alreadyConfirmed: true };
+        return {
+          tripId: String(raced._id), date: input.date,
+          alreadyConfirmed: true, locationIds: resolved,
+        };
       }
 
       await PlanItemModel.insertMany(
@@ -426,6 +458,8 @@ export const dayPlanRouter = router({
         })),
       );
 
-      return { tripId, date: input.date, alreadyConfirmed: false };
+      // The resolved ids travel back so the screen can offer "chỉ đường tới
+      // chặng 1" and "rủ người kia" without another round trip.
+      return { tripId, date: input.date, alreadyConfirmed: false, locationIds: resolved };
     }),
 });

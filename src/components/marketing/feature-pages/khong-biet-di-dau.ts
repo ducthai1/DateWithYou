@@ -98,7 +98,7 @@ export const KHONG_BIET_DI_DAU: FeaturePage = {
   cta: {
     heading: "Ghim ba chỗ, ngay bây giờ",
     body: "Không cần chờ tới lúc rảnh. Ba chỗ bạn nhớ ra trong ba mươi giây là đủ để tối thứ Bảy tới có cái mở ra xem.",
-    label: "Mở bản đồ của bạn",
+    label: "Lên kế hoạch cho chiều nay",
   },
   related: [
     {

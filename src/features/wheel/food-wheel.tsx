@@ -264,6 +264,18 @@ export function FoodWheel() {
           {spinning ? "Đang quay…" : "Quay!"}
         </Button>
       )}
+
+      {/*
+        Cross-sell, not a replacement. The wheel answers "which one of these",
+        which is a different question from "what should this afternoon be" —
+        somebody who cannot answer the second one is not helped by spinning.
+      */}
+      <Link
+        href="/hom-nay-di-dau"
+        className="text-muted-foreground hover:text-accent text-center text-sm underline underline-offset-4"
+      >
+        Muốn cả một buổi chiều chứ không chỉ một chỗ? →
+      </Link>
       </div>
       </div>
 

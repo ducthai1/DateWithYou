@@ -2,6 +2,7 @@
 
 import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { todayKey } from "@/lib/date-keys";
@@ -40,14 +41,23 @@ export function AgendaView({ onSelectDay }: { onSelectDay: (dateKey: string) => 
 
   if (days.length === 0) {
     return (
-      <EmptyState
-        icon="calendar-heart"
-        // No art: the page header above carries calendarTablet and stays
-        // on screen while this tab is open.
-        title="Chưa có kế hoạch sắp tới"
-        subtitle="Mở một ngày trên lịch để thêm việc cùng nhau nhé."
-        action={{ label: "Xem lịch tháng", onClick: () => onSelectDay(todayKey()) }}
-      />
+      <div className="space-y-3">
+        <EmptyState
+          icon="calendar-heart"
+          // No art: the page header above carries calendarTablet and stays
+          // on screen while this tab is open.
+          title="Chưa có kế hoạch sắp tới"
+          subtitle="Mở một ngày trên lịch để thêm việc cùng nhau nhé."
+          action={{ label: "Xem lịch tháng", onClick: () => onSelectDay(todayKey()) }}
+        />
+        {/* An empty agenda is the question the day planner exists to answer. */}
+        <Link
+          href="/hom-nay-di-dau"
+          className="text-accent hover:text-accent-hover block text-center text-sm underline underline-offset-4"
+        >
+          Chưa biết đi đâu? Để mình lên kế hoạch cho chiều nay →
+        </Link>
+      </div>
     );
   }
 

@@ -79,13 +79,19 @@ export function TodayPlansCard({
       link={{ href: "/calendar", label: "Lịch" }}
     >
       {items.length === 0 ? (
+        /*
+         * An empty day is the exact moment the day planner is for, so this
+         * prompt points there rather than at a blank form in the calendar.
+         * "Thêm vào hôm nay" asks the person to decide something; the whole
+         * point of the other screen is that they do not have to.
+         */
         <SectionPrompt
           text={
             hasAnyPlan
               ? "Hôm nay lịch đang trống. Thảnh thơi một hôm cũng đáng mà."
-              : "Chưa có kế hoạch nào cả. Một ly cà phê chiều nay cũng đáng để ghi vào đó."
+              : "Chưa có kế hoạch nào cả. Chưa biết đi đâu thì để mình lo phần nghĩ."
           }
-          action={{ href: "/calendar", label: "Thêm vào hôm nay" }}
+          action={{ href: "/hom-nay-di-dau", label: "Hôm nay đi đâu?" }}
         />
       ) : (
         <>
