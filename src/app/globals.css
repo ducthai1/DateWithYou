@@ -196,6 +196,33 @@ body:has([data-chromeless]) [data-app-main] {
   --elev-1: 0 4px 20px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02);
   --elev-2: 0 10px 40px -5px rgba(0, 0, 0, 0.05), 0 4px 10px rgba(0, 0, 0, 0.03);
   --elev-3: 0 20px 60px -10px rgba(0, 0, 0, 0.08), 0 10px 20px -5px rgba(0, 0, 0, 0.04);
+  /*
+   * elev-float = a surface that has to hold its own against the ARTWORK ground.
+   *
+   * The three above were measured against --background, a flat #F8F9FA, where
+   * 3% of black is plenty to say "this is lifted". Over AppBackdrop's
+   * photograph they say nothing at all: a white card centred on /moi measured
+   * 1.11:1 median separation from the picture around it, with 78 of 116
+   * perimeter samples under 1.20:1 — two thirds of the card's outline is, to a
+   * camera, not there. The drop shadow itself was unmeasurable.
+   *
+   * So this one is not "elev-3 but more". It is built the other way round: a
+   * tight dense layer that makes an EDGE at the boundary, and a wide soft one
+   * that makes a HALO far enough out to survive whatever the picture is doing.
+   * Luminance ratios compress near white, which is why the near layer has to be
+   * this dark to buy a ratio that reads at all.
+   */
+  --elev-float:
+    /* Symmetric, no offset. Every offset layer below puts its darkness under
+       the card and almost nothing above it, and measuring the four sides
+       separately said so: with only the offset layers the bottom edge read at
+       2.32:1 and the TOP at 1.42:1 — the weakest point on the whole outline.
+       A halo with no offset is the only layer that reaches upward. */
+    0 0 22px rgba(28, 25, 23, 0.18),
+    0 1px 2px rgba(28, 25, 23, 0.10),
+    0 2px 6px rgba(28, 25, 23, 0.16),
+    0 12px 28px -6px rgba(28, 25, 23, 0.26),
+    0 32px 64px -24px rgba(28, 25, 23, 0.30);
 
   /* --- Motion tokens ----------------------------------------------------- */
   /*
@@ -297,10 +324,11 @@ body:has([data-chromeless]) [data-app-main] {
   --font-sans:  var(--font-sans-inter);
   --font-serif: var(--font-sans-inter);
 
-  /* Elevation shadows → shadow-elev-1, shadow-elev-2, shadow-elev-3 */
+  /* Elevation shadows → shadow-elev-1, shadow-elev-2, shadow-elev-3, shadow-elev-float */
   --shadow-elev-1: var(--elev-1);
   --shadow-elev-2: var(--elev-2);
   --shadow-elev-3: var(--elev-3);
+  --shadow-elev-float: var(--elev-float);
 
   /* Radius → rounded-sm-scale, rounded-base, rounded-lg-scale, rounded-full-scale */
   --radius-base:       var(--radius);

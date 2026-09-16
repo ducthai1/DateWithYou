@@ -227,7 +227,21 @@ export function DayPlanScreen() {
       }
     >
       {step === "intro" && (
-        <div className="mx-auto max-w-xl space-y-6 py-6 text-center">
+        /*
+         * The one block on this screen that had no surface under it.
+         *
+         * Everything else here is a Card; the intro was a bare div, so its
+         * heading, both grey lines and the two outline buttons sat directly on
+         * AppBackdrop's photograph — and this screen is centred, which is
+         * exactly where the backdrop's wash thins out to 52%. The copy still
+         * cleared AA on measurement (5.1:1), so this is not a contrast fix: it
+         * is that a screen asking somebody to commit to a whole evening was
+         * presenting the ask as text dropped on wallpaper.
+         */
+        <Card
+          floating
+          className="mx-auto max-w-xl space-y-6 rounded-2xl p-6 text-center sm:p-8"
+        >
           <div className="space-y-2">
             <h2 className="text-2xl font-bold leading-tight sm:text-3xl">
               Chán rồi, không biết đi đâu?
@@ -278,11 +292,14 @@ export function DayPlanScreen() {
           <p className="text-muted-foreground text-xs">
             Ưu tiên những chỗ hai người đã lưu. Chưa lưu gì thì mình gợi ý thêm.
           </p>
-        </div>
+        </Card>
       )}
 
       {step === "tuning" && (
-        <div className="mx-auto max-w-xl space-y-6 py-2">
+        /* Same reason as the intro above: three labelled chip rows, a time
+           field and two buttons, none of which brought a surface of its own —
+           so the form was a column of loose controls on a photograph. */
+        <Card floating className="mx-auto max-w-xl space-y-6 rounded-2xl p-6 sm:p-7">
           <ChipRow title="Quanh khu nào?" hint="Bỏ trống là đâu cũng được">
             {(config.data?.districts ?? []).map((d) => (
               <Chip
@@ -332,7 +349,7 @@ export function DayPlanScreen() {
               Lên kế hoạch
             </Button>
           </div>
-        </div>
+        </Card>
       )}
 
       {step === "result" && (
@@ -347,10 +364,10 @@ export function DayPlanScreen() {
              * app having failed, not as it working. Found by the e2e, which
              * pressed Chốt during exactly that gap.
              */
-            <div className="space-y-3 py-10 text-center">
+            <Card floating className="space-y-3 rounded-2xl py-10 text-center">
               <Loader2 className="text-accent mx-auto h-8 w-8 animate-spin" aria-hidden />
               <p className="text-muted-foreground text-sm">Đang xếp một buổi cho bạn…</p>
-            </div>
+            </Card>
           ) : outOfHours ? (
             <EmptyState
               art="emptyCompass"
@@ -381,7 +398,7 @@ export function DayPlanScreen() {
             />
           ) : (
             <>
-              <Card className="flex flex-wrap items-center justify-between gap-3">
+              <Card floating className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold">Kế hoạch chiều nay</p>
                   <p className="text-muted-foreground text-xs">
@@ -418,7 +435,7 @@ export function DayPlanScreen() {
               </div>
 
               {confirmed ? (
-                <Card className="space-y-3">
+                <Card floating className="space-y-3">
                   <p className="font-semibold">Đã chốt ✓</p>
                   <div className="flex flex-wrap gap-2">
                     <Link

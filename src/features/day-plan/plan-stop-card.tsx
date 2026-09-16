@@ -84,6 +84,11 @@ export function PlanStopCard({
       </span>
 
       <Card
+        // Every card in this flow sits on the raw artwork rather than on
+        // --background: the column is centred, and AppBackdrop's wash is at
+        // its thinnest there by design. elev-1 measured 1.11:1 against that
+        // ground — an edge a camera cannot find.
+        floating
         className={cn(
           "flex flex-col gap-2",
           stop.unfilled && "border-dashed bg-muted/30",
