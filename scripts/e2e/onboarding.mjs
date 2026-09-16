@@ -213,7 +213,13 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     await P.goto(`${base}/`);
     await P.eval(`try { localStorage.clear(); sessionStorage.clear(); } catch {}`).catch(() => {});
 
-    const emailA = `e2e-onb-a-${stamp}@example.com`;
+    /*
+     * Địa chỉ dài có chủ ý. Email là chuỗi không xuống dòng được duy nhất mà
+     * người dùng tự mang vào /settings, và nó từng đẩy hàng hồ sơ rộng 545px
+     * trong một thẻ 324px. Một địa chỉ ngắn thì phép kiểm tràn ngang bên dưới
+     * xanh mà không chứng minh được gì.
+     */
+    const emailA = `e2e-onb-nguoi-dung-co-dia-chi-rat-dai-${stamp}@example.com`;
     emails.push(emailA);
     const whyA = await signUpThroughForm(P, base, { name: "Người Mới A", email: emailA });
 
@@ -254,8 +260,8 @@ export async function run({ base, profileDir, port, db, shotDir }) {
         mobile: w < 500,
       });
       await sleep(700);
-      const fits = await P.eval(`document.documentElement.scrollWidth <= window.innerWidth + 1`);
-      ok(`onboarding ${w}px: không tràn ngang`, fits === true);
+      const spill = await P.horizontalOverflow();
+      ok(`onboarding ${w}px: không tràn ngang`, spill === null, spill ?? "");
       /*
        * Nút phải nằm trong màn, không bị bức tranh đẩy xuống dưới đáy. Đây là
        * màn hình duy nhất của app chưa có nội dung gì, nên nó toàn ảnh — và một
@@ -296,8 +302,69 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     // Hộp thoại chào mừng thuộc về màn hình app đầu tiên — ở đây thì đúng chỗ.
     ok("hộp thoại chào mừng xuất hiện ở màn hình app đầu tiên", (await P.eval(hasWelcome)) === true);
 
+    /*
+     * Đo bảng mời DƯỚI TÀI KHOẢN VỪA TẠO KHÔNG GIAN, không phải tài khoản vừa
+     * tham gia: `createInvite` ném SPACE_FULL khi không gian đã đủ hai người,
+     * nên ở phía người tham gia thì nút "Tạo lời mời" đúng ra không hiện, và
+     * mọi phép đo sau đó chỉ đo một màn hình trống.
+     */
+    /* ─── Bảng mời trên điện thoại ─────────────────────────────────
+     * Trạng thái này chưa từng được đo. Cả hai bộ kiểm đều chụp /settings
+     * TRƯỚC khi bấm "Tạo lời mời" — tức đúng lúc chưa có gì để vỡ. Đường liên
+     * kết mời là chuỗi dài không xuống dòng được đầu tiên xuất hiện trên trang
+     * đó, và nó kéo cả cột rộng ra 56px ở khổ 390px.
+     */
+    for (const [w, h] of [
+      [390, 844],
+      [430, 930],
+    ]) {
+      await P.send("Emulation.setDeviceMetricsOverride", {
+        width: w, height: h, deviceScaleFactor: 2, mobile: true,
+      });
+      await P.goto(`${base}/settings`);
+      await P.until(`document.body.innerText.includes("Mời người đồng hành")`, { timeout: 60000 });
+      /*
+       * Tắt lời giới thiệu lần đầu trước khi đo và trước khi chụp. Đây là màn
+       * hình app đầu tiên của tài khoản này nên nó mở ra là đúng — nhưng nó phủ
+       * kín trang, nên ảnh chụp "bảng mời" hoá ra là ảnh chụp hộp thoại, và
+       * người đọc báo cáo không có cách nào biết.
+       */
+      await clickUntil(P, CLICK("/Bắt đầu nào/"), `!(${hasWelcome})`, { tries: 6 });
+      const before = await P.horizontalOverflow();
+      ok(`cài đặt ${w}px: chưa tạo mời thì không tràn`, before === null, before ?? "");
+
+      const drawn = await clickUntil(
+        P,
+        CLICK("/Tạo lời mời/"),
+        `!!document.querySelector('svg[aria-label="Mã QR mời vào không gian"] path')`,
+      );
+      ok(`cài đặt ${w}px: bấm Tạo lời mời thì hiện mã QR`, drawn === true);
+      await sleep(600);
+      const after = await P.horizontalOverflow();
+      ok(`cài đặt ${w}px: TẠO MỜI XONG vẫn không tràn ngang`, after === null, after ?? "");
+      ok(`cài đặt ${w}px: không còn hộp thoại nào che bảng mời`, (await P.eval(hasWelcome)) === false);
+      if (shotDir) {
+        await P.eval(`document.querySelector('svg[aria-label="Mã QR mời vào không gian"]')
+          ?.closest('div')?.parentElement?.scrollIntoView({ block: 'center' })`);
+        await sleep(400);
+        await P.shot(`${shotDir}/onboarding-bang-moi-${w}.png`);
+      }
+      // Đường liên kết phải nằm gọn, không đẩy gì ra ngoài màn.
+      const linkFits = await P.eval(`(() => {
+        const b = [...document.querySelectorAll('button')].find(x => /^https?:/.test((x.textContent||"").trim()));
+        if (!b) return "không thấy hàng đường liên kết";
+        const r = b.getBoundingClientRect();
+        return r.right <= window.innerWidth + 1 ? true : "hàng link chạm " + Math.round(r.right) + "px";
+      })()`);
+      ok(`cài đặt ${w}px: hàng đường liên kết nằm trong màn`, linkFits === true, linkFits === true ? "" : String(linkFits));
+    }
+    await P.viewport(390, 844, true, 2);
+
+
     await P.goto(`${base}/onboarding`);
-    await sleep(2500);
+    // `until`, không phải sleep cố định: cú đẩy này chờ `space.getMine` trả lời,
+    // và trên dev server vừa biên dịch lại thì một lượt hỏi có thể lâu hơn hẳn.
+    await P.until(`location.pathname !== "/onboarding"`, { timeout: 30000 }).catch(() => {});
     const reopened = await P.eval(`location.pathname`);
     ok("đã có không gian mà mở lại /onboarding thì bị đẩy vào app", reopened === FRONT_DOOR, reopened);
 

@@ -74,6 +74,37 @@ export async function openPage(port = DEFAULT_PORT) {
       while (Date.now() - started < timeout) { try { if (await page.eval(expression)) return true; } catch {} await new Promise((r) => setTimeout(r, 150)); }
       throw new Error(`timed out waiting for: ${expression.slice(0, 120)}`);
     },
+    /*
+     * Thanh cuộn ngang, đo ở ĐÚNG phần tử đang cuộn.
+     *
+     * `document.documentElement.scrollWidth <= innerWidth` là phép kiểm sai
+     * trong app này và nó im lặng suốt: PageShell lồng một div
+     * `overflow-x: auto` bên trong, nên chính div đó cuộn còn documentElement
+     * thì không bao giờ rộng ra. Một trang tràn 56px vẫn cho qua.
+     * Trả về null nếu sạch, còn không thì mô tả kẻ tràn để người đọc biết sửa ở đâu.
+     */
+    async horizontalOverflow() {
+      const raw = await page.eval(`(() => {
+        const bad = [document.documentElement, ...document.querySelectorAll('*')].find(el => {
+          if (el.scrollWidth <= el.clientWidth + 1 || el.clientWidth === 0) return false;
+          const ox = getComputedStyle(el).overflowX;
+          return el === document.documentElement ? true : (ox === "auto" || ox === "scroll");
+        });
+        if (!bad) return "null";
+        const widest = [...bad.querySelectorAll('*')]
+          .map(el => ({ r: Math.round(el.getBoundingClientRect().right), tag: el.tagName.toLowerCase(),
+                        cls: (el.className||"").toString().slice(0,60), txt: (el.textContent||"").trim().slice(0,32) }))
+          .filter(x => x.r > bad.clientWidth + 1).sort((a,b) => b.r - a.r)[0];
+        return JSON.stringify({
+          by: bad.scrollWidth - bad.clientWidth,
+          scroller: (bad.className||bad.tagName||"").toString().slice(0,60),
+          widest: widest ? '<' + widest.tag + '> ' + widest.cls + ' "' + widest.txt + '"' : null,
+        });
+      })()`);
+      if (raw === "null") return null;
+      const o = JSON.parse(raw);
+      return `tràn ${o.by}px ở [${o.scroller}]${o.widest ? " — rộng nhất: " + o.widest : ""}`;
+    },
     async shot(file, { fullPage = false } = {}) {
       let clip;
       if (fullPage) {

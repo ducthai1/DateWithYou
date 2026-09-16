@@ -314,7 +314,20 @@ export function SpaceSettings() {
         to say. Width was also being wasted on "Tên không gian" and "Mời người
         đồng hành" under a heading called "Giao diện", which they are not.
       */}
-      <div className="grid gap-6 md:grid-cols-2 md:items-start short:gap-4">
+      {/*
+        grid-cols-1 không thừa. Không khai cột ở khổ điện thoại thì lưới dựng
+        MỘT cột ngầm cỡ `auto`, và cột `auto` không bao giờ hẹp hơn min-content
+        của thẻ rộng nhất — nên chỉ cần một chuỗi không xuống dòng được nằm đâu
+        đó bên trong là cả cột phình ra, kéo theo mọi thẻ khác, và trang mọc
+        thanh cuộn ngang. Đúng thế đã xảy ra: bấm "Tạo lời mời" hiện đường liên
+        kết mời (`http://…/moi/ABCD234XYZ`) và trang tràn 56px ở 390px.
+        `min-w-0`/`overflow-hidden` đặt trên chính cái nút chứa đường liên kết
+        KHÔNG cứu được — đã thử, vẫn tràn nguyên 56px — vì thứ định cỡ cột là
+        min-content của cả thẻ, không phải của phần tử đó. `grid-cols-1` dịch ra
+        `repeat(1, minmax(0,1fr))`, đúng bằng thứ `md:grid-cols-2` vốn đã có ở
+        khổ lớn; vì vậy lỗi chỉ xuất hiện trên điện thoại.
+      */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start short:gap-4">
 
         {/* ── BẠN ── who you are, on your account: the same everywhere. */}
         <Card className="space-y-4 shadow-sm">
@@ -350,7 +363,16 @@ export function SpaceSettings() {
               ))}
             </div>
           ) : (
-            <div className="flex items-center gap-4 rounded-xl border border-border bg-card/50 p-3 shadow-sm w-fit pr-8">
+            <div className="flex max-w-full items-center gap-4 rounded-xl border border-border bg-card/50 p-3 shadow-sm w-fit pr-8">
+              {/*
+                max-w-full đi kèm w-fit, không phải thừa. `w-fit` bám theo
+                max-content, mà max-content ở đây gồm nguyên địa chỉ email không
+                xuống dòng được — đo thật: một email dài làm hàng này rộng 545px
+                nằm trong thẻ 324px, trang tràn ngang 188px ở khổ 390px.
+                `truncate` bên trong KHÔNG cứu được vì nó chỉ cắt khi đã bị ép
+                hẹp, còn `w-fit` thì không bao giờ ép. Đặt `min-w-0` lên hàng
+                cũng vô ích — đã thử, vẫn 545px.
+              */}
               <span className="relative shrink-0">
                 <img
                   src={session?.user.image || PRESET_AVATARS[0]}
