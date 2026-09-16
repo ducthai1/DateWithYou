@@ -402,7 +402,54 @@ export async function run({ base, profileDir, port, db, shotDir }) {
         await H.shot(`${shotDir}/invite-settings-${w}.png`);
       }
     }
+
+    /* ——— dữ liệu XẤU: tên không gian là thứ người ta TỰ GÕ ——————————
+     *
+     * Đặt cuối cùng, và xoá cookie của G trước, vì màn có hiển thị tên không
+     * gian là màn dành cho người CHƯA đăng nhập — một người đã đăng nhập mà mở
+     * mã còn sống thì sẽ tham gia luôn, tức là tiêu mã và không bao giờ thấy
+     * cái tên.
+     *
+     * Vì sao phải có khối này: bộ kiểm trên chạy đủ bốn khổ màn và xanh hết,
+     * trong khi `"Nhà mình"` là cái tên duy nhất từng được thử. Trần thật của
+     * server là `z.string().trim().min(1).max(60)`, và không gì bắt người ta gõ
+     * dấu cách. Đo lần đầu: 3 trong 5 ca dưới đây làm tràn ngang, ca nặng nhất
+     * 459px ở màn 390. Không ca nào trong số đó "dài hơn" ca happy path một
+     * cách đáng kể — chúng VỠ THEO KIỂU KHÁC.
+     */
+    await G.send("Network.clearBrowserCookies");
+    const HOSTILE = [
+      ["token liền, không dấu cách", "Khônggianchungcủahaiđứamìnhnhéyêuthươngmãimãikhôngrời"],
+      ["dán nguyên một URL",         "https://vivu-noplan.vercel.app/moi/ABCDEFGHIJKLMNOPQRST"],
+      ["dấu chồng lặp",              "Nhà mình " + "ố".repeat(45)],
+      ["emoji ghép",                 "💕🏖️✈️🌴🍜☕🎬🌸💐🎡🎠🎢🛶⛱️🏝️🌊🐚🦀🐠🪸"],
+      ["ngắn nhất hợp lệ",           "N"],
+    ];
+    const sha256 = (await import("node:crypto")).createHash;
+    for (const [i, [label, name]] of HOSTILE.entries()) {
+      const badCode = `XAUDULIEU${i}`;
+      await db.collection("spaces").insertOne({
+        name, members: [`e2e-hostile-${i}`], createdBy: `e2e-hostile-${i}`,
+        isPersonal: false, memberProfiles: [], tags: [],
+        inviteCodeHash: sha256("sha256").update(badCode).digest("hex"),
+        inviteCodeExpiresAt: new Date(Date.now() + 6 * 86_400_000),
+        // Cờ để dọn được cả khi bộ kiểm bị giết giữa chừng.
+        e2eHostile: true, createdAt: new Date(), updatedAt: new Date(),
+      });
+      for (const [w, h] of [[390, 844], [1280, 900]]) {
+        await G.send("Emulation.setDeviceMetricsOverride", {
+          width: w, height: h, deviceScaleFactor: w < 500 ? 2 : 1, mobile: w < 500,
+        });
+        await G.goto(`${base}/moi/${badCode}`);
+        await G.until(`/được mời vào/i.test(document.body.innerText)`, { timeout: 60000 })
+          .catch(() => {});
+        const spill = await G.horizontalOverflow();
+        ok(`tên "${label}" ở ${w}px: không tràn ngang`, spill === null, spill ?? "");
+      }
+      if (shotDir && i === 0) await G.shot(`${shotDir}/invite-ten-xau.png`);
+    }
   } finally {
+    await db.collection("spaces").deleteMany({ e2eHostile: true }).catch(() => {});
     /*
      * Put the space back to how it was found.
      *

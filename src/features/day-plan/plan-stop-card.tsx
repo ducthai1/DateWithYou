@@ -101,7 +101,21 @@ export function PlanStopCard({
               <Clock className="h-3 w-3" aria-hidden />
               {stop.startTime}
             </p>
-            <p className="mt-0.5 truncate font-semibold leading-tight">
+            {/*
+              Hai dòng, không phải một.
+
+              Đây là dòng quan trọng nhất của thẻ — nó trả lời "đi đâu" — mà
+              `truncate` cắt nó ở đúng một dòng. Tên quán thật ở Sài Gòn dài
+              hơn thế: "Nhà hàng Ngon Sài Gòn - Chi nhánh Nguyễn Huệ" mất nửa
+              sau ở màn 390px, và người đọc không có cách nào lấy lại. Đo bằng
+              tên quán xấu: một chuỗi 61 ký tự liền hiện ra đúng 27 ký tự.
+
+              `wrap-anywhere` đi kèm vì `line-clamp` không tự bẻ từ: bỏ
+              `truncate` ra mà không thay gì thì một tên liền 61 ký tự vẽ tràn
+              khỏi thẻ. Cha đã có `min-w-0` nên `break-words` cũng đủ ở đây —
+              chọn `anywhere` vì nó còn đúng cả khi ô này đổi sang tự co.
+            */}
+            <p className="mt-0.5 line-clamp-2 wrap-anywhere font-semibold leading-tight">
               {stop.unfilled ? "Chưa tìm được chỗ cho khung này" : stop.title}
             </p>
           </div>

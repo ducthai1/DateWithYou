@@ -268,7 +268,20 @@ export function JoinByInvite({ code }: { code: string }) {
             <p className="text-muted-foreground text-[0.6875rem] font-semibold uppercase tracking-[0.14em]">
               Bạn được mời vào
             </p>
-            <h1 className="text-2xl font-bold leading-tight text-balance sm:text-[1.75rem]">
+            {/*
+              A space name is whatever its owner typed, up to 60 characters,
+              and nothing makes them use a space — "Khônggianchungcủahaiđứa…"
+              is a legal name. With no wrapping rule at all it simply paints
+              outside this box and stretches the document: measured 459px of
+              sideways scroll at 390px wide and 101px at 1280, and the e2e goes
+              red on four checks.
+
+              `break-words` also fixes it here, because the panel's width is
+              already pinned by `w-full max-w-md` so min-content never gets a
+              vote. `anywhere` is kept because it is the value that ALSO holds
+              if this box ever becomes auto-width, and it costs nothing today.
+            */}
+            <h1 className="wrap-anywhere text-2xl font-bold leading-tight text-balance sm:text-[1.75rem]">
               {spaceName ? `“${spaceName}”` : "một không gian chung"}
             </h1>
             <p className="text-muted-foreground mx-auto max-w-[22rem] text-pretty text-sm leading-relaxed">
@@ -347,7 +360,8 @@ function Outcome({
         {/* balance so a title does not drop its last word onto a line alone —
             "Bạn đã ở trong không gian này rồi" was breaking after "này". */}
         <h1 className="text-xl font-bold leading-tight text-balance sm:text-2xl">{title}</h1>
-        <p className="text-muted-foreground text-pretty text-sm leading-relaxed">{body}</p>
+        {/* Carries the space name on the success screen, so same rule. */}
+        <p className="text-muted-foreground wrap-anywhere text-pretty text-sm leading-relaxed">{body}</p>
       </div>
       {action && (
         // Same classes as Button's `outline`, rather than a fourth hand-rolled
