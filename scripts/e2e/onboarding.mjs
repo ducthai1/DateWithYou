@@ -102,13 +102,22 @@ async function clickUntil(page, clickExpr, condition, { tries = 20, gap = 1000 }
  * còn nút vẫn khoá, bấm bao nhiêu lần cũng không có gì xảy ra. Đó là lý do lần
  * thử mã đầu tiên từng "im lặng" trong khi những lần sau đều báo lỗi đàng hoàng.
  */
-async function typeAndWait(page, value, buttonRe) {
+async function typeAndWait(page, value, buttonRe, expectRe) {
+  /*
+   * `expectRe` không phải trang trí: FILL("input") gõ vào ô ĐẦU TIÊN của trang
+   * đang hiện, bất kể đó là trang nào. Một lần điều hướng chưa xong là nó gõ
+   * tên không gian vào ô "Tên của bạn" của form đăng ký, rồi bộ kiểm chết ở
+   * một chỗ cách đó hàng chục dòng.
+   */
+  const onScreen = `${expectRe}.test(document.body.innerText)`;
+  if (!(await page.until(onScreen, { timeout: 30000 }).then(() => true).catch(() => false))) return false;
   const enabled = `(() => {
     const all = [...document.querySelectorAll("button")].filter(b => ${buttonRe}.test((b.textContent||"").trim()));
     const b = all[all.length - 1];
     return !!b && !b.disabled;
   })()`;
   for (let i = 0; i < 30; i++) {
+    if (!(await page.eval(onScreen).catch(() => false))) return false;
     await page.eval(FILL("input", value)).catch(() => {});
     await sleep(300);
     if (await page.eval(enabled).catch(() => false)) return true;
@@ -118,10 +127,23 @@ async function typeAndWait(page, value, buttonRe) {
 
 /** Đăng ký bằng đúng cái form người dùng thấy, không gọi thẳng API. */
 async function signUpThroughForm(page, base, { name, email, gender = "female", query = "" }) {
-  await page.goto(`${base}/sign-up${query}`);
-  await page.until(`!!document.querySelector('input[name="email"]')`, { timeout: 90000 });
+  let why = null;
   for (let attempt = 0; attempt < 4; attempt++) {
-    if (!(await waitHydrated(page, gender))) continue;
+    /*
+     * Nạp lại ở ĐẦU mỗi lượt, không phải ở cuối.
+     *
+     * Bản trước `continue` khi hydrate hụt mà không nạp lại, nên cả bốn lượt
+     * ngồi bấm vào đúng một trang chết — 96 giây rồi trả về "không báo gì".
+     * Máy này có vài phiên cùng sửa code suốt ngày, dev server biên dịch lại
+     * liên tục, và lần mở đầu tiên sau mỗi lần biên dịch là lần chậm nhất. Nạp
+     * lại là cách rẻ nhất để thoát khỏi một trang đã hỏng.
+     */
+    await page.goto(`${base}/sign-up${query}`);
+    await page.until(`!!document.querySelector('input[name="email"]')`, { timeout: 90000 }).catch(() => {});
+    if (!(await waitHydrated(page, gender))) {
+      why = "trang đăng ký không hydrate kịp (dev server đang biên dịch lại?)";
+      continue;
+    }
     await page.eval(FILL('input[name="name"]', name));
     await page.eval(FILL('input[name="email"]', email));
     await page.eval(FILL('input[name="password"]', PASSWORD));
@@ -133,16 +155,13 @@ async function signUpThroughForm(page, base, { name, email, gender = "female", q
     );
     await page.until(`location.pathname !== "/sign-up"`, { timeout: 60000 }).catch(() => {});
     await sleep(1500);
-    if ((await page.eval(`location.pathname`)) !== "/sign-up") return;
-    // Vẫn đứng nguyên: nạp lại rồi thử lượt nữa. Dev server biên dịch lần đầu
-    // mất vài giây, và trong lúc đó trang chưa nhận thao tác nào.
-    await page.goto(`${base}/sign-up${query}`);
-    await page.until(`!!document.querySelector('input[name="email"]')`, { timeout: 90000 });
+    if ((await page.eval(`location.pathname`)) !== "/sign-up") return null;
+    why = await page.eval(`(() => {
+      const el = [...document.querySelectorAll("p")].find(p => (p.className||"").includes("text-destructive"));
+      return el ? el.textContent.trim() : "bấm Đăng ký mà trang không nhúc nhích";
+    })()`).catch(() => "không đọc được màn hình");
   }
-  return page.eval(`(() => {
-    const el = [...document.querySelectorAll("p")].find(p => (p.className||"").includes("text-destructive"));
-    return el ? el.textContent.trim() : "không báo gì";
-  })()`);
+  return why;
 }
 
 const hasWelcome = `/Chào mừng tới Vivu No Plan/.test(document.body.innerText)`;
@@ -236,6 +255,20 @@ export async function run({ base, profileDir, port, db, shotDir }) {
       landed === "/onboarding",
       landed === "/onboarding" ? "" : `${landed}${whyA ? ` — màn hình nói: ${whyA}` : ""}`,
     );
+    /*
+     * Không đi tiếp khi chưa đứng đúng chỗ.
+     *
+     * Mọi phép kiểm dưới đây giả định đang ở màn onboarding. Bản trước cứ chạy
+     * tiếp bất kể: nó gõ tên không gian "Góc E2E" vào ô "Tên của bạn" của form
+     * ĐĂNG KÝ còn đang hiện, rồi 60 giây sau chết ở một phép chờ chẳng liên
+     * quan gì — dấu vết trỏ sai chỗ hoàn toàn. Hỏng ở đây thì nói thẳng hỏng ở
+     * đây, và trả về những gì đã đo được.
+     */
+    if (landed !== "/onboarding") {
+      ok("dừng bộ kiểm: chưa vào được onboarding nên mọi bước sau vô nghĩa", false, `đang ở ${landed}`);
+      if (shotDir) await P.shot(`${shotDir}/onboarding-dung-giua-chung.png`);
+      return results;
+    }
 
     await sleep(1200);
     const covered = await P.eval(hasWelcome);
@@ -280,7 +313,8 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     await P.viewport(390, 844, true, 2);
     await sleep(500);
 
-    await typeAndWait(P, "Góc E2E", "/^Tiếp tục$/");
+    const typedName = await typeAndWait(P, "Góc E2E", "/^Tiếp tục$/", "/Tên không gian/");
+    ok("gõ được tên không gian ở đúng màn onboarding", typedName === true);
     await clickUntil(P, CLICK("/^Tiếp tục$/"), `/Mã PIN xoá/.test(document.body.innerText)`);
     ok("bước 1 → bước 2 (đặt mã PIN, tuỳ chọn)", await P.eval(`/Mã PIN xoá/.test(document.body.innerText)`));
 
@@ -393,7 +427,7 @@ export async function run({ base, profileDir, port, db, shotDir }) {
       ["E2EEXPIRED", "hethan"],
       ["E2EFULL001", "day"],
     ]) {
-      await typeAndWait(P, code, "/^Tham gia$/");
+      await typeAndWait(P, code, "/^Tham gia$/", "/Vào không gian có sẵn/");
       /*
        * Đợi câu MỚI, không phải đợi "có câu nào đó": lời báo của lần trước
        * vẫn nằm nguyên trên màn hình cho tới khi lần này trả lời, nên
@@ -431,7 +465,7 @@ export async function run({ base, profileDir, port, db, shotDir }) {
      * Cái được gửi qua Zalo là một ĐƯỜNG LIÊN KẾT, mà ô này thì hỏi "mã" —
      * nên việc tự nhiên nhất là dán cả link vào đây.
      */
-    await typeAndWait(P, `${base}/moi/E2EOPEN001?utm=zalo`, "/^Tham gia$/");
+    await typeAndWait(P, `${base}/moi/E2EOPEN001?utm=zalo`, "/^Tham gia$/", "/Vào không gian có sẵn/");
     const inBox = await P.eval(`document.querySelector('input').value`);
     ok("dán cả đường liên kết thì ô mã tự lấy đúng mã ra", inBox === "E2EOPEN001", inBox);
 

@@ -70,10 +70,23 @@ async function main() {
       if (only.length && !only.includes(suite.id)) continue;
       const mod = await suite.load();
       console.log(`\n── ${mod.name}`);
-      const results = await mod.run({
-        base: BASE, db, shotDir: SHOT_DIR,
-        port: port++, profileDir: join(SHOT_DIR, `chrome-${suite.id}`),
-      });
+      /*
+       * Một bộ ném thì tính là MỘT phép kiểm đỏ, không phải hỏng cả lượt chạy.
+       *
+       * Trước đây `mod.run()` ném là cả `main()` chết theo, nên một bài chập
+       * chờn ở bộ CUỐI vứt luôn kết quả của 9 bộ trước — người đọc không biết
+       * chúng đã xanh, và lần chạy đó coi như không đo được gì. Timeout của một
+       * phép chờ là thông tin, không phải sự cố hạ tầng.
+       */
+      let results;
+      try {
+        results = await mod.run({
+          base: BASE, db, shotDir: SHOT_DIR,
+          port: port++, profileDir: join(SHOT_DIR, `chrome-${suite.id}`),
+        });
+      } catch (e) {
+        results = [{ ok: false, name: `bộ "${suite.id}" ném giữa chừng`, detail: String(e?.message ?? e).slice(0, 200) }];
+      }
       for (const r of results) {
         console.log(`${r.ok ? "PASS" : "FAIL"} ${r.name}${r.detail ? " — " + r.detail : ""}`);
         if (r.ok) pass++;
