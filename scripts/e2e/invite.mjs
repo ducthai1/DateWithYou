@@ -121,6 +121,33 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     ok("và nó có hình thật (đường vẽ đủ dài)", qr.dLength > 1000, `d dài ${qr.dLength}`);
     ok("đường liên kết hiện đầy đủ để người ta xem trước khi gửi", !!qr.link, qr.link ?? "");
     ok("có nút chép", qr.hasCopy === true);
+
+    /*
+     * Đo tràn ngang NGAY LÚC NÀY, không đợi cuối bộ kiểm.
+     *
+     * Đường liên kết mời là chuỗi không xuống dòng được đầu tiên mà trang cài
+     * đặt từng hiển thị, nên nó chỉ tồn tại sau khi bấm "Tạo lời mời". Cả bộ
+     * kiểm này lẫn bộ bên cạnh đều chụp /settings TRƯỚC khi bấm — tức đúng lúc
+     * chưa có gì để vỡ — nên một trang tràn 56px ở 390px đi lọt tới tận khi
+     * chủ repo tự thấy trên điện thoại.
+     */
+    for (const [w, h] of [[390, 844], [430, 930]]) {
+      await H.send("Emulation.setDeviceMetricsOverride", {
+        width: w, height: h, deviceScaleFactor: 2, mobile: true,
+      });
+      await new Promise((r) => setTimeout(r, 400));
+      const spill = await H.horizontalOverflow();
+      ok(`bảng mời ở ${w}px (đang mở mã QR): không tràn ngang`, spill === null, spill ?? "");
+      if (shotDir) {
+        await H.eval(`document.querySelector('svg[aria-label="Mã QR mời vào không gian"]')
+          ?.closest('div')?.parentElement?.scrollIntoView({ block: 'center' })`);
+        await new Promise((r) => setTimeout(r, 300));
+        await H.shot(`${shotDir}/invite-panel-${w}.png`);
+      }
+    }
+    await H.send("Emulation.setDeviceMetricsOverride",
+      { width: 430, height: 930, deviceScaleFactor: 2, mobile: true });
+
     if (shotDir) {
       // The panel sits well down a long settings page; a screenshot of the top
       // of that page tells nobody anything about it.
@@ -159,7 +186,15 @@ export async function run({ base, profileDir, port, db, shotDir }) {
 
     /* ——— ngã rẽ 1: chưa đăng nhập thì phải biết được mời vào ĐÂU ——— */
     await G.goto(link);
-    await G.until(`document.body.innerText.includes("Bạn được mời vào")`, { timeout: 60000 });
+    /*
+     * Khớp KHÔNG phân biệt hoa thường: dòng nhãn đó nay là eyebrow chữ hoa
+     * (`uppercase`), mà `innerText` trả về chữ ĐÃ biến đổi theo CSS — nên phép
+     * so khớp đúng-từng-chữ vỡ ngay lúc đổi kiểu chữ, dù màn hình vẫn đúng.
+     */
+    await G.until(
+      `/bạn được mời vào/i.test(document.body.innerText)`,
+      { timeout: 60000 },
+    );
     const invited = JSON.parse(await G.eval(`(() => {
       const t = document.body.innerText;
       return JSON.stringify({
@@ -211,6 +246,46 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     ok("mở lại link cũ thì được báo rõ, không im lặng", reused);
     if (shotDir) await G.shot(`${shotDir}/invite-reused.png`);
 
+    /* ——— ngã rẽ 2b: thành viên mở mã CÒN SỐNG của chính không gian mình ———
+     *
+     * Chỗ này từng nói hai câu ngược nhau trên cùng một màn: thẻ ghi "Không
+     * gian đã đủ hai người" (kèm nút Về trang chủ) trong khi toast dưới nó ghi
+     * "Bạn đã ở trong không gian này rồi". Lý do: `previewInvite` là
+     * publicProcedure — chạy không có phiên nên chỉ thấy không gian có 2 người,
+     * không thấy người đang đọc màn CHÍNH LÀ một trong hai; còn `joinByCode`
+     * thì biết, và màn lại tin cái đoán thay vì tin sự thật.
+     *
+     * Bài trên ("mở lại link cũ") không bắt được vì nó khẳng định bằng phép
+     * HOẶC ba câu, nên câu nào hiện cũng xanh. Bài này khẳng định cả hai chiều:
+     * phải nói đúng câu này, và phải KHÔNG nói câu kia.
+     */
+    const { createHash: sha } = await import("node:crypto");
+    const { ObjectId: OID } = await import("mongodb");
+    await db.collection("spaces").updateOne(
+      { _id: OID.createFromHexString(spaceId) },
+      { $set: { inviteCodeHash: sha("sha256").update("CONSONGNHE").digest("hex"),
+                inviteCodeExpiresAt: new Date(Date.now() + 6 * 86400000) } },
+    );
+    await H.goto(`${base}/moi/CONSONGNHE`);
+    await H.until(
+      `/đã ở trong không gian|đủ hai người|đủ 2 người/i.test(document.body.innerText)`,
+      { timeout: 60000 },
+    ).catch(() => {});
+    const own = JSON.parse(await H.eval(`(() => {
+      const t = document.body.innerText;
+      return JSON.stringify({
+        saysMember: /đã ở trong không gian/i.test(t),
+        saysFull:   /đủ hai người|đủ 2 người/i.test(t),
+        action:     [...document.querySelectorAll('a')].map(a => a.textContent.trim()).join("|"),
+      });
+    })()`));
+    ok("thành viên mở mã của chính mình được báo ĐÚNG là đã ở trong", own.saysMember === true);
+    ok("…và KHÔNG bị báo nhầm là không gian đã đủ người", own.saysFull === false,
+      `màn nói: ${own.action}`);
+    ok("…và nút dẫn vào ứng dụng, không đá về trang chủ",
+      /Mở ứng dụng/.test(own.action), own.action);
+    if (shotDir) await H.shot(`${shotDir}/invite-already-member.png`);
+
     /* ——— ngã rẽ 3: link hết hạn ————————————————————————————— */
     await H.goto(`${base}/settings`);
     await H.until(`document.body.innerText.includes("Mời người đồng hành")`, { timeout: 60000 });
@@ -248,17 +323,65 @@ export async function run({ base, profileDir, port, db, shotDir }) {
       });
       await G.goto(link);
       await G.until(`document.readyState === "complete"`, { timeout: 30000 }).catch(() => {});
-      const layout = JSON.parse(await G.eval(`(() => {
-        const el = document.querySelector('main');
-        return JSON.stringify({
-          overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
-          scrollW: document.documentElement.scrollWidth,
-          innerW: window.innerWidth,
-          fits: !!el && el.getBoundingClientRect().width <= window.innerWidth,
-        });
+      /*
+       * `documentElement.scrollWidth <= innerWidth` là phép kiểm SAI trong app
+       * này và nó im lặng suốt: PageShell lồng cái cuộn thật vào bên trong,
+       * nên documentElement không bao giờ rộng ra — một trang tràn 56px vẫn
+       * xanh. `horizontalOverflow()` tìm đúng hộp đang cuộn và gọi tên phần tử
+       * rộng nhất bên trong nó.
+       */
+      const overflow = await G.horizontalOverflow();
+      ok(`màn ${w}px: không tràn ngang`, overflow === null, overflow ?? "");
+
+      /*
+       * Tấm thẻ phải CÓ MÉP.
+       *
+       * "Không tràn ngang" là kiểm bố cục, không phải kiểm nhìn được hay
+       * không — và bản trước qua hết bốn khổ màn trong khi thẻ trắng viền
+       * #E5E7EB nằm trên ảnh nền đo được 1.11:1 ở giữa chu vi, 45% số điểm
+       * dưới 1.20:1 (tức mắt máy không tìm thấy mép). Đo lại sau khi sửa:
+       * trung vị 1.78:1, 0% dưới 1.20:1.
+       *
+       * Đếm pixel thì phải giải mã PNG trong Node, nên chỗ này chốt thứ tạo
+       * ra con số đó: các lớp bóng. Ai dọn dẹp mà bỏ `floating` đi thì bài này
+       * đỏ, kèm lý do ngay đây.
+       *
+       * Cố ý KHÔNG chờ trạng thái cuối: đo đúng cái đang hiện. Nhờ vậy nó bắt
+       * được khung chờ của `dynamic()` — một bản chép tay không có bóng, và là
+       * thứ người ta nhìn thấy ĐẦU TIÊN khi mở link.
+       */
+      const surface = JSON.parse(await G.eval(`(() => {
+        const el = document.querySelector('main > div.bg-card');
+        if (!el) return JSON.stringify({ found: false });
+        const cs = getComputedStyle(el);
+        const alphaOf = (c) => {
+          const m = /^rgba?\\(([^)]*)\\)/.exec(c.trim());
+          if (!m) return 0;
+          const parts = m[1].split(",").map((v) => parseFloat(v));
+          return parts.length === 4 ? parts[3] : 0;
+        };
+        const layers = (cs.boxShadow.match(/rgba?\\([^)]*\\)[^,]*/g) || []);
+        const alphas = layers.map((l) => alphaOf(l));
+        // Lớp toả đều (offset 0 0) là lớp DUY NHẤT với tới cạnh trên; đo từng
+        // cạnh cho thấy nếu thiếu nó thì cạnh trên chỉ còn 1.42:1 trong khi
+        // cạnh dưới 2.32:1. Nên chốt riêng sự tồn tại của nó, không chỉ chốt
+        // alpha lớn nhất — bỏ đúng lớp đó đi thì alpha lớn nhất vẫn nguyên.
+        const hasHalo = layers.some((l) => /\\)\\s+0px\\s+0px\\s/.test(l) && alphaOf(l) >= 0.12);
+        return JSON.stringify({ found: true, hasHalo,
+          maxShadowAlpha: alphas.length ? Math.max(...alphas) : 0,
+          // Bài kiểm trượt mà chỉ nói "0" thì không sửa được: in luôn chuỗi
+          // thật để biết là thiếu lớp, hay là CSS chưa nạp.
+          raw: cs.boxShadow.slice(0, 120),
+          cls: (el.className || "").toString().slice(0, 80) });
       })()`));
-      ok(`màn ${w}px: không tràn ngang`, layout.overflow === false,
-        `scrollWidth=${layout.scrollW} vs ${layout.innerW}`);
+      ok(`màn ${w}px: tìm thấy tấm thẻ`, surface.found === true);
+      ok(`màn ${w}px: bóng đủ đậm để thấy mép trên ảnh nền`,
+        surface.maxShadowAlpha >= 0.2,
+        surface.maxShadowAlpha >= 0.2 ? "" :
+          `alpha lớn nhất ${surface.maxShadowAlpha} — boxShadow="${surface.raw}" class="${surface.cls}"`);
+      ok(`màn ${w}px: có lớp toả đều để cạnh TRÊN cũng có mép`,
+        surface.hasHalo === true, surface.hasHalo ? "" : `boxShadow="${surface.raw}"`);
+
       if (shotDir) await G.shot(`${shotDir}/invite-${w}.png`);
     }
 
@@ -269,8 +392,8 @@ export async function run({ base, profileDir, port, db, shotDir }) {
       });
       await H.goto(`${base}/settings`);
       await H.until(`document.body.innerText.includes("Mời người đồng hành")`, { timeout: 60000 });
-      const noOverflow = await H.eval(`document.documentElement.scrollWidth <= window.innerWidth + 1`);
-      ok(`cài đặt ${w}px: không tràn ngang`, noOverflow === true);
+      const settingsOverflow = await H.horizontalOverflow();
+      ok(`cài đặt ${w}px: không tràn ngang`, settingsOverflow === null, settingsOverflow ?? "");
       if (shotDir) {
         await H.eval(`[...document.querySelectorAll('p,button')]
           .find(e => /Mời người đồng hành|Tạo lời mời/.test(e.textContent||''))

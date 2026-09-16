@@ -40,6 +40,29 @@ const MESSAGES: Record<InviteFailure, string> = {
   SPACE_FULL: "Không gian đó đã đủ hai người. Nhắn lại cho người đã mời bạn nhé.",
 };
 
+/*
+ * The same four things, said in four words instead of thirty.
+ *
+ * A toast and a screen saying the identical paragraph is not emphasis, it is a
+ * bug you can read: /moi renders the full explanation as its whole reason for
+ * existing, and a toast repeating it word for word looked like the page had
+ * fired twice. The screen keeps the sentence that tells you what to DO; the
+ * toast becomes the alert that something happened. Both still come from here,
+ * so the pair cannot drift the way the three join screens already did once.
+ */
+const HEADLINES: Record<InviteFailure, string> = {
+  EXPIRED_CODE: "Lời mời đã hết hạn",
+  INVALID_OR_EXPIRED_CODE: "Mã này không dùng được nữa",
+  ALREADY_MEMBER: "Bạn đã ở trong không gian này rồi",
+  SPACE_FULL: "Không gian đó đã đủ hai người",
+};
+
+/** The short form, for a surface that is already explaining itself. */
+export function inviteErrorHeadline(reason: string | null | undefined): string {
+  if (reason && reason in HEADLINES) return HEADLINES[reason as InviteFailure];
+  return "Chưa vào được không gian";
+}
+
 /**
  * A sentence for whatever the server said, including things it has never said.
  *

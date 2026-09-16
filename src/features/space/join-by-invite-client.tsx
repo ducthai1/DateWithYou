@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Loader2 } from "lucide-react";
+import { StandaloneScreen } from "@/components/layout/standalone-screen";
 
 /*
  * The invite screen, loaded in the browser only.
@@ -26,12 +28,21 @@ const JoinByInvite = dynamic(
   () => import("./join-by-invite").then((m) => m.JoinByInvite),
   {
     ssr: false,
+    /*
+     * The same shell as the screen it is standing in for.
+     *
+     * This was a hand-rolled copy of the old layout — max-w-sm, a #E5E7EB
+     * hairline, no shadow at all — which made it the WORST-looking card on the
+     * page rather than the least noticeable: a white rectangle with no edge,
+     * on the artwork, and it is what every person who opens an invite link
+     * sees first while this chunk downloads. An e2e that measures the panel's
+     * treatment caught it; reading the text never would have.
+     */
     loading: () => (
-      <main className="flex min-h-[100dvh] items-center justify-center px-5 py-10">
-        <div className="border-border bg-card w-full max-w-sm rounded-xl border p-6 text-center">
-          <p className="text-muted-foreground text-sm">Đang mở lời mời…</p>
-        </div>
-      </main>
+      <StandaloneScreen>
+        <Loader2 className="text-accent h-8 w-8 animate-spin" aria-hidden />
+        <p className="text-muted-foreground text-sm">Đang mở lời mời…</p>
+      </StandaloneScreen>
     ),
   },
 );
