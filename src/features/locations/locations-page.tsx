@@ -32,6 +32,7 @@ import { useRerouteManager } from "./use-reroute-manager";
 import { NavConnectivityPill } from "./nav-connectivity-pill";
 import { forgetSavedRoute, readSavedRoute, rememberRoute } from "./saved-route";
 import { prefetchRouteTiles } from "@/lib/route-tile-prefetch";
+import { usePositionRecovery } from "./use-position-recovery";
 import { fmtDistance, fmtDuration } from "./format-journey";
 import { ToneArt } from "@/components/theme/tone-art";
 import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -482,6 +483,27 @@ export function LocationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.isOffline]);
 
+  /*
+   * The other blocker: no position yet.
+   *
+   * Same shape as the offline retry above — the request is owed, and the first
+   * fix the device manages replays it. Without this, "Chỉ đường" pressed before
+   * location was switched on stayed an error message forever.
+   */
+  const [awaitingPosition, setAwaitingPosition] = useState(false);
+  usePositionRecovery({
+    waiting: awaitingPosition && routeRetryRef.current !== null,
+    onPosition: (geo) => {
+      const owed = routeRetryRef.current;
+      if (!owed) return;
+      routeRetryRef.current = null;
+      setAwaitingPosition(false);
+      setRouteError(null);
+      setUserGeo(geo);
+      goToLocation(owed.id, owed.dest, owed.waypoints, owed.opts);
+    },
+  });
+
 
   const liveUser = nav.userGeo ?? userGeo;
   /*
@@ -493,6 +515,20 @@ export function LocationsPage() {
    * spins while stopped at a light.
    */
   const shownUser = nav.snappedGeo ?? liveUser;
+
+  /*
+   * How much of the line is already behind the rider.
+   *
+   * Derived from what the navigator already measures — the distance still to
+   * go, snapped to the route — rather than from the raw fix: a GPS point drifts
+   * off the road and would make the cut jump backwards and forwards along the
+   * line. Only while actually navigating; a route drawn for a look at the map
+   * should be shown whole.
+   */
+  const travelledFraction =
+    nav.isNavigating && routeDistanceMeters && routeDistanceMeters > 0 && nav.remainingMeters != null
+      ? Math.min(1, Math.max(0, 1 - nav.remainingMeters / routeDistanceMeters))
+      : null;
   const shownHeading = nav.snappedHeading ?? nav.heading;
 
   /*
@@ -1198,6 +1234,7 @@ export function LocationsPage() {
      */
     setRoutePending(true);
     routeRetryRef.current = null; // a new request supersedes anything owed
+    setAwaitingPosition(false);
     if (opts?.askChoice && typeof window !== "undefined" && window.innerWidth < 1024) {
       setSheetCollapseTick((t) => t + 1);
       setTripChoiceOpen(true);
@@ -1356,14 +1393,25 @@ export function LocationsPage() {
         }
       },
       (err) => {
+        /*
+         * Owed, not failed — the same as having no network.
+         *
+         * This branch used to set a message and stop. Nothing was remembered,
+         * so turning location on afterwards changed nothing: not a reload, not
+         * pause-and-resume, nothing but pressing the button again. The request
+         * is kept here and `usePositionRecovery` replays it the moment the
+         * device produces a fix.
+         */
+        routeRetryRef.current = { id, dest, waypoints, opts };
+        setAwaitingPosition(true);
         // Report the real cause — the permission may be granted yet the OS still
         // can't produce a fix (Location Services off, or the lookup timed out).
         setRouteError(
           err.code === err.PERMISSION_DENIED
-            ? "Trang bị chặn quyền vị trí — mở ổ khoá trên thanh địa chỉ để cho phép."
+            ? "Trang bị chặn quyền vị trí — mở ổ khoá trên thanh địa chỉ để cho phép. Bật xong là đường tự vẽ."
             : err.code === err.POSITION_UNAVAILABLE
-              ? "Máy chưa trả được vị trí — bật Location Services (macOS: Cài đặt › Quyền riêng tư › Dịch vụ vị trí) cho trình duyệt rồi thử lại."
-              : "Lấy vị trí quá lâu, thử lại nhé.",
+              ? "Máy chưa trả được vị trí — bật Dịch vụ vị trí cho trình duyệt. Bật xong là đường tự vẽ."
+              : "Lấy vị trí quá lâu — đang chờ, có vị trí là vẽ ngay.",
         );
         setRoutePending(false);
       },
@@ -2271,6 +2319,7 @@ export function LocationsPage() {
         <LocationMapView
           pins={pins}
           routeGeometry={routeGeometry}
+          routeTravelledFraction={travelledFraction}
           legGeometries={legGeometries}
           currentLegIndex={currentLegIndex}
           partnerRouteGeometry={partnerRouteGeometry}
