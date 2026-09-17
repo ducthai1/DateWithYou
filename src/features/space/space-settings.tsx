@@ -29,6 +29,7 @@ import { todayKey } from "@/lib/date-keys";
 import { useToast } from "@/components/ui/toast";
 import { VoiceHapticTestRow } from "@/features/locations/voice-haptic-test-row";
 import { PushPermissionRow } from "@/features/locations/push-permission-row";
+import { LiveSharingRow } from "@/features/locations/live-sharing-row";
 
 const PRESET_AVATARS = [
   // Animals
@@ -821,6 +822,7 @@ export function SpaceSettings() {
         <Card className="space-y-4 shadow-sm">
           <h2 className="text-accent text-sm font-semibold">Thiết bị này</h2>
           <PushPermissionRow />
+          <LiveSharingRow />
           <div className="border-border border-t" />
           <VoiceHapticTestRow />
         </Card>
