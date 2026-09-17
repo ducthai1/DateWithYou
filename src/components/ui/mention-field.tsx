@@ -70,6 +70,7 @@ export function MentionField({
   value,
   onChange,
   members,
+  suggest,
   multiline = false,
   className,
   containerClassName,
@@ -78,7 +79,22 @@ export function MentionField({
 }: {
   value: string;
   onChange: (next: string) => void;
+  /**
+   * Whose names count as a mention when they appear in the text — EVERYONE in
+   * the space, including the writer.
+   */
   members: MentionMember[];
+  /**
+   * Whom the "@" list offers. Defaults to `members`; callers pass a narrower
+   * list when somebody should not be offered — you do not tag yourself.
+   *
+   * These are two different questions and answering them with one list is a
+   * bug you can feel: the form passed the partner-only list for both, so your
+   * OWN name in a caption got no pill and Backspace ate it one letter at a
+   * time, while the partner's deleted whole. Same text, two behaviours,
+   * depending on whose name it was.
+   */
+  suggest?: MentionMember[];
   multiline?: boolean;
   className?: string;
   containerClassName?: string;
@@ -105,9 +121,10 @@ export function MentionField({
   const caretRef = useRef(0);
   const listId = useId();
 
+  const offered = suggest ?? members;
   const candidates = useMemo(
-    () => (query ? filterMentionCandidates(members, query.query) : []),
-    [query, members],
+    () => (query ? filterMentionCandidates(offered, query.query) : []),
+    [query, offered],
   );
   const open = query !== null && query.start !== dismissed && candidates.length > 0;
 

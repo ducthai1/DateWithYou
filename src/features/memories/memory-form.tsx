@@ -214,6 +214,21 @@ export function MemoryForm({
    * space has nobody to name and the buttons should not appear there.
    */
   const membersQuery = trpc.space.members.useQuery(undefined, { staleTime: 300_000 });
+  /*
+   * Everyone, for READING the text — including yourself.
+   *
+   * `mentionable` below drops you, which is right for the list of people to
+   * offer and wrong for deciding what counts as a name. Passing it for both is
+   * what made your own "@Tên" behave like plain letters: no pill, and Backspace
+   * deleting it one character at a time while the partner's went in one press.
+   */
+  const knownNames = useMemo(
+    () =>
+      (membersQuery.data ?? [])
+        .filter((m) => m.name?.trim())
+        .map((m) => ({ id: m.id, name: m.name as string, accountName: m.accountName })),
+    [membersQuery.data],
+  );
   const mentionable = useMemo(
     () =>
       (membersQuery.data ?? [])
@@ -424,8 +439,9 @@ export function MemoryForm({
       <ModalContent className="space-y-5">
         <Input placeholder="Tiêu đề (vd: Lần đầu đi Đà Lạt)" value={title} onChange={(e) => setTitle(e.target.value)} />
       <MentionField
+                    suggest={mentionable}
         multiline
-        members={mentionable}
+        members={knownNames}
         placeholder="Kể lại cảm xúc, chi tiết (tuỳ chọn)"
         value={caption}
         onChange={setCaption}
@@ -636,7 +652,8 @@ export function MemoryForm({
                 </PhotoView>
                 <div className="flex items-center gap-0.5">
                   <MentionField
-                    members={mentionable}
+                    suggest={mentionable}
+                    members={knownNames}
                     value={p.caption ?? ""}
                     onChange={(next) => setPhotoCaption(p.publicId, next)}
                     maxLength={MAX_PHOTO_CAPTION}
@@ -728,7 +745,8 @@ export function MemoryForm({
                     approximation that shifts when it is swapped in. */}
                 <div className="pointer-events-none flex items-center gap-0.5 opacity-50">
                   <MentionField
-                    members={mentionable}
+                    suggest={mentionable}
+                    members={knownNames}
                     value=""
                     onChange={() => {}}
                     disabled
