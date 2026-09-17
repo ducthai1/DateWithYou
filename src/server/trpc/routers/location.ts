@@ -5,6 +5,8 @@ import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { LocationModel } from "@/server/db/models/location";
+import { RideModel } from "@/server/db/models/ride";
+import { averageRideKmh, minutesOfDayIn, topSpeedFor } from "@/lib/ride-speed";
 import {
   LocationConfigModel,
   type LocationConfig,
@@ -92,9 +94,45 @@ const locationInput = z.object({
  * Returns null rather than throwing: one unreachable candidate should drop out
  * of the ranking, not fail the whole request.
  */
+/** Saigon. Fixed offset, no DST — the app is one city. */
+const LOCAL_UTC_OFFSET_HOURS = 7;
+
+/**
+ * The speed cap to hand the router for a departure right now.
+ *
+ * The provider has no traffic on this tier — `date_time` is accepted and
+ * changes nothing, measured at 17:30 and 03:00 alike — so the correction is
+ * made here. `src/lib/ride-speed.ts` holds the measurements and the reasoning;
+ * this function is only the part that needs the database.
+ *
+ * The couple's own finished rides beat the table whenever there are enough of
+ * them: a guess about a city loses to a fact about these two people. Ninety
+ * days, newest first, capped — a rider's pace changes, and a year-old commute
+ * on different roads should not be deciding today's estimate.
+ */
+async function localTopSpeed(spaceId: string): Promise<number> {
+  const minutes = minutesOfDayIn(new Date(), LOCAL_UTC_OFFSET_HOURS);
+  let measured: number | null = null;
+  try {
+    const since = new Date(Date.now() - 90 * 86_400_000);
+    const rides = await RideModel.find({ spaceId, endedAt: { $gte: since } })
+      .select("distanceMeters durationSeconds")
+      .sort({ endedAt: -1 })
+      .limit(40)
+      .lean<Array<{ distanceMeters: number; durationSeconds: number }>>();
+    measured = averageRideKmh(rides);
+  } catch (err) {
+    // An estimate from the table is fine; a route that fails because the
+    // history query did is not.
+    console.error("localTopSpeed: ride history unavailable", err);
+  }
+  return topSpeedFor(minutes, measured);
+}
+
 async function travelSeconds(
   from: { lat: number; lng: number },
   to: { lat: number; lng: number },
+  topSpeed: number,
 ): Promise<number | null> {
   try {
     const key = requireEnv("STADIA_API_KEY");
@@ -107,6 +145,7 @@ async function travelSeconds(
           { lat: to.lat, lon: to.lng },
         ],
         costing: "motor_scooter",
+        costing_options: { motor_scooter: { top_speed: topSpeed } },
         directions_options: { units: "kilometers" },
       }),
     });
@@ -438,13 +477,16 @@ export const locationRouter = router({
         candidates: z.array(z.object({ id: z.string().min(1), geo })).min(1).max(3),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const [a, b] = input.origins;
+      // One lookup for the whole ranking rather than one per candidate: the
+      // cap is a property of the hour and of these two riders, not of the place.
+      const topSpeed = await localTopSpeed(ctx.spaceId);
       const results = await Promise.all(
         input.candidates.map(async (candidate) => {
           const [fromA, fromB] = await Promise.all([
-            travelSeconds(a, candidate.geo),
-            travelSeconds(b, candidate.geo),
+            travelSeconds(a, candidate.geo, topSpeed),
+            travelSeconds(b, candidate.geo, topSpeed),
           ]);
           if (fromA == null || fromB == null) return null;
           return {
@@ -582,6 +624,13 @@ export const locationRouter = router({
         ...(input.waypoints?.map((w) => ({ lat: w.lat, lon: w.lng })) || []),
         { lat: destGeo.lat, lon: destGeo.lng },
       ];
+      /*
+       * The cap is what makes this a Saigon estimate rather than a free-flow
+       * one — and it changes the LINE too, not just the number: measured
+       * 19.16 km at the provider's default against 18.68 km at 22 km/h,
+       * because a slow cap stops a motorway detour from looking worth it.
+       */
+      const topSpeed = await localTopSpeed(ctx.spaceId);
       const ask = (withAlternates: boolean) =>
         fetch(`https://api.stadiamaps.com/route/v1?api_key=${key}`, {
           method: "POST",
@@ -589,6 +638,7 @@ export const locationRouter = router({
           body: JSON.stringify({
             locations,
             costing: "motor_scooter",
+            costing_options: { motor_scooter: { top_speed: topSpeed } },
             directions_options: { units: "kilometers" },
             // Two extras beyond the fastest line. In city traffic the quickest
             // route on paper is often the one that meets roadworks or standing
