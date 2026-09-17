@@ -33,6 +33,9 @@ import { NavConnectivityPill } from "./nav-connectivity-pill";
 import { forgetSavedRoute, readSavedRoute, rememberRoute } from "./saved-route";
 import { prefetchRouteTiles } from "@/lib/route-tile-prefetch";
 import { usePositionRecovery } from "./use-position-recovery";
+import { useDeviceHeading } from "./use-device-heading";
+import { usePartnerWeather } from "./use-partner-weather";
+import { pickHeading } from "@/lib/heading";
 import { fmtDistance, fmtDuration } from "./format-journey";
 import { ToneArt } from "@/components/theme/tone-art";
 import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -515,6 +518,30 @@ export function LocationsPage() {
    * spins while stopped at a light.
    */
   const shownUser = nav.snappedGeo ?? liveUser;
+
+  /*
+   * Hướng đang QUAY MẶT, cho cái phễu trên bản đồ.
+   *
+   * `nav.heading` là hướng DI CHUYỂN của GPS và bằng null khi đứng yên — im
+   * lặng đúng lúc cần nhất: dừng ở ngã tư, xoay người tìm xem đường nào là
+   * đường của mình. La bàn trả lời được câu đó. Chỉ bật khi đang đi, vì cảm
+   * biến quay liên tục thì tốn pin và ngoài lúc đó không ai hỏi câu này.
+   */
+  const compass = useDeviceHeading(nav.isNavigating);
+  const facing = pickHeading({
+    gpsHeading: nav.heading,
+    compassHeading: compass.compassHeading,
+    speedKmh: nav.speedKmH,
+  });
+
+  /*
+   * Trời chỗ người kia. Ô của họ trước đây trống hẳn phần này, nên hai người đi
+   * cùng một chuyến mà chỉ một bên biết bên kia đang gặp gì — ở Sài Gòn một cơn
+   * mưa rào có thể chỉ đổ ở nửa quãng đường.
+   */
+  const partnerWeather = usePartnerWeather(
+    nav.partnerLocation ? { lat: nav.partnerLocation.lat, lng: nav.partnerLocation.lng } : null,
+  );
 
   /*
    * How much of the line is already behind the rider.
@@ -2099,6 +2126,19 @@ export function LocationsPage() {
                               {nav.partnerLocation.batteryLevel < 20 ? "🪫" : "🔋"} {nav.partnerLocation.batteryLevel}%
                             </div>
                           )}
+                          {/* Trời chỗ HỌ, không phải chỗ điểm đến. Ô này trước
+                              đây trống, nên người kia thấy thời tiết của mình
+                              còn mình không thấy gì của họ.
+
+                              Pin thì không sửa được từ phía web: Safari/iOS
+                              không có Battery API, nên một chiếc iPhone không
+                              bao giờ gửi được con số đó — giới hạn nền tảng,
+                              không phải thiếu sót ở đây. */}
+                          {partnerWeather && (
+                            <div className="flex items-center gap-0.5 rounded-full bg-sky-100/60 px-1 py-0.5 text-[9px] font-medium leading-tight text-sky-900/70">
+                              ⛅ {Math.round(partnerWeather.temp)}°
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
@@ -2157,33 +2197,6 @@ export function LocationsPage() {
               </div>
             )}
 
-            {/* Quick Pings — a nudge aimed at someone riding with you. On a
-                solo trip there is nobody on the other end, and these sat there
-                offering to send one anyway. */}
-            {isCompanionTrip && (
-            <div className="pointer-events-auto flex shrink-0 flex-col items-center gap-2">
-               <p className="text-[9px] font-semibold text-white/80 bg-black/30 rounded-full px-2 py-0.5 text-center leading-tight backdrop-blur-sm">Gửi cảm xúc<br/>cho {partnerName}:</p>
-               {PING_BUTTONS.map((p) => (
-                 <button
-                   key={p.action}
-                   onClick={() => void sendPing(p.action)}
-                   disabled={pingCooling}
-                   title={p.label}
-                   aria-label={p.label}
-                   className={cn(
-                     "h-10 w-10 bg-white/90 rounded-full shadow-md hover:bg-muted flex items-center justify-center text-lg transition-all active:scale-90",
-                     p.urgent && "border-2 border-rose-400",
-                     // The guard refuses a second ping for 2.5s. Showing that
-                     // refusal beats the old behaviour, where the button looked
-                     // live and simply did nothing.
-                     pingCooling && "opacity-40 scale-95",
-                   )}
-                 >
-                   {p.emoji}
-                 </button>
-               ))}
-            </div>
-            )}
               </div>
             </div>
 
@@ -2194,10 +2207,58 @@ export function LocationsPage() {
                 on top of these, and the height is not a constant to hard-code —
                 the reroute banner, the leg progress row and an error line all
                 come and go from this stack. */}
-            <div ref={navDockRef}
-                 className="pointer-events-auto flex shrink-0 flex-col items-center gap-2 p-4"
-                 style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
-            >
+            <div ref={navDockRef} className="pointer-events-auto flex flex-col items-center">
+              {/*
+                Cảm xúc gửi cho người kia — MỘT HÀNG NGANG, ngay trên dock.
+
+                Trước đây chúng xếp dọc trong cột bên phải. Cột đó
+                `overflow-y-auto`, nên trên màn ngắn cái cuối cùng tụt xuống và
+                phải cuộn mới tới — giữa lúc đang chạy xe. Người dùng báo là "bị
+                nút Tạm dừng và Kết thúc che mất", và đó đúng là cảm giác của
+                một nút phải cuộn mới thấy. Một hàng ngang thì chiều cao cố
+                định và nằm trong tầm ngón cái.
+
+                Nằm trong hộp mà `navDockRef` đo, nhưng NGOÀI thanh điều khiển.
+                Hai ràng buộc cùng lúc: `--nav-dock-h` phải tính cả hàng này,
+                nếu không tấm "🎉 Cùng xuất phát nào" hạ xuống đúng lên đầu mấy
+                cái nút; mà nhét hẳn vào trong thanh điều khiển thì phá bất biến
+                đã chốt từ trước — nút cảm xúc cuối cùng phải nằm TRÊN thanh đó.
+                Bọc là cách thoả cả hai, và thanh bên trong giữ nguyên ba lớp
+                `flex shrink-0 flex-col` mà bộ kiểm dùng để tìm nó.
+              */}
+              {isCompanionTrip && (
+                <div className="flex flex-col items-center gap-1.5 px-3 pb-1">
+                  <p className="rounded-full bg-black/35 px-2.5 py-0.5 text-[10px] font-semibold leading-tight text-white/90 backdrop-blur-sm">
+                    Gửi cảm xúc cho {partnerName}
+                  </p>
+                  <div className="flex items-center justify-center gap-2.5">
+                    {PING_BUTTONS.map((p) => (
+                      <button
+                        key={p.action}
+                        onClick={() => void sendPing(p.action)}
+                        disabled={pingCooling}
+                        title={p.label}
+                        aria-label={p.label}
+                        className={cn(
+                          // 48px: tay đang cầm lái, ngón cái không ngắm được
+                          // vào một vòng tròn 40px đang rung.
+                          "flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-xl shadow-lg transition-all hover:bg-muted active:scale-90",
+                          p.urgent && "border-2 border-rose-400",
+                          // The guard refuses a second ping for 2.5s. Showing that
+                          // refusal beats the old behaviour, where the button looked
+                          // live and simply did nothing.
+                          pingCooling && "scale-95 opacity-40",
+                        )}
+                      >
+                        {p.emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex w-full shrink-0 flex-col items-center gap-2 p-4"
+                   style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+              >
               {/* Multi-leg progress + per-leg arrival prompt */}
               {legGeometries && (
                 <>
@@ -2294,6 +2355,7 @@ export function LocationsPage() {
                   <Square className="h-4 w-4" /> Kết thúc
                 </Button>
               </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2320,6 +2382,7 @@ export function LocationsPage() {
           pins={pins}
           routeGeometry={routeGeometry}
           routeTravelledFraction={travelledFraction}
+          facingHeading={facing?.deg ?? null}
           legGeometries={legGeometries}
           currentLegIndex={currentLegIndex}
           partnerRouteGeometry={partnerRouteGeometry}
