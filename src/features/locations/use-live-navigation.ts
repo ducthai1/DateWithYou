@@ -7,6 +7,7 @@ import type { Maneuver } from "@/lib/maneuver-vi";
  * route-geometry.ts. The windowed match there is 9x cheaper than the full scan
  * this hook used to run on every GPS fix, and returns identical numbers. */
 import { cumulativeMetres, remainingAlongRoute, SNAP_MAX_M } from "@/lib/route-geometry";
+import { liveEtaSeconds, trimSamples, type ProgressSample } from "@/lib/live-eta";
 import { initialOffRouteState, stepOffRoute, type OffRouteState } from "@/lib/off-route";
 
 /** How long the emotion buttons stay refused after one is sent. */
@@ -163,6 +164,14 @@ export function useLiveNavigation(options?: {
    * nobody's benefit.
    */
   const offRouteRef = useRef<OffRouteState>(initialOffRouteState());
+  /*
+   * Lịch sử rút ngắn quãng đường, để đo tốc độ thực.
+   *
+   * `useRef` chứ không `useState`: nó được ghi trong callback của watchPosition
+   * vài giây một lần và chỉ dùng ngay tại đó — cho vào state là mỗi lần có GPS
+   * lại render lại cả cây điều hướng cho một giá trị không ai vẽ ra màn hình.
+   */
+  const progressRef = useRef<ProgressSample[]>([]);
 
   const [isNavigating, setIsNavigating] = useState(false);
   const [userGeo, setUserGeo] = useState<LatLng | null>(null);
@@ -453,6 +462,14 @@ export function useLiveNavigation(options?: {
        * detour from it, which is the loop the rider saw: redraw, redraw back.
        */
       offRouteRef.current = initialOffRouteState();
+      /*
+       * Và quên nhịp đã đo trên tuyến cũ.
+       *
+       * Các mẫu ghi lại "quãng còn lại", nên một tuyến khác là một thang đo
+       * khác: giữ lại chúng thì lần đo đầu tiên trên tuyến mới sẽ thấy quãng
+       * còn lại nhảy một phát vài cây số và kết luận người ta vừa bay qua đó.
+       */
+      progressRef.current = [];
       routeTotalMetersRef.current = totalMeters;
       routeTotalSecondsRef.current = totalSeconds;
       if (routeLegs) setLegs(routeLegs);
@@ -471,11 +488,47 @@ export function useLiveNavigation(options?: {
       ?.request("screen")
       .then((s) => {
         wakeLock.current = s;
+        /*
+         * Quên tham chiếu khi bị thu hồi.
+         *
+         * Không có dòng này thì `wakeLock.current` vẫn trỏ vào một khoá đã
+         * chết, và cái hiệu ứng ở trên sẽ thấy "đang có khoá rồi" nên không xin
+         * lại — im lặng, và đúng vào lần cần nhất.
+         */
+        (s as unknown as { addEventListener?: (t: string, f: () => void) => void })
+          .addEventListener?.("release", () => {
+            wakeLock.current = null;
+          });
       })
       .catch(() => {
         /* wake lock is best-effort; ignore if unsupported/denied */
       });
   }, []);
+
+  /*
+   * Xin lại khoá màn hình mỗi lần quay về trang.
+   *
+   * Trình duyệt THU HỒI wake lock ngay khi trang bị ẩn — chuyển app, tắt màn,
+   * khoá máy — và không bao giờ tự trả lại. Bản cũ chỉ xin một lần lúc bấm bắt
+   * đầu, nên chỉ cần một lần liếc sang Zalo là màn hình bắt đầu tự tắt, và từ
+   * đó `watchPosition` ngừng chạy: người kia nhìn sang thấy chấm đứng im một
+   * chỗ suốt quãng đường còn lại.
+   *
+   * Đây là thứ DUY NHẤT web làm được cho chuyện này. Không có API nào cho phép
+   * một trang lấy vị trí khi đã bị nền hoá — không phải thiếu quyền, mà là
+   * không tồn tại. Giữ cho màn hình đừng tắt là cách duy nhất giữ dòng vị trí,
+   * nên nó phải được xin lại đúng lúc.
+   */
+  useEffect(() => {
+    if (!isNavigating) return;
+    const onShow = () => {
+      if (document.visibilityState !== "visible") return;
+      if (wakeLock.current) return;
+      acquireWakeLock();
+    };
+    document.addEventListener("visibilitychange", onShow);
+    return () => document.removeEventListener("visibilitychange", onShow);
+  }, [isNavigating, acquireWakeLock]);
 
   const stop = useCallback(() => {
     if (watchId.current != null) {
@@ -488,6 +541,8 @@ export function useLiveNavigation(options?: {
     setHeading(null);
     setRemainingMeters(null);
     setRemainingSeconds(null);
+    // Chuyến sau không được thừa hưởng nhịp của chuyến trước.
+    progressRef.current = [];
   }, []);
 
   const start = useCallback(() => {
@@ -577,11 +632,30 @@ export function useLiveNavigation(options?: {
             if (decision.shouldReroute) optionsRef.current.onOffRoute(g);
           }
 
-          // Estimate remaining time proportionally.
+          /*
+           * Thời gian còn lại theo tốc độ ĐANG đi, không theo lời hứa lúc xuất phát.
+           *
+           * Phép chia tỉ lệ cũ không bao giờ biết ngoài đường đang xảy ra gì:
+           * đứng yên giữa đám kẹt hay chạy bon trên đường trống, con số vẫn
+           * đếm xuống y hệt. Cửa sổ trượt năm phút là thứ làm nó tự co lại khi
+           * vừa thoát khỏi chỗ tắc — một trung bình cộng dồn thì nhớ mãi.
+           */
           const totalM = routeTotalMetersRef.current;
           const totalS = routeTotalSecondsRef.current;
           if (totalM > 0) {
-            setRemainingSeconds(Math.round((remaining / totalM) * totalS));
+            const now = Date.now();
+            progressRef.current = trimSamples(
+              [...progressRef.current, { at: now, remainingM: remaining }],
+              now,
+            );
+            setRemainingSeconds(
+              liveEtaSeconds({
+                remainingM: remaining,
+                routeTotalM: totalM,
+                routeTotalS: totalS,
+                samples: progressRef.current,
+              }),
+            );
           }
         }
       },
