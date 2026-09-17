@@ -8,6 +8,7 @@ import { LocationConfigModel } from "./models/location-config";
 import { LiveLocationModel } from "./models/live-location";
 import { NavigationInviteModel } from "./models/navigation-invite";
 import { MemoryModel } from "./models/memory";
+import { MemoryCommentModel } from "./models/memory-comment";
 import { MediaItemModel } from "./models/media-item";
 import { SpecialDateModel } from "./models/special-date";
 import { PlanItemModel } from "./models/plan-item";
@@ -39,6 +40,7 @@ const SPACE_SCOPED_MODELS: Deletable[] = [
   LiveLocationModel,
   NavigationInviteModel,
   MemoryModel,
+  MemoryCommentModel,
   MediaItemModel,
   SpecialDateModel,
   PlanItemModel,

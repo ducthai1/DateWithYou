@@ -4,12 +4,13 @@ import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { MemoryModel } from "@/server/db/models/memory";
+import { MemoryCommentModel } from "@/server/db/models/memory-comment";
 import { LocationModel } from "@/server/db/models/location";
 import { ReactionModel } from "@/server/db/models/reaction";
 import { NoteModel } from "@/server/db/models/note";
 import { destroyAssets } from "@/server/cloudinary";
 import { sendPushToUser } from "@/server/lib/push";
-import { MAX_PHOTOS_PER_MEMORY, MAX_PHOTO_CAPTION } from "@/lib/memory-limits";
+import { MAX_PHOTOS_PER_MEMORY, MAX_PHOTO_CAPTION, MAX_COMMENT } from "@/lib/memory-limits";
 import { resolveEmbed } from "@/server/lib/resolve-embed";
 
 // Re-derive embed metadata server-side from each URL so iframe srcs are never
@@ -373,6 +374,89 @@ export const memoryRouter = router({
         }),
       ]);
       await destroyAssets(publicIds); // best-effort, after the DB delete
+      return { ok: true };
+    }),
+
+  /* ── Bình luận ────────────────────────────────────────────────────────
+   *
+   * Scoped by memory, and every one of these re-checks that the memory
+   * belongs to the caller's space. Reading the comment's own spaceId would
+   * be one query shorter and would trust a value the client chose; the
+   * memory is the thing that actually decides who may see the thread.
+   */
+  comments: protectedProcedure
+    .input(z.object({ memoryId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const owns = await MemoryModel.exists({ _id: input.memoryId, spaceId: ctx.spaceId });
+      if (!owns) throw new TRPCError({ code: "NOT_FOUND" });
+      const rows = await MemoryCommentModel.find({
+        memoryId: input.memoryId,
+        spaceId: ctx.spaceId,
+      })
+        .sort({ createdAt: 1 })
+        .lean();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (rows as any[]).map((r) => ({
+        id: String(r._id),
+        text: r.text as string,
+        authorId: r.authorId as string,
+        createdAt: (r.createdAt as Date)?.toISOString() ?? null,
+      }));
+    }),
+
+  addComment: protectedProcedure
+    .input(
+      z.object({
+        memoryId: z.string().min(1),
+        text: z.string().trim().min(1).max(MAX_COMMENT),
+        mentions: z.array(z.string().min(1).max(64)).max(4).default([]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const memo = await MemoryModel.findOne({ _id: input.memoryId, spaceId: ctx.spaceId })
+        .select("title")
+        .lean<{ title: string }>();
+      if (!memo) throw new TRPCError({ code: "NOT_FOUND" });
+      const doc = await MemoryCommentModel.create({
+        spaceId: ctx.spaceId,
+        memoryId: input.memoryId,
+        authorId: ctx.userId,
+        text: input.text,
+        mentions: input.mentions,
+      });
+      /*
+       * Naming somebody in a comment is the same event as naming them in the
+       * caption, so it goes down the same path — one tag per memory, so a
+       * thread of five comments does not become five separate pings.
+       */
+      await notifyMentions({
+        memoryId: input.memoryId,
+        title: memo.title,
+        authorId: ctx.userId,
+        mentioned: input.mentions,
+      });
+      return { id: String(doc._id) };
+    }),
+
+  deleteComment: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      /*
+       * Your own line only.
+       *
+       * Two people share the space, so "anyone in the space may delete" would
+       * let one of them quietly remove what the other wrote — and there is no
+       * history anywhere to notice it happened.
+       */
+      const res = await MemoryCommentModel.deleteOne({
+        _id: input.id,
+        spaceId: ctx.spaceId,
+        authorId: ctx.userId,
+      });
+      if (res.deletedCount === 0) throw new TRPCError({ code: "NOT_FOUND" });
       return { ok: true };
     }),
 });

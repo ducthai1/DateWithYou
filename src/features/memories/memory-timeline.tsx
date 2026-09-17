@@ -7,6 +7,7 @@ import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { cldFull } from "@/lib/cloudinary-url";
 import { trpc } from "@/lib/trpc";
 import { MentionText } from "@/components/ui/mention-text";
+import { MemoryComments } from "./memory-comments";
 import { TagChip } from "@/components/ui/tag-chip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -544,6 +545,18 @@ export function MemoryTimeline() {
                   ))}
                 </div>
               )}
+              {/* Last in the body, under the photos: the thread is about the
+                  whole entry, so it reads after it rather than between the
+                  caption and the pictures it describes. */}
+              <MemoryComments
+                memoryId={selectedMemo.id}
+                members={members.filter((m) => m.name?.trim()).map((m) => ({
+                  id: m.id,
+                  name: m.name as string,
+                  accountName: m.accountName,
+                }))}
+                selfId={selfId}
+              />
             </ModalContent>
             <ModalFooter>
               <Button

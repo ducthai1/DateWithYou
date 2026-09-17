@@ -18,7 +18,7 @@
 import { launchChrome, openPage } from "./cdp.mjs";
 import { signIn } from "./session.mjs";
 
-export const name = "Nhắc tên: gõ @ ra danh sách, và Telex không bị chèn nhầm";
+export const name = "Nhắc tên: gõ @ ra danh sách, tên MÌNH cũng là tag, và bình luận";
 
 const FIELD = 'textarea[placeholder^="Kể lại"]';
 
@@ -36,7 +36,7 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     await new Promise((r) => setTimeout(r, 250));
   };
   const press = async (key) => {
-    const code = { ArrowDown: 40, ArrowUp: 38, Enter: 13, Escape: 27 }[key];
+    const code = { ArrowDown: 40, ArrowUp: 38, Enter: 13, Escape: 27, Backspace: 8 }[key];
     await page.send("Input.dispatchKeyEvent", { type: "rawKeyDown", key, windowsVirtualKeyCode: code });
     await page.send("Input.dispatchKeyEvent", { type: "keyUp", key });
     await new Promise((r) => setTimeout(r, 250));
@@ -63,6 +63,7 @@ export async function run({ base, profileDir, port, db, shotDir }) {
   try {
     await page.viewport(430, 930, true);
     const me = await signIn(page, base, db);
+    const myUid = me.uid;
 
     await page.goto(`${base}/timeline`);
     await page.until(`document.readyState === "complete"`, { timeout: 60000 }).catch(() => {});
@@ -150,6 +151,98 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     ok("Escape đóng danh sách", (await waitList(false)) === true);
     await type("x");
     ok("…và gõ tiếp KHÔNG mở lại cái vừa bỏ qua", (await listOpen()) === false);
+
+    /* ——— 5. tên của CHÍNH MÌNH cũng phải là một tag ————————————————
+     *
+     * Chủ repo báo: tag người kia thì Backspace xoá cả cụm, còn tag của chính
+     * mình thì rụng từng chữ như chữ thường. Gốc rễ: form truyền danh sách
+     * "những người có thể nhắc" — vốn đã bỏ chính mình — cho CẢ hai việc: gợi
+     * ý, và nhận diện. Hai câu hỏi khác nhau dùng chung một danh sách.
+     *
+     * Kiểm bằng HÀNH VI, không bằng cái pill: bấm Backspace đúng một lần.
+     */
+    const meDoc = await db
+      .collection("user")
+      .findOne({ _id: (await import("mongodb")).ObjectId.createFromHexString(myUid) });
+    const myName = (meDoc?.name || "").trim();
+    ok("đọc được tên của chính mình để thử", myName.length > 0, `name=${JSON.stringify(myName)}`);
+    if (myName) {
+      await page.eval(`(() => {
+        const f = document.querySelector('${FIELD}');
+        const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+        set.call(f, 'xin chào @' + ${JSON.stringify(myName)});
+        f.dispatchEvent(new Event('input', { bubbles: true }));
+        f.focus();
+        f.setSelectionRange(f.value.length, f.value.length);
+      })()`);
+      await new Promise((r) => setTimeout(r, 400));
+      const withMine = await value();
+      await press("Backspace");
+      const afterOne = await value();
+      ok("tên của CHÍNH MÌNH xoá nguyên cụm, không rụng từng chữ",
+        afterOne === "xin chào ",
+        `trước=${JSON.stringify(withMine)} sau MỘT Backspace=${JSON.stringify(afterOne)}`);
+    }
+
+    /* ——— 6. bình luận dưới kỷ niệm ————————————————————————————— */
+    await page.eval(
+      `[...document.querySelectorAll('button')].find(b => /^Huỷ$/.test((b.textContent||'').trim()))?.click()`,
+    );
+    const { ObjectId } = await import("mongodb");
+    const memoId = String(
+      (
+        await db.collection("memories").insertOne({
+          spaceId: me.spaceId, title: "Kỷ niệm để thử bình luận",
+          photos: [], embeds: [], tags: [], mentions: [],
+          date: new Date("2026-05-01"), createdBy: myUid,
+          createdAt: new Date(), updatedAt: new Date(),
+        })
+      ).insertedId,
+    );
+    await page.goto(`${base}/timeline?memory=${memoId}`);
+    await page.until(`document.readyState === "complete"`, { timeout: 60000 }).catch(() => {});
+    const gotBox = await page
+      .until(`!!document.querySelector('textarea[placeholder^="Viết bình luận"]')`, { timeout: 30000 })
+      .then(() => true)
+      .catch(() => false);
+    ok("mở kỷ niệm là thấy ô bình luận", gotBox === true);
+    if (gotBox) {
+      await page.eval(`document.querySelector('textarea[placeholder^="Viết bình luận"]').focus()`);
+      await type("đẹp quá @");
+      ok("gõ @ trong ô bình luận cũng ra danh sách", (await waitList(true)) === true);
+      await press("Enter");
+      await page.eval(
+        `[...document.querySelectorAll('button')].find(b => /^Gửi$/.test((b.textContent||'').trim()))?.click()`,
+      );
+      /*
+       * Chờ HÀNG trong thread, đừng chờ chữ trong `body.innerText`.
+       *
+       * Chrome tính cả nội dung của `<textarea>` vào `innerText`, nên phép chờ
+       * "/đẹp quá/ có trong trang" khớp ngay với chữ CÒN ĐANG NẰM TRONG Ô NHẬP
+       * và trả về trước khi mutation kịp chạy. Bài kiểm xanh ở dòng đó rồi đỏ
+       * hai dòng sau — trong khi tính năng vẫn đúng: DB có bản ghi, tiêu đề đã
+       * là "Bình luận (1)". Đo lại bằng probe riêng mới thấy.
+       */
+      const posted = await page
+        .until(`document.querySelectorAll('section li').length === 1`, { timeout: 30000 })
+        .then(() => true)
+        .catch(() => false);
+      ok("gửi xong thì bình luận hiện trong thread", posted === true);
+      const shape = JSON.parse(await page.eval(`(() => JSON.stringify({
+        counted: /Bình luận \\(1\\)/.test(document.body.innerText),
+        canDeleteOwn: !!document.querySelector('[aria-label="Xoá bình luận"]'),
+      }))()`));
+      ok("thread đếm đúng số bình luận", shape.counted === true, JSON.stringify(shape));
+      ok("dòng của mình có nút xoá", shape.canDeleteOwn === true);
+      await page.eval(`document.querySelector('[aria-label="Xoá bình luận"]')?.click()`);
+      const gone = await page
+        .until(`document.querySelectorAll('section li').length === 0`, { timeout: 30000 })
+        .then(() => true)
+        .catch(() => false);
+      ok("xoá được dòng của chính mình", gone === true);
+    }
+    await db.collection("memories").deleteOne({ _id: ObjectId.createFromHexString(memoId) });
+    await db.collection("memorycomments").deleteMany({ memoryId: memoId });
   } finally {
     page.close();
     chrome.kill();
