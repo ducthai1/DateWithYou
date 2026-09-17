@@ -14,6 +14,7 @@ import { applyEastSeaLabel } from "./east-sea-label";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { geodesicCircle, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
+import { trailPaint } from "@/lib/route-trail";
 import { motion, AnimatePresence } from "framer-motion";
 import { buzz } from "@/lib/haptics";
 
@@ -121,6 +122,7 @@ function getPinColor(lat: number, lng: number, status: string): string {
 function LocationMapViewImpl({
   pins,
   routeGeometry,
+  routeTravelledFraction,
   legGeometries,
   currentLegIndex = 0,
   partnerRouteGeometry,
@@ -145,6 +147,15 @@ function LocationMapViewImpl({
 }: {
   pins: MapPin[];
   routeGeometry?: unknown;
+  /**
+   * How much of the drawn route is already behind the rider, 0–1.
+   *
+   * The line used to stay whole from the starting point, so halfway through a
+   * ride the brightest thing on the map was the part already ridden — and at a
+   * junction the eye has to pick the road AHEAD out of a stripe running through
+   * both. Everything before this fraction is painted transparent.
+   */
+  routeTravelledFraction?: number | null;
   /** Per-leg polylines for a multi-stop trip; each drawn in its own colour. */
   legGeometries?: Array<{ geometry: { coordinates: [number, number][] } }> | null;
   /** Index of the leg currently being navigated (earlier legs render dimmed). */
@@ -1227,6 +1238,12 @@ function LocationMapViewImpl({
             <Source
               id="route"
               type="geojson"
+              /*
+               * `lineMetrics` is what makes `line-progress` mean anything —
+               * without it the gradient below is ignored and the whole line
+               * stays painted, which looks exactly like the bug it fixes.
+               */
+              lineMetrics
               data={{ type: "Feature", properties: {}, geometry: routeGeometry as never }}
             >
               {/*
@@ -1246,21 +1263,23 @@ function LocationMapViewImpl({
                 id="route-casing"
                 type="line"
                 layout={{ "line-cap": "round", "line-join": "round" }}
-                paint={{
-                  "line-color": "#1e3a8a",
-                  "line-opacity": 0.9,
-                  "line-width": ["interpolate", ["linear"], ["zoom"], 10, 7, 14, 13, 18, 20],
-                }}
+                paint={
+                  {
+                    ...trailPaint(routeTravelledFraction, "#1e3a8a", 0.9),
+                    "line-width": ["interpolate", ["linear"], ["zoom"], 10, 7, 14, 13, 18, 20],
+                  } as never
+                }
               />
               <Layer
                 id="route-line"
                 type="line"
                 layout={{ "line-cap": "round", "line-join": "round" }}
-                paint={{
-                  "line-color": "#3b82f6",
-                  "line-opacity": 1,
-                  "line-width": ["interpolate", ["linear"], ["zoom"], 10, 4, 14, 9, 18, 14],
-                }}
+                paint={
+                  {
+                    ...trailPaint(routeTravelledFraction, "#3b82f6", 1),
+                    "line-width": ["interpolate", ["linear"], ["zoom"], 10, 4, 14, 9, 18, 14],
+                  } as never
+                }
               />
             </Source>
           )
@@ -1269,6 +1288,7 @@ function LocationMapViewImpl({
     </div>
   );
 }
+
 
 /*
  * Memoised so the whole map subtree (and every Marker reconciliation) is skipped
