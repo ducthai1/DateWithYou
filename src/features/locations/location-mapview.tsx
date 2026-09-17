@@ -15,6 +15,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { geodesicCircle, type LatLng } from "@/lib/maps";
 import { cn } from "@/lib/utils";
 import { trailPaint } from "@/lib/route-trail";
+import { screenRotation } from "@/lib/heading";
 import { motion, AnimatePresence } from "framer-motion";
 import { buzz } from "@/lib/haptics";
 
@@ -136,6 +137,7 @@ function LocationMapViewImpl({
   userPingAction,
   followGeo,
   heading,
+  facingHeading,
   userAvatar,
   partnerAvatar,
   partnerName = "Người kia",
@@ -174,6 +176,11 @@ function LocationMapViewImpl({
   followGeo?: LatLng | null;
   /** Device heading in degrees (0 = north). Rotates the map when following. */
   heading?: number | null;
+  /**
+   * Hướng đang QUAY MẶT, để vẽ cái phễu — khác `heading` ở chỗ nó còn giá trị
+   * khi đứng yên, vì nó đến từ la bàn chứ không từ vận tốc GPS.
+   */
+  facingHeading?: number | null;
   userAvatar?: string;
   partnerAvatar?: string;
   /** What to call them on the map. Falls back only in a space of one. */
@@ -203,6 +210,16 @@ function LocationMapViewImpl({
   className?: string;
 }) {
   const mapRef = useRef<MapRef>(null);
+  /*
+   * Góc xoay hiện tại của bản đồ, để trừ khỏi hướng khi vẽ mũi tên và phễu.
+   *
+   * Chặn ngưỡng 2°: `onMove` bắn mỗi khung hình khi đang bám theo, và đặt state
+   * ở mỗi lần bắn là render lại cả cây bản đồ — chính là thứ mà toàn bộ phần
+   * memo hoá trong file này tồn tại để tránh. Hai độ thì mắt không thấy, mà số
+   * lần render giảm đi vài chục lần.
+   */
+  const [mapBearing, setMapBearing] = useState(0);
+  const bearingRef = useRef(0);
   /*
    * Read once, at mount — this component is client-only (`ssr: false`).
    *
@@ -777,6 +794,13 @@ function LocationMapViewImpl({
         refreshExpiredTiles={false}
         renderWorldCopies={false}
         initialViewState={initialView}
+        onMove={(e) => {
+          const b = e.viewState.bearing ?? 0;
+          if (Math.abs(b - bearingRef.current) >= 2) {
+            bearingRef.current = b;
+            setMapBearing(b);
+          }
+        }}
         onStyleData={(e) => dressStyle(e.target)}
         onLoad={(e) => {
           // Deliberately does NOT report a centre. The map opens on a fixed
@@ -1009,9 +1033,43 @@ function LocationMapViewImpl({
             rotation={0}
             style={{ zIndex: 10 }}
           >
-            {heading != null ? (
+            {heading != null || facingHeading != null ? (
               /* Directional arrow when heading is known */
               <div className="relative flex items-center justify-center">
+                {/*
+                  Cái phễu hướng nhìn.
+
+                  Vẽ RIÊNG khỏi mũi tên và xoay riêng, vì hai thứ trả lời hai
+                  câu khác nhau: mũi tên là "đang chạy về hướng nào", phễu là
+                  "đang nhìn về hướng nào". Khi dừng đèn đỏ và xoay người thì
+                  chỉ cái phễu động — đúng như Google Maps.
+
+                  Toả dần và mở rộng ra chứ không phải một hình đặc: la bàn điện
+                  thoại sai vài độ là chuyện thường, nên vẽ nó như một khoảng
+                  chắc chắn chứ không như một tia laser.
+                */}
+                {facingHeading != null && (
+                  <svg
+                    width="120"
+                    height="120"
+                    viewBox="0 0 120 120"
+                    className="pointer-events-none absolute"
+                    style={{
+                      transform: `rotate(${screenRotation(facingHeading, mapBearing)}deg)`,
+                      transformOrigin: "60px 60px",
+                    }}
+                    aria-hidden="true"
+                  >
+                    <defs>
+                      <radialGradient id="facing-cone" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.55" />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                      </radialGradient>
+                    </defs>
+                    {/* Quạt ~60°, mở lên trên; phần xoay do transform ở trên lo. */}
+                    <path d="M60 60 L30 8 A58 58 0 0 1 90 8 Z" fill="url(#facing-cone)" />
+                  </svg>
+                )}
                 {/* Pulse marking your own position. Deliberately not called
                     an accuracy halo: it is a fixed size and does not scale
                     with the measured accuracy, so it would imply a precision
@@ -1019,13 +1077,20 @@ function LocationMapViewImpl({
                     state in use-live-navigation instead. */}
                 <span className="absolute h-16 w-16 animate-ping rounded-full bg-blue-400/30" />
                 
-                {/* Direction cone */}
+                {/* Mũi tên hướng DI CHUYỂN. Xoay theo góc thật trừ góc bản đồ:
+                    `rotation={0}` của bản cũ chỉ đúng khi bản đồ đang bám theo
+                    hướng đi, và nói dối ngay khi người ta xoay hoặc kéo bản đồ. */}
+                {heading != null && (
                 <svg
                   width="56"
                   height="56"
                   viewBox="0 0 36 36"
                   fill="none"
                   className="drop-shadow-lg absolute"
+                  style={{
+                    transform: `rotate(${screenRotation(heading, mapBearing)}deg)`,
+                    transformOrigin: "50% 50%",
+                  }}
                 >
                   <path
                     d="M18 2 L26 18 L18 14 L10 18 Z"
@@ -1036,6 +1101,7 @@ function LocationMapViewImpl({
                     strokeLinejoin="round"
                   />
                 </svg>
+                )}
                 
                 {/* Centre avatar or dot */}
                 {userAvatar ? (
