@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { cn } from "@/lib/utils";
+import { TEXTAREA_CLASS } from "@/components/ui/textarea";
 import {
   applyMention,
   filterMentionCandidates,
@@ -66,6 +67,16 @@ import {
  * browser's own, undo still works and the change arrives through onChange like
  * any other edit.
  */
+/**
+ * Dưới ô nhập phải còn chừng này chỗ thì danh sách mới mở xuống.
+ *
+ * Bằng khoảng ba dòng gợi ý — ít hơn thì danh sách vừa mở đã phải cuộn, mà
+ * một danh sách hai người thì cuộn là vô lý. Không gian ở đây đã TRỪ chiều
+ * cao thanh điều hướng, nên đây là chỗ trống nhìn thấy được, không phải chỗ
+ * trống trên giấy.
+ */
+const LIST_MIN_ROOM = 140;
+
 export function MentionField({
   value,
   onChange,
@@ -105,6 +116,15 @@ export function MentionField({
 >) {
   const fieldRef = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+  /*
+   * Danh sách mở LÊN hay XUỐNG.
+   *
+   * Mặc định mở xuống, nhưng ô nhập ghi chú nằm trong một thẻ giữa dòng thời
+   * gian, và khi thẻ ở gần cuối màn thì danh sách rơi thẳng vào sau thanh điều
+   * hướng cố định — chụp màn mới thấy, vì nó vẫn "hiện" theo mọi phép kiểm
+   * DOM. Chỗ trống bên dưới phải trừ chiều cao dock ra mới là chỗ trống thật.
+   */
+  const [above, setAbove] = useState(false);
 
   const ranges = useMemo(() => findMentionRanges(value, members), [value, members]);
 
@@ -251,7 +271,33 @@ export function MentionField({
     return () => document.removeEventListener("selectionchange", onSel);
   }, [refreshQuery]);
 
+  useEffect(() => {
+    if (!open) return;
+    const el = fieldRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const dock =
+      parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--nav-dock-h"),
+      ) || 0;
+    const roomBelow = window.innerHeight - dock - rect.bottom;
+    const roomAbove = rect.top;
+    // Chỉ lật khi bên dưới KHÔNG đủ mà bên trên thì đủ hơn — lật bừa thì danh
+    // sách nhảy chỗ giữa hai lần gõ, khó chịu hơn là bị che.
+    setAbove(roomBelow < LIST_MIN_ROOM && roomAbove > roomBelow);
+  }, [open, candidates.length]);
+
   const shared = cn(
+    /*
+     * Cái hộp, và nó là MẶC ĐỊNH chứ không phải để người gọi tự nhớ.
+     *
+     * Bỏ quên nó thì ô nhập rơi về chrome mặc định của trình duyệt — viền xám
+     * vuông, cao 24px, không bo góc — giữa một màn hình toàn thẻ bo tròn. Đã
+     * xảy ra đúng như vậy khi ô ghi chú dưới kỷ niệm đổi từ <Input> sang đây.
+     * Người gọi vẫn đè được, vì `cn` là tailwind-merge nên class truyền vào
+     * đứng sau và thắng.
+     */
+    TEXTAREA_CLASS,
     /*
      * `block` is not cosmetic. A textarea is inline-block by default, so the
      * wrapper around it grows by the line-box leading underneath — measured at
@@ -335,6 +381,7 @@ export function MentionField({
           id={listId}
           items={candidates}
           active={active}
+          above={above}
           onHover={setActive}
           onPick={choose}
         />
@@ -362,12 +409,15 @@ function MentionList({
   id,
   items,
   active,
+  above,
   onHover,
   onPick,
 }: {
   id: string;
   items: MentionMember[];
   active: number;
+  /** Mở lên trên vì bên dưới bị thanh điều hướng che — xem `above`. */
+  above: boolean;
   onHover: (i: number) => void;
   onPick: (m: MentionMember) => void;
 }) {
@@ -376,7 +426,10 @@ function MentionList({
       id={id}
       role="listbox"
       aria-label="Chọn người để nhắc tên"
-      className="border-border bg-card shadow-elev-float absolute top-full right-0 left-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-xl border py-1"
+      className={cn(
+        "border-border bg-card shadow-elev-float absolute right-0 left-0 z-50 max-h-56 overflow-y-auto rounded-xl border py-1",
+        above ? "bottom-full mb-2" : "top-full mt-2",
+      )}
     >
       {items.map((m, i) => (
         <li

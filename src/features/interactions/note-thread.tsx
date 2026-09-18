@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { readableFormError } from "@/lib/form-error";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -76,6 +76,24 @@ export function NoteThread({
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  /*
+   * Mở ra thì phải NHÌN THẤY.
+   *
+   * Thẻ nằm giữa dòng thời gian, và luồng ghi chú mọc thêm xuống dưới — trên
+   * điện thoại nó chui thẳng xuống dưới thanh điều hướng cố định và bị cắt
+   * ngang. Chụp màn mới thấy: bấm "1 ghi chú" xong không thấy ghi chú nào,
+   * chữ bị dock xén mất một nửa. `block: "nearest"` chỉ cuộn đúng phần thiếu,
+   * không giật cả trang khi thẻ vốn đã nằm trọn trong tầm nhìn.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() =>
+      panelRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }),
+    );
+    return () => cancelAnimationFrame(id);
+  }, [open]);
 
   /*
    * Ai ĐƯỢC TÍNH là nhắc tên, và ai ĐƯỢC GỢI Ý — hai câu hỏi khác nhau.
@@ -181,7 +199,7 @@ export function NoteThread({
       </button>
 
       {open && (
-        <div className="space-y-2">
+        <div ref={panelRef} className="space-y-2">
           {notes.length > 0 ? (
             <ul className="space-y-2">
               {notes.map((n) => {
@@ -223,7 +241,8 @@ export function NoteThread({
             </ul>
           ) : (
             <p className="text-muted-foreground text-xs">
-              Chưa có ghi chú nào — viết vài dòng cho người kia đọc nhé.
+              Chưa có ghi chú nào — viết vài dòng cho người kia đọc nhé. Gõ{" "}
+              <span className="text-accent font-medium">@</span> để nhắc tên.
             </p>
           )}
 
@@ -241,8 +260,27 @@ export function NoteThread({
                 members={mentionMembers}
                 suggest={suggest}
                 maxLength={MAX_LENGTH}
-                placeholder="Viết một ghi chú… gõ @ để nhắc tên"
+                placeholder="Viết ghi chú…"
                 aria-label="Nội dung ghi chú"
+                /*
+                 * Cao đúng bằng nút gửi bên cạnh (44px, cũng là mức chạm tối
+                 * thiểu). Lệch 3px thì hai cái cạnh nhau đọc ra là đặt nhầm
+                 * chứ không ai nghĩ là cố ý. Class này rơi vào CẢ hai lớp của
+                 * MentionField nên lớp vẽ pill vẫn khít với chữ.
+                 */
+                /*
+                 * Cao đúng bằng nút gửi bên cạnh (44px, cũng là mức chạm tối
+                 * thiểu). Lệch 3px thì hai cái cạnh nhau đọc ra là đặt nhầm
+                 * chứ không ai nghĩ là cố ý.
+                 *
+                 * Placeholder NGẮN, không nhét gợi ý "@" vào đây. Đo thật:
+                 * chỗ cho chữ còn 224px ở khổ 360 và 184px ở khổ 320, trong
+                 * khi câu có gợi ý dài 270px — nó đứt ngang giữa chữ, và
+                 * `text-ellipsis` trên `::placeholder` không ăn vì ô này cuộn
+                 * ngang. Gợi ý chuyển xuống dòng trạng thái rỗng bên dưới, chỗ
+                 * được phép xuống hàng nên không bao giờ bị cắt.
+                 */
+                className="h-11 py-2.5"
               />
             </div>
             <button

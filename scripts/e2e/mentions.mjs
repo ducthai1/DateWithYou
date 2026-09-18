@@ -212,7 +212,7 @@ export async function run({ base, profileDir, port, db, shotDir }) {
       ).insertedId,
     );
 
-    const NOTE_BOX = `input[placeholder^="Viết một ghi chú"]`;
+    const NOTE_BOX = `input[placeholder^="Viết ghi chú"]`;
     /*
      * Tìm ĐÚNG thẻ của kỷ niệm vừa gieo, không phải thẻ đầu tiên.
      *

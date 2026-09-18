@@ -5,7 +5,6 @@ import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TEXTAREA_CLASS } from "@/components/ui/textarea";
 import { MentionField } from "@/components/ui/mention-field";
 import { cn } from "@/lib/utils";
 import {
@@ -447,7 +446,6 @@ export function MemoryForm({
         value={caption}
         onChange={setCaption}
         rows={3}
-        className={TEXTAREA_CLASS}
       />
       {mentionable.length > 0 && (
         <div className="-mt-3 flex flex-wrap items-center gap-1.5">
