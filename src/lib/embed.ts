@@ -67,10 +67,13 @@ function tiktokId(u: URL): string | null {
 /**
  * TikTok's embed player.
  *
- * `/embed/v2/<id>` — what this file used to build — answers HTTP 400 today, so
- * every TikTok link in the library was a frame that could not load. The
- * documented endpoint is `/player/v1/<id>`, driven by query parameters
- * (developers.tiktok.com/doc/embed-player), and it answers 200.
+ * `/embed/v2/<id>` — what this file used to build — answers HTTP 400 for an id
+ * that does not resolve, so a frame built from a wrong id went blank instead of
+ * showing anything. (A valid id does answer 200 there; the endpoint is not dead,
+ * it is just unforgiving.) The documented endpoint is `/player/v1/<id>`, driven
+ * by query parameters (developers.tiktok.com/doc/embed-player), and it answers
+ * 200 either way — measured 18/09/2026. The server builds the same URL through
+ * this function, so there is one source of truth for the iframe src.
  *
  * Built from the id on demand rather than read back from the `embedUrl` stored
  * with the row, so links saved before this fix play without touching a single
@@ -112,9 +115,10 @@ export function tiktokPlayerUrl(
 /**
  * The numeric post id of a TikTok link, or null.
  *
- * Only the long form carries one. A short link (vm.tiktok.com/CODE) is a
- * redirect, and resolving it needs a request TikTok answers only to a real
- * browser — so those stay link cards, as they always have.
+ * Only the long form carries one — this function is pure and never leaves the
+ * browser. A short link (vm.tiktok.com/CODE) is a redirect, and following it is
+ * the server's job: `resolveEmbed` does it at save time and stores the resolved
+ * link, so by the time a row reaches here its `url` already carries the id.
  */
 export function tiktokPostId(url: string | null | undefined): string | null {
   if (!url) return null;

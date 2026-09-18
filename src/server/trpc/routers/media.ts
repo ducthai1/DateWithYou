@@ -16,6 +16,10 @@ async function embedFields(url: string | undefined) {
   if (!url) return { provider: undefined, embedId: undefined, embedUrl: undefined, thumbnailUrl: undefined };
   const e = await resolveEmbed(url);
   return {
+    // Link đã giải, không phải link người dùng dán: chia sẻ từ app TikTok ra
+    // một link rút gọn không mang id, mà trình phát lại đọc id từ chính `url`.
+    // Cả create lẫn update đều trải object này SAU input nên nó thắng.
+    url: e.url,
     provider: e.provider,
     embedId: e.embedId ?? undefined,
     embedUrl: e.embedUrl ?? undefined,

@@ -22,7 +22,9 @@ async function deriveEmbeds(embeds: { url: string }[] | undefined) {
       const p = await resolveEmbed(e.url);
       return {
         provider: p.provider,
-        url: e.url,
+        // Link đã giải (xem resolveEmbed): link rút gọn của TikTok không mang
+        // id, mà trình phát đọc id ra từ chính trường này.
+        url: p.url,
         embedId: p.embedId ?? undefined,
         embedUrl: p.embedUrl ?? undefined,
         thumbnailUrl: p.thumbnailUrl ?? undefined,
