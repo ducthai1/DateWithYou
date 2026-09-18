@@ -18,7 +18,9 @@
 import { launchChrome, openPage } from "./cdp.mjs";
 import { signIn } from "./session.mjs";
 
-export const name = "Nhắc tên: gõ @ ra danh sách, tên MÌNH cũng là tag, và bình luận";
+export const name = "Nhắc tên: gõ @ ra danh sách, tên MÌNH cũng là tag, và ghi chú trên thẻ";
+
+const NOTE_MEMO_TITLE = "Kỷ niệm để thử ghi chú";
 
 const FIELD = 'textarea[placeholder^="Kể lại"]';
 
@@ -184,7 +186,14 @@ export async function run({ base, profileDir, port, db, shotDir }) {
         `trước=${JSON.stringify(withMine)} sau MỘT Backspace=${JSON.stringify(afterOne)}`);
     }
 
-    /* ——— 6. bình luận dưới kỷ niệm ————————————————————————————— */
+    /* ——— 6. bình luận NGAY TRÊN THẺ ngoài danh sách ————————————————
+     *
+     * Chỗ này là điểm mấu chốt, không phải chi tiết trình bày: người ta đọc
+     * feed và trả lời ngay tại thẻ, không mở kỷ niệm ra mới nói chuyện. Từng
+     * có hai luồng bình luận song song — một cái trên thẻ (không tag được) và
+     * một cái trong modal (tag được) — nên bài này đo ĐÚNG luồng trên thẻ, rồi
+     * mở modal ra kiểm rằng nó thấy cùng một dòng chứ không phải luồng khác.
+     */
     await page.eval(
       `[...document.querySelectorAll('button')].find(b => /^Huỷ$/.test((b.textContent||'').trim()))?.click()`,
     );
@@ -192,57 +201,223 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     const memoId = String(
       (
         await db.collection("memories").insertOne({
-          spaceId: me.spaceId, title: "Kỷ niệm để thử bình luận",
+          spaceId: me.spaceId, title: NOTE_MEMO_TITLE,
           photos: [], embeds: [], tags: [], mentions: [],
-          date: new Date("2026-05-01"), createdBy: myUid,
+          // Ngày HÔM NAY, không phải một ngày cố định trong quá khứ: feed xếp
+          // theo tháng và chỉ tải 24 mục, nên một kỷ niệm tháng 5 có thể không
+          // nằm trong trang đầu.
+          date: new Date(), createdBy: myUid,
           createdAt: new Date(), updatedAt: new Date(),
         })
       ).insertedId,
     );
-    await page.goto(`${base}/timeline?memory=${memoId}`);
+
+    const NOTE_BOX = `input[placeholder^="Viết một ghi chú"]`;
+    /*
+     * Tìm ĐÚNG thẻ của kỷ niệm vừa gieo, không phải thẻ đầu tiên.
+     *
+     * Feed chứa cả kỷ niệm của những bộ kiểm khác chạy trước. Bấm vào thẻ đầu
+     * tiên thì ghi chú rơi vào kỷ niệm của người khác, và bài kiểm đỏ ở hai
+     * dòng sau đó với lý do chẳng liên quan gì — mất thời gian đi tìm.
+     */
+    const cardOf = (title) => `(() => {
+      const label = [...document.querySelectorAll("h1,h2,h3,h4,p,span,div")]
+        .find(e => (e.textContent || "").trim() === ${JSON.stringify(title)});
+      let n = label;
+      while (n && !(n.querySelector && n.querySelector('button[aria-expanded]'))) n = n.parentElement;
+      return n;
+    })()`;
+    await page.goto(`${base}/timeline`);
     await page.until(`document.readyState === "complete"`, { timeout: 60000 }).catch(() => {});
-    const gotBox = await page
-      .until(`!!document.querySelector('textarea[placeholder^="Viết bình luận"]')`, { timeout: 30000 })
+
+    // Luồng thu gọn cho tới khi bấm — mở ra bằng chính nút người dùng bấm.
+    const opened = await page
+      .until(
+        `(() => {
+          const card = ${cardOf(NOTE_MEMO_TITLE)};
+          if (!card) return false;
+          const b = [...card.querySelectorAll('button[aria-expanded]')]
+            .find(x => /ghi chú/i.test(x.textContent || ""));
+          if (!b) return false;
+          if (b.getAttribute('aria-expanded') !== 'true') { b.click(); return false; }
+          return !!card.querySelector(${JSON.stringify(NOTE_BOX)});
+        })()`,
+        { timeout: 30000 },
+      )
       .then(() => true)
       .catch(() => false);
-    ok("mở kỷ niệm là thấy ô bình luận", gotBox === true);
-    if (gotBox) {
-      await page.eval(`document.querySelector('textarea[placeholder^="Viết bình luận"]').focus()`);
+    ok("thẻ ngoài danh sách có ô ghi chú, không phải mở kỷ niệm mới có", opened === true);
+
+    if (opened) {
+      await page.eval(`${cardOf(NOTE_MEMO_TITLE)}.querySelector(${JSON.stringify(NOTE_BOX)}).focus()`);
       await type("đẹp quá @");
-      ok("gõ @ trong ô bình luận cũng ra danh sách", (await waitList(true)) === true);
+      ok("gõ @ ngay trên thẻ cũng ra danh sách", (await waitList(true)) === true);
       await press("Enter");
       await page.eval(
-        `[...document.querySelectorAll('button')].find(b => /^Gửi$/.test((b.textContent||'').trim()))?.click()`,
+        `document.querySelector('[aria-label="Gửi ghi chú"]')?.click()`,
       );
+
       /*
-       * Chờ HÀNG trong thread, đừng chờ chữ trong `body.innerText`.
-       *
-       * Chrome tính cả nội dung của `<textarea>` vào `innerText`, nên phép chờ
-       * "/đẹp quá/ có trong trang" khớp ngay với chữ CÒN ĐANG NẰM TRONG Ô NHẬP
-       * và trả về trước khi mutation kịp chạy. Bài kiểm xanh ở dòng đó rồi đỏ
-       * hai dòng sau — trong khi tính năng vẫn đúng: DB có bản ghi, tiêu đề đã
-       * là "Bình luận (1)". Đo lại bằng probe riêng mới thấy.
+       * Chờ HÀNG trong luồng, đừng chờ chữ trong `body.innerText` — Chrome
+       * tính cả nội dung ô nhập vào đó, nên phép chờ khớp ngay với chữ CÒN
+       * ĐANG NẰM TRONG Ô và trả về trước khi mutation kịp chạy.
        */
       const posted = await page
-        .until(`document.querySelectorAll('section li').length === 1`, { timeout: 30000 })
+        .until(`document.querySelectorAll('[aria-label="Xoá ghi chú"]').length === 1`, { timeout: 30000 })
         .then(() => true)
         .catch(() => false);
-      ok("gửi xong thì bình luận hiện trong thread", posted === true);
-      const shape = JSON.parse(await page.eval(`(() => JSON.stringify({
-        counted: /Bình luận \\(1\\)/.test(document.body.innerText),
-        canDeleteOwn: !!document.querySelector('[aria-label="Xoá bình luận"]'),
-      }))()`));
-      ok("thread đếm đúng số bình luận", shape.counted === true, JSON.stringify(shape));
-      ok("dòng của mình có nút xoá", shape.canDeleteOwn === true);
-      await page.eval(`document.querySelector('[aria-label="Xoá bình luận"]')?.click()`);
+      ok("gửi xong thì ghi chú hiện trên thẻ", posted === true);
+
+      /*
+       * Và tên phải là THẺ, không phải chữ thô.
+       *
+       * Đây chính là thứ hỏng trước đây: ô trên thẻ nhận chữ bình thường nên
+       * "@Tên" lưu xuống rồi hiện lại y như một chuỗi ký tự. Đo bằng
+       * `data-mention` — thứ chỉ MentionText mới sinh ra — chứ không đo bằng
+       * việc chữ có xuất hiện hay không, vì chữ thô cũng xuất hiện.
+       */
+      const tagged = JSON.parse(await page.eval(`(() => {
+        const row = document.querySelector('[aria-label="Xoá ghi chú"]')?.closest('li');
+        const pill = row?.querySelector('[data-mention]');
+        return JSON.stringify({
+          hasPill: !!pill,
+          pillText: pill?.textContent || "",
+          rowText: (row?.innerText || "").slice(0, 80),
+        });
+      })()`));
+      ok("tên trong ghi chú hiện thành thẻ, không phải chữ thô",
+         tagged.hasPill === true && tagged.pillText.startsWith("@"), JSON.stringify(tagged));
+
+      // Máy chủ có ghi nhận người được nhắc, chứ không chỉ đẹp ở màn hình.
+      /*
+       * Máy chủ có LƯU người được nhắc không.
+       *
+       * Thẻ tên trên màn hình KHÔNG chứng minh được điều này: nó dựng từ chữ
+       * trong `body`, còn thông báo thì gửi theo danh sách id. Hai đường độc
+       * lập, nên nhìn thấy thẻ mà không đọc DB là bỏ lọt đúng nửa quan trọng.
+       *
+       * `mentions` vắng mặt HẲN (khác với `[]`) có một nguyên nhân riêng, và
+       * nó không phải lỗi sản phẩm: mongoose cache model theo tiến trình
+       * (`models.Note ?? model(...)`), nên một dev server khởi động TRƯỚC khi
+       * schema thêm trường sẽ lặng lẽ vứt trường đó đi — không lỗi, không cảnh
+       * báo. Máy chủ bao giờ cũng ghi ít nhất `[]`, nên `undefined` là vân tay
+       * của đúng tình huống ấy. Gọi tên nó ra, đừng để người đọc đi tìm.
+       */
+      const stored = await db.collection("notes").findOne({ targetId: memoId });
+      if (stored && stored.mentions === undefined) {
+        ok("máy chủ lưu lại người được nhắc trong ghi chú", false,
+           "dev server khởi động TRƯỚC khi schema Note thêm `mentions` — mongoose giữ model cũ " +
+           "và vứt trường lạ. Khởi động lại dev server rồi chạy lại bộ này.");
+      } else {
+        ok("máy chủ lưu lại người được nhắc trong ghi chú",
+           Array.isArray(stored?.mentions) && stored.mentions.length === 1,
+           JSON.stringify(stored?.mentions ?? null));
+      }
+
+      /*
+       * Mở modal chi tiết: phải thấy ĐÚNG dòng vừa viết.
+       *
+       * Thông báo "bạn vừa được nhắc tên" mở thẳng vào URL này. Nếu modal đọc
+       * một luồng khác thì người được nhắc bấm vào sẽ thấy một trang trống.
+       */
+      await page.goto(`${base}/timeline?memory=${memoId}`);
+      await page.until(`document.readyState === "complete"`, { timeout: 60000 }).catch(() => {});
+      const inModal = await page
+        .until(
+          `(() => {
+            const b = [...document.querySelectorAll('button[aria-expanded]')]
+              .find(x => /ghi chú/i.test(x.textContent || ""));
+            if (!b) return false;
+            if (b.getAttribute('aria-expanded') !== 'true') { b.click(); return false; }
+            return document.querySelectorAll('[aria-label="Xoá ghi chú"]').length >= 1;
+          })()`,
+          { timeout: 30000 },
+        )
+        .then(() => true)
+        .catch(() => false);
+      ok("mở kỷ niệm ra thấy CÙNG một luồng, không phải luồng thứ hai", inModal === true);
+
+      /* ——— dữ liệu XẤU: tên dài trong ghi chú trên thẻ hẹp ————————————
+       *
+       * Thẻ trong feed hẹp hơn modal nhiều, và thẻ tên dùng
+       * `box-decoration-break: clone` nên khi xuống dòng nó nhân đôi phần
+       * đệm hai bên. Tên đẹp thì không bao giờ lộ ra chuyện đó. Đo ở khổ điện
+       * thoại, bằng đúng hộp đang cuộn — `documentElement.scrollWidth` không
+       * bao giờ rộng ra trong app này vì PageShell tự bọc một khung cuộn.
+       */
+      const LONG = "Nguyễn Thị Hoàng Mai Phương Thảo Quỳnh Anh Ngọc Diệp";
+      const partnerUid = (partner?.members ?? []).find((id) => String(id) !== myUid);
+      const partnerDoc = partnerUid
+        ? await db.collection("user").findOne({ _id: ObjectId.createFromHexString(String(partnerUid)) })
+        : null;
+      const oldName = partnerDoc?.name ?? null;
+      if (partnerUid && oldName) {
+        await db.collection("user").updateOne(
+          { _id: ObjectId.createFromHexString(String(partnerUid)) },
+          { $set: { name: LONG } },
+        );
+        await db.collection("notes").updateOne(
+          { targetId: memoId },
+          { $set: { body: `Đẹp quá @${LONG} ơi, hôm đó vui thật đấy` } },
+        );
+        for (const w of [390, 360]) {
+          await page.viewport(w, 780, true);
+          await page.goto(`${base}/timeline`);
+          await page.until(`document.readyState === "complete"`, { timeout: 60000 }).catch(() => {});
+          const drew = await page
+            .until(
+              `(() => {
+                const b = [...document.querySelectorAll('button[aria-expanded]')]
+                  .find(x => /ghi chú/i.test(x.textContent || ""));
+                if (!b) return false;
+                if (b.getAttribute('aria-expanded') !== 'true') { b.click(); return false; }
+                return !!document.querySelector('[data-mention]');
+              })()`,
+              { timeout: 30000 },
+            )
+            .then(() => true)
+            .catch(() => false);
+          ok(`tên dài vẫn đọc ra thẻ ở ${w}px`, drew === true);
+          const spill = await page.horizontalOverflow();
+          ok(`ghi chú có tên dài ở ${w}px: không tràn ngang`, spill === null, spill ?? "");
+        }
+        // Trả tên về, không để một bài kiểm đổi dữ liệu cho bài sau.
+        await db.collection("user").updateOne(
+          { _id: ObjectId.createFromHexString(String(partnerUid)) },
+          { $set: { name: oldName } },
+        );
+      }
+      await page.viewport(430, 930, true);
+      await page.goto(`${base}/timeline?memory=${memoId}`);
+      await page.until(`document.readyState === "complete"`, { timeout: 60000 }).catch(() => {});
+      await page.until(
+        `(() => {
+          const b = [...document.querySelectorAll('button[aria-expanded]')]
+            .find(x => /ghi chú/i.test(x.textContent || ""));
+          if (!b) return false;
+          if (b.getAttribute('aria-expanded') !== 'true') { b.click(); return false; }
+          return document.querySelectorAll('[aria-label="Xoá ghi chú"]').length >= 1;
+        })()`,
+        { timeout: 30000 },
+      ).catch(() => {});
+
+      // Xoá: nút idle rồi mới tới nút xác nhận trong modal.
+      await page.eval(`document.querySelector('[aria-label="Xoá ghi chú"]')?.click()`);
+      await page.until(
+        `[...document.querySelectorAll('button')].some(b => /^Xoá ghi chú$/.test((b.textContent||'').trim()))`,
+        { timeout: 15000 },
+      ).catch(() => {});
+      await page.eval(
+        `[...document.querySelectorAll('button')].find(b => /^Xoá ghi chú$/.test((b.textContent||'').trim()))?.click()`,
+      );
       const gone = await page
-        .until(`document.querySelectorAll('section li').length === 0`, { timeout: 30000 })
+        .until(`document.querySelectorAll('[aria-label="Xoá ghi chú"]').length === 0`, { timeout: 30000 })
         .then(() => true)
         .catch(() => false);
       ok("xoá được dòng của chính mình", gone === true);
     }
     await db.collection("memories").deleteOne({ _id: ObjectId.createFromHexString(memoId) });
-    await db.collection("memorycomments").deleteMany({ memoryId: memoId });
+    await db.collection("notes").deleteMany({ targetId: memoId });
   } finally {
     page.close();
     chrome.kill();

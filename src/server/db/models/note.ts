@@ -18,6 +18,14 @@ const noteSchema = new Schema(
     targetId: { type: String, required: true },
     userId: { type: String, required: true },
     body: { type: String, required: true, maxlength: NOTE_MAX_LENGTH },
+    /*
+     * Ai được nhắc tên trong ghi chú này.
+     *
+     * Lưu id chứ không dò lại tên từ `body` lúc đọc: người ta đổi tên hiển
+     * thị, và một ghi chú cũ vẫn phải nhớ nó đã nhắc ai. Bốn là dư cho một
+     * không gian hai người.
+     */
+    mentions: { type: [String], default: [] },
   },
   { timestamps: true },
 );

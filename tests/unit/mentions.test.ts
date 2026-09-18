@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   appendMention,
+  collectMentions,
   applyMention,
   filterMentionCandidates,
   findMentionRanges,
@@ -179,4 +180,37 @@ test("applyMention rồi findMentionRanges: tên vừa chèn phải được nh�
   assert.equal(ranges.length, 1);
   assert.equal(ranges[0].id, "u1");
   assert.equal(out.text.slice(ranges[0].start, ranges[0].end), "@Ngọc Anh");
+});
+
+/*
+ * `collectMentions` là thứ QUYẾT ĐỊNH client gửi gì lên máy chủ.
+ *
+ * Nó chưa từng có bài kiểm nào, trong khi cả chú thích lẫn ghi chú dưới kỷ
+ * niệm đều gọi nó để dựng danh sách `mentions`. Gửi sai thì người được nhắc
+ * không nhận thông báo — và không có gì trên màn hình cho thấy điều đó, vì cái
+ * thẻ tên vẫn hiện bình thường (nó dựng từ CHỮ, không dựng từ danh sách id).
+ * Hai đường độc lập nhau, nên "nhìn thấy thẻ tên" không chứng minh được là đã
+ * gửi đúng.
+ */
+test("collectMentions: lấy id của người được nhắc, đúng thứ client gửi lên", () => {
+  assert.deepEqual(collectMentions("đẹp quá @Bình", MEMBERS), ["u2"]);
+  assert.deepEqual(collectMentions("@Ngọc Anh ơi xem nè", MEMBERS), ["u1"]);
+  assert.deepEqual(collectMentions("@Bình @Ngọc Anh", MEMBERS), ["u2", "u1"]);
+});
+
+test("collectMentions: nhắc hai lần một người vẫn chỉ ra một id", () => {
+  // Máy chủ lấy danh sách này đi gửi thông báo — trùng là rung hai lần.
+  assert.deepEqual(collectMentions("@Bình ơi @Bình à", MEMBERS), ["u2"]);
+});
+
+test("collectMentions: không có ai thì mảng rỗng, không phải undefined", () => {
+  assert.deepEqual(collectMentions("hôm nay trời đẹp", MEMBERS), []);
+  assert.deepEqual(collectMentions("@KhôngPhảiAi", MEMBERS), []);
+  assert.deepEqual(collectMentions("", MEMBERS), []);
+});
+
+test("collectMentions: tên không có trong danh sách thì không tính", () => {
+  // Danh sách "ai được TÍNH là nhắc tên" chính là hàng rào: client không được
+  // tự bịa ra một id rồi gửi lên.
+  assert.deepEqual(collectMentions("@Bình", [MEMBERS[0]]), []);
 });

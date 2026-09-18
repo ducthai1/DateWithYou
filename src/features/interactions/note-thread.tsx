@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { readableFormError } from "@/lib/form-error";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { MessageCircle, RotateCw, Send } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { Input } from "@/components/ui/input";
+import { MentionField } from "@/components/ui/mention-field";
+import { MentionText } from "@/components/ui/mention-text";
+import { collectMentions, type MentionMember } from "@/lib/mentions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { useToast } from "@/components/ui/toast";
@@ -75,10 +77,39 @@ export function NoteThread({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
 
+  /*
+   * Ai ĐƯỢC TÍNH là nhắc tên, và ai ĐƯỢC GỢI Ý — hai câu hỏi khác nhau.
+   *
+   * Trả lời chung một danh sách là một lỗi sờ thấy được: dùng danh sách
+   * "chỉ người kia" cho cả hai thì chính tên MÌNH trong ghi chú không thành
+   * thẻ, và Backspace ăn từng chữ cái, trong khi tên người kia xoá nguyên
+   * cụm. Cùng một dòng chữ, hai hành vi, tuỳ tên của ai.
+   */
+  const mentionMembers: MentionMember[] = useMemo(
+    () =>
+      members
+        .filter((m) => m.name?.trim())
+        .map((m) => ({ id: m.id, name: m.name as string, accountName: m.accountName })),
+    [members],
+  );
+  // Không ai tự gõ "@" để tag chính mình.
+  const suggest = useMemo(
+    () => mentionMembers.filter((m) => m.id !== selfId),
+    [mentionMembers, selfId],
+  );
+
   const addNote = trpc.interaction.addNote.useMutation({
     onSuccess: () => {
       setDraft("");
-      utils.interaction.forTargets.invalidate(queryInput);
+      /*
+       * Làm mới MỌI lô, không riêng lô của mình.
+       *
+       * Cùng một luồng ghi chú hiện ở hai nơi — thẻ ngoài danh sách đọc theo
+       * lô 50 id, modal chi tiết đọc một id — nên hai chỗ có hai query key.
+       * Chỉ gọi key của mình thì viết trong modal xong quay ra thẻ vẫn thấy
+       * luồng cũ.
+       */
+      utils.interaction.forTargets.invalidate();
     },
     onError: (err) => toast(readableFormError(err.message, "Chưa gửi được ghi chú"), "error"),
   });
@@ -103,7 +134,8 @@ export function NoteThread({
       if (ctx?.prev) utils.interaction.forTargets.setData(queryInput, ctx.prev);
       toast(readableFormError(err.message, "Chưa xoá được ghi chú"), "error");
     },
-    onSettled: () => utils.interaction.forTargets.invalidate(queryInput),
+    // Xoá cũng phải quét cả hai nơi — xem ghi chú ở addNote.
+    onSettled: () => utils.interaction.forTargets.invalidate(),
   });
 
   if (state === "loading") {
@@ -130,7 +162,7 @@ export function NoteThread({
 
   function submit() {
     if (!body || addNote.isPending) return;
-    addNote.mutate({ targetType, targetId, body });
+    addNote.mutate({ targetType, targetId, body, mentions: collectMentions(body, mentionMembers) });
   }
 
   return (
@@ -182,7 +214,7 @@ export function NoteThread({
                         )}
                       </div>
                       <p className="text-foreground/90 text-sm break-words whitespace-pre-wrap">
-                        {n.body}
+                        <MentionText text={n.body} members={mentionMembers} />
                       </p>
                     </div>
                   </li>
@@ -203,12 +235,14 @@ export function NoteThread({
             }}
           >
             <div className="min-w-0 flex-1">
-              <Input
+              <MentionField
                 value={draft}
+                onChange={setDraft}
+                members={mentionMembers}
+                suggest={suggest}
                 maxLength={MAX_LENGTH}
-                placeholder="Viết một ghi chú…"
+                placeholder="Viết một ghi chú… gõ @ để nhắc tên"
                 aria-label="Nội dung ghi chú"
-                onChange={(e) => setDraft(e.target.value)}
               />
             </div>
             <button

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { authorDisplayName, notifyMentions, notifyNewNote } from "@/server/lib/notify-mentions";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { MemoryModel } from "@/server/db/models/memory";
@@ -33,7 +34,7 @@ const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, "BAD_ID");
 const MAX_TARGETS = 50;
 
 type ReactionRow = { userId: string; emoji: string };
-type NoteRow = { id: string; userId: string; body: string; createdAt: Date };
+type NoteRow = { id: string; userId: string; body: string; mentions: string[]; createdAt: Date };
 type TargetInteractions = { reactions: ReactionRow[]; notes: NoteRow[] };
 
 /**
@@ -106,13 +107,14 @@ export const interactionRouter = router({
           .lean<{ targetId: string; userId: string; emoji: string }[]>(),
         NoteModel.find(filter)
           .sort({ createdAt: 1 })
-          .select("targetId userId body createdAt")
+          .select("targetId userId body mentions createdAt")
           .lean<
             {
               _id: unknown;
               targetId: string;
               userId: string;
               body: string;
+              mentions?: string[];
               createdAt: Date;
             }[]
           >(),
@@ -127,6 +129,7 @@ export const interactionRouter = router({
           id: String(n._id),
           userId: n.userId,
           body: n.body,
+          mentions: n.mentions ?? [],
           createdAt: n.createdAt,
         });
       }
@@ -197,6 +200,8 @@ export const interactionRouter = router({
         targetType: targetTypeInput,
         targetId: objectId,
         body: z.string().trim().min(1).max(NOTE_MAX_LENGTH),
+        /** Id người được nhắc — client tự tách ra từ chính chữ đã gõ. */
+        mentions: z.array(z.string().min(1).max(64)).max(4).default([]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -215,7 +220,46 @@ export const interactionRouter = router({
         targetId: input.targetId,
         userId: ctx.userId,
         body: input.body,
+        mentions: input.mentions,
       });
+
+      /*
+       * Nhắc tên dưới bài là cùng một sự kiện với nhắc tên ở chú thích.
+       *
+       * Nên nó đi cùng một đường và mang cùng `tag` theo kỷ niệm — một chuỗi
+       * năm ghi chú không được biến thành năm cái chuông riêng.
+       */
+      if (input.targetType === "memory") {
+        const memo = await MemoryModel.findOne({ _id: input.targetId, spaceId: ctx.spaceId })
+          .select("title")
+          .lean<{ title: string }>();
+        if (memo) {
+          if (input.mentions.length > 0) {
+            await notifyMentions({
+              memoryId: input.targetId,
+              title: memo.title,
+              authorId: ctx.userId,
+              mentioned: input.mentions,
+            });
+          }
+          /*
+           * Và người kia được biết là có ghi chú mới, kể cả khi không bị nhắc tên.
+           *
+           * Không có cái này thì luồng trò chuyện chỉ chạy được khi hai người
+           * tình cờ cùng mở app: viết xong nằm đó, người kia không có cách nào
+           * biết. `alreadyNotified` để ai vừa nhận chuông nhắc tên thì thôi —
+           * một dòng chữ không rung hai lần.
+           */
+          await notifyNewNote({
+            spaceId: ctx.spaceId,
+            memoryId: input.targetId,
+            title: memo.title,
+            authorId: ctx.userId,
+            authorName: await authorDisplayName(ctx.userId, ctx.spaceId),
+            alreadyNotified: input.mentions,
+          });
+        }
+      }
 
       return {
         targetId: input.targetId,

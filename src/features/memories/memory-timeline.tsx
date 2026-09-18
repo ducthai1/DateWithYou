@@ -7,7 +7,6 @@ import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { cldFull } from "@/lib/cloudinary-url";
 import { trpc } from "@/lib/trpc";
 import { MentionText } from "@/components/ui/mention-text";
-import { MemoryComments } from "./memory-comments";
 import { TagChip } from "@/components/ui/tag-chip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -200,6 +199,44 @@ export function MemoryTimeline() {
   const retryInteractions = (targetId: string) => {
     const i = interactions.batchByTarget[targetId];
     if (i !== undefined) void interactionQueries[i]?.refetch();
+  };
+
+  /*
+   * Ghi chú cho kỷ niệm đang mở trong modal.
+   *
+   * Thường thì nó nằm sẵn trong lô của feed và không tốn thêm request nào.
+   * Nhưng modal còn mở được TRỰC TIẾP từ thông báo (`/timeline?memory=<id>`),
+   * và kỷ niệm đó có thể chưa từng nằm trong trang nào của feed — đúng cái
+   * kịch bản của thông báo "bạn vừa được nhắc tên": bấm vào mà không thấy
+   * dòng vừa nhắc mình thì thông báo đó vô nghĩa. Nên có một truy vấn dự
+   * phòng đúng một id, chỉ bật khi thật sự cần.
+   */
+  const selectedId = selectedMemo?.id ?? null;
+  const selectedInBatch = !!selectedId && selectedId in interactions.byTarget;
+  const soloNoteInput: InteractionInput = {
+    targetType: "memory",
+    targetIds: selectedId ? [selectedId] : [],
+  };
+  const soloNotes = trpc.interaction.forTargets.useQuery(soloNoteInput, {
+    enabled: !!selectedId && !selectedInBatch,
+  });
+
+  const modalNoteInput = selectedInBatch && selectedId
+    ? interactions.inputByTarget[selectedId]
+    : soloNoteInput;
+  const modalNotes = selectedId
+    ? (interactions.byTarget[selectedId]?.notes ?? soloNotes.data?.[selectedId]?.notes ?? [])
+    : [];
+  const modalNoteState: InteractionState = selectedInBatch && selectedId
+    ? (interactions.stateByTarget[selectedId] ?? "ready")
+    : soloNotes.isError
+      ? "error"
+      : soloNotes.isPending
+        ? "loading"
+        : "ready";
+  const modalNoteRetry = () => {
+    if (selectedInBatch && selectedId) retryInteractions(selectedId);
+    else void soloNotes.refetch();
   };
 
   return (
@@ -583,15 +620,20 @@ export function MemoryTimeline() {
               )}
               {/* Last in the body, under the photos: the thread is about the
                   whole entry, so it reads after it rather than between the
-                  caption and the pictures it describes. */}
-              <MemoryComments
-                memoryId={selectedMemo.id}
-                members={members.filter((m) => m.name?.trim()).map((m) => ({
-                  id: m.id,
-                  name: m.name as string,
-                  accountName: m.accountName,
-                }))}
+                  caption and the pictures it describes.
+
+                  ĐÚNG luồng ghi chú của thẻ ngoài danh sách, không phải một
+                  luồng riêng. Một kỷ niệm có MỘT chỗ để nói chuyện; hai chỗ
+                  thì người ta viết vào chỗ này và người kia đọc chỗ kia. */}
+              <NoteThread
+                targetType="memory"
+                targetId={selectedMemo.id}
+                queryInput={modalNoteInput}
+                notes={modalNotes}
+                members={members}
                 selfId={selfId}
+                state={modalNoteState}
+                onRetry={modalNoteRetry}
               />
             </ModalContent>
             <ModalFooter>

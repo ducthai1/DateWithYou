@@ -24,13 +24,3 @@ export const UPLOAD_CONCURRENCY = 3;
 
 /** A per-photo note is a caption, not an essay — it sits under one picture. */
 export const MAX_PHOTO_CAPTION = 300;
-
-/**
- * A comment under a memory.
- *
- * Longer than a photo caption and shorter than the memory's own: it is a
- * sentence or two in reply, and the box it is typed into sits inside a modal
- * that already has a photo grid above it. The server enforces this; the field
- * shows a count as it approaches so nobody writes past it and loses the tail.
- */
-export const MAX_COMMENT = 500;
