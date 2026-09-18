@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 import { FadeScroll } from "@/components/ui/fade-scroll";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isPhotoViewerOpen } from "@/lib/photo-viewer-state";
 import { lockBodyScroll, releaseBodyScroll } from "@/lib/body-scroll-lock";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -209,6 +210,17 @@ export function Modal({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      /*
+       * Ảnh toàn màn hình nằm TRÊN mọi hộp thoại.
+       *
+       * Nó không phải một dialog shell nên nó không nằm trong chồng bên dưới;
+       * thiếu dòng này thì bấm back lúc đang xem ảnh trong một kỷ niệm sẽ đóng
+       * cả hai — cái ảnh và kỷ niệm đang mở. (Sự kiện của phần chặn back bắn
+       * vào `window` nên vốn đã không tới đây, nhưng đó là một chi tiết của
+       * thư viện chứ không phải một lời hứa; gác thêm ở đây để nếu nó đổi thì
+       * hỏng có tiếng.)
+       */
+      if (isPhotoViewerOpen()) return;
       /*
        * Only the dialog on top answers Escape.
        *

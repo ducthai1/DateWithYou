@@ -36,6 +36,7 @@ const SUITES = [
   { id: "day-plan", load: () => import("./day-plan.mjs") },
   { id: "nav-recover", load: () => import("./nav-position-recovery.mjs") },
   { id: "mentions", load: () => import("./mentions.mjs") },
+  { id: "back", load: () => import("./back-button.mjs") },
   { id: "invite", load: () => import("./invite.mjs") },
   { id: "onboarding", load: () => import("./onboarding.mjs") },
 ];

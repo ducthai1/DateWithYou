@@ -17,6 +17,8 @@ import { trpc } from "@/lib/trpc";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
 import { ToastProvider } from "@/components/ui/toast";
 import { PhotoProvider } from "react-photo-view";
+import { setPhotoViewerOpen } from "@/lib/photo-viewer-state";
+import { BackButtonGuard } from "@/components/layout/back-button-guard";
 import { RouteTrail } from "@/components/navigation/route-trail";
 
 // One Tap is browser-only (Google script + useSession). Load it client-side
@@ -162,9 +164,27 @@ export function Providers({
     <ToneProvider initialTone={initialTone}>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <PhotoProvider maskOpacity={0.8} speed={() => 300}>
+        <PhotoProvider
+          maskOpacity={0.8}
+          speed={() => 300}
+          /*
+           * Trình xem ảnh nằm ở GỐC cây nên nó không chết theo route.
+           *
+           * Đó là lý do bấm back lúc đang xem ảnh từng để lại một màn đen ghi
+           * "0/0": route đổi, ảnh bên trong unmount, lớp phủ ở lại. Nên trạng
+           * thái mở/đóng phải đi ra ngoài cho phần chặn back và cho Modal
+           * biết — xem `photo-viewer-state`.
+           */
+          onVisibleChange={(visible) => {
+            setPhotoViewerOpen(visible);
+            window.dispatchEvent(
+              new Event(visible ? "photo-viewer-open" : "photo-viewer-close"),
+            );
+          }}
+        >
           <SidebarProvider>
             <ToastProvider>
+              <BackButtonGuard />
               <GoogleOneTap />
               <SpaceGuard />
               <RouteTrail />
