@@ -184,6 +184,59 @@ export async function run({ base, profileDir, port, db, shotDir }) {
       );
       if (shotDir) await B.shot(`${shotDir}/nav-overlay-${h}.png`);
     }
+
+    /*
+     * Bấm một cảm xúc: tấm báo hiện ra phải NHÌN THẤY ĐƯỢC.
+     *
+     * Người dùng báo ba lần — "các thông báo này đang bị nằm phía dưới các nút
+     * button". Hai lần trước sửa trượt vì tưởng là z-index. Không phải: lúc
+     * đang đi, khung bản đồ là `z-[49]` còn lớp phủ điều hướng là `z-50`, hai
+     * NGỮ CẢNH XẾP CHỒNG khác nhau — nên tấm báo nằm trong bản đồ thì không
+     * con số nào ở trong đó nâng nó lên trên thanh điều khiển được.
+     *
+     * Nên bài này đo hai thứ, và cả hai đều là bất biến chứ không phải mỹ
+     * thuật: nó phải nằm NGOÀI cây bản đồ (cha là <body>), và hộp của nó
+     * không được chạm vào dải mà thanh điều khiển chiếm.
+     */
+    await B.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await new Promise((r) => setTimeout(r, 600));
+    await B.eval(`document.querySelector('[aria-label="Nóng quá!"]').click()`);
+    await new Promise((r) => setTimeout(r, 700));
+    const ping = JSON.parse(await B.eval(`(() => {
+      const el = [...document.querySelectorAll("div")].find(d =>
+        /Nóng quá/.test(d.textContent || "") && String(d.className).includes("border-2"));
+      /*
+       * Dải phải tránh là THANH ĐIỀU KHIỂN (Tạm dừng · Kết thúc), không phải
+       * hàng nút cảm xúc. Bản hỏng đặt tấm báo sát đáy màn — nó KHÔNG chạm
+       * hàng nút cảm xúc, nên đo nhầm chỗ thì bài kiểm xanh trong khi tấm báo
+       * vẫn nằm sau hai cái nút.
+       */
+      const pause = [...document.querySelectorAll("button")].find(b => /Tạm dừng/.test(b.textContent || ""));
+      let ctrl = pause;
+      while (ctrl && !/Kết thúc/.test(ctrl.textContent || "")) ctrl = ctrl.parentElement;
+      const dock = ctrl && ctrl.getBoundingClientRect();
+      const b = el && el.getBoundingClientRect();
+      return JSON.stringify({
+        found: !!el,
+        outsideMap: !!el && el.parentElement === document.body,
+        // Chồng lấn theo chiều dọc với dải của thanh điều khiển.
+        overlap: b && dock ? Math.max(0, Math.min(b.bottom, dock.bottom) - Math.max(b.top, dock.top)) : null,
+        banner: b ? { y: Math.round(b.top), bottom: Math.round(b.bottom) } : null,
+        dock: dock ? { y: Math.round(dock.top), bottom: Math.round(dock.bottom) } : null,
+      });
+    })()`));
+    ok("bấm cảm xúc thì có tấm báo hiện ra", ping.found === true);
+    ok(
+      "tấm báo nằm NGOÀI cây bản đồ, nên không bị lớp phủ điều hướng đè",
+      ping.outsideMap === true,
+      ping.outsideMap ? "" : "vẫn nằm trong bản đồ (z-[49]) — đúng lỗi cũ",
+    );
+    ok(
+      "tấm báo không chạm vào thanh Tạm dừng · Kết thúc",
+      ping.overlap === 0,
+      `chồng ${ping.overlap}px · báo=${JSON.stringify(ping.banner)} thanh=${JSON.stringify(ping.dock)}`,
+    );
+    if (shotDir) await B.shot(`${shotDir}/nav-ping-banner.png`);
   } finally {
     if (spaceId) await db.collection("navigationinvites").deleteMany({ spaceId }).catch(() => {});
     A.close();

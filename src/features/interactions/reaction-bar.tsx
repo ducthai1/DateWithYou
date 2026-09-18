@@ -135,6 +135,20 @@ export function ReactionBar({
     if (closeTimer.current) clearTimeout(closeTimer.current);
     openTimer.current = setTimeout(() => setPickerOpen(true), 140);
   };
+  /*
+   * Con trỏ đã vào tới hàng cảm xúc: huỷ hẹn giờ đóng.
+   *
+   * Thiếu đúng hàm này là cả bug. `onPointerLeave` nằm ở khung ngoài, còn
+   * hàng cảm xúc thì `absolute bottom-full` nên nó NẰM NGOÀI khung đó — rời
+   * nút là hẹn giờ đóng chạy, và vào tới hàng cảm xúc thì không có gì gọi lại
+   * `hoverOpen` để huỷ. Đo được: rê 10 bước từ tim lên bar thì tới bước 7 bar
+   * tắt, và đứng yên trên bar 900ms vẫn tắt.
+   */
+  const hoverKeep = () => {
+    if (!hoverCapable) return;
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    if (openTimer.current) clearTimeout(openTimer.current);
+  };
   const hoverClose = () => {
     if (!hoverCapable) return;
     if (openTimer.current) clearTimeout(openTimer.current);
@@ -377,6 +391,8 @@ export function ReactionBar({
       */}
       <ReactionPicker
         open={pickerOpen}
+        onPointerEnter={hoverKeep}
+        onPointerLeave={hoverClose}
         onClose={() => {
           setPickerOpen(false);
           setSlideTarget(null);
@@ -413,9 +429,14 @@ function ReactionPicker({
   highlight,
   onPick,
   onPromote,
+  onPointerEnter,
+  onPointerLeave,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Con trỏ vào tới đây thì huỷ hẹn giờ đóng — xem `hoverKeep`. */
+  onPointerEnter: () => void;
+  onPointerLeave: () => void;
   bar: ReactionEmoji[];
   chosen?: ReactionEmoji;
   /** The emoji currently under a sliding finger, if any. */
@@ -460,16 +481,34 @@ function ReactionPicker({
   };
 
   return (
+    /*
+     * Hai lớp, và lớp ngoài là CÂY CẦU.
+     *
+     * Hàng cảm xúc nổi lên trên nút một quãng. Trước đây quãng đó là `mb-1.5`
+     * — một khoảng trống không thuộc về ai, nên con trỏ đi từ nút lên hàng
+     * phải băng qua vùng chết, `pointerleave` bắn, và hàng biến mất giữa
+     * đường. Đo được: 10px, và bar tắt ở bước thứ 7 trên 10.
+     *
+     * Nay khoảng đó là `pb-1.5` của chính lớp ngoài: trong suốt, nhưng thuộc
+     * về hàng cảm xúc, nên con trỏ không bao giờ rời khỏi vùng nhận sự kiện.
+     * Hai tầng bảo vệ cùng lúc — cây cầu này, và `onPointerEnter` huỷ hẹn giờ
+     * — vì một mình cây cầu không cứu được cú rê chéo đi vòng ra ngoài mép.
+     */
     <div
       ref={popRef}
       role="dialog"
       aria-label="Chọn cảm xúc"
-      className={cn(
-        "border-border bg-card absolute bottom-full left-0 z-50 mb-1.5 rounded-full border p-1 shadow-xl",
-        "animate-in fade-in slide-in-from-bottom-1 duration-150 select-none [-webkit-touch-callout:none]",
-        more && "max-w-[19rem] rounded-2xl",
-      )}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      className="absolute bottom-full left-0 z-50 pb-1.5"
     >
+      <div
+        className={cn(
+          "border-border bg-card rounded-full border p-1 shadow-xl",
+          "animate-in fade-in slide-in-from-bottom-1 duration-150 select-none [-webkit-touch-callout:none]",
+          more && "max-w-[19rem] rounded-2xl",
+        )}
+      >
       <div className={cn("flex items-center gap-0.5", more && "flex-wrap")}>
         {(more ? rest : bar).map((emoji) => {
           const lit = highlight === emoji;
@@ -506,6 +545,7 @@ function ReactionPicker({
             <Plus className="h-4 w-4" aria-hidden />
           </button>
         )}
+      </div>
       </div>
     </div>
   );

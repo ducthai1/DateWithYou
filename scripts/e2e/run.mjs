@@ -37,6 +37,7 @@ const SUITES = [
   { id: "nav-recover", load: () => import("./nav-position-recovery.mjs") },
   { id: "mentions", load: () => import("./mentions.mjs") },
   { id: "back", load: () => import("./back-button.mjs") },
+  { id: "react-hover", load: () => import("./reaction-hover.mjs") },
   { id: "invite", load: () => import("./invite.mjs") },
   { id: "onboarding", load: () => import("./onboarding.mjs") },
 ];

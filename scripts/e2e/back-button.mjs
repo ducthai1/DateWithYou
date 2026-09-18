@@ -70,7 +70,22 @@ export async function run({ base, profileDir, port, db, shotDir }) {
         const before = await page.eval(`location.pathname + location.search`);
 
         await page.eval(`history.back()`);
-        await new Promise((r) => setTimeout(r, 900));
+        /*
+         * Chờ ĐIỀU KIỆN, không ngủ một con số.
+         *
+         * Đóng trình xem ảnh là: sự kiện phím → React đổi state → thư viện
+         * chạy hoạt ảnh 300ms → gỡ portal. Một giấc ngủ 900ms đủ khi máy rảnh
+         * và hụt khi cả bộ e2e đang chạy cùng dev server đang biên dịch — bài
+         * này đã đỏ đúng một lần như vậy rồi xanh khi chạy riêng, và "chạy
+         * riêng thì xanh" là kiểu lý lẽ che được race thật.
+         *
+         * Hết giờ mà chưa đóng thì cứ đo tiếp: assertion bên dưới mới là chỗ
+         * báo đỏ, và nó nói rõ trạng thái thấy được.
+         */
+        await page
+          .until(`!document.querySelector('${VIEWER}')`, { timeout: 8000 })
+          .catch(() => {});
+        await new Promise((r) => setTimeout(r, 250));
 
         const after = JSON.parse(await page.eval(`(() => JSON.stringify({
           viewer: !!document.querySelector('${VIEWER}'),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, memo, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { LocateFixed } from "lucide-react";
 import { readLastFix, rememberLastFix } from "@/lib/last-fix";
 import { AlertModal } from "@/components/ui/alert-modal";
@@ -681,6 +682,49 @@ function LocationMapViewImpl({
     applyEastSeaLabel(target as Parameters<typeof applyEastSeaLabel>[0]);
   }, []);
 
+  /*
+   * Báo cảm xúc: gắn thẳng vào <body>, KHÔNG nằm trong cây của bản đồ.
+   *
+   * Người dùng báo tới lần thứ ba, và hai lần trước sửa trượt vì tưởng là
+   * chuyện z-index. Không phải: lúc đang đi, khung bản đồ là
+   * `fixed inset-0 z-[49]` còn lớp phủ điều hướng (hàng nút cảm xúc, Tạm dừng,
+   * Kết thúc) là `fixed inset-0 z-50`. Hai NGỮ CẢNH XẾP CHỒNG khác nhau — nên
+   * `z-50` viết bên trong bản đồ vẫn nằm trọn dưới lớp phủ, và không con số
+   * nào ở trong đó cứu được. Ra khỏi cây là cách duy nhất.
+   *
+   * Và đặt ở GIỮA màn hình, không phải `bottom-4`: đáy là chỗ của thanh điều
+   * khiển, đỉnh là chỗ của bảng chỉ đường. Giữa không tranh với ai, và đó cũng
+   * là chỗ mắt đang nhìn khi chạy xe. `pointer-events-none` để nó không bao
+   * giờ ăn mất một cú chạm.
+   */
+  const pingOverlay =
+    typeof document === "undefined"
+      ? null
+      : createPortal(
+          <AnimatePresence>
+            {globalPing && (
+              <motion.div
+                key={globalPing.id}
+                initial={{ opacity: 0, scale: 0.6, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.6, y: -12 }}
+                transition={{ type: "spring", damping: 15, stiffness: 300 }}
+                className={cn(
+                  "pointer-events-none fixed top-1/2 left-1/2 z-[60] -translate-x-1/2 -translate-y-1/2",
+                  "flex items-center gap-2 rounded-full border-2 px-5 py-2.5 text-base font-bold shadow-2xl backdrop-blur-md md:text-lg",
+                  globalPing.fromPartner
+                    ? "border-rose-200 bg-white/95 text-rose-600"
+                    : "border-blue-200 bg-white/95 text-blue-600",
+                )}
+              >
+                <span className="text-2xl">{globalPing.emoji.split(" ")[0]}</span>
+                <span>{globalPing.emoji.split(" ").slice(1).join(" ")}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        );
+
   return (
     <div 
       className={cn("relative h-full min-h-[280px] overflow-hidden rounded-xl border border-border bg-card shadow-sm", className)}
@@ -688,6 +732,7 @@ function LocationMapViewImpl({
       onWheelCapture={handleInteraction}
       onTouchStartCapture={handleInteraction}
     >
+      {pingOverlay}
       {followGeo && isUserInteracting && (
         <button
           type="button"
@@ -927,26 +972,6 @@ function LocationMapViewImpl({
             />
           </Source>
         ) : null}
-
-        {/* ── GLOBAL PING OVERLAY (Always visible even if map is scrolled away) ── */}
-        <AnimatePresence>
-          {globalPing && (
-            <motion.div
-              key={globalPing.id}
-              initial={{ opacity: 0, scale: 0.5, y: globalPing.fromPartner ? -20 : 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.5, y: globalPing.fromPartner ? -20 : 20 }}
-              transition={{ type: "spring", damping: 15, stiffness: 300 }}
-              className={cn(
-                "absolute left-1/2 -translate-x-1/2 z-50 rounded-full px-5 py-2.5 text-base md:text-lg font-bold shadow-2xl border-2 backdrop-blur-md flex items-center gap-2",
-                globalPing.fromPartner ? "top-4 bg-white/95 border-rose-200 text-rose-600" : "bottom-4 bg-white/95 border-blue-200 text-blue-600"
-              )}
-            >
-              <span className="text-2xl">{globalPing.emoji.split(' ')[0]}</span>
-              <span>{globalPing.emoji.split(' ').slice(1).join(' ')}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {pins
           .filter((p) => p.geo)
