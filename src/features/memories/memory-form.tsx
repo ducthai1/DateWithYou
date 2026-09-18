@@ -14,6 +14,7 @@ import {
   type UploadedPhoto,
 } from "@/lib/cloudinary-upload";
 import { cldFull, cldThumb } from "@/lib/cloudinary-url";
+import { MAX_VIDEO_BYTES, videoPosterUrl } from "@/lib/upload-kind";
 import {
   MAX_PHOTOS_PER_MEMORY,
   MAX_PHOTO_CAPTION,
@@ -571,18 +572,20 @@ export function MemoryForm({
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              {uploading ? "Đang tải lên — chọn thêm được" : "Chạm để tải ảnh lên"}
+              {uploading ? "Đang tải lên — chọn thêm được" : "Chạm để tải ảnh hoặc video"}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {photos.length + pending.length >= MAX_PHOTOS_PER_MEMORY
-                ? `Đã đạt tối đa ${MAX_PHOTOS_PER_MEMORY} ảnh`
-                : `Ảnh gốc từ máy, không cần thu nhỏ trước. Tối đa ${MAX_PHOTOS_PER_MEMORY} ảnh.`}
+                ? `Đã đạt tối đa ${MAX_PHOTOS_PER_MEMORY} mục`
+                : `Ảnh gốc từ máy, không cần thu nhỏ trước. Video tối đa ${Math.round(MAX_VIDEO_BYTES / 1024 / 1024)} MB. Tối đa ${MAX_PHOTOS_PER_MEMORY} mục.`}
             </p>
           </div>
           <input
-            aria-label="Chọn ảnh từ máy"
+            aria-label="Chọn ảnh hoặc video từ máy"
             type="file"
-            accept="image/*"
+            /* Kỷ niệm vẫn luôn nói là lưu được video, mà ô này chỉ nhận ảnh —
+               nên không có cách nào chọn video, đúng như người dùng báo. */
+            accept="image/*,video/*"
             multiple
             className="hidden"
             onChange={(e) => onFiles(e.target.files)}
@@ -641,15 +644,33 @@ export function MemoryForm({
                 key={p.publicId}
                 className="border-border bg-card/60 relative flex flex-col gap-1.5 rounded-xl border p-1.5"
               >
-                <PhotoView src={cldFull(p.url)}>
-                  <img
-                    src={cldThumb(p.url, 300)}
-                    alt=""
-                    width={300}
-                    height={300}
-                    className="bg-muted aspect-square w-full cursor-zoom-in rounded-lg object-cover"
+                {p.resourceType === "video" ? (
+                  /* Thẻ <video> chứ không nhét vào trình xem ảnh: PhotoView
+                     phóng to một tấm ảnh, còn cái người ta muốn ở video là bấm
+                     play. `preload="metadata"` để có khung hình đầu và độ dài
+                     mà không tải cả file về chỉ để xem trước. */
+                  <video
+                    src={p.url}
+                    poster={videoPosterUrl(p.url)}
+                    // Trình đọc màn hình gặp một control không tên thì chỉ đọc
+                    // được "video" — dùng chính lời chú thích người ta vừa gõ.
+                    aria-label={p.caption || "Video vừa tải lên"}
+                    controls
+                    preload="metadata"
+                    playsInline
+                    className="bg-muted aspect-square w-full rounded-lg object-cover"
                   />
-                </PhotoView>
+                ) : (
+                  <PhotoView src={cldFull(p.url)}>
+                    <img
+                      src={cldThumb(p.url, 300)}
+                      alt=""
+                      width={300}
+                      height={300}
+                      className="bg-muted aspect-square w-full cursor-zoom-in rounded-lg object-cover"
+                    />
+                  </PhotoView>
+                )}
                 <div className="flex items-center gap-0.5">
                   <MentionField
                     suggest={mentionable}

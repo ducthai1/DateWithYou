@@ -51,6 +51,12 @@ const photo = z.object({
   height: emitted(z.number()),
   // Blank clears the note: photos are replaced wholesale, so an absent field is gone.
   caption: z.string().trim().max(MAX_PHOTO_CAPTION).nullish().transform((v) => v || undefined),
+  /*
+   * Mặc định "image" thay vì bắt buộc, để bản client cũ còn đang mở trong một
+   * tab nào đó vẫn lưu được — nó chưa biết gửi trường này.
+   */
+  resourceType: z.enum(["image", "video"]).default("image"),
+  duration: emitted(z.number().nonnegative()),
 });
 
 // Only the URL is accepted; embed metadata is derived server-side (deriveEmbeds).
@@ -145,12 +151,18 @@ function toItem(d: any) {
           width?: number;
           height?: number;
           caption?: string;
+          resourceType?: "image" | "video";
+          duration?: number;
         }) => ({
           url: p.url,
           publicId: p.publicId,
           width: p.width ?? null,
           height: p.height ?? null,
           caption: p.caption || null,
+          // Mọi kỷ niệm lưu trước hôm nay không có trường này, và "image" là
+          // câu trả lời đúng cho tất cả chúng.
+          resourceType: p.resourceType ?? "image",
+          duration: p.duration ?? null,
         }),
       ),
       mentions: ((d as { mentions?: string[] }).mentions ?? []),

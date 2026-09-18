@@ -15,6 +15,7 @@ export const EMBED_ASPECT: Record<EmbedProvider, number | null> = {
   spotify: null,
   tiktok: 9 / 16,
   instagram: 4 / 5,
+  upload: 16 / 9,
   other: 16 / 9,
 };
 
@@ -60,6 +61,27 @@ export function EmbedPlayer({ data, fill = false }: { data: EmbedData; fill?: bo
    * the frame just fills it. Keeping the provider heights below would make the
    * window either clip the frame or wrap it in dead space.
    */
+  /*
+   * File của chính mình thì phát thẳng, không qua iframe.
+   *
+   * Không có `embedUrl` nên nó sẽ rơi xuống nhánh thẻ-link ở dưới và biến một
+   * video vừa tải lên thành một dòng "bấm để mở tab mới" — trong khi đây là
+   * thứ duy nhất trong danh sách này KHÔNG cần tới bên thứ ba để phát.
+   */
+  if (data.provider === "upload") {
+    return (
+      <video
+        src={data.url}
+        poster={data.thumbnailUrl ?? undefined}
+        aria-label={data.title ?? "Video đã tải lên"}
+        controls
+        preload="metadata"
+        playsInline
+        className={fill ? "h-full w-full bg-black" : "bg-muted aspect-video w-full rounded-xl"}
+      />
+    );
+  }
+
   if (fill) {
     return (
       <iframe

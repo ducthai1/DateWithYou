@@ -5,7 +5,7 @@
 // iframe (no auth needed). Unknown links become a generic link card.
 
 export type EmbedProvider =
-  "youtube" | "spotify" | "tiktok" | "instagram" | "other";
+  "youtube" | "spotify" | "tiktok" | "instagram" | "upload" | "other";
 
 export type ParsedEmbed = {
   provider: EmbedProvider;
@@ -149,6 +149,24 @@ export function parseEmbed(rawUrl: string): ParsedEmbed {
   }
   const host = u.hostname.replace(/^www\./, "");
 
+  /*
+   * File do chính hai người tải lên.
+   *
+   * Nhận ra bằng host của kho lưu trữ CỘNG với `/video/upload/` trong đường
+   * dẫn — không nhận bằng đuôi `.mp4`, vì một link .mp4 ở máy chủ người khác
+   * vẫn là link đi mượn và không chắc phát được nhúng.
+   *
+   * Ảnh đại diện lấy bằng cách đổi đuôi sang .jpg, đúng cách kho này dựng khung
+   * hình đầu — rẻ hơn hẳn việc tự vẽ canvas ở máy người dùng.
+   */
+  if (host.endsWith("res.cloudinary.com") && u.pathname.includes("/video/upload/")) {
+    return {
+      ...base,
+      provider: "upload",
+      thumbnailUrl: rawUrl.replace(/\.(mp4|mov|m4v|webm|avi|mkv|3gp)$/i, ".jpg"),
+    };
+  }
+
   if (host.includes("youtube.com") || host.includes("youtu.be")) {
     const id = youtubeId(u);
     if (id)
@@ -225,5 +243,14 @@ export const PROVIDER_LABEL: Record<EmbedProvider, string> = {
   spotify: "Spotify",
   tiktok: "TikTok",
   instagram: "Instagram",
+  /*
+   * Một file do chính hai người tải lên, không phải link đi mượn.
+   *
+   * Cần một provider riêng chứ không gộp vào "other": "other" rơi về một thẻ
+   * link bấm ra tab mới, mà một video vừa tải lên thì phải xem ngay tại chỗ —
+   * và nó xem được, vì file nằm trên chính kho của mình chứ không sau một
+   * iframe của bên thứ ba.
+   */
+  upload: "Từ máy",
   other: "Link",
 };

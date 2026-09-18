@@ -10,6 +10,7 @@ import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
 import { useToast } from "@/components/ui/toast";
 import { normalizeUrl } from "@/lib/embed";
+import { UploadFromDevice, VIDEO_SIZE_HINT } from "@/components/ui/upload-from-device";
 
 export type MediaKind = "music" | "food_video" | "recipe" | "game";
 
@@ -91,16 +92,41 @@ export function MediaForm({
       <ModalContent className="space-y-5">
         <Input placeholder={isGame ? "Tên trò chơi" : "Tên"} value={title} onChange={(e) => setTitle(e.target.value)} />
         {!isRecipe && !isGame && (
-          <Input
-            placeholder="Link YouTube / Spotify / TikTok"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
+          /* Dán link HOẶC tải từ máy — trước đây chỉ có nửa đầu, nên một clip
+             tự quay phải đem lên YouTube trước mới lưu được vào đây. */
+          <div className="space-y-1.5">
+            <Input
+              placeholder="Link YouTube / Spotify / TikTok"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+            <div className="flex items-center gap-2">
+              <UploadFromDevice
+                accept="video/*"
+                label="Tải video từ máy"
+                onUploaded={setUrl}
+              />
+              <span className="text-muted-foreground text-[11px]">{VIDEO_SIZE_HINT}</span>
+            </div>
+          </div>
         )}
         {isRecipe && (
           <>
-            <Input placeholder="Link ảnh bìa (https)" value={cover} onChange={(e) => setCover(e.target.value)} />
-            <Input placeholder="Link video hướng dẫn (tuỳ chọn)" value={url} onChange={(e) => setUrl(e.target.value)} />
+            <div className="space-y-1.5">
+              <Input placeholder="Link ảnh bìa (https)" value={cover} onChange={(e) => setCover(e.target.value)} />
+              <UploadFromDevice accept="image/*" label="Tải ảnh bìa từ máy" onUploaded={setCover} />
+            </div>
+            <div className="space-y-1.5">
+              <Input placeholder="Link video hướng dẫn (tuỳ chọn)" value={url} onChange={(e) => setUrl(e.target.value)} />
+              <div className="flex items-center gap-2">
+                <UploadFromDevice
+                  accept="video/*"
+                  label="Tải video từ máy"
+                  onUploaded={setUrl}
+                />
+                <span className="text-muted-foreground text-[11px]">{VIDEO_SIZE_HINT}</span>
+              </div>
+            </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Input placeholder="Thời gian nấu (vd: 30 phút)" value={cookTime} onChange={(e) => setCookTime(e.target.value)} />
               <Input placeholder="Khẩu phần (vd: 2 người)" value={servings} onChange={(e) => setServings(e.target.value)} />

@@ -2,7 +2,14 @@
 // server mints. The file never travels through our server; the permission to
 // send it does. See routers/upload.ts for why an unsigned preset was not enough.
 
-import { MAX_UPLOAD_BYTES, prepareForUpload } from "@/lib/image-prepare";
+import { prepareForUpload } from "@/lib/image-prepare";
+import {
+  endpointFor,
+  maxBytesFor,
+  tooLargeMessage,
+  uploadKindOf,
+  type UploadKind,
+} from "@/lib/upload-kind";
 
 const CLOUD = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 
@@ -19,6 +26,16 @@ export type UploadedPhoto = {
   publicId: string;
   width?: number;
   height?: number;
+  /**
+   * Ảnh hay video.
+   *
+   * Không suy lại từ đuôi URL lúc hiển thị: một kỷ niệm lưu từ trước không có
+   * trường này, và mặc định "image" đúng với tất cả chúng — suy từ URL thì một
+   * ảnh tên `.mov.jpg` sẽ được vẽ bằng thẻ <video> và ra một ô đen.
+   */
+  resourceType?: UploadKind;
+  /** Giây, chỉ có ở video. */
+  duration?: number;
   /** A note written under this one picture. Carried with the draft, saved with it. */
   caption?: string;
 };
@@ -44,6 +61,7 @@ const RETRY_DELAYS_MS = [700, 2000];
 
 function post(
   file: File,
+  kind: UploadKind,
   ticket: UploadTicket,
   onProgress?: (fraction: number) => void,
   signal?: AbortSignal,
@@ -70,7 +88,14 @@ function post(
      * upload was working the whole time, but nothing on screen said so.
      */
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`);
+    /*
+     * Đúng endpoint của loại file.
+     *
+     * Gửi video vào `/image/upload` thì Cloudinary trả 400 kèm "Invalid image
+     * file" — đọc câu đó xong người ta tưởng cái video bị hỏng, chứ không nghĩ
+     * là mình gửi nhầm cửa.
+     */
+    xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD}/${endpointFor(kind)}/upload`);
     xhr.responseType = "json";
     xhr.timeout = 180_000;
 
@@ -85,7 +110,7 @@ function post(
       done();
       const body = xhr.response as
         | { secure_url?: string; public_id?: string; width?: number; height?: number;
-            error?: { message?: string } }
+            duration?: number; error?: { message?: string } }
         | null;
       if (xhr.status >= 200 && xhr.status < 300 && body?.secure_url && body.public_id) {
         onProgress?.(1);
@@ -94,6 +119,8 @@ function post(
           publicId: body.public_id,
           width: body.width,
           height: body.height,
+          resourceType: kind,
+          duration: typeof body.duration === "number" ? body.duration : undefined,
         });
         return;
       }
@@ -103,8 +130,8 @@ function post(
       reject(
         new UploadError(
           /file size too large/i.test(detail)
-            ? "Ảnh quá lớn so với giới hạn lưu trữ"
-            : detail || "Tải ảnh lên thất bại",
+            ? tooLargeMessage(kind)
+            : detail || (kind === "video" ? "Tải video lên thất bại" : "Tải ảnh lên thất bại"),
           retryable,
         ),
       );
@@ -140,9 +167,22 @@ export async function uploadToCloudinary(
     throw new UploadError("Cloudinary chưa cấu hình (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME)", false);
   }
 
-  const prepared = await prepareForUpload(input);
-  if (prepared.file.size > MAX_UPLOAD_BYTES) {
-    throw new UploadError("Ảnh quá lớn so với giới hạn lưu trữ", false);
+  const kind = uploadKindOf(input);
+  if (!kind) {
+    throw new UploadError("Chỉ nhận ảnh hoặc video thôi nhé", false);
+  }
+
+  /*
+   * Video KHÔNG đi qua bước chuẩn bị ảnh.
+   *
+   * `prepareForUpload` vẽ file lên canvas để resize và nén lại — với một video
+   * thì canvas chỉ lấy được MỘT khung hình, và thứ gửi đi sẽ là một tấm ảnh
+   * tĩnh mang tên .mp4. Nén video ở phía máy người dùng là việc của một thư
+   * viện khác hẳn; ở đây chỉ kiểm dung lượng rồi gửi nguyên bản.
+   */
+  const prepared = kind === "video" ? { file: input } : await prepareForUpload(input);
+  if (prepared.file.size > maxBytesFor(kind)) {
+    throw new UploadError(tooLargeMessage(kind), false);
   }
 
   /*
@@ -161,7 +201,7 @@ export async function uploadToCloudinary(
        * network.
        */
       const ticket = await opts.sign();
-      return await post(prepared.file, ticket, opts.onProgress, opts.signal);
+      return await post(prepared.file, kind, ticket, opts.onProgress, opts.signal);
     } catch (e) {
       lastError = e;
       if (!(e instanceof UploadError) || !e.retryable) throw e;

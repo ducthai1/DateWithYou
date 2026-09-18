@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/modal";
 import { PhotoView } from "react-photo-view";
 import { Photo } from "@/components/ui/photo";
+import { videoPosterUrl } from "@/lib/upload-kind";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmbedPlayer } from "@/components/ui/embed-player";
@@ -30,7 +31,7 @@ import {
   type ReactionRow,
 } from "@/features/interactions/reaction-bar";
 import { NoteThread } from "@/features/interactions/note-thread";
-import { Edit, AlertTriangle, Trash2, PenLine } from "lucide-react";
+import { Edit, AlertTriangle, Trash2, PenLine, Play } from "lucide-react";
 
 type EmbedField = {
   provider: string;
@@ -352,20 +353,33 @@ export function MemoryTimeline() {
                         // away in the memory itself.
                         className="mt-2 grid grid-cols-4 gap-2"
                       >
-                        {m.photos.slice(0, 4).map((p: { url: string; publicId: string }) => (
+                        {m.photos.slice(0, 4).map((p: { url: string; publicId: string; resourceType?: string }) => (
                           /*
                            * A square crop from Cloudinary, not the original.
                            * These are ~120px on screen and were being fed the
                            * full upload — three multi-megabyte phone photos per
                            * card, for a strip of thumbnails.
+                           *
+                           * Video ở dải này là KHUNG HÌNH ĐẦU kèm dấu play, không
+                           * phải thẻ <video>: bốn thẻ video tự tải metadata trong
+                           * một dòng tin cuộn được là bốn kết nối mạng cho thứ
+                           * chưa ai bấm vào.
                            */
-                          <Photo
-                            key={p.publicId}
-                            variant="thumb"
-                            src={p.url}
-                            alt={m.title}
-                            className="aspect-square w-full rounded-lg"
-                          />
+                          <div key={p.publicId} className="relative">
+                            <Photo
+                              variant="thumb"
+                              src={p.resourceType === "video" ? videoPosterUrl(p.url) : p.url}
+                              alt={m.title}
+                              className="aspect-square w-full rounded-lg"
+                            />
+                            {p.resourceType === "video" && (
+                              <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm">
+                                  <Play className="h-3.5 w-3.5 fill-white text-white" aria-hidden />
+                                </span>
+                              </span>
+                            )}
+                          </div>
                         ))}
                       </div>
                     )}
@@ -486,6 +500,7 @@ export function MemoryTimeline() {
                       width?: number | null;
                       height?: number | null;
                       caption?: string | null;
+                      resourceType?: string | null;
                     }) => (
                       /*
                        * Two sizes, not one. The dialog gets a version scaled to
@@ -504,6 +519,26 @@ export function MemoryTimeline() {
                          one picture belongs under that picture, not in the
                          paragraph written about all of them. */
                       <figure key={p.publicId} className="space-y-1">
+                        {p.resourceType === "video" ? (
+                          /* Ở màn chi tiết thì mới là thẻ <video> thật, vì đây
+                             là lúc người ta mở ra để xem. `preload="metadata"`
+                             giữ nguyên nguyên tắc ở trên: lấy khung hình đầu và
+                             độ dài, không kéo cả file về trước khi ai bấm. */
+                          <video
+                            src={p.url}
+                            poster={videoPosterUrl(p.url)}
+                            aria-label={p.caption || selectedMemo.title}
+                            controls
+                            preload="metadata"
+                            playsInline
+                            style={
+                              p.width && p.height
+                                ? { aspectRatio: `${p.width} / ${p.height}` }
+                                : { aspectRatio: "4 / 3" }
+                            }
+                            className="bg-muted w-full rounded-lg"
+                          />
+                        ) : (
                         <PhotoView src={cldFull(p.url)}>
                           <Photo
                             variant="preview"
@@ -519,6 +554,7 @@ export function MemoryTimeline() {
                             className="w-full cursor-zoom-in rounded-lg"
                           />
                         </PhotoView>
+                        )}
                         {p.caption && (
                           <figcaption className="text-muted-foreground px-0.5 text-xs leading-snug">
                             <MentionText text={p.caption} members={members} />

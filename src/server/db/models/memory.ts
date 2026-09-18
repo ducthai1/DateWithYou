@@ -8,6 +8,16 @@ const photoSchema = new Schema(
     height: { type: Number },
     /** What this one picture is, in the words of whoever put it here. */
     caption: { type: String },
+    /*
+     * Ảnh hay video.
+     *
+     * Mặc định "image" nên mọi kỷ niệm lưu từ trước đọc lên vẫn đúng — không
+     * cần migration. Không suy lại từ đuôi URL lúc hiển thị: một tấm ảnh đặt
+     * tên kiểu `clip.mov.jpg` sẽ bị vẽ bằng thẻ <video> và ra một ô đen.
+     */
+    resourceType: { type: String, enum: ["image", "video"], default: "image" },
+    /** Giây, chỉ có ở video — để hiện độ dài mà không phải tải file về đo. */
+    duration: { type: Number },
   },
   { _id: false },
 );
