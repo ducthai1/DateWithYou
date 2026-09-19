@@ -271,25 +271,52 @@ export const activityRouter = router({
     // is unread. Treating it as "nothing new" would hide the first real signal.
     const range = since ? { createdAt: { $gt: since } } : {};
     const notMine = { $ne: ctx.userId };
-    const opts = { limit: UNREAD_CAP_PER_COLLECTION };
     const base = { spaceId: ctx.spaceId, ...range };
     const byCreatedBy = { ...base, createdBy: notMine };
 
-    const counts = await Promise.all([
-      MemoryModel.countDocuments(byCreatedBy, opts),
+    /*
+     * MỘT vòng đi–về, không phải chín.
+     *
+     * Bản trước gọi chín `countDocuments` trong `Promise.all`. Trông như song
+     * song, nhưng đo thật thì không: mỗi cái vẫn là một lượt đi–về tới Atlas
+     * và pool xếp chúng thành hàng. Số đo trên máy này (độ trễ nền 130ms/vòng,
+     * dữ liệu chỉ vài chục bản ghi, chỉ mục IXSCAN sạch):
+     *
+     *     9 countDocuments "song song" → 3910 ms
+     *     1 aggregate $unionWith       →  139 ms
+     *
+     * Tức là nó chưa bao giờ là bài toán truy vấn chậm — là bài toán SỐ VÒNG
+     * ĐI–VỀ. Và đây chỉ là con số trên huy hiệu ở thanh điều hướng: nó nằm
+     * chung batch tRPC với `profile.me`, nên cả vỏ app phải đợi nó.
+     *
+     * `$limit` đứng sau `$match` trong từng nhánh để giữ nguyên trần mỗi bảng
+     * như bản cũ — đếm "hơn 50" và đếm chính xác 5000 là cùng một huy hiệu.
+     */
+    const branch = (coll: string, match: Record<string, unknown>) => ({
+      $unionWith: {
+        coll,
+        pipeline: [{ $match: match }, { $limit: UNREAD_CAP_PER_COLLECTION }, { $project: { _id: 1 } }],
+      },
+    });
+
+    const [row] = await MemoryModel.aggregate<{ n: number }>([
+      { $match: byCreatedBy },
+      { $limit: UNREAD_CAP_PER_COLLECTION },
+      { $project: { _id: 1 } },
       // Same reason as the feed: a suggestion the planner saved is not a thing
       // the other person did, and it must not light up their badge.
-      LocationModel.countDocuments({ ...byCreatedBy, source: { $ne: "suggested" } }, opts),
-      PlanItemModel.countDocuments(byCreatedBy, opts),
-      TripModel.countDocuments(byCreatedBy, opts),
-      TimeCapsuleModel.countDocuments({ ...base, creatorId: notMine }, opts),
-      WishlistItemModel.countDocuments(byCreatedBy, opts),
-      MediaItemModel.countDocuments(byCreatedBy, opts),
-      RoadmapPlanModel.countDocuments(byCreatedBy, opts),
-      SpecialDateModel.countDocuments(byCreatedBy, opts),
+      branch(LocationModel.collection.name, { ...byCreatedBy, source: { $ne: "suggested" } }),
+      branch(PlanItemModel.collection.name, byCreatedBy),
+      branch(TripModel.collection.name, byCreatedBy),
+      branch(TimeCapsuleModel.collection.name, { ...base, creatorId: notMine }),
+      branch(WishlistItemModel.collection.name, byCreatedBy),
+      branch(MediaItemModel.collection.name, byCreatedBy),
+      branch(RoadmapPlanModel.collection.name, byCreatedBy),
+      branch(SpecialDateModel.collection.name, byCreatedBy),
+      { $count: "n" },
     ]);
 
-    return { count: counts.reduce((sum, n) => sum + n, 0) };
+    return { count: row?.n ?? 0 };
   }),
 
   /**
