@@ -24,6 +24,16 @@
 body:has([data-chromeless]) [data-app-chrome] {
   display: none;
 }
+
+/*
+ * Trang 404 mang nền riêng, nên nền chung phải tắt.
+ *
+ * Cả hai đều là `fixed inset-0 -z-10`; để cả hai thì hai bức chồng lên nhau và
+ * lớp phủ đọc-được bị nhân đôi, ra một mảng tối hơn mọi trang khác.
+ */
+body:has([data-notfound]) [data-app-backdrop] {
+  display: none;
+}
 body:has([data-chromeless]) [data-app-main] {
   padding-left: 0;
   padding-bottom: 0;

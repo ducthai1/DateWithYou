@@ -69,8 +69,26 @@ export function AppBackdrop() {
   const hit = BY_PREFIX.find(([prefix]) => pathname.startsWith(prefix));
   const art = hit ? hit[1] : FALLBACK;
 
+  return <BackdropArt art={art} global />;
+}
+
+/**
+ * Cái nền, tách ra để một trang có thể tự chọn hình của mình.
+ *
+ * Trang 404 cần cái này: `AppBackdrop` chọn hình theo tiền tố đường dẫn, mà URL
+ * gõ sai thì hoặc trúng tiền tố của khu vực nó định vào, hoặc rơi vào hình dự
+ * phòng — cả hai đều là "mượn nền của chỗ khác", đúng như chủ repo mô tả. Một
+ * trang không tìm thấy thì nên có mặt mũi riêng.
+ */
+export function BackdropArt({ art, global: isGlobal }: { art: ArtName; global?: boolean }) {
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div
+      aria-hidden="true"
+      // Chỉ bản dùng chung mới mang cờ này; trang tự mang nền riêng thì không,
+      // để luật tắt trong globals.css không tắt nhầm chính nó.
+      data-app-backdrop={isGlobal ? "" : undefined}
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+    >
       <ToneArt
         name={art}
         fill

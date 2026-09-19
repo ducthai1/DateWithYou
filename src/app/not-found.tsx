@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Compass } from "lucide-react";
+import { BackdropArt } from "@/components/theme/app-backdrop";
 
 export const metadata: Metadata = {
   title: "Không tìm thấy",
@@ -25,8 +26,20 @@ export default async function NotFound() {
     <div
       // Read by globals.css to strip the app chrome for a signed-out visitor.
       data-chromeless={signedIn ? undefined : ""}
+      /*
+       * Và để nền chung tự tắt đi, nhường chỗ cho nền riêng ngay bên dưới.
+       *
+       * `AppBackdrop` chọn hình theo tiền tố đường dẫn, nên một URL gõ sai hoặc
+       * trúng hình của khu vực nó định vào, hoặc rơi vào hình dự phòng — kiểu
+       * nào cũng là mượn nền chỗ khác, và trang báo "không tìm thấy" lại trông
+       * y như trang vừa rời đi.
+       */
+      data-notfound=""
       className="mx-auto flex w-full max-w-[560px] flex-col items-center gap-4 px-4 py-16 text-center"
     >
+      {/* Chiếc la bàn rỗng: đúng nghĩa lạc đường, và là hình app đã có sẵn cho
+          các trạng thái trống nên không cần thêm asset mới. */}
+      <BackdropArt art="emptyCompass" />
       <span
         className="bg-accent-soft flex h-16 w-16 items-center justify-center rounded-full"
         aria-hidden="true"

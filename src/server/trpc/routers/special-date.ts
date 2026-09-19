@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { readUserBirthday, setUserBirthday } from "@/server/lib/birthday-sync";
+import { readUserBirthday, setUserBirthday, withCurrentBirthdayNames } from "@/server/lib/birthday-sync";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { patchOf } from "@/server/trpc/patch-input";
@@ -22,16 +22,23 @@ export const specialDateRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     await connectToDatabase();
     const docs = await SpecialDateModel.find({ spaceId: ctx.spaceId }).lean();
-    return docs
-      .map((d) => ({
+    /*
+     * Tên người trong dòng sinh nhật dựng lại lúc ĐỌC, không tin chuỗi đã lưu —
+     * xem `withCurrentBirthdayNames`.
+     */
+    const named = await withCurrentBirthdayNames(
+      ctx.spaceId,
+      docs.map((d) => ({
         id: String(d._id),
         title: d.title as string,
+        birthdayOf: (d.birthdayOf as string | undefined) ?? null,
         date: d.date as string,
         recurYearly: Boolean(d.recurYearly),
         icon: (d.icon as string) ?? null,
         daysUntil: daysUntil(d.date as string, Boolean(d.recurYearly)),
-      }))
-      .sort((a, b) => a.daysUntil - b.daysUntil);
+      })),
+    );
+    return named.sort((a, b) => a.daysUntil - b.daysUntil);
   }),
 
   /** Your own birthday — the one row in this space tagged to you. */

@@ -10,6 +10,7 @@ import { TimeCapsuleModel } from "@/server/db/models/time-capsule";
 import { addDaysKey, dateKeyFromDate, daysBetweenKeys, saigonMidnightUtc, todayKey } from "@/lib/date-keys";
 import { BUCKET_ORDER, type BucketKey } from "@/lib/plan-meta";
 import { pickNextUp } from "@/lib/next-up";
+import { withCurrentBirthdayNames } from "@/server/lib/birthday-sync";
 
 /**
  * Aggregates the "Hôm nay" home screen in ONE round-trip.
@@ -116,6 +117,8 @@ type TripDoc = {
 type SpecialDoc = {
   _id: unknown;
   title: string;
+  /** Có giá trị ⇒ đây là dòng sinh nhật, và tên trong tiêu đề phải dựng lại lúc đọc. */
+  birthdayOf?: string | null;
   date: string;
   recurYearly?: boolean;
   icon?: string;
@@ -163,12 +166,18 @@ export const dashboardRouter = router({
 
     const [space, specials, onThisDayDocs, planDocs, capsuleDocs, anyMemory, anyPlan, tripDocs, futureTrips] =
       await Promise.all([
-        SpaceModel.findById(ctx.spaceId).select("anniversaryDate").lean<{
+        /*
+         * `memberProfiles` đi ké truy vấn này, không tách thành một truy vấn
+         * riêng: đây là màn hình đầu tiên, và một vòng đi-về thừa ở đây là
+         * 130ms thật — xem `activity.unreadCount`.
+         */
+        SpaceModel.findById(ctx.spaceId).select("anniversaryDate memberProfiles").lean<{
           anniversaryDate?: Date;
+          memberProfiles?: { userId: string; nickname?: string }[];
         } | null>(),
 
         SpecialDateModel.find({ spaceId: ctx.spaceId })
-          .select("title date recurYearly icon")
+          .select("title date recurYearly icon birthdayOf")
           .limit(MAX_SPECIAL_DATES)
           .lean<SpecialDoc[]>(),
 
@@ -294,8 +303,14 @@ export const dashboardRouter = router({
      * The choice itself lives in lib/next-up.ts, shared with the calendar's
      * countdown chip so the two can never disagree about what is next.
      */
+    // Tên trong dòng sinh nhật dựng lại từ hồ sơ hiện tại — xem `withCurrentBirthdayNames`.
+    const namedSpecials = await withCurrentBirthdayNames(
+      ctx.spaceId,
+      specials,
+      space?.memberProfiles ?? null,
+    );
     const nextUp = pickNextUp(
-      specials.map((s) => ({
+      namedSpecials.map((s) => ({
         title: s.title,
         date: s.date,
         recurYearly: Boolean(s.recurYearly),

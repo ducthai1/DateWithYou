@@ -74,13 +74,58 @@ export async function seedBirthdayRow(spaceId: string, userId: string, date?: st
     .select("memberProfiles")
     .lean<{ memberProfiles?: { userId: string; nickname?: string }[] }>();
   const nickname = (space?.memberProfiles ?? []).find((p) => p.userId === userId)?.nickname;
-  const who = nickname || me?.name || "bạn";
   await SpecialDateModel.updateOne(
     { spaceId, birthdayOf: userId },
     {
-      $set: { title: `Sinh nhật ${who}`, date: birthday, recurYearly: true, icon: "cake" },
+      $set: { title: birthdayTitle(nickname || me?.name), date: birthday, recurYearly: true, icon: "cake" },
       $setOnInsert: { spaceId, birthdayOf: userId, createdBy: userId },
     },
     { upsert: true },
   );
 }
+
+/** Một chỗ dựng chuỗi, để nơi ghi và nơi đọc không bao giờ lệch nhau. */
+export function birthdayTitle(who: string | null | undefined): string {
+  return `Sinh nhật ${who?.trim() || "bạn"}`;
+}
+
+/**
+ * Dựng lại tiêu đề dòng sinh nhật từ HỒ SƠ HIỆN TẠI, ngay lúc đọc.
+ *
+ * Tiêu đề dòng sinh nhật mang tên nằm NGAY TRONG chuỗi đã lưu. Ghi lại lúc đổi
+ * biệt danh là cần, nhưng không đủ: mọi dòng viết TRƯỚC bản sửa ấy vẫn đọc ra
+ * tên cũ mãi mãi, và chủ repo gặp đúng thế trên production — lịch và màn Hôm
+ * nay vẫn gọi tên cũ sau khi đã đổi. Một lần dọn dữ liệu chỉ chữa được quá khứ
+ * đã biết; dựng lại lúc đọc thì không bao giờ lệch được nữa, kể cả với dòng do
+ * bản cũ ghi hay do một đường ghi nào chưa nghĩ tới.
+ *
+ * Không tốn thêm vòng đi-về nào khi không có dòng sinh nhật nào trong tay —
+ * đây nằm trên đường đi của màn hình đầu tiên, và một truy vấn thừa ở đó là
+ * 130ms thật (xem `activity.unreadCount`).
+ */
+export async function withCurrentBirthdayNames<
+  T extends { title: string; birthdayOf?: string | null },
+>(spaceId: string, rows: T[], profiles?: MemberNickname[] | null): Promise<T[]> {
+  const ids = [...new Set(rows.map((r) => r.birthdayOf).filter((v): v is string => Boolean(v)))];
+  if (!ids.length) return rows;
+
+  const [space, accounts] = await Promise.all([
+    profiles
+      ? null
+      : SpaceModel.findById(spaceId)
+          .select("memberProfiles")
+          .lean<{ memberProfiles?: MemberNickname[] } | null>(),
+    resolveMemberProfiles(ids),
+  ]);
+  const nick = new Map(
+    (profiles ?? space?.memberProfiles ?? []).map((p) => [p.userId, p.nickname]),
+  );
+  const account = new Map(accounts.map((a) => [a.id, a.name]));
+  return rows.map((r) =>
+    r.birthdayOf
+      ? { ...r, title: birthdayTitle(nick.get(r.birthdayOf) || account.get(r.birthdayOf)) }
+      : r,
+  );
+}
+
+export type MemberNickname = { userId: string; nickname?: string };
