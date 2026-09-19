@@ -367,8 +367,11 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
         */}
         <Link
           href={withInvite(isSignUp ? "/sign-in" : "/sign-up")}
-          className="font-medium"
-          style={{ color: "var(--accent)" }}
+          /* `--accent` là màu NỀN nút; làm chữ trên nền sáng thì nó chỉ đạt
+             4.33. `--accent-ink` là token dành riêng cho chữ — xem ghi chú ở
+             globals.css. Đây là chỗ duy nhất trong app còn đặt màu chữ bằng
+             biến thô, nên bộ quét tìm ra sau cùng. */
+          className="text-accent-ink font-medium"
         >
           {isSignUp ? "Đăng nhập" : "Đăng ký"}
         </Link>

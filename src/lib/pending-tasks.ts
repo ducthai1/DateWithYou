@@ -20,6 +20,12 @@ export type PendingTask = {
 
 export const PENDING_TASKS: PendingTask[] = [
   {
+    title: "Bài kiểm nút back đỏ chập chờn khoảng 1/3 lần",
+    why: "Bài “back đóng trình xem ảnh” lúc xanh lúc đỏ, và đỏ y hệt trên cây chưa sửa gì — nên là một cuộc đua trong chính bài kiểm, không phải lỗi sản phẩm. Nhưng còn để vậy thì cổng kiểm mất tin cậy.",
+    area: "kiểm thử",
+    weight: "vừa",
+  },
+  {
     title: "Màn đăng ký không kịp hiện trên máy chậm",
     why: "Bộ kiểm tự động của luồng người mới đỏ từ trước: trang /sign-up qua bốn lần thử vẫn chưa sẵn sàng để bấm. Chưa rõ có ảnh hưởng người thật không.",
     area: "kiểm thử",

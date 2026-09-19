@@ -97,11 +97,7 @@ export function Onboarding() {
           className="hidden h-16 w-16 items-center justify-center rounded-2xl short:flex"
           style={{ background: "var(--accent-soft)" }}
         >
-          <Users
-            className="h-8 w-8"
-            style={{ color: "var(--accent)" }}
-            aria-hidden="true"
-          />
+          <Users className="text-accent-ink h-8 w-8" aria-hidden="true" />
         </div>
       </div>
 
@@ -144,11 +140,7 @@ export function Onboarding() {
             className="relative z-10 hidden h-12 w-12 items-center justify-center rounded-2xl short:flex lg:hidden"
             style={{ background: "var(--accent-soft)" }}
           >
-            <Users
-              className="h-6 w-6"
-              style={{ color: "var(--accent)" }}
-              aria-hidden="true"
-            />
+            <Users className="text-accent-ink h-6 w-6" aria-hidden="true" />
           </div>
 
           {/* Wordmark */}
@@ -218,8 +210,8 @@ export function Onboarding() {
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: "var(--accent)" }}>
-                        <Users className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
+                      <div className="text-accent-ink flex items-center gap-1.5 text-sm font-medium" >
+                        <Users className="h-3.5 w-3.5"  />
                         {createStep === 1 ? "Tên không gian của tụi mình" : "Mật khẩu không gian"}
                       </div>
                       {createStep === 2 && (
@@ -287,7 +279,7 @@ export function Onboarding() {
               ) : (
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: "var(--accent)" }}>
+                    <div className="text-accent-ink flex items-center gap-1.5 text-sm font-medium" >
                       <Link2 className="h-3.5 w-3.5" />
                       Vào không gian có sẵn
                     </div>
