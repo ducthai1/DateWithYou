@@ -528,9 +528,19 @@ export function LocationsPage() {
    * biến quay liên tục thì tốn pin và ngoài lúc đó không ai hỏi câu này.
    */
   const compass = useDeviceHeading(nav.isNavigating);
+  /*
+   * Chỉ quyết định NGUỒN ở đây, còn GÓC thì không.
+   *
+   * Nguồn đổi hiếm — chỉ khi vượt qua ngưỡng 3 km/h — nên nó đi qua React thoải
+   * mái. Góc thì đổi 60 lần/giây, và trước đây nó cũng đi qua React: mỗi sự
+   * kiện la bàn render lại cả trang này lẫn `LocationMapView` chỉ để đổi một
+   * cái `transform`. Bóp CPU 6× cho giống điện thoại thì đo được 6 fps và
+   * 3301ms bị chặn trên 4 giây; tắt luồng la bàn đi còn 39 fps. Nên góc đi
+   * thẳng xuống bản đồ qua ref + đăng ký nhận, và tự ghi vào DOM.
+   */
   const facing = pickHeading({
     gpsHeading: nav.heading,
-    compassHeading: compass.compassHeading,
+    compassHeading: compass.hasHeading ? compass.headingRef.current : null,
     speedKmh: nav.speedKmH,
   });
 
@@ -2391,6 +2401,8 @@ export function LocationsPage() {
           routeGeometry={routeGeometry}
           routeTravelledFraction={travelledFraction}
           facingHeading={facing?.deg ?? null}
+          facingSource={facing?.source ?? null}
+          subscribeHeading={compass.subscribe}
           legGeometries={legGeometries}
           currentLegIndex={currentLegIndex}
           partnerRouteGeometry={partnerRouteGeometry}

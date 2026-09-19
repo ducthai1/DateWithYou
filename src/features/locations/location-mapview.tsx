@@ -139,6 +139,8 @@ function LocationMapViewImpl({
   followGeo,
   heading,
   facingHeading,
+  facingSource,
+  subscribeHeading,
   userAvatar,
   partnerAvatar,
   partnerName = "Người kia",
@@ -182,6 +184,13 @@ function LocationMapViewImpl({
    * khi đứng yên, vì nó đến từ la bàn chứ không từ vận tốc GPS.
    */
   facingHeading?: number | null;
+  /** Góc này đến từ GPS hay la bàn — đổi hiếm, đi qua React được. */
+  facingSource?: "gps" | "compass" | null;
+  /**
+   * Đăng ký nhận góc la bàn. Góc đổi 60 lần/giây nên nó KHÔNG đi qua props:
+   * phễu tự ghi `transform` vào DOM, React đứng ngoài. Xem `use-device-heading`.
+   */
+  subscribeHeading?: (cb: (deg: number) => void) => () => void;
   userAvatar?: string;
   partnerAvatar?: string;
   /** What to call them on the map. Falls back only in a space of one. */
@@ -220,6 +229,40 @@ function LocationMapViewImpl({
    * lần render giảm đi vài chục lần.
    */
   const [mapBearing, setMapBearing] = useState(0);
+
+  /*
+   * Phễu hướng nhìn tự xoay, ngoài React.
+   *
+   * Hai thứ nuôi cái góc này đều đổi ~60 lần/giây: la bàn của máy, và góc xoay
+   * của bản đồ khi camera bám theo. Cho cả hai chạy qua state nghĩa là render
+   * lại cả cây bản đồ 60 lần/giây để đổi đúng một chuỗi `rotate(...)`. Đo khi
+   * bóp CPU 6× cho giống điện thoại: 6 fps, 3301ms bị chặn trên 4 giây; bỏ
+   * luồng la bàn ra thì 39 fps. Ghi thẳng vào DOM trong một khung hình là cách
+   * duy nhất giữ được cả hai: phễu bám sát tay, mà bản đồ vẫn mượt.
+   */
+  const coneRef = useRef<SVGSVGElement | null>(null);
+  useEffect(() => {
+    const el = coneRef.current;
+    if (!el || !subscribeHeading || facingSource !== "compass") return;
+    let deg: number | null = null;
+    let frame = 0;
+    const paint = () => {
+      frame = 0;
+      if (!coneRef.current || deg === null) return;
+      const bearing = mapRef.current?.getMap?.()?.getBearing?.() ?? 0;
+      coneRef.current.style.transform = `rotate(${screenRotation(deg, bearing)}deg)`;
+    };
+    // Gộp mọi sự kiện đến trong cùng một khung hình thành MỘT lần ghi.
+    const onDeg = (next: number) => {
+      deg = next;
+      if (!frame) frame = requestAnimationFrame(paint);
+    };
+    const off = subscribeHeading(onDeg);
+    return () => {
+      off();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [subscribeHeading, facingSource]);
   const bearingRef = useRef(0);
   /*
    * Read once, at mount — this component is client-only (`ssr: false`).
@@ -1075,13 +1118,17 @@ function LocationMapViewImpl({
                 */}
                 {facingHeading != null && (
                   <svg
+                    ref={coneRef}
                     width="120"
                     height="120"
                     viewBox="0 0 120 120"
                     className="pointer-events-none absolute"
                     style={{
+                      // Góc ban đầu; từ đây trở đi `useEffect` bên dưới ghi
+                      // thẳng vào `style.transform` mỗi khung hình.
                       transform: `rotate(${screenRotation(facingHeading, mapBearing)}deg)`,
                       transformOrigin: "60px 60px",
+                      willChange: "transform",
                     }}
                     aria-hidden="true"
                   >
