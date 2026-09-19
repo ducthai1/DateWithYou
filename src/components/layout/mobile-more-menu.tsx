@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Lock, MoreHorizontal, Newspaper } from "lucide-react";
+import { BookOpen, Lock, MoreHorizontal, Newspaper, ScrollText, ListTodo } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { NAV_ITEMS } from "./nav-items";
 import { trpc } from "@/lib/trpc";
@@ -50,7 +50,13 @@ export function MobileMoreMenu({ className }: { className?: string }) {
   const items = [
     ...NAV_ITEMS.filter((it) => it.mobileHidden && !IN_HEADER.includes(it.href)),
     ...EXTRA,
-    ...(isAdmin ? [{ href: "/admin/blog", label: "Quản lý Blog", Icon: Newspaper }] : []),
+    ...(isAdmin
+      ? [
+          { href: "/admin/blog", label: "Quản lý Blog", Icon: Newspaper },
+          { href: "/admin/changelog", label: "Nhật ký phát hành", Icon: ScrollText },
+          { href: "/admin/tasks", label: "Việc đang chờ", Icon: ListTodo },
+        ]
+      : []),
   ];
   if (items.length === 0) return null;
 
@@ -92,7 +98,7 @@ export function MobileMoreMenu({ className }: { className?: string }) {
                     // these sit close together.
                     "flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors",
                     active
-                      ? "bg-accent-soft text-accent"
+                      ? "bg-accent-soft text-accent-ink"
                       : "text-foreground hover:bg-muted active:bg-muted",
                   )}
                 >
