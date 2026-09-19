@@ -2187,6 +2187,62 @@ export function LocationsPage() {
             */}
             <div className="flex min-h-0 flex-1 items-center justify-end overflow-y-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <div className="flex flex-col items-center gap-2">
+            {/*
+              Cảm xúc gửi cho người kia — CỘT BÊN PHẢI, dưới bảng km.
+
+              Từng bị chuyển sang một hàng ngang căn giữa để chữa lỗi "nút cuối
+              tụt xuống dưới thanh điều khiển". Chữa được lỗi đó nhưng hỏng thứ
+              quan trọng hơn: người đang cầm lái với tới mép phải bằng ngón cái,
+              còn giữa màn thì phải buông tay. Chủ repo báo lại đúng điều đó.
+
+              Nằm trong hàng giữa `flex-1` — tức là phần CÒN LẠI giữa bảng chỉ
+              đường và thanh điều khiển — nên nó không thể mọc đè lên cái nào,
+              dù cái nào phình ra. Đó mới là thứ chặn lỗi cũ; đưa ra giữa màn
+              chưa bao giờ là điều kiện cần.
+
+              Không có nhãn chữ ở đây: trong một cột hẹp sát mép phải, dòng
+              "Gửi cảm xúc cho <tên>" chiếm gần hết bề ngang màn. Mỗi nút giữ
+              `title` + `aria-label` riêng.
+            */}
+            {isCompanionTrip && (
+              /*
+               * `pointer-events-auto` cấp cho ĐÚNG khối nút, không cấp cho cả cột.
+               *
+               * Lớp phủ điều hướng là `pointer-events-none` để bản đồ dưới nó
+               * vẫn kéo–thả được; con nào muốn nhận chạm thì tự xin lại. Hộp
+               * dock cũ có sẵn nên khối này thừa hưởng, chuyển sang cột phải là
+               * mất — bộ kiểm báo cả bốn nút `covered ← canvas:Map`, tức nhìn
+               * thấy mà bấm không ăn, đúng cái "bấm vào cứ cảm giác như không
+               * có gì xảy ra" ban đầu.
+               *
+               * Và cấp cho khối chứ không cấp cho cột: cột là một dải trong
+               * suốt chạy dọc mép phải, cấp ở đó là nó nuốt mọi cú kéo bản đồ
+               * trong cả dải ấy.
+               */
+              <div className="pointer-events-auto flex shrink-0 flex-col items-center gap-2">
+                {PING_BUTTONS.map((p) => (
+                  <button
+                    key={p.action}
+                    onClick={() => void sendPing(p.action)}
+                    disabled={pingCooling}
+                    title={p.label}
+                    aria-label={p.label}
+                    className={cn(
+                      // 48px: tay đang cầm lái, ngón cái không ngắm được vào
+                      // một vòng tròn 40px đang rung.
+                      "flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-xl shadow-lg transition-all hover:bg-muted active:scale-90",
+                      p.urgent && "border-2 border-rose-400",
+                      // The guard refuses a second ping for 2.5s. Showing that
+                      // refusal beats the old behaviour, where the button looked
+                      // live and simply did nothing.
+                      pingCooling && "scale-95 opacity-40",
+                    )}
+                  >
+                    {p.emoji}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Floating Speed Indicator */}
             {nav.speedKmH != null && (
               <div 
@@ -2208,54 +2264,6 @@ export function LocationsPage() {
                 the reroute banner, the leg progress row and an error line all
                 come and go from this stack. */}
             <div ref={navDockRef} className="pointer-events-auto flex flex-col items-center">
-              {/*
-                Cảm xúc gửi cho người kia — MỘT HÀNG NGANG, ngay trên dock.
-
-                Trước đây chúng xếp dọc trong cột bên phải. Cột đó
-                `overflow-y-auto`, nên trên màn ngắn cái cuối cùng tụt xuống và
-                phải cuộn mới tới — giữa lúc đang chạy xe. Người dùng báo là "bị
-                nút Tạm dừng và Kết thúc che mất", và đó đúng là cảm giác của
-                một nút phải cuộn mới thấy. Một hàng ngang thì chiều cao cố
-                định và nằm trong tầm ngón cái.
-
-                Nằm trong hộp mà `navDockRef` đo, nhưng NGOÀI thanh điều khiển.
-                Hai ràng buộc cùng lúc: `--nav-dock-h` phải tính cả hàng này,
-                nếu không tấm "🎉 Cùng xuất phát nào" hạ xuống đúng lên đầu mấy
-                cái nút; mà nhét hẳn vào trong thanh điều khiển thì phá bất biến
-                đã chốt từ trước — nút cảm xúc cuối cùng phải nằm TRÊN thanh đó.
-                Bọc là cách thoả cả hai, và thanh bên trong giữ nguyên ba lớp
-                `flex shrink-0 flex-col` mà bộ kiểm dùng để tìm nó.
-              */}
-              {isCompanionTrip && (
-                <div className="flex flex-col items-center gap-1.5 px-3 pb-1">
-                  <p className="rounded-full bg-black/35 px-2.5 py-0.5 text-[10px] font-semibold leading-tight text-white/90 backdrop-blur-sm">
-                    Gửi cảm xúc cho {partnerName}
-                  </p>
-                  <div className="flex items-center justify-center gap-2.5">
-                    {PING_BUTTONS.map((p) => (
-                      <button
-                        key={p.action}
-                        onClick={() => void sendPing(p.action)}
-                        disabled={pingCooling}
-                        title={p.label}
-                        aria-label={p.label}
-                        className={cn(
-                          // 48px: tay đang cầm lái, ngón cái không ngắm được
-                          // vào một vòng tròn 40px đang rung.
-                          "flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-xl shadow-lg transition-all hover:bg-muted active:scale-90",
-                          p.urgent && "border-2 border-rose-400",
-                          // The guard refuses a second ping for 2.5s. Showing that
-                          // refusal beats the old behaviour, where the button looked
-                          // live and simply did nothing.
-                          pingCooling && "scale-95 opacity-40",
-                        )}
-                      >
-                        {p.emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
               <div className="flex w-full shrink-0 flex-col items-center gap-2 p-4"
                    style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
               >
