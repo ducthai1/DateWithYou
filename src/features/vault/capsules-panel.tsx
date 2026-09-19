@@ -10,6 +10,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Lock, Unlock, Loader2, Hourglass } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { LoadFailed } from "@/components/ui/load-failed";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ToneArt } from "@/components/theme/tone-art";
 import { formatDistanceToNow, format } from "date-fns";
@@ -90,7 +91,7 @@ export function CapsulesPanel() {
         />
         <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-bold font-serif flex items-center gap-2">
-            <Hourglass className="h-5 w-5 text-accent shrink-0" /> Hộp Thời Gian
+            <Hourglass className="h-5 w-5 text-accent-ink shrink-0" /> Hộp Thời Gian
           </h2>
           <Button onClick={() => setFormOpen(true)} className="btn-sheen gap-2 rounded-full shadow-md bg-accent hover:bg-accent/90 text-white w-full sm:w-auto shrink-0">
             <Plus className="h-4 w-4" /> Giấu kỷ niệm
@@ -151,6 +152,10 @@ export function CapsulesPanel() {
         <div className="flex h-40 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
+      ) : list.isError ? (
+        /* Trước `length === 0`: lỗi cũng cho danh sách rỗng, và nhánh rỗng bên
+           dưới sẽ nói "Chưa có hộp nào" thay vì "chưa tải được". */
+        <LoadFailed what="các hộp thời gian" onRetry={() => void list.refetch()} retrying={list.isFetching} />
       ) : list.data?.length === 0 ? (
         <EmptyState
           art="vaultSafe"
@@ -216,7 +221,7 @@ export function CapsulesPanel() {
                     {isLocked ? (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Mở khóa sau</p>
-                        <p className="text-lg font-mono font-bold text-accent">
+                        <p className="text-lg font-mono font-bold text-accent-ink">
                           {formatDistanceToNow(new Date(capsule.unlockDate), { locale: vi, addSuffix: false })}
                         </p>
                       </div>

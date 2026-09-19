@@ -10,12 +10,15 @@ import { Modal, ModalHeader } from "@/components/ui/modal";
 import { TripForm } from "./trip-form";
 import { cn } from "@/lib/utils";
 import { TRIP_STATUS_META, tripDay } from "@/lib/trip-status";
+import { LoadFailed } from "@/components/ui/load-failed";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { ToneArt } from "@/components/theme/tone-art";
 
 export function TripList() {
-  const { data: trips, isLoading } = trpc.trip.list.useQuery();
+  const list = trpc.trip.list.useQuery();
+  const trips = list.data;
+  const isLoading = list.isLoading;
   const [formOpen, setFormOpen] = useState(false);
 
   return (
@@ -44,6 +47,12 @@ export function TripList() {
             <Skeleton className="h-64 rounded-2xl" />
             <Skeleton className="h-64 rounded-2xl" />
           </>
+        ) : list.isError ? (
+          /* Trước `!trips?.length`: lỗi cũng cho danh sách rỗng, và nhánh rỗng
+             bên dưới sẽ nói "Chưa có chuyến đi nào" thay vì "chưa tải được". */
+          <div className="col-span-full">
+            <LoadFailed what="danh sách chuyến đi" onRetry={() => void list.refetch()} retrying={list.isFetching} />
+          </div>
         ) : !trips?.length ? (
           // Was a hand-rolled block: dashed border, a 20%-opacity icon and two
           // <p>s. Every other empty screen in the app is <EmptyState/>, so this
@@ -123,10 +132,10 @@ export function TripList() {
                   <div className="flex h-full items-end relative z-10">
                     <div className="flex items-center gap-2.5">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/90 shadow-sm backdrop-blur-md">
-                        <Plane className="h-5 w-5 text-accent" />
+                        <Plane className="h-5 w-5 text-accent-ink" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-[11px] font-bold text-accent/90 uppercase tracking-wider bg-white/60 px-2 py-0.5 rounded-md backdrop-blur-sm shadow-sm">
+                        <span className="text-[11px] font-bold text-accent-ink/90 uppercase tracking-wider bg-white/60 px-2 py-0.5 rounded-md backdrop-blur-sm shadow-sm">
                           {diffDays === 1 ? "Trong ngày" : `${diffDays} ngày ${diffDays - 1} đêm`}
                         </span>
                       </div>
@@ -135,7 +144,7 @@ export function TripList() {
                 </div>
 
                 <div className="flex flex-1 flex-col p-5">
-                  <h3 className="mb-2 text-xl font-semibold text-foreground line-clamp-2 group-hover:text-accent transition-colors">
+                  <h3 className="mb-2 text-xl font-semibold text-foreground line-clamp-2 group-hover:text-accent-ink transition-colors">
                     {trip.title}
                   </h3>
                   {trip.description && (
@@ -148,7 +157,7 @@ export function TripList() {
                       <div className="flex flex-col gap-1.5">
                         <span className="text-[11px] font-bold text-muted-foreground/70 uppercase tracking-wider">Thời gian</span>
                         <span className="flex items-center gap-1.5 font-medium text-foreground text-[13px]">
-                          <CalendarDays className="h-4 w-4 text-accent/70" />
+                          <CalendarDays className="h-4 w-4 text-accent-ink/70" />
                           {/* Format to DD/MM */}
                           {trip.startDate.split("-").slice(1).reverse().join("/")} 
                           <span className="text-muted-foreground">&rarr;</span> 
@@ -158,7 +167,7 @@ export function TripList() {
                       <div className="flex flex-col gap-1.5">
                         <span className="text-[11px] font-bold text-muted-foreground/70 uppercase tracking-wider">Ngân sách</span>
                         <span className="flex items-center gap-1.5 font-medium text-foreground text-[13px]">
-                          <Wallet className="h-4 w-4 text-accent/70" />
+                          <Wallet className="h-4 w-4 text-accent-ink/70" />
                           {trip.budget > 0 ? `${trip.budget.toLocaleString("vi-VN")} ₫` : "---"}
                         </span>
                       </div>
@@ -169,10 +178,10 @@ export function TripList() {
                       <div className="pt-3 border-t border-border/60">
                         <div className="flex items-center justify-between text-[11px] font-medium mb-2">
                           <span className="text-muted-foreground flex items-center gap-1.5">
-                            <CheckSquare className="h-3.5 w-3.5 text-accent/70" />
+                            <CheckSquare className="h-3.5 w-3.5 text-accent-ink/70" />
                             Hành trang & Chuẩn bị
                           </span>
-                          <span className="text-accent font-semibold">{doneChecklist}/{totalChecklist}</span>
+                          <span className="text-accent-ink font-semibold">{doneChecklist}/{totalChecklist}</span>
                         </div>
                         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                           <div 

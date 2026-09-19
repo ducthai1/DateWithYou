@@ -14,6 +14,7 @@ import { Modal, ModalHeader, ModalContent, ModalFooter } from "@/components/ui/m
 import { PhotoView } from "react-photo-view";
 import { Photo } from "@/components/ui/photo";
 import { videoPosterUrl } from "@/lib/upload-kind";
+import { LoadFailed } from "@/components/ui/load-failed";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmbedPlayer } from "@/components/ui/embed-player";
@@ -283,6 +284,18 @@ export function MemoryTimeline() {
           <Skeleton variant="card" className="h-24" />
           <Skeleton variant="card" className="h-24" />
         </div>
+      ) : list.isError ? (
+        /*
+          Phải xét TRƯỚC `length === 0`.
+          Không lấy được dữ liệu thì danh sách cũng rỗng, và nhánh rỗng bên dưới
+          sẽ nói "Chưa có kỷ niệm nào" — tức bảo hai người rằng kỷ niệm của họ
+          biến mất, trong khi chỉ là mất mạng.
+        */
+        <LoadFailed
+          what="dòng kỷ niệm"
+          onRetry={() => void list.refetch()}
+          retrying={list.isFetching}
+        />
       ) : memories.length === 0 ? (
         filter ? (
           <EmptyState

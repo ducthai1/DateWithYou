@@ -55,7 +55,33 @@ const SHELL_TIMEOUT_MS = 10000; // lie-fi: connected, nothing arriving
 const TILE_LIMIT = 600;
 const APP_LIMIT = 250; // a few builds' worth of chunks before the oldest are dropped
 
-self.addEventListener("install", (e) => e.waitUntil(self.skipWaiting()));
+/*
+ * Trang "đang mất kết nối" của chính app, lấy sẵn lúc CÀI.
+ *
+ * Đây là thứ duy nhất buộc phải có trước khi cần tới nó: lúc cần thì đã không
+ * có mạng để đi lấy nữa. Trước bản này chỉ `/home` và `/map` có bản lưu, và
+ * chúng chỉ có sau khi người ta đã mở đúng hai trang đó lúc còn mạng — mọi
+ * route còn lại rơi thẳng vào trang lỗi của trình duyệt, đúng cái chủ repo
+ * không muốn thấy.
+ *
+ * Lấy hụt cũng không được làm hỏng việc cài: thà không có trang dự phòng còn
+ * hơn service worker không kích hoạt được.
+ */
+const OFFLINE_URL = "/offline";
+
+self.addEventListener("install", (e) =>
+  e.waitUntil(
+    (async () => {
+      try {
+        const cache = await caches.open(SHELL);
+        await cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
+      } catch {
+        /* không có mạng lúc cài, hoặc trang lỗi — bỏ qua, tầng dưới vẫn chạy */
+      }
+      await self.skipWaiting();
+    })(),
+  ),
+);
 
 self.addEventListener("activate", (e) =>
   e.waitUntil(
@@ -156,6 +182,13 @@ self.addEventListener("fetch", (event) => {
       event.respondWith(cacheFirst(request, APP, APP_LIMIT));
     } else if (request.mode === "navigate" && SHELL_PATHS.has(url.pathname)) {
       event.respondWith(shellNetworkFirst(request, url.origin + url.pathname));
+    } else if (request.mode === "navigate") {
+      /*
+       * Mọi lần điều hướng khác: vẫn đi mạng trước, nhưng hỏng thì đưa ra
+       * trang offline của app thay vì để trình duyệt tự vẽ trang lỗi của nó.
+       * Không cache gì thêm ở đây — đây chỉ là tấm lưới đỡ.
+       */
+      event.respondWith(networkThenOffline(request));
     }
     return;
   }
@@ -171,6 +204,23 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(staleWhileRevalidate(request));
   }
 });
+
+/**
+ * Đi mạng; hỏng thì trả trang offline đã lấy sẵn lúc cài.
+ *
+ * Không có cả trang offline (cài lúc mất mạng) thì ném lại như cũ — trình
+ * duyệt vẽ trang lỗi của nó, đúng hành vi trước đây, chứ không nuốt lỗi thành
+ * một màn trắng không ai hiểu.
+ */
+async function networkThenOffline(request) {
+  try {
+    return await fetch(request);
+  } catch (err) {
+    const cached = await caches.match(OFFLINE_URL, { cacheName: SHELL });
+    if (cached) return cached;
+    throw err;
+  }
+}
 
 /* ── Notifications ────────────────────────────────────────────────────────
  * The only way this app reaches a phone that is locked, in another app, or has

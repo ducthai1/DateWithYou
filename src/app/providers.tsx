@@ -129,11 +129,35 @@ export function Providers({
             refetchOnWindowFocus: false,
             // Fail fast: 3 retries on a ~1s call compounds into multi-second
             // stalls. One retry rides out a transient blip without piling up.
-            retry: 1,
+            /*
+             * Mất mạng thì phải BÁO LỖI, không được treo.
+             *
+             * Mặc định `networkMode: "online"` khiến React Query **tạm dừng**
+             * truy vấn khi máy offline: trạng thái đứng ở `pending` với
+             * `fetchStatus: "paused"`, không bao giờ tới `isError`. Hậu quả đo
+             * được trên chính app này: 5 màn rẽ theo `isLoading` (vốn là false
+             * khi đang tạm dừng) rơi thẳng xuống trạng thái rỗng và nói
+             * "Chưa có kỷ niệm nào" — tức bảo hai người rằng dữ liệu của họ
+             * biến mất; 4 màn khác rẽ theo `isPending` thì treo skeleton vĩnh
+             * viễn. Và CHÍN thẻ "Thử lại" viết sẵn trong app không bao giờ
+             * hiện ra được, vì cái nào cũng gác bằng `isError`.
+             *
+             * `offlineFirst` cho phép thử một lần rồi hỏng thật. Thử lại thì
+             * chặn hẳn khi đang offline — thử lại lúc không có mạng chỉ tổ kéo
+             * dài cái skeleton, còn lúc có mạng lại thì `refetchOnReconnect`
+             * (mặc định bật) đã lo.
+             */
+            networkMode: "offlineFirst",
+            retry: (failureCount) => {
+              if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
+              return failureCount < 1;
+            },
           },
           // Mutations shouldn't silently retry — optimistic UI already reflects
           // the change; surface errors fast so the optimistic state rolls back.
-          mutations: { retry: 0 },
+          // Mutation cũng vậy: hỏng ngay để giao diện lạc quan kịp cuộn lại,
+          // thay vì nằm chờ trong hàng đợi rồi ghi đè bằng dữ liệu đã cũ.
+          mutations: { retry: 0, networkMode: "offlineFirst" },
         },
       }),
   );

@@ -39,6 +39,7 @@ const SUITES = [
   { id: "back", load: () => import("./back-button.mjs") },
   { id: "react-hover", load: () => import("./reaction-hover.mjs") },
   { id: "trail", load: () => import("./route-trail.mjs") },
+  { id: "offline", load: () => import("./offline.mjs") },
   { id: "invite", load: () => import("./invite.mjs") },
   { id: "onboarding", load: () => import("./onboarding.mjs") },
 ];

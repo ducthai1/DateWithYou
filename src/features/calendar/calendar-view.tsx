@@ -10,6 +10,7 @@ import { AgendaView } from "./agenda-view";
 import { DayDetail } from "./day-detail";
 import { CountdownBanner } from "./countdown-banner";
 import { SpecialDatesPanel } from "./special-dates-panel";
+import { LoadFailed } from "@/components/ui/load-failed";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { Star } from "lucide-react";
@@ -115,6 +116,15 @@ export function CalendarView() {
             <CalendarHeader year={year} month={month} onPrev={prev} onNext={next} onToday={goToday} />
             {summary.isLoading ? (
               <Skeleton className="h-80 w-full" />
+            ) : summary.isError ? (
+              /* Bản trước vẽ lưới với `summary.data ?? {}` khi hỏng, tức một
+                 tháng TRỐNG TRƠN không nói gì — người xem đọc ra là tháng đó
+                 chẳng có gì, chứ không phải là chưa tải được. */
+              <LoadFailed
+                what="lịch tháng này"
+                onRetry={() => void summary.refetch()}
+                retrying={summary.isFetching}
+              />
             ) : (
               <CalendarGrid year={year} month={month} summary={summary.data ?? {}} onSelectDay={setSelected} />
             )}

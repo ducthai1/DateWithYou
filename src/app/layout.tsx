@@ -15,6 +15,7 @@ import { WarmMapAssets } from "@/components/layout/warm-map-assets";
 import { PrimeHaptics } from "@/components/layout/prime-haptics";
 import { PushSetup } from "@/components/layout/push-setup";
 import { FullscreenRecovery } from "@/components/layout/fullscreen-recovery";
+import { OfflineNotice } from "@/components/layout/offline-notice";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { GenderGate } from "@/components/layout/gender-gate";
@@ -268,6 +269,11 @@ export default async function RootLayout({
               page in the app — the tRPC provider lives in <Providers>, and a
               hook outside it has nothing to read. */}
           <PushSetup />
+          {/* Một chỗ duy nhất nói "đang mất kết nối", thay cho trang lỗi của
+              trình duyệt. Phải nằm TRONG providers: nó bấm "Thử lại" bằng
+              `useQueryClient`, và đặt ở ngoài thì mọi route ném 500 ngay trên
+              máy chủ — đúng như lần đầu tôi gắn nhầm. */}
+          <OfflineNotice />
           <FullscreenRecovery />
           <AppBackdrop />
           <SideNav />

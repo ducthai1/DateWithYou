@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Modal, ModalHeader } from "@/components/ui/modal";
+import { LoadFailed } from "@/components/ui/load-failed";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { Disc3, Filter, X } from "lucide-react";
@@ -102,7 +103,7 @@ export function LibraryPage() {
                   title="Vòng quay chọn món"
                   className="border-border bg-card hover:bg-muted inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm short:h-9 short:w-9"
                 >
-                  <Disc3 className="h-5 w-5 text-accent" />
+                  <Disc3 className="h-5 w-5 text-accent-ink" />
                 </a>
                 <Button onClick={() => setAdding(true)}>+ Thêm</Button>
               </>
@@ -170,6 +171,10 @@ export function LibraryPage() {
           <Skeleton className="h-40" />
           <Skeleton className="h-40" />
         </div>
+      ) : list.isError ? (
+        /* Trước `length === 0`: lỗi cũng cho danh sách rỗng, và nhánh rỗng bên
+           dưới sẽ nói "Bộ sưu tập trống" thay vì "chưa tải được". */
+        <LoadFailed what="bộ sưu tập" onRetry={() => void list.refetch()} retrying={list.isFetching} />
       ) : allItems.length === 0 ? (
         <EmptyState
           icon="music"
