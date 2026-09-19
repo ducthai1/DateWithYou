@@ -160,10 +160,26 @@ body:has([data-chromeless]) [data-app-main] {
   --success: #059669;
 
   /* --- Colour: accent triplet (terracotta default; overridden per preset) - */
-  --accent: #c2693f;
+  /*
+   * HAI token, vì một màu sáng-giữa không thể vừa làm NỀN NÚT vừa làm CHỮ.
+   *
+   * Đo trên chính app này, bản cũ `#c2693f`: chữ trắng trên nó 3.90, và nó làm
+   * chữ trên nền trang 3.70 — hụt 4.5 ở cả hai chiều, ở 145 chỗ. Tệ hơn: với
+   * terracotta, rose và ocean thì **cả chữ trắng lẫn chữ đen đều rớt**, vì
+   * chúng nằm đúng dải sáng-giữa nơi không màu chữ nào đạt. Nên nền nút phải
+   * đậm lại một nhịp (đủ để chữ trắng đạt, không hơn), còn chữ trên nền sáng
+   * dùng một mực riêng đậm hơn nữa.
+   *
+   * `--accent` chỉ đậm đi vừa đủ: 3.90 → 4.56 với chữ trắng. Nhìn cạnh nhau
+   * gần như không phân biệt được, nhưng qua được ngưỡng đọc.
+   */
+  --accent: #b1603a;
   --accent-hover: #a8542f;
   --accent-soft: #f6e6dc;
-  --ring: #c2693f;
+  /* Mực cho CHỮ màu accent trên nền sáng: đạt ≥4.5 trên cả nền trang, nền thẻ
+     trắng và nền `--accent-soft` (chip). */
+  --accent-ink: #9d5533;
+  --ring: #b1603a;
 
   /* --- Gradient stops (used by header mesh and space cover) --------------- */
   --gradient-from: #e8846a;
@@ -317,6 +333,7 @@ body:has([data-chromeless]) [data-app-main] {
   --color-accent:            var(--accent);
   --color-accent-hover:      var(--accent-hover);
   --color-accent-soft:       var(--accent-soft);
+  --color-accent-ink:        var(--accent-ink);
   --color-accent-foreground: var(--accent-foreground);
   --color-card:              var(--card);
   --color-ring:              var(--ring);
@@ -364,12 +381,13 @@ body:has([data-chromeless]) [data-app-main] {
  */
 
 [data-theme="rose"] {
-  --accent:         #c25f7a;
+  --accent:         #b55972;
   --accent-hover:   #a64862;
   --accent-soft:    #f7e3ea;
-  --ring:           #c25f7a;
+  --ring:           #b55972;
   --gradient-from:  #e8849a;
   --gradient-to:    #f5b0c0;
+  --accent-ink:     #a04f65;
 }
 
 [data-theme="sage"] {
@@ -379,6 +397,10 @@ body:has([data-chromeless]) [data-app-main] {
   --ring:           #6f8f6a;
   --gradient-from:  #8faf8a;
   --gradient-to:    #b5d4b0;
+  --accent-ink:     #566f52;
+  /* Nền này quá sáng cho chữ trắng (sage); chữ mực đậm mới đạt, và giữ
+     được đúng màu thương hiệu thay vì phải tối màu nền đi. */
+  --accent-foreground: #1c1917;
 }
 
 [data-theme="plum"] {
@@ -388,15 +410,17 @@ body:has([data-chromeless]) [data-app-main] {
   --ring:           #8a5fa3;
   --gradient-from:  #aa7fc3;
   --gradient-to:    #ccb0e0;
+  --accent-ink:     #815998;
 }
 
 [data-theme="ocean"] {
-  --accent:         #3f8aa3;
+  --accent:         #3a7e95;
   --accent-hover:   #2f6f87;
   --accent-soft:    #dcebef;
-  --ring:           #3f8aa3;
+  --ring:           #3a7e95;
   --gradient-from:  #5faac3;
   --gradient-to:    #90ccd8;
+  --accent-ink:     #337084;
 }
 
 [data-theme="honey"] {
@@ -406,6 +430,10 @@ body:has([data-chromeless]) [data-app-main] {
   --ring:           #c2902f;
   --gradient-from:  #d4a84a;
   --gradient-to:    #e8c882;
+  --accent-ink:     #856320;
+  /* Nền này quá sáng cho chữ trắng (honey); chữ mực đậm mới đạt, và giữ
+     được đúng màu thương hiệu thay vì phải tối màu nền đi. */
+  --accent-foreground: #1c1917;
 }
 
 /* ─── 4. Base styles ─────────────────────────────────────────────────────── */

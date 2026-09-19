@@ -101,10 +101,12 @@ export const FEATURE_PAGE_OG_IMAGE: Record<string, string> = {
  */
 export const FEATURE_PAGE_STYLE: Record<
   string,
+  /* `ink` là chữ đặt TRÊN `tint` của chính nó, nên cặp này phải đạt ≥4.5.
+     Đo lại khi đổi một trong hai — hai màu hợp nhau về mắt vẫn có thể hụt. */
   { emoji: string; tint: string; ink: string }
 > = {
-  "hom-nay-an-gi": { emoji: "🎡", tint: "#f6e9df", ink: "#a8542f" },
+  "hom-nay-an-gi": { emoji: "🎡", tint: "#f6e9df", ink: "#a4522e" },
   "luu-dia-diem-da-di": { emoji: "🗺️", tint: "#e4eef0", ink: "#2f6f87" },
   "nhat-ky-du-lich": { emoji: "✈️", tint: "#ece8f0", ink: "#6b5c81" },
-  "thu-gui-tuong-lai": { emoji: "🔐", tint: "#eaeee6", ink: "#5c7350" },
+  "thu-gui-tuong-lai": { emoji: "🔐", tint: "#eaeee6", ink: "#5a704e" },
 };

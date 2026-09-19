@@ -37,25 +37,31 @@ export interface ThemePreset {
 /**
  * All available presets. `terracotta` is the default and its values live in
  * :root so it works without any data-theme attribute (legacy / first visit).
+ *
+ * ⚠️ Bảng này và `globals.css` là HAI nơi cùng giữ một sự thật. Đổi một bên mà
+ * quên bên kia thì ô màu trong Cài đặt vẽ một màu còn app dùng màu khác — và
+ * không phép kiểm nào thấy, vì cả hai đều "hợp lệ". Terracotta, rosé và ocean
+ * đã được làm đậm nhẹ để chữ trắng trên nút đạt ngưỡng đọc; xem ghi chú ở
+ * `--accent` trong globals.css.
  */
 export const THEME_PRESETS: Record<ThemePresetKey, ThemePreset> = {
   terracotta: {
     key: "terracotta",
     label: "Terracotta",
-    accent: "#c2693f",
+    accent: "#b1603a",
     accentHover: "#a8542f",
     accentSoft: "#f6e6dc",
-    ring: "#c2693f",
+    ring: "#b1603a",
     gradientFrom: "#e8846a",
     gradientTo: "#f5b89a",
   },
   rose: {
     key: "rose",
     label: "Rosé",
-    accent: "#c25f7a",
+    accent: "#b55972",
     accentHover: "#a64862",
     accentSoft: "#f7e3ea",
-    ring: "#c25f7a",
+    ring: "#b55972",
     gradientFrom: "#e8849a",
     gradientTo: "#f5b0c0",
   },
@@ -82,10 +88,10 @@ export const THEME_PRESETS: Record<ThemePresetKey, ThemePreset> = {
   ocean: {
     key: "ocean",
     label: "Ocean",
-    accent: "#3f8aa3",
+    accent: "#3a7e95",
     accentHover: "#2f6f87",
     accentSoft: "#dcebef",
-    ring: "#3f8aa3",
+    ring: "#3a7e95",
     gradientFrom: "#5faac3",
     gradientTo: "#90ccd8",
   },

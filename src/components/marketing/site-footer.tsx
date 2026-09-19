@@ -76,7 +76,7 @@ export function SiteFooter() {
           >
             Một góc riêng để giữ lại những chỗ đã đi, món đã ăn, những hôm đáng nhớ — và lên kế hoạch cho lần tới.
           </p>
-          <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-[#8f857a]">
+          <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-[#a89c8e]">
             <span>Miễn phí</span>
             <span aria-hidden="true">·</span>
             <span>Không quảng cáo</span>
@@ -107,7 +107,7 @@ export function SiteFooter() {
             {READING_PATH.slice(0, 4).map((s, i) => (
               <li key={s.slug}>
                 <Link href={`/blog/${s.slug}`} className="group inline-flex gap-2 transition-colors hover:text-[#f3ece1]">
-                  <span className="tabular-nums text-[#6f665c] transition-colors group-hover:text-[#e69365]">
+                  <span className="tabular-nums text-[#9b8f81] transition-colors group-hover:text-[#e69365]">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   {s.step}
@@ -125,7 +125,7 @@ export function SiteFooter() {
 
       {/* Bottom bar. Short, factual, and the one line worth repeating. */}
       <div className="border-t border-white/[0.07]">
-        <div className={`mx-auto flex flex-col ${SITE_WIDTH} gap-2 px-6 py-6 text-[13px] text-[#8f857a] sm:flex-row sm:items-center sm:justify-between`}>
+        <div className={`mx-auto flex flex-col ${SITE_WIDTH} gap-2 px-6 py-6 text-[13px] text-[#a89c8e] sm:flex-row sm:items-center sm:justify-between`}>
           <p>
             © {new Date().getFullYear()} {SITE_NAME} — làm tại Việt Nam.
           </p>

@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { InvitePanel } from "./invite-panel";
 import { inviteCodeFromInput, inviteErrorMessage } from "@/lib/invite-errors";
 import { authClient } from "@/lib/auth-client";
-import { LogOut, CheckCircle2 } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -342,7 +342,7 @@ export function SpaceSettings() {
 
         {/* ── BẠN ── who you are, on your account: the same everywhere. */}
         <Card className="space-y-4 shadow-sm">
-        <p className="text-sm font-semibold text-accent">
+        <p className="text-sm font-semibold text-accent-ink">
           {full ? "Hồ sơ thành viên" : "Hồ sơ cá nhân"}
         </p>
         
@@ -365,7 +365,7 @@ export function SpaceSettings() {
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="font-medium truncate">{member.name}</p>
                       {member.id === session?.user.id && (
-                        <span className="shrink-0 bg-accent-soft text-accent text-[10px] px-2 py-0.5 rounded-full font-medium">Bạn</span>
+                        <span className="shrink-0 bg-accent-soft text-accent-ink text-[10px] px-2 py-0.5 rounded-full font-medium">Bạn</span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">{member.email}</p>
@@ -545,7 +545,7 @@ export function SpaceSettings() {
               className={cn(
                 "flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors disabled:opacity-50",
                 myGender === o.value
-                  ? "border-accent bg-accent-soft/50 text-accent font-medium"
+                  ? "border-accent bg-accent-soft/50 text-accent-ink font-medium"
                   : "border-border hover:bg-muted",
               )}
             >
@@ -612,7 +612,7 @@ export function SpaceSettings() {
 
         {/* ── KHÔNG GIAN NÀY ── what the two of you share here. */}
         <Card className="space-y-4 shadow-sm">
-          <h2 className="text-accent text-sm font-semibold">Không gian này</h2>
+          <h2 className="text-accent-ink text-sm font-semibold">Không gian này</h2>
           <div className="space-y-2">
             <p className="text-sm font-medium">Tên không gian</p>
             {/* Field and its button on one row, like every other row on the
@@ -748,27 +748,68 @@ export function SpaceSettings() {
 
         {/* ── CÁC KHÔNG GIAN ── switch, create, join. */}
         <Card className="space-y-4 shadow-sm">
-          <h2 className="text-accent text-sm font-semibold">Các không gian của bạn</h2>
+          <h2 className="text-accent-ink text-sm font-semibold">Các không gian của bạn</h2>
           <p className="text-muted-foreground -mt-2 text-xs">Chọn không gian đang dùng, tạo mới, hoặc tham gia bằng mã.</p>
         <div>
-          <p className="text-sm font-semibold mb-2 text-accent">Chuyển đổi không gian</p>
+          <p className="text-sm font-semibold mb-2 text-accent-ink">Chuyển đổi không gian</p>
+          {/*
+            Mỗi không gian phải NHẬN RA ĐƯỢC khi lướt, không chỉ đọc được.
+            Bản trước là một cột nút viền xám, tên đặt cỡ chữ thân bài, khác
+            nhau đúng một dòng chữ — cuộn qua trang Cài đặt thì không có gì bám
+            mắt lại. Giờ mỗi dòng mang MÀU CHỦ ĐỀ của chính không gian đó (dữ
+            liệu đã có sẵn trong `themePreset`, không phải bịa thêm), nên hai
+            không gian khác nhau trông khác nhau từ xa; cái đang dùng có vòng
+            accent và một chữ "Đang dùng" thay cho mỗi dấu tích nhỏ.
+          */}
           <div className="flex flex-col gap-2">
-            {allMine.data?.map(s => (
+            {allMine.data?.map(s => {
+              const preset = THEME_PRESETS[s.themePreset] ?? THEME_PRESETS.terracotta;
+              const active = s.id === mine.data?.id;
+              return (
               <button
                 key={s.id}
                 onClick={() => handleSpaceSwitch(s.id)}
+                aria-current={active ? "true" : undefined}
                 className={cn(
-                  "flex items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted",
-                  s.id === mine.data?.id ? "border-accent bg-accent/5 ring-1 ring-accent" : "border-border"
+                  "flex items-center gap-3 rounded-xl border p-3 text-left transition-all hover:bg-muted",
+                  active
+                    ? "border-accent bg-accent-soft/40 ring-2 ring-accent shadow-sm"
+                    : "border-border hover:border-accent/40",
                 )}
               >
-                <div>
-                  <p className="font-medium text-sm">{s.name}</p>
-                  <p className="text-xs text-muted-foreground">{s.memberCount} thành viên</p>
-                </div>
-                {s.id === mine.data?.id && <CheckCircle2 className="h-5 w-5 text-accent" />}
+                {/* Ô màu: ảnh bìa nếu có, còn không thì gradient của chủ đề —
+                    thứ phân biệt được ngay cả khi tên hai không gian giống nhau. */}
+                <span
+                  aria-hidden
+                  className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl text-sm font-semibold text-white shadow-sm"
+                  style={
+                    s.coverImage
+                      ? { backgroundImage: `url(${s.coverImage})`, backgroundSize: "cover", backgroundPosition: "center" }
+                      : { backgroundImage: `linear-gradient(135deg, ${preset.gradientFrom}, ${preset.accent})` }
+                  }
+                >
+                  {s.coverImage ? "" : (s.name.trim()[0] ?? "?").toUpperCase()}
+                </span>
+
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold">{s.name}</span>
+                  <span className="text-muted-foreground block text-xs">
+                    {s.isPersonal ? "Không gian riêng" : `${s.memberCount} thành viên`}
+                    {" · "}
+                    {preset.label}
+                  </span>
+                </span>
+
+                {active ? (
+                  <span className="bg-accent text-accent-foreground shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium">
+                    Đang dùng
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground shrink-0 text-xs">Chuyển</span>
+                )}
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
         
@@ -830,7 +871,7 @@ export function SpaceSettings() {
             someone says "I hear nothing", so it sits on the one screen
             reachable from everywhere. */}
         <Card className="space-y-4 shadow-sm">
-          <h2 className="text-accent text-sm font-semibold">Thiết bị này</h2>
+          <h2 className="text-accent-ink text-sm font-semibold">Thiết bị này</h2>
           <PushPermissionRow />
           <LiveSharingRow />
           <div className="border-border border-t" />
@@ -866,7 +907,7 @@ export function SpaceSettings() {
               {setSpacePin.isPending ? "Đang lưu…" : "Lưu mã PIN"}
             </Button>
           </div>
-          {setSpacePin.isSuccess && <p className="text-xs text-accent">Đã cập nhật mã PIN ✓</p>}
+          {setSpacePin.isSuccess && <p className="text-xs text-accent-ink">Đã cập nhật mã PIN ✓</p>}
           {setSpacePin.isError && <p className="text-xs text-destructive">{setSpacePin.error.message}</p>}
               </div>
               <div className="space-y-3">

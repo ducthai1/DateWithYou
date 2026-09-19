@@ -89,7 +89,7 @@ export function LandingHero() {
           >
             <Link
               href="/map"
-              className="btn-sheen group flex h-14 w-full items-center justify-center rounded-full bg-[#c2693f] text-white shadow-[0_10px_28px_rgba(194,105,63,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#a8542f] active:translate-y-0 active:scale-[0.98]"
+              className="btn-sheen group flex h-14 w-full items-center justify-center rounded-full bg-[#b1603a] text-white shadow-[0_10px_28px_rgba(177,96,58,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#a8542f] active:translate-y-0 active:scale-[0.98]"
             >
               <span className="text-[17px] font-medium tracking-wide">
                 Vào không gian
@@ -100,7 +100,7 @@ export function LandingHero() {
               href="/sign-up"
               // Warm tint rather than the default white sweep: on a near-white
               // button a white sheen travels across and shows nothing.
-              className="btn-sheen [--sheen:rgba(194,105,63,0.2)] flex h-14 w-full items-center justify-center rounded-full border border-[#d8cfc1]/80 bg-white/40 text-[#6f675d] backdrop-blur-md transition-all hover:border-[#d8cfc1] hover:bg-white/70 active:scale-[0.98]"
+              className="btn-sheen [--sheen:rgba(177,96,58,0.2)] flex h-14 w-full items-center justify-center rounded-full border border-[#d8cfc1]/80 bg-white/40 text-[#6f675d] backdrop-blur-md transition-all hover:border-[#d8cfc1] hover:bg-white/70 active:scale-[0.98]"
             >
               <span className="text-[17px] font-medium tracking-wide">
                 Tạo tài khoản
@@ -161,7 +161,7 @@ export function LandingHero() {
           whole hero, not to one half of it. */}
       <a
         href="#gioi-thieu"
-        className="vivu-rise mt-12 flex flex-col items-center gap-1.5 rounded-full px-4 py-2 text-[#8a7c6f] transition-colors hover:text-[#a8542f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a8542f] short:mt-6"
+        className="vivu-rise mt-12 flex flex-col items-center gap-1.5 rounded-full px-4 py-2 text-[#7d7065] transition-colors hover:text-[#a8542f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a8542f] short:mt-6"
         style={{ animationDelay: "1400ms" }}
       >
         <span className="text-xs font-light tracking-wide">Tìm hiểu thêm</span>
