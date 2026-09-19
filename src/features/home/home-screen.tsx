@@ -64,12 +64,18 @@ export function HomeScreen() {
           <StaggerList className="space-y-4 lg:columns-2 lg:gap-4 lg:space-y-0 [&>*]:lg:mb-4 [&>*]:lg:break-inside-avoid">
             {buildCards(data)}
           </StaggerList>
-          {/* Warm reminiscence, deliberately last: it rewards scrolling to the
-              bottom rather than competing with today's actionable cards. It
-              fetches on its own so a slow count never delays the cards above. */}
-          <StatsPanel className="pt-2" />
         </>
       ) : null}
+
+      {/*
+        Ở NGOÀI nhánh điều kiện, không ở trong.
+        Vẫn nằm cuối màn — phần thưởng cho việc cuộn xuống — nhưng mount ngay từ
+        lần render đầu, nên truy vấn của nó đi CHUNG mẻ với `dashboard.today`.
+        Đặt bên trong nhánh `data ?` thì nó chỉ được mount sau khi `today` về,
+        tức hai vòng Atlas nối tiếp để vẽ một màn; comment cũ ghi "nó tự lấy dữ
+        liệu nên không làm chậm phần trên" — đúng ý, sai chỗ đặt.
+      */}
+      <StatsPanel className="pt-2" />
     </PageShell>
   );
 }

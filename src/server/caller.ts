@@ -1,6 +1,6 @@
 import "server-only";
 import { appRouter } from "@/server/trpc/root";
-import { createCallerFactory } from "@/server/trpc/trpc";
+import { createCallerFactory, makeSpaceLoader } from "@/server/trpc/trpc";
 
 /**
  * A tRPC caller for Server Components, run as a guest.
@@ -16,4 +16,5 @@ export const publicCaller = createCaller({
   userId: null,
   userEmail: null,
   activeSpaceId: null,
+  loadSpaces: makeSpaceLoader(),
 });

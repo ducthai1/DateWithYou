@@ -27,10 +27,50 @@ export async function createTRPCContext(opts: FetchCreateContextFnOptions) {
     if (match) activeSpaceId = decodeURIComponent(match[1]);
   }
 
+  /*
+   * Danh sách không gian: tra MỘT LẦN cho cả request, không phải mỗi thủ tục.
+   *
+   * `httpBatchLink` gộp nhiều thủ tục vào một request HTTP, nhưng middleware
+   * thì chạy lại cho TỪNG thủ tục — nên màn hình đầu tiên (4 thủ tục trong một
+   * mẻ) gửi bốn lần cùng một `SpaceModel.find({ members })` xuống Atlas trước
+   * khi có bất kỳ việc thật nào. Với RTT đo được 130ms thì đó là ~390ms trả
+   * cho con số không.
+   *
+   * Lười và nhớ: chưa ai hỏi thì không tra, và hỏi lần thứ hai thì nhận lại
+   * đúng lời hứa cũ. Context sống đúng một request nên không có chuyện dùng
+   * nhầm của người khác.
+   */
   return {
     userId: session?.user?.id ?? null,
     userEmail: session?.user?.email ?? null,
     activeSpaceId,
+    loadSpaces: makeSpaceLoader(),
+  };
+}
+
+type SpaceRow = { _id: unknown };
+
+/**
+ * Một lời hứa cho cả request, dựng mới cho mỗi request.
+ *
+ * Tách ra hàm riêng vì có ba nơi dựng context: đường HTTP thật, caller cho
+ * Server Component, và bộ kiểm API. Ba nơi phải cùng một hành vi, nếu không
+ * thì bài kiểm đo một thứ khác với thứ chạy thật.
+ */
+export function makeSpaceLoader(): (userId: string) => Promise<SpaceRow[]> {
+  let spaces: Promise<SpaceRow[]> | null = null;
+  return (userId: string) => {
+    /*
+     * `.exec()` — nhớ LỜI HỨA, không nhớ Query.
+     *
+     * `find().lean()` trả về một Query của Mongoose, và một Query chỉ chạy được
+     * đúng một lần: `await` lần thứ hai ném "Query was already executed". Tức
+     * là bản thiếu `.exec()` sẽ hỏng ngay ở thủ tục THỨ HAI trong mọi mẻ — đúng
+     * cái mà việc nhớ này sinh ra để phục vụ. 218 bài API đỏ đã nói điều đó
+     * trước khi nó kịp lên production.
+     */
+    spaces ??= SpaceModel.find({ members: userId }).select("_id").lean<SpaceRow[]>().exec();
+    return spaces;
   };
 }
 
@@ -120,12 +160,9 @@ export const adminProcedure = authedProcedure.use(async ({ ctx, next }) => {
 export const protectedProcedure = authedProcedure.use(async ({ ctx, next }) => {
   await connectToDatabase();
 
-  // Single round-trip: fetch all spaces this user belongs to (couples app → 1-2 max),
-  // then pick the activeSpaceId one when valid, otherwise fall back to the first.
-  // Previously two sequential findOne calls; now one find() saves one Atlas RTT.
-  const spaces = await SpaceModel.find({ members: ctx.userId })
-    .select("_id")
-    .lean<{ _id: unknown }[]>();
+  // Một vòng đi-về cho CẢ REQUEST, không phải mỗi thủ tục — xem `loadSpaces`
+  // trong `createTRPCContext`. Trước đây mỗi thủ tục trong một mẻ tự tra lại.
+  const spaces = await ctx.loadSpaces(ctx.userId);
 
   if (!spaces.length) throw new TRPCError({ code: "FORBIDDEN", message: "NO_SPACE" });
 

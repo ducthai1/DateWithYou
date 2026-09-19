@@ -12,7 +12,7 @@ import "./_env";
 import { TEST_DB } from "./_env";
 import mongoose from "mongoose";
 import { appRouter } from "@/server/trpc/root";
-import { createCallerFactory } from "@/server/trpc/trpc";
+import { createCallerFactory, makeSpaceLoader } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 
 const createCaller = createCallerFactory(appRouter);
@@ -29,6 +29,8 @@ export function callerFor(ctx: Partial<TestCtx> = {}) {
     userId: ctx.userId ?? null,
     userEmail: ctx.userEmail ?? null,
     activeSpaceId: ctx.activeSpaceId ?? null,
+    // Mỗi caller là một "request", đúng như đường HTTP thật.
+    loadSpaces: makeSpaceLoader(),
   });
 }
 
