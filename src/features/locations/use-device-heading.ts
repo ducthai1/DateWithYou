@@ -87,6 +87,33 @@ export function useDeviceHeading(enabled: boolean): {
     }
   }, []);
 
+  /*
+   * Tự xin quyền khi chuyến bắt đầu — không để nơi gọi phải nhớ.
+   *
+   * iOS chỉ nhận `requestPermission()` từ bên trong một cử chỉ người dùng.
+   * Hook trả `request()` ra ngoài từ đầu và KHÔNG chỗ nào gọi, nên trên iPhone
+   * `hasHeading` không bao giờ bật: phễu hướng nhìn luôn rơi về hướng GPS, tức
+   * mỗi lần có định vị mới mới nhích một nấc — đúng cái "lag" chủ xe báo.
+   *
+   * Hai nhịp, vì chuyến có thể bắt đầu từ nhiều nơi (nút đi một mình, nút đồng
+   * ý lời mời ở một component khác hẳn): thử ngay khi bật, lúc đó thường vẫn
+   * còn trong cửa sổ cử chỉ vừa rồi; iOS từ chối thì thử lại đúng MỘT lần ở cú
+   * chạm kế tiếp. Người ta từ chối thật thì thôi, không hỏi nữa.
+   */
+  useEffect(() => {
+    if (!enabled || granted || typeof window === "undefined") return;
+    const api = DeviceOrientationEvent as unknown as MaybeRequestable;
+    if (typeof api?.requestPermission !== "function") return;
+    let cancelled = false;
+    const ask = () => { if (!cancelled) void request(); };
+    ask();
+    window.addEventListener("pointerdown", ask, { once: true, capture: true });
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pointerdown", ask, true);
+    };
+  }, [enabled, granted, request]);
+
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
     const api = DeviceOrientationEvent as unknown as MaybeRequestable;

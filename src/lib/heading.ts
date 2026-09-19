@@ -6,12 +6,9 @@
  * tìm xem đường nào là đường của mình) thì màn hình không nói gì. La bàn của
  * máy trả lời được câu đó, còn GPS thì không.
  *
- * Ngược lại, la bàn nhiễu khi đang chạy — từ trường quanh xe, rung. Nên: đang
- * chạy thì tin GPS, đứng yên thì tin la bàn. Đó cũng là cách Google Maps làm.
+ * Bản đầu chỉ tin la bàn khi đứng yên (dưới 3 km/h), còn đang chạy thì quay về
+ * hướng GPS, vì la bàn nhiễu bởi từ trường quanh xe. Đổi rồi — xem `pickHeading`.
  */
-
-/** Dưới ngưỡng này coi như đứng yên, km/h. */
-export const STILL_KMH = 3;
 
 /** Đưa một góc bất kỳ về [0, 360). */
 export function normaliseDeg(deg: number): number {
@@ -41,30 +38,37 @@ export function smoothHeading(prev: number | null, next: number, alpha = 0.25): 
 }
 
 /**
- * Hướng nào để vẽ: của GPS hay của la bàn.
+ * Hướng nào để vẽ CÁI PHỄU: của la bàn, hay của GPS.
  *
  * Trả về cả nguồn, vì hai cái nói hai chuyện khác nhau và giao diện nên vẽ khác
  * nhau: hướng di chuyển là một mũi tên đặc, còn hướng nhìn là một cái phễu mở —
  * đúng như Google Maps, và đúng vì la bàn kém chính xác hơn nên không được vẽ
  * như thể nó chắc chắn.
+ *
+ * ⚠️ Có la bàn thì LUÔN tin la bàn, kể cả đang chạy. Bản trước ưu tiên GPS khi
+ * tốc độ ≥ 3 km/h để tránh nhiễu từ trường quanh xe, và cái giá của nó là thứ
+ * chủ xe báo lại: "phễu rất lag, không mượt theo hướng quay thực tế". Đúng như
+ * vậy — `coords.heading` chỉ đổi mỗi lần có định vị mới, tức khoảng một giây
+ * một nhịp, nên phễu giật từng nấc; và nó là hướng ĐANG ĐI, nên xoay người thì
+ * phễu đứng im, trong khi cái mũi tên ngay cạnh đã nói hướng đi rồi. La bàn
+ * bắn ~60 lần/giây và đã được làm mượt theo thời gian ở `useDeviceHeading`.
+ *
+ * GPS vẫn là phương án dự phòng: máy không có la bàn, hoặc iOS chưa được cho
+ * phép, thì thà một cái phễu giật còn hơn không có gì.
  */
 export function pickHeading({
   gpsHeading,
   compassHeading,
-  speedKmh,
 }: {
   gpsHeading: number | null | undefined;
   compassHeading: number | null | undefined;
-  speedKmh: number | null | undefined;
 }): { deg: number; source: "gps" | "compass" } | null {
-  const moving = typeof speedKmh === "number" && speedKmh >= STILL_KMH;
   const gps = typeof gpsHeading === "number" && Number.isFinite(gpsHeading) ? normaliseDeg(gpsHeading) : null;
   const compass =
     typeof compassHeading === "number" && Number.isFinite(compassHeading)
       ? normaliseDeg(compassHeading)
       : null;
 
-  if (moving && gps !== null) return { deg: gps, source: "gps" };
   if (compass !== null) return { deg: compass, source: "compass" };
   if (gps !== null) return { deg: gps, source: "gps" };
   return null;

@@ -228,42 +228,71 @@ function LocationMapViewImpl({
    * memo hoá trong file này tồn tại để tránh. Hai độ thì mắt không thấy, mà số
    * lần render giảm đi vài chục lần.
    */
-  const [mapBearing, setMapBearing] = useState(0);
-
   /*
-   * Phễu hướng nhìn tự xoay, ngoài React.
+   * Phễu hướng nhìn và mũi tên hướng đi tự xoay, NGOÀI React.
    *
-   * Hai thứ nuôi cái góc này đều đổi ~60 lần/giây: la bàn của máy, và góc xoay
-   * của bản đồ khi camera bám theo. Cho cả hai chạy qua state nghĩa là render
-   * lại cả cây bản đồ 60 lần/giây để đổi đúng một chuỗi `rotate(...)`. Đo khi
-   * bóp CPU 6× cho giống điện thoại: 6 fps, 3301ms bị chặn trên 4 giây; bỏ
-   * luồng la bàn ra thì 39 fps. Ghi thẳng vào DOM trong một khung hình là cách
-   * duy nhất giữ được cả hai: phễu bám sát tay, mà bản đồ vẫn mượt.
+   * Ba thứ nuôi hai cái góc này: la bàn (~60Hz), hướng GPS (~1Hz) và góc xoay
+   * của bản đồ (mỗi khung hình khi camera bám theo). Bản trước đã đưa la bàn ra
+   * khỏi state, nhưng góc bản đồ thì vẫn là state — và chừng nào JSX còn tự
+   * ghi `transform`, mỗi lần state ấy đổi là React ghi đè lại cái transform mà
+   * `requestAnimationFrame` vừa đặt, bằng giá trị `facingHeading` của lần render
+   * TRƯỚC của component cha. Cha chỉ render lại mỗi lần có định vị mới, nên
+   * trong lúc bản đồ đang xoay thì phễu bị kéo về góc cũ ~45 lần mỗi giây:
+   * nhìn ra đúng là "phản ứng chậm, không mượt theo hướng quay".
+   *
+   * Nên `transform` không nằm trong JSX nữa. Góc đi qua ref, ai đổi cũng chỉ
+   * xếp lịch vẽ, và một khung hình chỉ ghi một lần.
    */
   const coneRef = useRef<SVGSVGElement | null>(null);
+  const arrowRef = useRef<SVGSVGElement | null>(null);
+  const facingRef = useRef<number | null>(null);
+  const travelRef = useRef<number | null>(null);
+  const frameRef = useRef(0);
+
+  const paintHeading = useCallback(() => {
+    frameRef.current = 0;
+    const bearing = mapRef.current?.getMap?.()?.getBearing?.() ?? 0;
+    if (coneRef.current && facingRef.current != null) {
+      coneRef.current.style.transform = `rotate(${screenRotation(facingRef.current, bearing)}deg)`;
+    }
+    if (arrowRef.current && travelRef.current != null) {
+      arrowRef.current.style.transform = `rotate(${screenRotation(travelRef.current, bearing)}deg)`;
+    }
+  }, []);
+  // Gộp mọi nguồn đến trong cùng một khung hình thành MỘT lần ghi.
+  const scheduleHeading = useCallback(() => {
+    if (!frameRef.current) frameRef.current = requestAnimationFrame(paintHeading);
+  }, [paintHeading]);
+
+  // Nguồn đổi hiếm: hướng GPS, và góc nhìn khi máy không có la bàn.
   useEffect(() => {
-    const el = coneRef.current;
-    if (!el || !subscribeHeading || facingSource !== "compass") return;
-    let deg: number | null = null;
-    let frame = 0;
-    const paint = () => {
-      frame = 0;
-      if (!coneRef.current || deg === null) return;
-      const bearing = mapRef.current?.getMap?.()?.getBearing?.() ?? 0;
-      coneRef.current.style.transform = `rotate(${screenRotation(deg, bearing)}deg)`;
-    };
-    // Gộp mọi sự kiện đến trong cùng một khung hình thành MỘT lần ghi.
-    const onDeg = (next: number) => {
-      deg = next;
-      if (!frame) frame = requestAnimationFrame(paint);
-    };
-    const off = subscribeHeading(onDeg);
-    return () => {
-      off();
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, [subscribeHeading, facingSource]);
-  const bearingRef = useRef(0);
+    facingRef.current = facingHeading ?? null;
+    travelRef.current = heading ?? null;
+    scheduleHeading();
+  }, [facingHeading, heading, scheduleHeading]);
+
+  // Nguồn đổi ~60Hz: la bàn. Không đi qua state, không render lại gì cả.
+  useEffect(() => {
+    if (!subscribeHeading || facingSource !== "compass") return;
+    return subscribeHeading((deg) => {
+      facingRef.current = deg;
+      scheduleHeading();
+    });
+  }, [subscribeHeading, facingSource, scheduleHeading]);
+
+  /*
+   * Huỷ khung hình đang chờ thì phải XOÁ LUÔN CỜ.
+   *
+   * Thiếu dòng `= 0` là hỏng câm: React ở chế độ nghiêm ngặt (dev) gắn effect,
+   * gỡ ra, rồi gắn lại — lần gỡ ấy huỷ khung hình nhưng để lại id cũ trong ref,
+   * nên `scheduleHeading` thấy "đang có khung hình chờ" và **không bao giờ xếp
+   * lịch nữa**. Phễu đứng im vĩnh viễn, không lỗi, không cảnh báo. Bắt được vì
+   * bài e2e đo `style.transform` thật chứ không đo "có gọi hàm không".
+   */
+  useEffect(() => () => {
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    frameRef.current = 0;
+  }, []);
   /*
    * Read once, at mount — this component is client-only (`ssr: false`).
    *
@@ -882,13 +911,14 @@ function LocationMapViewImpl({
         refreshExpiredTiles={false}
         renderWorldCopies={false}
         initialViewState={initialView}
-        onMove={(e) => {
-          const b = e.viewState.bearing ?? 0;
-          if (Math.abs(b - bearingRef.current) >= 2) {
-            bearingRef.current = b;
-            setMapBearing(b);
-          }
-        }}
+        /*
+         * Bản đồ xoay thì phễu phải xoay theo NGAY, kể cả khi la bàn im (dừng
+         * đèn đỏ, camera vẫn đang quay nốt). Chỉ xếp lịch vẽ — không đặt state,
+         * vì `onMove` bắn mỗi khung hình và đặt state ở đây là render lại cả
+         * cây bản đồ mỗi khung hình, đúng thứ mà toàn bộ phần memo trong tệp
+         * này tồn tại để tránh.
+         */
+        onMove={scheduleHeading}
         onStyleData={(e) => dressStyle(e.target)}
         onLoad={(e) => {
           // Deliberately does NOT report a centre. The map opens on a fixed
@@ -1124,9 +1154,9 @@ function LocationMapViewImpl({
                     viewBox="0 0 120 120"
                     className="pointer-events-none absolute"
                     style={{
-                      // Góc ban đầu; từ đây trở đi `useEffect` bên dưới ghi
-                      // thẳng vào `style.transform` mỗi khung hình.
-                      transform: `rotate(${screenRotation(facingHeading, mapBearing)}deg)`,
+                      // Không đặt `transform` ở đây: `paintHeading` sở hữu nó.
+                      // Để React cũng ghi thì mỗi lần render lại là một lần
+                      // giật về góc cũ.
                       transformOrigin: "60px 60px",
                       willChange: "transform",
                     }}
@@ -1154,15 +1184,13 @@ function LocationMapViewImpl({
                     hướng đi, và nói dối ngay khi người ta xoay hoặc kéo bản đồ. */}
                 {heading != null && (
                 <svg
+                  ref={arrowRef}
                   width="56"
                   height="56"
                   viewBox="0 0 36 36"
                   fill="none"
                   className="drop-shadow-lg absolute"
-                  style={{
-                    transform: `rotate(${screenRotation(heading, mapBearing)}deg)`,
-                    transformOrigin: "50% 50%",
-                  }}
+                  style={{ transformOrigin: "50% 50%", willChange: "transform" }}
                 >
                   <path
                     d="M18 2 L26 18 L18 14 L10 18 Z"

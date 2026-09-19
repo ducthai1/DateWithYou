@@ -237,6 +237,58 @@ export async function run({ base, profileDir, port, db, shotDir }) {
       `chồng ${ping.overlap}px · báo=${JSON.stringify(ping.banner)} thanh=${JSON.stringify(ping.dock)}`,
     );
     if (shotDir) await B.shot(`${shotDir}/nav-ping-banner.png`);
+
+    /*
+     * Phễu hướng nhìn phải bám la bàn NGAY, không đi qua React.
+     *
+     * Góc này đổi ~60 lần/giây. Cho nó đi qua state là render lại cả trang bản
+     * đồ mỗi sự kiện — đo khi bóp CPU 6×: 6 fps so với 39 fps khi tắt la bàn.
+     * Nên hook đẩy góc qua ref + đăng ký nhận, còn phễu tự ghi `style.transform`
+     * trong một khung hình. JSX KHÔNG được đặt `transform`: mỗi lần React vẽ
+     * lại là một lần giật về góc cũ.
+     *
+     * Đo bằng chính cái thuộc tính ấy, sau hai sự kiện khác góc nhau.
+     */
+    const CONE = `document.querySelector('.maplibregl-marker svg[width="120"]')`;
+    /*
+     * Ép trình duyệt dựng một khung hình sau mỗi nhịp.
+     *
+     * Trang headless không tự dựng khung khi không ai nhìn, nên
+     * `requestAnimationFrame` nằm xếp hàng mà không chạy — và phễu thì vẽ bằng
+     * đúng rAF. Không có dòng này thì phép đo đọc ra "phễu đứng im" ở cả bản
+     * chạy đúng lẫn bản hỏng. Chụp ảnh là cách rẻ nhất bắt nó dựng khung.
+     */
+    const frame = () => B.send("Page.captureScreenshot", { format: "jpeg", quality: 1 }).catch(() => {});
+    const spin = async (deg) => {
+      await B.eval(`(() => {
+        const e = new Event("deviceorientationabsolute");
+        Object.defineProperty(e, "alpha", { value: ${360 - deg} });
+        Object.defineProperty(e, "absolute", { value: true });
+        window.dispatchEvent(e);
+      })()`);
+      await frame();
+      return B.eval(`${CONE} ? ${CONE}.style.transform : ""`);
+    };
+    /*
+     * Bắn nhiều nhịp cho mỗi góc trước đã: phễu chỉ tồn tại khi đã biết được
+     * một hướng, và bộ làm mượt đi theo hằng số thời gian (~90ms) nên một sự
+     * kiện đơn lẻ mới nhích được một phần đường.
+     */
+    for (let i = 0; i < 12; i++) await spin(0);
+    const hasCone = await B.eval(`!!${CONE}`);
+    ok("có phễu hướng nhìn trên bản đồ", hasCone === true);
+    if (hasCone) {
+      const a = await spin(0);
+      for (let i = 0; i < 12; i++) await spin(120);
+      const b = await spin(120);
+      const read = (t) => Number((t.match(/rotate\(([-\d.]+)deg\)/) || [])[1] ?? NaN);
+      const da = read(a), dbv = read(b);
+      ok(
+        `phễu xoay theo la bàn (${Math.round(da)}° → ${Math.round(dbv)}°)`,
+        Number.isFinite(da) && Number.isFinite(dbv) && Math.abs(dbv - da) > 60,
+        `trước=${JSON.stringify(a)} sau=${JSON.stringify(b)}`,
+      );
+    }
   } finally {
     if (spaceId) await db.collection("navigationinvites").deleteMany({ spaceId }).catch(() => {});
     A.close();

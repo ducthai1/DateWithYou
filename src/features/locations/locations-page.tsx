@@ -541,7 +541,6 @@ export function LocationsPage() {
   const facing = pickHeading({
     gpsHeading: nav.heading,
     compassHeading: compass.hasHeading ? compass.headingRef.current : null,
-    speedKmh: nav.speedKmH,
   });
 
   /*
@@ -561,10 +560,17 @@ export function LocationsPage() {
    * off the road and would make the cut jump backwards and forwards along the
    * line. Only while actually navigating; a route drawn for a look at the map
    * should be shown whole.
+   *
+   * Mẫu số là chiều dài của CHÍNH ĐƯỜNG ĐANG VẼ, không phải quãng đường nhà
+   * cung cấp báo. Tử số đo trên hình vẽ, nên mẫu số cũng phải đo trên hình vẽ;
+   * lấy hai thước khác nhau thì chỗ cắt trôi khỏi chân người đi — 8m trên
+   * tuyến Stadia thật, 40m trên đường vẽ tay. `routeDistanceMeters` chỉ còn là
+   * phương án dự phòng cho lúc bộ điều hướng chưa kịp nhận đường.
    */
+  const routeLength = nav.routeLengthMeters ?? routeDistanceMeters;
   const travelledFraction =
-    nav.isNavigating && routeDistanceMeters && routeDistanceMeters > 0 && nav.remainingMeters != null
-      ? Math.min(1, Math.max(0, 1 - nav.remainingMeters / routeDistanceMeters))
+    nav.isNavigating && routeLength && routeLength > 0 && nav.remainingMeters != null
+      ? Math.min(1, Math.max(0, 1 - nav.remainingMeters / routeLength))
       : null;
   const shownHeading = nav.snappedHeading ?? nav.heading;
 

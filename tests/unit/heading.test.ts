@@ -41,24 +41,30 @@ describe("vòng qua hướng bắc", () => {
 });
 
 describe("chọn giữa GPS và la bàn", () => {
-  test("đang chạy thì tin GPS", () => {
-    const h = pickHeading({ gpsHeading: 90, compassHeading: 200, speedKmh: 25 });
-    assert.deepEqual(h, { deg: 90, source: "gps" });
+  /*
+   * Đảo so với bản đầu: trước đây đang chạy thì tin GPS, để tránh nhiễu từ
+   * trường quanh xe. Cái giá là phễu chỉ nhích mỗi lần có định vị mới (~1
+   * giây/nhịp) và không hề nhúc nhích khi người ta xoay người — chủ xe báo
+   * đúng như vậy. Hướng ĐANG ĐI đã có cái mũi tên nói rồi.
+   */
+  test("đang chạy vẫn tin la bàn — phễu là hướng NHÌN, không phải hướng đi", () => {
+    const h = pickHeading({ gpsHeading: 90, compassHeading: 200 });
+    assert.deepEqual(h, { deg: 200, source: "compass" });
   });
 
   test("đứng yên thì tin la bàn — đây là cả lý do làm tính năng này", () => {
     // Dừng ở ngã tư, xoay người tìm đường: GPS không nói gì, la bàn nói được.
-    const h = pickHeading({ gpsHeading: 90, compassHeading: 200, speedKmh: 0 });
+    const h = pickHeading({ gpsHeading: null, compassHeading: 200 });
     assert.deepEqual(h, { deg: 200, source: "compass" });
   });
 
-  test("không có la bàn thì vẫn dùng GPS dù đứng yên", () => {
-    const h = pickHeading({ gpsHeading: 90, compassHeading: null, speedKmh: 0 });
+  test("không có la bàn thì dùng GPS — máy cũ, hoặc iOS chưa cho phép", () => {
+    const h = pickHeading({ gpsHeading: 90, compassHeading: null });
     assert.deepEqual(h, { deg: 90, source: "gps" });
   });
 
   test("không có gì thì trả null, không bịa hướng bắc", () => {
-    assert.equal(pickHeading({ gpsHeading: null, compassHeading: null, speedKmh: 20 }), null);
+    assert.equal(pickHeading({ gpsHeading: null, compassHeading: null }), null);
   });
 });
 
