@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 /**
  * "Hôm nay" — the app's only withdrawal surface.
  *
@@ -29,10 +31,22 @@ import { FirstRunPanel } from "./first-run-panel";
 import { HomeSearchLink } from "./home-search-link";
 import { PageShell } from "@/components/layout/page-shell";
 import { StatsPanel } from "@/features/stats/stats-panel";
+import { markFirstScreenReady } from "@/components/layout/boot-veil";
 
 export function HomeScreen() {
   const today = trpc.dashboard.today.useQuery();
   const data = today.data;
+
+  /*
+   * Báo cho tấm khởi động biết màn này đã có gì để xem.
+   *
+   * `/home` là `start_url` của app đã cài, nên đây đúng là màn mà ảnh khởi
+   * động của hệ điều hành đang nhường chỗ cho. Báo cả khi lỗi: thà thấy thẻ
+   * "thử lại" còn hơn ngồi nhìn một mảng navy cho hết 6 giây.
+   */
+  useEffect(() => {
+    if (!today.isPending) markFirstScreenReady();
+  }, [today.isPending]);
 
   return (
     /*

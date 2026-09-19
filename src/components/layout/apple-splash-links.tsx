@@ -23,7 +23,8 @@
 type Splash = { w: number; h: number; dpr: number; orient: "portrait" | "landscape"; file: string };
 
 const SPLASH: Splash[] = [
-  { w: 440, h: 956, dpr: 3, orient: "portrait", file: "440x956-3x-portrait.png" }, // iPhone 16 Pro Max
+  { w: 440, h: 956, dpr: 3, orient: "portrait", file: "440x956-3x-portrait.png" }, // iPhone 16 Pro Max / 17 Pro Max
+  { w: 420, h: 912, dpr: 3, orient: "portrait", file: "420x912-3x-portrait.png" }, // iPhone Air
   { w: 402, h: 874, dpr: 3, orient: "portrait", file: "402x874-3x-portrait.png" }, // iPhone 16 Pro
   { w: 430, h: 932, dpr: 3, orient: "portrait", file: "430x932-3x-portrait.png" }, // iPhone 15/14 Pro Max
   { w: 393, h: 852, dpr: 3, orient: "portrait", file: "393x852-3x-portrait.png" }, // iPhone 16/15/14 Pro
@@ -35,6 +36,10 @@ const SPLASH: Splash[] = [
   { w: 414, h: 736, dpr: 3, orient: "portrait", file: "414x736-3x-portrait.png" }, // iPhone 8/7/6s Plus
   { w: 375, h: 667, dpr: 2, orient: "portrait", file: "375x667-2x-portrait.png" }, // iPhone SE 2/3, 8/7/6s
   { w: 320, h: 568, dpr: 2, orient: "portrait", file: "320x568-2x-portrait.png" }, // iPhone SE 1st gen
+  { w: 1032, h: 1376, dpr: 2, orient: "portrait", file: "1032x1376-2x-portrait.png" }, // iPad Pro M4 13"
+  { w: 1032, h: 1376, dpr: 2, orient: "landscape", file: "1032x1376-2x-landscape.png" }, // iPad Pro M4 13"
+  { w: 834, h: 1210, dpr: 2, orient: "portrait", file: "834x1210-2x-portrait.png" }, // iPad Pro M4 11"
+  { w: 834, h: 1210, dpr: 2, orient: "landscape", file: "834x1210-2x-landscape.png" }, // iPad Pro M4 11"
   { w: 1024, h: 1366, dpr: 2, orient: "portrait", file: "1024x1366-2x-portrait.png" }, // iPad Pro 12.9
   { w: 1024, h: 1366, dpr: 2, orient: "landscape", file: "1024x1366-2x-landscape.png" }, // iPad Pro 12.9
   { w: 834, h: 1194, dpr: 2, orient: "portrait", file: "834x1194-2x-portrait.png" }, // iPad Pro 11
