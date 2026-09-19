@@ -57,6 +57,25 @@ const nextConfig: NextConfig = {
   htmlLimitedBots: /.*/,
 
   /*
+   * Giữ lại payload của route đã vào, để bấm qua lại giữa các tab không phải
+   * chờ máy chủ thêm lần nữa.
+   *
+   * Root layout đọc `cookies()` (theme + tone), nên MỌI route ở đây là dynamic.
+   * Next 15 mặc định `staleTimes.dynamic = 0`: payload của một route dynamic
+   * **không bao giờ** được dùng lại từ bộ nhớ router phía client. Hệ quả đúng
+   * như người dùng báo — bấm sang một tab đã vào rồi vẫn thấy tấm chờ, vì cú
+   * chạm chỉ commit tới ranh giới `loading.tsx` rồi ngồi đợi trọn một vòng RSC.
+   * Với /map thì tấm chờ ấy là nguyên màn "Đang dựng bản đồ…".
+   *
+   * 30 giây: đủ để một vòng bấm qua lại giữa các tab không tốn vòng nào, ngắn
+   * hơn `staleTime` 5 phút của React Query nên dữ liệu vẫn do lớp đó quyết
+   * định chứ không phải bộ nhớ router.
+   */
+  experimental: {
+    staleTimes: { dynamic: 30, static: 180 },
+  },
+
+  /*
    * Keep non-public routes out of the search index.
    *
    * robots.txt only asks a crawler not to FETCH a URL — it does not stop that

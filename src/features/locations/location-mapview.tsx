@@ -49,6 +49,15 @@ const MAP_STYLE_DAY = "https://tiles.openfreemap.org/styles/liberty";
  * `drawn` is initialised.
  */
 let hasEverDrawn = false;
+/*
+ * Tự căn giữa MỘT LẦN MỖI PHIÊN, không phải một lần mỗi mount.
+ *
+ * Bản trước để cờ này trong `useRef`, mà ref thì dựng lại theo component — nên
+ * mỗi lần bấm sang tab Bản đồ là thêm một lần `easeTo` 700ms, dù `initialView`
+ * đã mở đúng chỗ đó rồi. Cùng họ với `hasEverDrawn` ngay trên: thứ đúng "một
+ * lần" thì phải sống ngoài vòng đời component.
+ */
+let centredOnFirstFix = false;
 // Ho Chi Minh City centre.
 const DEFAULT_CENTER = { longitude: 106.7009, latitude: 10.7769, zoom: 12 };
 
@@ -302,9 +311,24 @@ function LocationMapViewImpl({
    * border, as it happened. The last GPS fix is what "where I was" means; the
    * remembered camera is only the fallback for a device that never had one.
    */
+  /*
+   * Tâm lấy theo lần định vị cuối, còn MỨC PHÓNG lấy theo camera lần trước.
+   *
+   * Bản trước hardcode `zoom: 14` ở đây. Ai rời bản đồ ở mức 16 (hoặc 18.5 sau
+   * một chuyến đi) thì quay lại là mọi tile giữ được đều sai tầng: MapLibre
+   * phải tải tầng khác và xếp lại toàn bộ nhãn — nên "lần nào vào cũng vẽ lâu"
+   * dù instance đã được dùng lại. 14 cũng đúng là `minzoom` của lớp nhà 3D,
+   * nên lớp đắt nhất bật lên đúng lúc vừa tới.
+   *
+   * Phần "tâm theo lần định vị cuối" giữ nguyên, và giữ có lý do: camera được
+   * nhớ sau mọi lần di chuyển, kể cả lúc khung theo một tuyến đường, nên tắt
+   * định vị rồi mở lại có thể rơi vào giữa một chuyến cũ — đã từng là một cánh
+   * đồng bên kia biên giới.
+   */
   const [initialView] = useState(() => {
+    const view = readLastView();
     const fix = readLastFix();
-    return fix ? { longitude: fix.lng, latitude: fix.lat, zoom: 14 } : readLastView();
+    return fix ? { longitude: fix.lng, latitude: fix.lat, zoom: view.zoom } : view;
   });
 
   // Track manual map interactions to suspend auto-tracking
@@ -473,27 +497,26 @@ function LocationMapViewImpl({
    * So this waits for the ref and nothing else, and marks itself done only
    * after the camera has been told to move.
    */
-  const centredOnFirstFix = useRef(false);
   useEffect(() => {
-    if (centredOnFirstFix.current || !userGeo || followGeo || focusGeo) return;
+    if (centredOnFirstFix || !userGeo || followGeo || focusGeo) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const centre = () => {
-      if (cancelled || centredOnFirstFix.current) return;
+      if (cancelled || centredOnFirstFix) return;
       const map = mapRef.current;
       if (!map) {
         timer = setTimeout(centre, 200);
         return;
       }
-      centredOnFirstFix.current = true;
-      map.easeTo({ center: [userGeo.lng, userGeo.lat], zoom: 14, duration: 700 });
+      centredOnFirstFix = true;
+      map.easeTo({ center: [userGeo.lng, userGeo.lat], zoom: initialView.zoom, duration: 700 });
     };
     centre();
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [userGeo, followGeo, focusGeo]);
+  }, [userGeo, followGeo, focusGeo, initialView.zoom]);
 
   // Any position the map is handed is the newest thing known about where this
   // device is — remembered so the next open starts there, location on or off.
