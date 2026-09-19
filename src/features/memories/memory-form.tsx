@@ -226,7 +226,7 @@ export function MemoryForm({
     () =>
       (membersQuery.data ?? [])
         .filter((m) => m.name?.trim())
-        .map((m) => ({ id: m.id, name: m.name as string, accountName: m.accountName })),
+        .map((m) => ({ id: m.id, name: m.name as string, accountName: m.accountName, aliases: m.aliases })),
     [membersQuery.data],
   );
   const mentionable = useMemo(
@@ -237,7 +237,7 @@ export function MemoryForm({
         .filter((m) => !m.isSelf && m.name?.trim())
         // accountName rides along so a caption written before a rename still
         // resolves — dropping it here is what turned old tags into plain text.
-        .map((m) => ({ id: m.id, name: m.name as string, accountName: m.accountName })),
+        .map((m) => ({ id: m.id, name: m.name as string, accountName: m.accountName, aliases: m.aliases })),
     [membersQuery.data],
   );
 

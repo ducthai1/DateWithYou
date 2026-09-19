@@ -16,6 +16,14 @@ export type MentionMember = {
   name: string;
   /** The name their account was created with, still valid in older captions. */
   accountName?: string | null;
+  /**
+   * Mọi cách gọi người này mà một chú thích CŨ có thể đang dùng — gồm cả biệt
+   * danh đã bỏ. Đổi biệt danh mà không có danh sách này thì mọi "@TênCũ" đã
+   * viết tụt xuống thành chữ thường, vì bộ dò khớp theo CHỮ chứ không theo id.
+   *
+   * Chỉ để NHẬN RA. Danh sách gợi ý khi gõ "@" vẫn chỉ có tên đang dùng.
+   */
+  aliases?: (string | null | undefined)[];
 };
 
 /** What gets inserted into the text when someone taps a name. */
@@ -82,7 +90,7 @@ export function findMentionRanges(text: string, members: MentionMember[]): Menti
     const name = m.name?.trim();
     if (!name) continue;
     const seen = new Set<string>();
-    for (const raw of [name, m.accountName]) {
+    for (const raw of [name, m.accountName, ...(m.aliases ?? [])]) {
       const alias = raw?.trim();
       if (!alias || seen.has(alias.toLowerCase())) continue;
       seen.add(alias.toLowerCase());

@@ -107,7 +107,7 @@ export function NoteThread({
     () =>
       members
         .filter((m) => m.name?.trim())
-        .map((m) => ({ id: m.id, name: m.name as string, accountName: m.accountName })),
+        .map((m) => ({ id: m.id, name: m.name as string, accountName: m.accountName, aliases: m.aliases })),
     [members],
   );
   // Không ai tự gõ "@" để tag chính mình.

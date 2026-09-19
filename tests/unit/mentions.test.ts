@@ -214,3 +214,20 @@ test("collectMentions: tên không có trong danh sách thì không tính", () =
   // tự bịa ra một id rồi gửi lên.
   assert.deepEqual(collectMentions("@Bình", [MEMBERS[0]]), []);
 });
+
+/*
+ * Đổi biệt danh: chữ đã lưu được VIẾT LẠI, nên không cần nhớ tên cũ.
+ *
+ * Người dùng chốt: "đã đổi biệt danh mới rồi thì giữ biệt danh cũ làm gì?
+ * Hiển thị UI cho user biệt danh cũ là sai nha". Đúng — và chỗ tên cũ từng lộ
+ * ra là ô nhập lúc mở kỷ niệm ra sửa, vì ô đó hiện đúng chữ đang lưu. Nên
+ * `renameMentionsInSpace` viết lại chữ, và `aliases` chỉ còn những cách gọi
+ * ĐANG có hiệu lực.
+ */
+test("aliases chỉ chứa tên đang dùng và tên tài khoản", () => {
+  const m = [{ id: "u2", name: "Mèo", accountName: "binh", aliases: ["Mèo", "binh"] }];
+  assert.equal(findMentionRanges("@Mèo ơi", m)[0]?.id, "u2");
+  assert.equal(findMentionRanges("@binh ơi", m)[0]?.id, "u2");
+  // Tên cũ KHÔNG còn được nhận ra — và cũng không cần, vì chữ đã được viết lại.
+  assert.deepEqual(findMentionRanges("@Bé ơi", m), []);
+});

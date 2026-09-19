@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { seedBirthdayRow } from "@/server/lib/birthday-sync";
+import { renameMentionsInSpace } from "@/server/lib/rename-mentions";
 import { REACTION_BAR_SIZE, REACTION_EMOJIS, normaliseReactionBar } from "@/lib/reactions";
 import { z } from "zod";
 import { createHash } from "node:crypto";
@@ -477,6 +478,13 @@ export const spaceRouter = router({
       return {
         id: p.id,
         name: o?.nickname || p.name,
+        /*
+         * Tên hiện tại và tên tài khoản — hai cách gọi ĐANG có hiệu lực.
+         *
+         * Không có tên cũ ở đây: đổi biệt danh là chữ đã lưu được viết lại
+         * luôn (xem `renameMentionsInSpace`), nên không còn gì để nhớ.
+         */
+        aliases: [...new Set([o?.nickname, p.name])].filter((x): x is string => !!x?.trim()),
         // The raw override as well as the resolved name: the settings field has
         // to know whether it is showing a nickname or the account's own name,
         // and `name` alone cannot say which.
@@ -560,10 +568,48 @@ export const spaceRouter = router({
       const profiles: MemberProfileOverride[] = space.get("memberProfiles") ?? [];
       const theirs = profiles.find((p) => p.userId === input.userId);
       const next = profiles.filter((p) => p.userId !== input.userId);
+
       // Merge, so setting a nickname never clears their avatar or reaction bar.
       next.push({ ...theirs, userId: input.userId, nickname: input.nickname || undefined });
       space.set("memberProfiles", next);
       await space.save();
+
+      /*
+       * Tên cũ không được giữ lại ở BẤT KỲ đâu.
+       *
+       * Thẻ tên nhận ra bằng CHỮ, nên chú thích đã viết vẫn đang lưu nguyên
+       * văn "@TênCũ". Chỉ đổi tên hiển thị thì chữ cũ còn sống ở chỗ người
+       * dùng nhìn thấy: ô nhập lúc mở ra sửa, vì ô đó buộc phải hiện đúng chữ
+       * đang lưu để lớp vẽ thẻ khớp từng ký tự. Nên đổi là viết lại.
+       *
+       * Dữ liệu một cặp đôi rất nhỏ, và đổi biệt danh là việc hiếm — viết lại
+       * ngay tại đây rẻ hơn nhiều so với mang một danh sách tên cũ đi theo mãi.
+       */
+      const previous = theirs?.nickname?.trim() || (await resolveMemberProfiles([input.userId]))[0]?.name;
+      const current = input.nickname.trim() || (await resolveMemberProfiles([input.userId]))[0]?.name;
+      if (previous && current) {
+        const profilesNow = await resolveMemberProfiles(members);
+        const overridesNow = new Map(next.map((p) => [p.userId, p]));
+        await renameMentionsInSpace({
+          spaceId: ctx.spaceId,
+          userId: input.userId,
+          from: previous,
+          to: current,
+          others: profilesNow.map((p) => ({
+            id: p.id,
+            name: overridesNow.get(p.id)?.nickname || p.name,
+          })),
+        }).catch((err) => console.error("space: không viết lại được thẻ tên sau khi đổi biệt danh", err));
+      }
+
+      /*
+       * Dòng sinh nhật mang tên NGAY TRONG tiêu đề đã lưu ("Sinh nhật Bé"), nên
+       * nó không tự đổi theo. Viết lại ngay tại đây — trước bản sửa này, đổi
+       * biệt danh xong màn "Hôm nay" vẫn nhắc sinh nhật bằng tên cũ, mãi mãi.
+       */
+      await seedBirthdayRow(ctx.spaceId, input.userId).catch((err) =>
+        console.error("space: không viết lại được dòng sinh nhật sau khi đổi biệt danh", err),
+      );
       return { ok: true };
     }),
 

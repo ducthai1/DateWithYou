@@ -122,7 +122,17 @@ export function SpaceSettings() {
   });
   const saveNickname = trpc.space.setNickname.useMutation({
     onSuccess: () => {
-      void utils.space.members.invalidate();
+      /*
+       * Làm mới TẤT CẢ, không riêng danh sách thành viên.
+       *
+       * Biệt danh rò ra khắp nơi: thẻ tên trong chú thích và ghi chú, dòng
+       * "Sinh nhật …" trên lịch và màn Hôm nay (tên nằm ngay trong tiêu đề đã
+       * lưu), danh sách hoạt động. Trước bản sửa này chỉ `space.members` được
+       * làm mới, nên đổi tên xong có màn đổi có màn không — đúng thứ người
+       * dùng báo. Đổi biệt danh là việc hiếm; quét sạch một lượt rẻ hơn nhiều
+       * so với đi liệt kê từng query rồi bỏ sót một cái.
+       */
+      void utils.invalidate();
       toast("Đã lưu biệt danh", "success");
     },
     onError: (err) => toast(readableFormError(err.message, "Chưa lưu được biệt danh"), "error"),
