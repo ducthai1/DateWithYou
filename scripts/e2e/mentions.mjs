@@ -288,6 +288,33 @@ export async function run({ base, profileDir, port, db, shotDir }) {
       ok("tên trong ghi chú hiện thành thẻ, không phải chữ thô",
          tagged.hasPill === true && tagged.pillText.startsWith("@"), JSON.stringify(tagged));
 
+      /*
+       * Tên và đoạn chữ phải NGANG với avatar bên trái.
+       *
+       * Chủ xe báo: "tên user và phần text bình luận đang bị lệch xuống so với
+       * avatar bên trái". Nguyên nhân: dòng tên cao theo phần tử cao nhất
+       * trong nó, mà nút xoá có `min-h-10` = 40px, nên ở ghi chú CỦA CHÍNH
+       * MÌNH cả khối chữ bị đẩy tụt. Ghi chú của người kia không có nút xoá
+       * nên lệch kiểu khác — nên phép đo này lấy đúng hàng có nút xoá.
+       *
+       * Đo tâm-so-tâm chứ không đo mép: hai khối cao khác nhau thì mép trên
+       * trùng nhau vẫn đọc ra là lệch.
+       */
+      const align = JSON.parse(await page.eval(`(() => {
+        const row = document.querySelector('[aria-label="Xoá ghi chú"]')?.closest('li');
+        if (!row) return "null";
+        const av = row.firstElementChild;
+        const nameEl = row.querySelector('span.truncate');
+        if (!av || !nameEl) return "null";
+        const a = av.getBoundingClientRect(), n = nameEl.getBoundingClientRect();
+        return JSON.stringify({ off: Math.round((n.y + n.height / 2) - (a.y + a.height / 2)) });
+      })()`));
+      ok(
+        "tên trong ghi chú ngang tâm với avatar" + (align ? ` (lệch ${align.off}px)` : ""),
+        align !== null && Math.abs(align.off) <= 1,
+        align === null ? "không tìm thấy hàng ghi chú để đo" : "",
+      );
+
       // Máy chủ có ghi nhận người được nhắc, chứ không chỉ đẹp ở màn hình.
       /*
        * Máy chủ có LƯU người được nhắc không.

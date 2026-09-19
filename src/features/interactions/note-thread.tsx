@@ -208,7 +208,17 @@ export function NoteThread({
                   <li key={n.id} className="flex gap-2">
                     <Avatar member={member} />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      {/*
+                        Dòng tên cao ĐÚNG BẰNG avatar (24px) và căn giữa, nên
+                        tên luôn ngang tâm avatar bên trái dù có nút xoá hay
+                        không. Trước đây dòng này cao theo phần tử cao nhất
+                        trong nó — nút xoá `min-h-10` là 40px — nên ở ghi chú
+                        của chính mình, tên và cả đoạn chữ bên dưới bị đẩy tụt
+                        8px so với avatar, còn ghi chú của người kia thì lại
+                        nhỉnh lên 4px. Hai kiểu lệch khác nhau trên cùng một
+                        danh sách.
+                      */}
+                      <div className="flex min-h-6 items-center gap-2">
                         <span className="text-foreground truncate text-xs font-medium">
                           {member?.name ?? "Người kia"}
                         </span>
@@ -222,7 +232,12 @@ export function NoteThread({
                           <ConfirmButton
                             idle="Xoá"
                             aria-label="Xoá ghi chú"
-                            className="ml-auto min-h-10 shrink-0 px-1 text-[10px]"
+                            /*
+                              Vẫn 40px để chạm được, nhưng `-my-2` cắt phần
+                              thừa ra khỏi phép tính chiều cao: ô chạm giữ
+                              nguyên, dòng vẫn 24px.
+                            */
+                            className="ml-auto -my-2 min-h-10 shrink-0 px-1 text-[10px]"
                             title="Xoá ghi chú?"
                             description="Ghi chú này sẽ biến mất khỏi kỷ niệm và không khôi phục lại được."
                             confirmText="Xoá ghi chú"
@@ -262,12 +277,6 @@ export function NoteThread({
                 maxLength={MAX_LENGTH}
                 placeholder="Viết ghi chú…"
                 aria-label="Nội dung ghi chú"
-                /*
-                 * Cao đúng bằng nút gửi bên cạnh (44px, cũng là mức chạm tối
-                 * thiểu). Lệch 3px thì hai cái cạnh nhau đọc ra là đặt nhầm
-                 * chứ không ai nghĩ là cố ý. Class này rơi vào CẢ hai lớp của
-                 * MentionField nên lớp vẽ pill vẫn khít với chữ.
-                 */
                 /*
                  * Cao đúng bằng nút gửi bên cạnh (44px, cũng là mức chạm tối
                  * thiểu). Lệch 3px thì hai cái cạnh nhau đọc ra là đặt nhầm
