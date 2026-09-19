@@ -108,6 +108,17 @@ export type LiveNavigation = {
   /** Accumulated travelled path as [lng, lat] pairs for a map line. */
   /** Estimated remaining distance in metres (null before first fix). */
   remainingMeters: number | null;
+  /**
+   * Chiều dài CỦA CHÍNH ĐƯỜNG ĐANG VẼ, đo trên các điểm của nó.
+   *
+   * Không dùng con số nhà cung cấp báo. Hai cái gần nhau nhưng không bằng nhau
+   * — nhà cung cấp cộng chiều dài từng cạnh trong đồ thị đường, còn hình vẽ ra
+   * là hình đã được giản lược. `remainingMeters` đo trên hình, nên muốn ra
+   * phần trăm đã đi thì mẫu số cũng phải là hình, không thì chỗ cắt lệch khỏi
+   * chân người đi. Đo thật trên tuyến Stadia 11.6km: lệch 8m; trên tuyến vẽ
+   * tay trong bộ e2e: 40m.
+   */
+  routeLengthMeters: number | null;
   /** Estimated remaining time in seconds (null before first fix). */
   remainingSeconds: number | null;
   error: string | null;
@@ -183,6 +194,7 @@ export function useLiveNavigation(options?: {
   // Ticks while navigating so partner + GPS staleness re-evaluate between events.
   const [nowTs, setNowTs] = useState<number>(() => Date.now());
   const [remainingMeters, setRemainingMeters] = useState<number | null>(null);
+  const [routeLengthMeters, setRouteLengthMeters] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [legs, setLegs] = useState<LegInfo[]>([]);
   /*
@@ -455,6 +467,7 @@ export function useLiveNavigation(options?: {
       // line means the old index points nowhere in particular, and a reroute is
       // exactly when a stale hint would send the window looking the wrong way.
       routeCumRef.current = coords.length > 1 ? cumulativeMetres(coords) : null;
+      setRouteLengthMeters(routeCumRef.current ? routeCumRef.current[routeCumRef.current.length - 1] : null);
       matchIdxRef.current = 0;
       /*
        * And a fresh judgement about being ON it. Carrying the old strikes over
@@ -780,6 +793,7 @@ export function useLiveNavigation(options?: {
     snappedHeading,
     remainingMeters,
     remainingSeconds,
+    routeLengthMeters,
     error,
     start,
     stop,
