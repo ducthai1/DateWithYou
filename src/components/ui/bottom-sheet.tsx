@@ -76,7 +76,7 @@ export function BottomSheet({
             onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
             className={cn(
-              "bg-card border-border relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border-t shadow-2xl",
+              "bg-card border-border relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border-t shadow-elev-float",
               "outline-none",
               className,
             )}

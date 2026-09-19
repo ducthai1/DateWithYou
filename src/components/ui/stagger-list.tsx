@@ -1,12 +1,12 @@
 "use client";
 
 // Wraps a list of direct children and staggers their entrance with a short
-// y-offset + fade. 30ms step keeps it snappy without feeling mechanical.
+// y-offset + fade. The step is small AND capped — see STAGGER_CAP.
 // Respects prefers-reduced-motion via framer-motion's useReducedMotion — when
 // motion is reduced the children render instantly with no animation.
 
 import { isValidElement } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 
 interface StaggerListProps {
   children: React.ReactNode;
@@ -15,29 +15,41 @@ interface StaggerListProps {
   gap?: string;
 }
 
-const CONTAINER = {
-  hidden: {},
-  show: {
-    transition: {
-      staggerChildren: 0.03, // 30ms step
-    },
-  },
-};
+/*
+ * Bậc thang CÓ TRẦN, không phải bậc thang vô hạn.
+ *
+ * `staggerChildren` nhân với chỉ số, nên một lưới 24 thẻ (một trang kỷ niệm)
+ * có thẻ cuối **bắt đầu** hiện ở 690ms và xong ở ~940ms — rồi từng ảnh trong
+ * nó lại tự mờ dần 300ms nữa. Đó đúng là "các mảng hình cứ load dần dần" mà
+ * chủ repo thấy, và nó là hoạt ảnh do mình viết chứ không phải mạng chậm.
+ *
+ * `staggerChildren` là độ trễ, không có tham số "tối đa", nên trần đặt bằng số
+ * phần tử được xếp bậc: quá `STAGGER_CAP` thì mọi thẻ còn lại hiện cùng nhau.
+ * Nhịp vào màn vẫn còn ở những thẻ mắt thật sự nhìn, phần dưới màn thì không
+ * ai được lợi vì phải đợi.
+ */
+const STEP = 0.028;
+const STAGGER_CAP = 8;
 
-const ITEM_VISIBLE = {
+const CONTAINER: Variants = { hidden: {}, show: {} };
+
+const ITEM_VISIBLE: Variants = {
   hidden: { opacity: 0, y: 6 },
-  show: {
+  // Độ trễ tính theo chỉ số nhưng CÓ TRẦN — `staggerChildren` không có trần nên
+  // phải tự tính ở đây, xem ghi chú trên `STAGGER_CAP`.
+  show: (i: number) => ({
     opacity: 1,
     y: 0,
     transition: {
       duration: 0.25,
-      ease: [0.16, 1, 0.3, 1] as number[], // --ease-spring
+      delay: Math.min(i, STAGGER_CAP) * STEP,
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // --ease-spring
     },
-  },
+  }),
 };
 
 // Instant variant for reduced-motion — same structure so framer doesn't warn.
-const ITEM_INSTANT = {
+const ITEM_INSTANT: Variants = {
   hidden: { opacity: 1, y: 0 },
   show: { opacity: 1, y: 0 },
 };
@@ -64,6 +76,7 @@ export function StaggerList({ children, className, gap = "space-y-3" }: StaggerL
             // fall back to index only for unkeyed children.
             <motion.div
               key={isValidElement(child) && child.key != null ? child.key : i}
+              custom={i}
               variants={itemVariant}
               className="min-w-0"
             >

@@ -277,7 +277,7 @@ export function Modal({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
             className={cn(
-              "bg-card border-border relative flex w-full flex-col overflow-hidden rounded-2xl border shadow-2xl cursor-default",
+              "bg-card border-border relative flex w-full flex-col overflow-hidden rounded-2xl border shadow-elev-float cursor-default",
               MODAL_SIZE[size],
               "max-h-[90dvh]",
               "outline-none",

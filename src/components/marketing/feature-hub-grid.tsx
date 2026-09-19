@@ -57,8 +57,16 @@ export function FeatureHubGrid() {
 
               {/* Tint band. Carries the colour that a text-only tile lacked,
                   and scales with the cell so wide tiles read as heavier. */}
+              {/*
+                KHÔNG `relative` ở đây.
+                `::after` của liên kết bên dưới nở ra theo tổ tiên được định vị
+                GẦN NHẤT. Dải màu này từng là `relative`, nên "liên kết phủ cả
+                thẻ" thật ra chỉ phủ đúng dải ngang này: ảnh, đoạn mô tả, các
+                chip và cả dòng "Đọc tiếp →" đều nằm ngoài vùng bấm, trong khi
+                rê chuột vào đâu cũng sáng cả thẻ và ảnh vẫn phóng to.
+              */}
               <div
-                className="relative flex items-center gap-4 px-7 pt-7 pb-6"
+                className="flex items-center gap-4 px-7 pt-7 pb-6"
                 style={{ background: style?.tint }}
               >
                 <span
@@ -107,6 +115,11 @@ export function FeatureHubGrid() {
                 ) : null}
 
                 <div className="mt-auto flex items-center justify-between gap-3 pt-6">
+                  {/*
+                    Vẫn là chữ, không phải liên kết thứ hai — nhưng giờ nó nằm
+                    TRONG vùng bấm của thẻ, nên bấm vào đúng chỗ nó mời gọi thì
+                    có tác dụng. Thêm liên kết thật ở đây sẽ thành <a> lồng <a>.
+                  */}
                   <span
                     className="text-[13.5px] font-medium"
                     style={{ color: style?.ink }}

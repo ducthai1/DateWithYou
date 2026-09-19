@@ -136,24 +136,48 @@ export function LandingSections() {
               /* Cap the stagger: past a handful of cards a growing delay stops
                  reading as rhythm and starts reading as lag. */
               delay={Math.min(i, 5) * 110}
-              className="rounded-3xl border border-[#d8cfc1]/70 bg-white/50 p-7 backdrop-blur-sm transition-colors hover:border-[#c2693f]/40 hover:bg-white/80"
+              /*
+                Chỉ sáng lên khi thẻ THẬT SỰ bấm được.
+                Trước đây mọi thẻ đều đổi nền và viền khi rê chuột, nhưng liên
+                kết chỉ nằm trên mấy chữ "Xem chi tiết →" — và 3 trong 7 thẻ
+                không có liên kết nào cả. Thẻ sáng lên rồi bấm vào tiêu đề thì
+                không có gì xảy ra: đúng thứ chủ repo mô tả. Lưới đường-đọc ngay
+                dưới trang này dùng gần y hệt bộ class ấy trên một `<Link>` bọc
+                cả thẻ, nên hai lưới cạnh nhau dạy người xem hai luật trái ngược.
+              */
+              className={
+                "relative rounded-3xl border border-[#d8cfc1]/70 bg-white/50 p-7 backdrop-blur-sm transition-colors" +
+                (feature.href ? " hover:border-[#c2693f]/40 hover:bg-white/80" : "")
+              }
             >
+              {/*
+                Liên kết phủ CẢ THẺ bằng `::after`, không phải chỉ dòng chữ cuối.
+                `relative` đặt ngay trên thẻ — `Reveal` chỉ chuyển tiếp
+                className chứ không tự định vị, mà thiếu gốc định vị thì
+                `::after` nở ra tới tổ tiên được định vị gần nhất và biến cả
+                khối thành một liên kết khổng lồ. Và đừng đặt `relative` cho bất
+                kỳ phần tử con nào: nó sẽ kéo `::after` co lại theo phần tử đó,
+                đúng cái bẫy đã dính ở lưới /tinh-nang.
+              */}
               <span className="text-3xl" aria-hidden="true">
                 {feature.emoji}
               </span>
               <h3 className="mt-5 text-lg font-medium text-[#3b322a]">
-                {feature.title}
+                {feature.href ? (
+                  <Link href={feature.href} className="after:absolute after:inset-0">
+                    {feature.title}
+                  </Link>
+                ) : (
+                  feature.title
+                )}
               </h3>
               <p className="mt-3 text-[15px] font-light leading-relaxed text-[#6b5c51]">
                 {feature.body}
               </p>
               {feature.href ? (
-                <Link
-                  href={feature.href}
-                  className="mt-4 inline-flex items-center gap-1 text-[13px] font-medium text-[#a8542f] transition-opacity hover:opacity-70"
-                >
+                <span className="mt-4 inline-flex items-center gap-1 text-[13px] font-medium text-[#a8542f]">
                   Xem chi tiết <span aria-hidden="true">→</span>
-                </Link>
+                </span>
               ) : null}
             </Reveal>
           ))}
