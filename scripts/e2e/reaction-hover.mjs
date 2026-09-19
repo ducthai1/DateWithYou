@@ -33,13 +33,34 @@ export async function run({ base, profileDir, port, db, shotDir }) {
   const page = await openPage(port);
   const results = [];
   const ok = (name, pass, detail = "") => results.push({ ok: pass, name, detail });
+  let memoId = null;
 
   try {
     const me = await signIn(page, base, db);
     await db.collection("memories").deleteMany({ title: TITLE });
-    await db.collection("memories").insertOne({
+    memoId = String((await db.collection("memories").insertOne({
       spaceId: me.spaceId, title: TITLE, photos: [], embeds: [], tags: [], mentions: [],
       date: new Date(), createdBy: me.uid, createdAt: new Date(), updatedAt: new Date(),
+    })).insertedId);
+
+    /*
+     * Thẻ có SẴN cảm xúc, không phải thẻ trống.
+     *
+     * Trên thẻ trống, nút tim nằm sát mép trái — ngay dưới hàng cảm xúc, nên
+     * cây cầu phủ tới là chuyện đương nhiên. Có cảm xúc rồi thì mấy con chip
+     * đẩy nút tim sang phải, và đó mới là hình học người dùng thật gặp. Bản
+     * kiểm đầu tiên bỏ sót đúng chỗ đó.
+     */
+    await db.collection("reactions").deleteMany({ targetId: memoId });
+    await db.collection("reactions").insertOne({
+      spaceId: me.spaceId, targetType: "memory", targetId: memoId,
+      /*
+       * Của NGƯỜI KIA, không phải của mình: cảm xúc của chính mình chỉ làm
+       * sáng nút tim chứ không tạo ra con chip nào, nên nút tim không hề bị
+       * đẩy đi đâu cả. Bản đầu của bài này gắn nhầm cho mình và đo ra "lệch
+       * 0px" — tức là nó đang kiểm đúng cái hình học mà nó định tránh.
+       */
+      userId: "e2e-nguoi-kia", emoji: "🔥", createdAt: new Date(), updatedAt: new Date(),
     });
 
     await page.viewport(1280, 900, false);
@@ -53,6 +74,14 @@ export async function run({ base, profileDir, port, db, shotDir }) {
 
     await page.until(`!!document.querySelector('[aria-label="Thả tim"],[aria-label^="Bỏ cảm xúc"]')`, { timeout: 30000 });
     await new Promise((r) => setTimeout(r, 600));
+
+    // Nút tim phải thật sự bị đẩy khỏi mép trái, nếu không bài này chẳng đo gì.
+    const rowLeft = await page.eval(`(() => {
+      const b = document.querySelector('[aria-label="Thả tim"],[aria-label^="Bỏ cảm xúc"]');
+      const row = b.closest("div").parentElement;
+      return String(Math.round(b.getBoundingClientRect().left - row.getBoundingClientRect().left));
+    })()`);
+    ok("nút tim bị cảm xúc có sẵn đẩy khỏi mép trái", Number(rowLeft) > 20, `lệch ${rowLeft}px`);
 
     const heart = JSON.parse(await page.eval(`(() => {
       const b = document.querySelector('[aria-label="Thả tim"],[aria-label^="Bỏ cảm xúc"]');
@@ -104,6 +133,7 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     ok("rời hẳn ra thì hàng cảm xúc đóng lại", (await alive()) === "0");
   } finally {
     await db.collection("memories").deleteMany({ title: TITLE }).catch(() => {});
+    if (memoId) await db.collection("reactions").deleteMany({ targetId: memoId }).catch(() => {});
     page.close();
     chrome.kill();
   }
