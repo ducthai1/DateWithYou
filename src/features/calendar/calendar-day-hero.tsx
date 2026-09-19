@@ -97,7 +97,7 @@ export function CalendarDayHero({
             {trip && (
               <Link
                 href={`/trips/${trip.id}`}
-                className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-accent shadow-sm transition-colors hover:bg-white"
+                className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-accent-ink shadow-sm transition-colors hover:bg-white"
               >
                 <Plane className="h-3 w-3 shrink-0" aria-hidden="true" />
                 <span className="truncate">
@@ -107,7 +107,7 @@ export function CalendarDayHero({
             )}
           </div>
           {isToday && (
-            <span className="bg-white/90 text-accent rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm">
+            <span className="bg-white/90 text-accent-ink rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm">
               Hôm nay
             </span>
           )}
@@ -146,7 +146,7 @@ export function CalendarDayHero({
         {/* On this day (past years) */}
         {data && data.onThisDay.length > 0 && (
           <div className="bg-accent-soft/50 rounded-2xl p-3">
-            <p className="text-accent mb-1.5 flex items-center gap-1 text-xs font-semibold">
+            <p className="text-accent-ink mb-1.5 flex items-center gap-1 text-xs font-semibold">
               <Sparkles className="h-3.5 w-3.5" /> Ngày này năm xưa
               <span className="text-muted-foreground font-normal">(kỷ niệm các năm trước)</span>
             </p>
@@ -215,7 +215,7 @@ export function CalendarDayHero({
           <button
             type="button"
             onClick={onOpenDay}
-            className="border-border text-muted-foreground hover:border-accent hover:text-accent flex w-full flex-col items-center gap-1 rounded-2xl border border-dashed py-6 transition-colors touch-manipulation active:scale-[0.99]"
+            className="border-border text-muted-foreground hover:border-accent hover:text-accent-ink flex w-full flex-col items-center gap-1 rounded-2xl border border-dashed py-6 transition-colors touch-manipulation active:scale-[0.99]"
           >
             <CalendarDays className="h-7 w-7" strokeWidth={1.5} />
             <span className="text-sm font-medium">Chưa có gì ngày này — thêm kế hoạch nhé</span>

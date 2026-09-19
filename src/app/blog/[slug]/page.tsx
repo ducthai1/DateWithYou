@@ -128,13 +128,13 @@ export default async function ArticlePage({
       <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
         <SmartBackLink fallback="/blog" tone="app" />
         <nav aria-label="Đường dẫn" className="text-muted-foreground text-sm">
-          <Link href="/blog" className="hover:text-accent">
+          <Link href="/blog" className="hover:text-accent-ink">
             Blog
           </Link>
           <span className="px-1.5">/</span>
           <Link
             href={`/blog/danh-muc/${post.category}`}
-            className="hover:text-accent"
+            className="hover:text-accent-ink"
           >
             {labelOf(post.category)}
           </Link>
@@ -153,7 +153,7 @@ export default async function ArticlePage({
                   <li key={h.id} className={h.level === 3 ? "ml-4" : ""}>
                     <a
                       href={`#${h.id}`}
-                      className="text-muted-foreground hover:text-accent"
+                      className="text-muted-foreground hover:text-accent-ink"
                     >
                       {h.text}
                     </a>
@@ -217,10 +217,10 @@ export default async function ArticlePage({
                           href={`/blog/${p.slug}`}
                           className="group flex gap-2 text-sm"
                         >
-                          <span className="text-accent/40 font-bold tabular-nums">
+                          <span className="text-accent-ink/40 font-bold tabular-nums">
                             {i + 1}
                           </span>
-                          <span className="text-muted-foreground group-hover:text-accent line-clamp-2 xl:line-clamp-3">
+                          <span className="text-muted-foreground group-hover:text-accent-ink line-clamp-2 xl:line-clamp-3">
                             {p.title}
                           </span>
                         </Link>
@@ -260,7 +260,7 @@ export default async function ArticlePage({
                 <li key={p.slug}>
                   <Link
                     href={`/blog/${p.slug}`}
-                    className="text-accent hover:underline"
+                    className="text-accent-ink hover:underline"
                   >
                     {p.title}
                   </Link>

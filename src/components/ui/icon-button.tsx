@@ -18,7 +18,7 @@ export function IconButton({
         "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
         "disabled:cursor-not-allowed disabled:opacity-50",
         tone === "neutral" && "text-muted-foreground hover:bg-muted",
-        tone === "accent" && "text-accent hover:bg-accent-soft",
+        tone === "accent" && "text-accent-ink hover:bg-accent-soft",
         tone === "destructive" && "text-destructive hover:bg-destructive-soft",
         className,
       )}

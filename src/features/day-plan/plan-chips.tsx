@@ -37,7 +37,7 @@ export function Chip({
           : "px-3.5 py-2 text-sm",
         selected
           ? "border-accent bg-accent text-accent-foreground shadow-elev-1"
-          : "border-border bg-card text-muted-foreground hover:border-accent hover:text-accent",
+          : "border-border bg-card text-muted-foreground hover:border-accent hover:text-accent-ink",
         className,
       )}
       // A 44px target, because this screen is used one-handed on a phone.

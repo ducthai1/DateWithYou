@@ -13,7 +13,7 @@ export function Badge({
         "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
         tone === "neutral" && "bg-muted text-muted-foreground",
         tone === "success" && "bg-emerald-100 text-emerald-700",
-        tone === "accent" && "bg-accent-soft text-accent",
+        tone === "accent" && "bg-accent-soft text-accent-ink",
         className,
       )}
       {...props}

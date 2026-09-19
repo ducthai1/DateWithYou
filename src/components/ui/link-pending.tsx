@@ -23,7 +23,7 @@ export function PendingOverlay({ className = "" }: { className?: string }) {
       aria-label="Đang mở…"
       className={`bg-card/70 pointer-events-none absolute inset-0 z-10 flex items-center justify-center backdrop-blur-[1px] ${className}`}
     >
-      <span className="bg-card text-accent flex h-10 w-10 items-center justify-center rounded-full shadow-md">
+      <span className="bg-card text-accent-ink flex h-10 w-10 items-center justify-center rounded-full shadow-md">
         <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
       </span>
     </span>

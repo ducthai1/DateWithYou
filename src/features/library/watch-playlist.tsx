@@ -106,8 +106,8 @@ export function WatchPlaylist({
                     className={cn(
                       "line-clamp-2 text-sm leading-snug font-semibold",
                       active
-                        ? "text-accent"
-                        : "text-foreground group-hover:text-accent",
+                        ? "text-accent-ink"
+                        : "text-foreground group-hover:text-accent-ink",
                     )}
                   >
                     {q.title}

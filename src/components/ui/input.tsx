@@ -63,7 +63,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
               "absolute z-30 pointer-events-none transition-all duration-200 text-muted-foreground",
               "top-1/2 -translate-y-1/2 text-sm",
               prefixIcon ? "left-9" : "left-3",
-              "peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-focus:text-accent peer-focus:left-3",
+              "peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-focus:text-accent-ink peer-focus:left-3",
               "peer-[&:not(:placeholder-shown)]:top-0 peer-[&:not(:placeholder-shown)]:-translate-y-1/2 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:left-3",
               "peer-[&:-webkit-autofill]:top-0 peer-[&:-webkit-autofill]:-translate-y-1/2 peer-[&:-webkit-autofill]:text-xs peer-[&:-webkit-autofill]:left-3",
             )}

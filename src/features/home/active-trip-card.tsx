@@ -71,7 +71,7 @@ export function ActiveTripCard({ trip }: { trip: HomeActiveTrip }) {
           /* Next up, spelled out rather than left for the reader to find in the
              list below — on a trip this is the one line worth reading first. */
           <p className="text-foreground/80 text-sm">
-            <span className="text-accent font-semibold">Tiếp theo</span>{" "}
+            <span className="text-accent-ink font-semibold">Tiếp theo</span>{" "}
             <span className="font-medium">{trip.nextItem.title}</span>
             <span className="text-muted-foreground">
               {" · "}
@@ -89,7 +89,7 @@ export function ActiveTripCard({ trip }: { trip: HomeActiveTrip }) {
         ) : (
           <p className="text-muted-foreground text-sm">
             Hôm nay chưa có gì trong lịch trình — cứ đi theo cảm hứng cũng được.{" "}
-            <Link href={`/trips/${trip.id}`} className="text-accent font-medium">
+            <Link href={`/trips/${trip.id}`} className="text-accent-ink font-medium">
               Thêm vào lịch trình
             </Link>
           </p>

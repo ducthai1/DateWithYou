@@ -59,12 +59,12 @@ export function ArticleCard({
         ) : (
           <div className="from-accent-soft to-muted h-full w-full bg-gradient-to-br" />
         )}
-        <span className="bg-card/90 text-accent absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm">
+        <span className="bg-card/90 text-accent-ink absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm">
           {categoryLabel ?? CATEGORY_LABEL[post.category] ?? post.category}
         </span>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="text-foreground line-clamp-2 text-base font-semibold leading-snug group-hover:text-accent">
+        <h3 className="text-foreground line-clamp-2 text-base font-semibold leading-snug group-hover:text-accent-ink">
           {post.title}
         </h3>
         {post.excerpt && <p className="text-muted-foreground line-clamp-2 text-sm">{post.excerpt}</p>}

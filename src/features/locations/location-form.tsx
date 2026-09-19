@@ -402,7 +402,7 @@ export function LocationForm({
                 ? `📍 ${v.geo.lat.toFixed(4)}, ${v.geo.lng.toFixed(4)}`
                 : "Chưa có vị trí trên bản đồ"}
             </span>
-            <span className="text-accent font-medium">
+            <span className="text-accent-ink font-medium">
               {v.geo ? "Chọn lại" : "Chọn trên bản đồ"}
             </span>
           </button>
@@ -424,7 +424,7 @@ export function LocationForm({
             <span className="font-medium text-foreground">gần đúng</span> — chạm bản đồ để đặt pin chính xác.
           </p>
           {resolvingLink && (
-            <p className="text-accent text-xs font-medium">Đang lấy vị trí từ link…</p>
+            <p className="text-accent-ink text-xs font-medium">Đang lấy vị trí từ link…</p>
           )}
           {linkHadNoGeo && (
             <p className="text-xs font-medium text-amber-600">
@@ -436,7 +436,7 @@ export function LocationForm({
               href={v.googleMapsUrl.trim()}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-xs font-medium text-accent underline"
+              className="inline-block text-xs font-medium text-accent-ink underline"
             >
               ↗ Mở link để xem đúng vị trí (rồi chạm bản đồ cho khớp)
             </a>

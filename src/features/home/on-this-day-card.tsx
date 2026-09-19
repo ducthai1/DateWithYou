@@ -65,11 +65,11 @@ export function OnThisDayCard({
                     className="bg-accent-soft flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
                     aria-hidden="true"
                   >
-                    <Images className="text-accent h-4 w-4" strokeWidth={1.8} />
+                    <Images className="text-accent-ink h-4 w-4" strokeWidth={1.8} />
                   </span>
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="text-accent block text-xs font-medium">
+                  <span className="text-accent-ink block text-xs font-medium">
                     {agoLabel(m.yearsAgo, m.year)}
                   </span>
                   <span className="block truncate text-sm font-medium">{m.title}</span>

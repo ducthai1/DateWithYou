@@ -111,7 +111,7 @@ export function ListenTogetherControls({
       disabled={listen.isBusy}
       aria-label={`Rủ ${partnerName} nghe cùng`}
       className={cn(
-        "bg-accent-soft text-accent hover:bg-accent pointer-events-auto flex w-full items-center justify-center gap-1.5 rounded-full font-bold transition-colors hover:text-white disabled:opacity-60",
+        "bg-accent-soft text-accent-ink hover:bg-accent pointer-events-auto flex w-full items-center justify-center gap-1.5 rounded-full font-bold transition-colors hover:text-white disabled:opacity-60",
         text,
         size === "sm" ? "py-1.5" : "px-4 py-2",
       )}

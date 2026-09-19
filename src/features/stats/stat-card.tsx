@@ -34,7 +34,7 @@ export function StatCard({
             its own right edge past the card. */}
         <span className="min-w-0 leading-tight">{label}</span>
       </div>
-      <p className="text-accent text-xl font-bold tracking-tight">{value}</p>
+      <p className="text-accent-ink text-xl font-bold tracking-tight">{value}</p>
       {hint && (
         <p className="text-muted-foreground mt-1 text-[10px] leading-tight">{hint}</p>
       )}

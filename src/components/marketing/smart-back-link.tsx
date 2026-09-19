@@ -94,7 +94,7 @@ export function SmartBackLink({
         "group inline-flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-4 text-sm font-medium shadow-sm backdrop-blur-sm transition-all hover:-translate-x-0.5",
         tone === "parchment"
           ? "border-[#d8cfc1]/80 bg-white/60 text-[#6f675d] hover:border-[#c2693f]/40 hover:text-[#a8542f]"
-          : "border-border bg-card/90 text-muted-foreground hover:border-accent/40 hover:text-accent",
+          : "border-border bg-card/90 text-muted-foreground hover:border-accent/40 hover:text-accent-ink",
         className,
       )}
     >
@@ -102,8 +102,8 @@ export function SmartBackLink({
         className={cn(
           "flex h-7 w-7 items-center justify-center rounded-full transition-colors",
           tone === "parchment"
-            ? "bg-[#c2693f]/10 text-[#a8542f] group-hover:bg-[#c2693f] group-hover:text-white"
-            : "bg-accent-soft text-accent group-hover:bg-accent group-hover:text-white",
+            ? "bg-[#b1603a]/10 text-[#a8542f] group-hover:bg-[#b1603a] group-hover:text-white"
+            : "bg-accent-soft text-accent-ink group-hover:bg-accent group-hover:text-white",
         )}
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />

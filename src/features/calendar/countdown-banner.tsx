@@ -40,9 +40,9 @@ export function CountdownBanner() {
   const chip = (
     <div className="bg-card/80 border-border/60 flex max-w-full items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 shadow-sm backdrop-blur-md">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft">
-        <Icon className="h-3.5 w-3.5 text-accent" strokeWidth={1.8} />
+        <Icon className="h-3.5 w-3.5 text-accent-ink" strokeWidth={1.8} />
       </span>
-      <span className="text-accent min-w-0 truncate text-xs font-semibold leading-snug">{label}</span>
+      <span className="text-accent-ink min-w-0 truncate text-xs font-semibold leading-snug">{label}</span>
     </div>
   );
 

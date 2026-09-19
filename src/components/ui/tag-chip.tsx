@@ -32,7 +32,7 @@ export function TagChip({ name, className }: { name: string; className?: string 
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
-        tag ? "border-transparent" : "bg-accent-soft text-accent border-transparent",
+        tag ? "border-transparent" : "bg-accent-soft text-accent-ink border-transparent",
         className,
       )}
       style={

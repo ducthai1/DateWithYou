@@ -32,7 +32,7 @@ export function LiveSharingRow() {
   return (
     <div className="border-border space-y-3 rounded-xl border p-3">
       <div className="flex items-start gap-2.5">
-        <MonitorSmartphone className="text-accent mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden />
+        <MonitorSmartphone className="text-accent-ink mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">Để người kia thấy bạn đang đi</p>
           <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
@@ -47,7 +47,7 @@ export function LiveSharingRow() {
       </div>
 
       <div className="flex items-start gap-2.5">
-        <Compass className="text-accent mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden />
+        <Compass className="text-accent-ink mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">Hướng đang nhìn trên bản đồ</p>
           <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
@@ -71,7 +71,7 @@ export function LiveSharingRow() {
       </div>
 
       <div className="flex items-start gap-2.5">
-        <BatteryCharging className="text-accent mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden />
+        <BatteryCharging className="text-accent-ink mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">Mức pin của nhau</p>
           <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">

@@ -36,7 +36,7 @@ export default function GlobalError({
         <main className="bg-background text-foreground flex min-h-screen items-center justify-center px-4 py-16">
           <div className="border-border bg-card shadow-elev-1 flex w-full max-w-[420px] flex-col items-center gap-4 rounded-xl border p-6 text-center">
             <span
-              className="bg-accent-soft text-accent flex h-16 w-16 items-center justify-center rounded-full text-2xl"
+              className="bg-accent-soft text-accent-ink flex h-16 w-16 items-center justify-center rounded-full text-2xl"
               aria-hidden="true"
             >
               ✳

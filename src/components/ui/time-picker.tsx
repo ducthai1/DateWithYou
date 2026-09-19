@@ -74,7 +74,7 @@ export function TimePicker({ value, onChange, clearable = false }: TimePickerPro
         className="flex h-11 w-full items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm transition-colors hover:border-accent focus:border-accent outline-none"
         onClick={() => setOpen(!open)}
       >
-        <Clock className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+        <Clock className="h-4 w-4 shrink-0 text-accent-ink" aria-hidden="true" />
         <span className={value ? "text-foreground font-medium" : "text-muted-foreground"}>
           {value || "--:--"}
         </span>

@@ -140,7 +140,7 @@ export function CyclePanel() {
           sinh), and the rhythm it came from is shown right under it so the
           number is checkable rather than magic. */}
       <div className="border-border bg-card rounded-2xl border p-5 shadow-sm">
-        <p className="text-accent text-sm font-semibold">Kỳ tiếp theo</p>
+        <p className="text-accent-ink text-sm font-semibold">Kỳ tiếp theo</p>
         {prediction ? (
           <>
             <p className="text-foreground mt-2 text-2xl font-bold tracking-tight">
@@ -339,7 +339,7 @@ function QuickDate({
         "touch-manipulation rounded-full px-3 py-1.5 text-xs font-semibold transition-colors active:scale-95",
         active
           ? "bg-accent text-accent-foreground shadow-sm"
-          : "bg-muted text-muted-foreground hover:bg-accent-soft hover:text-accent",
+          : "bg-muted text-muted-foreground hover:bg-accent-soft hover:text-accent-ink",
       )}
     >
       {label}

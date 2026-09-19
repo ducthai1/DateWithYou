@@ -297,7 +297,7 @@ export const CalendarCell = memo(function CalendarCell({
           </span>
         ) : (
           hasSpecial && (
-            <Star className="fill-accent text-accent h-3.5 w-3.5 shrink-0 md:hidden" />
+            <Star className="fill-accent text-accent-ink h-3.5 w-3.5 shrink-0 md:hidden" />
           )
         )}
       </div>

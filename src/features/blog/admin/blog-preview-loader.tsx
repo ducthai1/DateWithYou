@@ -49,7 +49,7 @@ export function BlogPreviewLoader({ id }: { id: string }) {
       <div className="mb-4 flex items-center justify-between gap-3">
         <Link
           href={`/admin/blog/${p.id}`}
-          className="text-muted-foreground hover:text-accent inline-flex items-center gap-1 text-sm"
+          className="text-muted-foreground hover:text-accent-ink inline-flex items-center gap-1 text-sm"
         >
           <ArrowLeft className="h-4 w-4" /> Quay lại sửa
         </Link>

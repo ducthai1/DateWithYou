@@ -137,7 +137,7 @@ export function TripChecklist({ trip }: { trip: any }) {
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-2 flex items-center justify-between text-sm font-medium">
           <span>Tiến độ chuẩn bị</span>
-          <span className="text-accent">{progress}%</span>
+          <span className="text-accent-ink">{progress}%</span>
         </div>
         <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
           <div

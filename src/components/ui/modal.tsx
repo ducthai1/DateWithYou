@@ -326,7 +326,7 @@ export function ModalHeader({
         {icon ? (
           <span
             aria-hidden="true"
-            className="bg-accent-soft text-accent mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            className="bg-accent-soft text-accent-ink mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
           >
             {icon}
           </span>

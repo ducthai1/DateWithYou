@@ -274,7 +274,7 @@ export function BlogForm({ initial }: { initial?: BlogFormValues }) {
               href={`/admin/blog/${v.id}/preview`}
               target="_blank"
               rel="noopener"
-              className="text-muted-foreground hover:text-accent inline-flex items-center gap-1.5 text-sm"
+              className="text-muted-foreground hover:text-accent-ink inline-flex items-center gap-1.5 text-sm"
             >
               <Eye className="h-4 w-4" /> Xem trước
             </a>

@@ -130,7 +130,7 @@ export function SpecialDatesPanel() {
                 <Icon
                   className={cn(
                     "h-5 w-5",
-                    isActive ? "text-accent" : "text-muted-foreground",
+                    isActive ? "text-accent-ink" : "text-muted-foreground",
                   )}
                   strokeWidth={1.8}
                 />
@@ -183,7 +183,7 @@ export function SpecialDatesPanel() {
                 className="bg-card border-border flex items-center gap-2 rounded-xl border p-2.5"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft">
-                  <Icon className="h-4 w-4 text-accent" strokeWidth={1.8} />
+                  <Icon className="h-4 w-4 text-accent-ink" strokeWidth={1.8} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{s.title}</p>

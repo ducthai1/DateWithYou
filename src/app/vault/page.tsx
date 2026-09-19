@@ -89,7 +89,7 @@ export default function VaultPage() {
             <div className="text-muted-foreground mb-1.5 flex items-start gap-1.5 text-xs font-medium">
               <Coins className="h-3.5 w-3.5 shrink-0" /> <span className="leading-tight">Tổng điểm</span>
             </div>
-            <p className="text-accent text-xl font-bold tracking-tight">
+            <p className="text-accent-ink text-xl font-bold tracking-tight">
               {totalPoints}đ
             </p>
             <p className="text-muted-foreground mt-1 text-[10px] leading-tight">từ Phiếu bé ngoan</p>

@@ -455,7 +455,7 @@ export function MemoryForm({
               key={m.id}
               type="button"
               onClick={() => setCaption((c) => appendMention(c, m.name))}
-              className="border-border text-accent hover:bg-accent-soft rounded-full border px-2 py-0.5 text-xs font-medium"
+              className="border-border text-accent-ink hover:bg-accent-soft rounded-full border px-2 py-0.5 text-xs font-medium"
             >
               {mentionToken(m.name)}
             </button>
@@ -523,7 +523,7 @@ export function MemoryForm({
                     className="h-12 w-20 shrink-0 rounded-lg object-cover"
                   />
                 ) : (
-                  <span className="bg-accent-soft text-accent flex h-12 w-12 shrink-0 items-center justify-center rounded-lg">
+                  <span className="bg-accent-soft text-accent-ink flex h-12 w-12 shrink-0 items-center justify-center rounded-lg">
                     {e.provider === "youtube" ? (
                       <Play className="h-5 w-5" />
                     ) : e.provider === "spotify" ? (
@@ -565,7 +565,7 @@ export function MemoryForm({
             }
           `}
         >
-          <div className="rounded-full bg-accent-soft p-3 text-accent shadow-sm">
+          <div className="rounded-full bg-accent-soft p-3 text-accent-ink shadow-sm">
             <ImagePlus className="h-6 w-6" />
           </div>
           <div>
@@ -689,7 +689,7 @@ export function MemoryForm({
                         setPhotoCaption(p.publicId, appendMention(p.caption ?? "", mem.name))
                       }
                       aria-label={`Nhắc tên ${mem.name} trong ảnh này`}
-                      className="text-accent hover:bg-accent-soft shrink-0 rounded-md px-1.5 py-1 text-xs font-bold"
+                      className="text-accent-ink hover:bg-accent-soft shrink-0 rounded-md px-1.5 py-1 text-xs font-bold"
                     >
                       @
                     </button>
@@ -745,7 +745,7 @@ export function MemoryForm({
                   ) : (
                     <>
                       <span className="absolute inset-0 flex items-center justify-center">
-                        <Loader2 className="text-accent h-5 w-5 animate-spin" />
+                        <Loader2 className="text-accent-ink h-5 w-5 animate-spin" />
                       </span>
                       {/* A number that moves is the difference between "it is
                           working" and "it is stuck". Ten photos over a phone
@@ -779,7 +779,7 @@ export function MemoryForm({
                     <span
                       key={mem.id}
                       aria-hidden
-                      className="text-accent shrink-0 rounded-md px-1.5 py-1 text-xs font-bold"
+                      className="text-accent-ink shrink-0 rounded-md px-1.5 py-1 text-xs font-bold"
                     >
                       @
                     </span>

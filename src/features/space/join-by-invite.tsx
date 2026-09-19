@@ -173,7 +173,7 @@ export function JoinByInvite({ code }: { code: string }) {
   if (preview.isPending || sessionPending) {
     return (
       <StandaloneScreen>
-        <Loader2 className="text-accent h-8 w-8 animate-spin" />
+        <Loader2 className="text-accent-ink h-8 w-8 animate-spin" />
       </StandaloneScreen>
     );
   }
@@ -297,7 +297,7 @@ export function JoinByInvite({ code }: { code: string }) {
             </Link>
             <Link
               href={signInHref}
-              className="text-muted-foreground hover:text-accent px-4 py-3 text-sm underline underline-offset-4"
+              className="text-muted-foreground hover:text-accent-ink px-4 py-3 text-sm underline underline-offset-4"
               style={{ minHeight: 44 }}
             >
               Đã có tài khoản? Đăng nhập
@@ -311,7 +311,7 @@ export function JoinByInvite({ code }: { code: string }) {
     );
   }
 
-  return <StandaloneScreen><Loader2 className="text-accent h-8 w-8 animate-spin" /></StandaloneScreen>;
+  return <StandaloneScreen><Loader2 className="text-accent-ink h-8 w-8 animate-spin" /></StandaloneScreen>;
 }
 
 /*

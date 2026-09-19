@@ -274,7 +274,7 @@ export function WishlistGrid() {
               )}
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="bg-accent-soft text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                <div className="bg-accent-soft text-accent-ink flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
                   <Gift className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -283,7 +283,7 @@ export function WishlistGrid() {
                   </h4>
                   <div className="mt-1 flex items-center gap-2">
                     {w.price != null && (
-                      <span className="text-accent font-medium text-sm">
+                      <span className="text-accent-ink font-medium text-sm">
                         {w.price.toLocaleString("vi-VN")}đ
                       </span>
                     )}

@@ -49,7 +49,7 @@ export function NavigationInviteModal({
           <div className="text-center space-y-1">
             <h3 className="font-semibold text-lg">Rủ rê nè! 💌</h3>
             <p className="text-muted-foreground text-sm">{partnerName} muốn cùng bạn phóng tới…</p>
-            <p className="font-bold text-accent text-lg">{locationName}</p>
+            <p className="font-bold text-accent-ink text-lg">{locationName}</p>
           </div>
           <p className="text-xs text-muted-foreground text-center">
             Mở bản đồ lên là thấy nhau trên đường.

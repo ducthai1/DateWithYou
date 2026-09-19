@@ -50,7 +50,7 @@ export function BlogSiteHeader() {
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                  active ? "bg-accent-soft text-accent" : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  active ? "bg-accent-soft text-accent-ink" : "text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
                 {n.label}

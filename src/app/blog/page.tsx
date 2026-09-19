@@ -77,7 +77,7 @@ export default async function BlogIndexPage() {
   return (
     <main className={`mx-auto w-full ${SITE_WIDTH} px-4 pb-16 pt-8 sm:pt-12`}>
       <header className="mb-6">
-        <p className="text-accent text-sm font-semibold">Blog</p>
+        <p className="text-accent-ink text-sm font-semibold">Blog</p>
         <h1 className="text-foreground mt-1 text-3xl font-bold sm:text-4xl [font-family:var(--font-display)]">
           Chuyện của Vivu No Plan
         </h1>
@@ -130,10 +130,10 @@ export default async function BlogIndexPage() {
                   )}
                 </div>
                 <div className="flex flex-col justify-center gap-3 p-6">
-                  <span className="text-accent text-xs font-semibold">
+                  <span className="text-accent-ink text-xs font-semibold">
                     {labelOf(hero.category)} · Nổi bật
                   </span>
-                  <h2 className="text-foreground text-2xl font-bold leading-tight group-hover:text-accent">
+                  <h2 className="text-foreground text-2xl font-bold leading-tight group-hover:text-accent-ink">
                     {hero.title}
                   </h2>
                   {hero.excerpt && (
@@ -183,10 +183,10 @@ export default async function BlogIndexPage() {
                           href={`/blog/${post.slug}`}
                           className="group flex gap-3"
                         >
-                          <span className="text-accent/40 text-lg font-bold leading-none tabular-nums">
+                          <span className="text-accent-ink/40 text-lg font-bold leading-none tabular-nums">
                             {i + 1}
                           </span>
-                          <span className="text-foreground group-hover:text-accent line-clamp-2 text-sm font-medium xl:line-clamp-3">
+                          <span className="text-foreground group-hover:text-accent-ink line-clamp-2 text-sm font-medium xl:line-clamp-3">
                             {post.title}
                           </span>
                         </Link>
@@ -204,7 +204,7 @@ export default async function BlogIndexPage() {
                     <li key={c.slug}>
                       <Link
                         href={`/blog/danh-muc/${c.slug}`}
-                        className="text-foreground hover:text-accent flex items-center justify-between text-sm"
+                        className="text-foreground hover:text-accent-ink flex items-center justify-between text-sm"
                       >
                         <span>{c.name}</span>
                         <span className="text-muted-foreground text-xs tabular-nums">

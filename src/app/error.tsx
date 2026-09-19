@@ -31,7 +31,7 @@ export default function AppError({
         className="bg-accent-soft flex h-16 w-16 items-center justify-center rounded-full"
         aria-hidden="true"
       >
-        <HeartCrack className="text-accent h-7 w-7" strokeWidth={1.6} />
+        <HeartCrack className="text-accent-ink h-7 w-7" strokeWidth={1.6} />
       </span>
 
       <div className="space-y-1.5">

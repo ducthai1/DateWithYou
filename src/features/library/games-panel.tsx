@@ -203,7 +203,7 @@ export function GamesPanel() {
             {selected.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {selected.tags.map((t) => (
-                  <span key={t} className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[10px] font-medium">
+                  <span key={t} className="bg-accent-soft text-accent-ink rounded-full px-2 py-0.5 text-[10px] font-medium">
                     {t}
                   </span>
                 ))}

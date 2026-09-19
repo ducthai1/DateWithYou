@@ -359,7 +359,7 @@ export function WatchScreen({ id }: { id: string }) {
               <div className="border-border flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
                 <h2 className="text-foreground flex items-center gap-2 text-sm font-semibold">
                   <ListMusic
-                    className="text-accent h-4 w-4"
+                    className="text-accent-ink h-4 w-4"
                     aria-hidden="true"
                   />
                   Danh sách phát

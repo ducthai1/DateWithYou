@@ -41,7 +41,7 @@ export function HomeError({
         className="bg-accent-soft flex h-14 w-14 items-center justify-center rounded-full"
         aria-hidden="true"
       >
-        <CloudOff className="text-accent h-6 w-6" strokeWidth={1.6} />
+        <CloudOff className="text-accent-ink h-6 w-6" strokeWidth={1.6} />
       </span>
       <div className="space-y-1">
         <p className="text-h2 font-semibold">Chưa tải được hôm nay</p>

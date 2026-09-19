@@ -20,7 +20,7 @@ import { buzz } from "@/lib/haptics";
 
 // Small grant/redeem chip — min 40px tall for touch targets
 const CHIP =
-  "inline-flex items-center gap-1 rounded-lg bg-accent-soft px-3 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none touch-manipulation active:scale-95";
+  "inline-flex items-center gap-1 rounded-lg bg-accent-soft px-3 py-2 text-xs font-semibold text-accent-ink transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none touch-manipulation active:scale-95";
 
 export function RewardsPanel() {
   const partnerName = usePartnerName();
@@ -170,18 +170,18 @@ export function RewardsPanel() {
               )}
             >
               <div className="relative z-10 flex flex-col gap-1">
-                <p className={cn("text-xs font-medium truncate", b.isMe ? "text-accent" : "text-muted-foreground")}>
+                <p className={cn("text-xs font-medium truncate", b.isMe ? "text-accent-ink" : "text-muted-foreground")}>
                   Điểm của {label(b).toLowerCase()}
                 </p>
                 <div className="flex items-baseline gap-0.5 min-w-0">
                   <span className={cn("text-3xl font-bold tracking-tight", b.isMe ? "text-foreground" : "")}>
                     {b.balance}
                   </span>
-                  <span className={cn("text-base font-semibold", b.isMe ? "text-accent/80" : "text-muted-foreground")}>đ</span>
+                  <span className={cn("text-base font-semibold", b.isMe ? "text-accent-ink/80" : "text-muted-foreground")}>đ</span>
                 </div>
               </div>
               <div className="absolute -right-4 -top-4 opacity-[0.08]">
-                <Coins className={cn("h-24 w-24", b.isMe ? "text-accent" : "")} />
+                <Coins className={cn("h-24 w-24", b.isMe ? "text-accent-ink" : "")} />
               </div>
             </Card>
           ))}
@@ -211,7 +211,7 @@ export function RewardsPanel() {
       {recentLogs && recentLogs.length > 0 && (
         <section className="space-y-3">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-            <History className="text-accent h-4 w-4" /> Hoạt động gần đây
+            <History className="text-accent-ink h-4 w-4" /> Hoạt động gần đây
           </h3>
           <div className="space-y-2">
             {recentLogs.map((log) => {
@@ -223,7 +223,7 @@ export function RewardsPanel() {
                   </span>
                   <div className="min-w-0 flex-1 leading-snug">
                     <span className="font-medium">{isMe ? "Bạn" : partnerName}</span> đã nhận{" "}
-                    <span className="text-accent font-semibold">{log.points}đ</span> từ{" "}
+                    <span className="text-accent-ink font-semibold">{log.points}đ</span> từ{" "}
                     <span className="text-muted-foreground">&quot;{log.taskTitle}&quot;</span>
                   </div>
                   <span className="text-muted-foreground shrink-0 text-xs">
@@ -239,7 +239,7 @@ export function RewardsPanel() {
       {/* Tasks */}
       <section className="space-y-4">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-          <ListChecks className="text-accent h-4 w-4" /> Danh sách nhiệm vụ
+          <ListChecks className="text-accent-ink h-4 w-4" /> Danh sách nhiệm vụ
         </h3>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
@@ -283,12 +283,12 @@ export function RewardsPanel() {
             {tasks.map((t) => (
               <Card key={t.id} className="group flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between hover:border-accent/40 transition-colors">
                 <div className="flex min-w-0 items-start gap-3">
-                  <div className="bg-accent-soft text-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                  <div className="bg-accent-soft text-accent-ink flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
                     <h4 className="font-semibold leading-tight">{t.title}</h4>
-                    <span className="text-accent mt-1 inline-block font-medium text-sm">+{t.points}đ</span>
+                    <span className="text-accent-ink mt-1 inline-block font-medium text-sm">+{t.points}đ</span>
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-col gap-1.5 border-t border-border pt-3 sm:border-0 sm:pt-0">
@@ -315,7 +315,7 @@ export function RewardsPanel() {
       {/* Vouchers */}
       <section className="space-y-4">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-          <Gift className="text-accent h-4 w-4" /> Phần thưởng (Voucher)
+          <Gift className="text-accent-ink h-4 w-4" /> Phần thưởng (Voucher)
         </h3>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
@@ -394,7 +394,7 @@ export function RewardsPanel() {
                               className={cn(
                                 "flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all",
                                 canAfford 
-                                  ? "bg-accent-soft text-accent hover:bg-accent hover:text-accent-foreground shadow-sm"
+                                  ? "bg-accent-soft text-accent-ink hover:bg-accent hover:text-accent-foreground shadow-sm"
                                   : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
                               )}
                               onClick={(e) => canAfford && handleRedeem(v.id, b.userId, (e.target as HTMLElement).closest('.group') as HTMLElement | null)}

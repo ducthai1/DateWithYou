@@ -60,7 +60,7 @@ export function BottomNav() {
                     >
                       <Icon className="h-6 w-6" />
                     </span>
-                    <span className={cn("mt-0.5 text-[11px]", active ? "text-accent" : "text-muted-foreground")}>
+                    <span className={cn("mt-0.5 text-[11px]", active ? "text-accent-ink" : "text-muted-foreground")}>
                       {it.label}
                     </span>
                   </>
@@ -91,7 +91,7 @@ export function BottomNav() {
                   <span
                     className={cn(
                       "relative flex h-8 w-9 items-center justify-center rounded-full transition-all duration-200 active:scale-90",
-                      active ? "bg-accent-soft scale-100 text-accent" : "scale-95 text-muted-foreground",
+                      active ? "bg-accent-soft scale-100 text-accent-ink" : "scale-95 text-muted-foreground",
                     )}
                   >
                     <Icon className="h-5 w-5" />
@@ -102,7 +102,7 @@ export function BottomNav() {
                   <span
                     className={cn(
                       "w-full truncate px-0.5 text-center transition-colors",
-                      active ? "text-accent" : "text-muted-foreground",
+                      active ? "text-accent-ink" : "text-muted-foreground",
                     )}
                   >
                     {it.label}

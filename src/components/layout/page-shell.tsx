@@ -237,7 +237,7 @@ export function PageHeader({
       ) : null}
 
       <div className="min-w-0">
-        <h1 className="text-accent truncate text-2xl font-semibold short:text-xl shorter:text-lg">
+        <h1 className="text-accent-ink truncate text-2xl font-semibold short:text-xl shorter:text-lg">
           {title}
         </h1>
         {/* Dropped rather than shrunk at the `short` height: every line there is a

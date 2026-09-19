@@ -606,7 +606,7 @@ export function NowPlayingDock({
           does not, and the switch beside the name needs those 38px more than
           decoration does — with it there, "YouTube · 1/3" was being cut. */}
       {!narrow && (
-        <span className="bg-accent-soft text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+        <span className="bg-accent-soft text-accent-ink flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
       )}
@@ -669,7 +669,7 @@ export function NowPlayingDock({
           aria-pressed={playback.playing}
           className={cn(
             skipButton,
-            "bg-accent-soft text-accent hover:bg-accent hover:text-white",
+            "bg-accent-soft text-accent-ink hover:bg-accent hover:text-white",
           )}
         >
           {playback.playing ? (

@@ -68,7 +68,7 @@ export function HomeGreeting({ daysTogether, pending }: HomeGreetingProps) {
 
         {!pending && daysTogether !== null && (
           <p className="text-foreground/80 flex items-center gap-1.5 pt-1 text-sm">
-            <Users className="text-accent h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+            <Users className="text-accent-ink h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
             <span>
               Tụi mình đã đi cùng nhau{" "}
               <strong className="font-semibold">{viNumber(daysTogether)} ngày</strong>
@@ -80,7 +80,7 @@ export function HomeGreeting({ daysTogether, pending }: HomeGreetingProps) {
           <p className="text-muted-foreground pt-1 text-sm">
             <Link
               href="/settings"
-              className="text-accent focus-visible:ring-ring/50 rounded underline decoration-dotted underline-offset-4 outline-none focus-visible:ring-2"
+              className="text-accent-ink focus-visible:ring-ring/50 rounded underline decoration-dotted underline-offset-4 outline-none focus-visible:ring-2"
             >
               Đặt ngày kỷ niệm
             </Link>{" "}

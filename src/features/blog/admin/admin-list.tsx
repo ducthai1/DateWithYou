@@ -112,7 +112,7 @@ export function BlogAdminList() {
         {code === "UNAUTHORIZED" ? (
           <>
             <p className="text-foreground font-medium">Cần đăng nhập</p>
-            <Link href="/sign-in?next=/admin/blog" className="text-accent mt-2 inline-block hover:underline">
+            <Link href="/sign-in?next=/admin/blog" className="text-accent-ink mt-2 inline-block hover:underline">
               Đăng nhập
             </Link>
           </>
@@ -278,7 +278,7 @@ export function BlogAdminList() {
                       <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                         <span className={`rounded-full px-2 py-0.5 font-semibold ${badge.cls}`}>{badge.text}</span>
                         {p.featured && (
-                          <span className="text-accent inline-flex items-center gap-0.5 font-semibold">
+                          <span className="text-accent-ink inline-flex items-center gap-0.5 font-semibold">
                             <Star className="h-3 w-3 fill-current" /> Nổi bật
                           </span>
                         )}
@@ -286,7 +286,7 @@ export function BlogAdminList() {
                       </div>
                       <Link
                         href={`/admin/blog/${p.id}`}
-                        className="text-foreground hover:text-accent mt-1 block font-medium leading-snug [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden"
+                        className="text-foreground hover:text-accent-ink mt-1 block font-medium leading-snug [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden"
                       >
                         {p.title}
                       </Link>

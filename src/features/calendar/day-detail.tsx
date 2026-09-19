@@ -115,7 +115,7 @@ export function DayDetail({ date, onClose }: { date: string; onClose: () => void
 
               {detail.data && detail.data.onThisDay.length > 0 && (
                 <div className="bg-accent-soft/60 rounded-xl p-3">
-                  <p className="text-accent mb-1.5 flex items-center gap-1 text-xs font-semibold">
+                  <p className="text-accent-ink mb-1.5 flex items-center gap-1 text-xs font-semibold">
                     <Sparkles className="h-3.5 w-3.5" /> Ngày này năm xưa
                   </p>
                   <div className="flex gap-2 overflow-x-auto">

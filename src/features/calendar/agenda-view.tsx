@@ -53,7 +53,7 @@ export function AgendaView({ onSelectDay }: { onSelectDay: (dateKey: string) => 
         {/* An empty agenda is the question the day planner exists to answer. */}
         <Link
           href="/hom-nay-di-dau"
-          className="text-accent hover:text-accent-hover block text-center text-sm underline underline-offset-4"
+          className="text-accent-ink hover:text-accent-hover block text-center text-sm underline underline-offset-4"
         >
           Chưa biết đi đâu? Để mình lên kế hoạch cho chiều nay →
         </Link>

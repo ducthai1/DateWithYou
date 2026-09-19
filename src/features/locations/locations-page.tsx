@@ -1975,7 +1975,7 @@ export function LocationsPage() {
           role="status"
           className="pointer-events-auto fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-[45] flex items-center gap-2 rounded-2xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm sm:inset-x-auto sm:left-1/2 sm:w-[28rem] sm:-translate-x-1/2"
         >
-          <Navigation className="text-accent h-5 w-5 shrink-0" aria-hidden />
+          <Navigation className="text-accent-ink h-5 w-5 shrink-0" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">Chuyến đi tới {resumable.name} bị ngắt</p>
             <p className="text-muted-foreground text-xs">App vừa mở lại. Đi tiếp từ chỗ bạn đang đứng?</p>
@@ -2051,7 +2051,7 @@ export function LocationsPage() {
                       arrow={maneuverArrow(turn.next.type)}
                       className={cn(
                         "h-9 w-9 shrink-0",
-                        turn.metres <= 40 ? "text-accent" : "text-slate-700",
+                        turn.metres <= 40 ? "text-accent-ink" : "text-slate-700",
                       )}
                     />
                     <div className="min-w-0 flex-1">
@@ -2521,7 +2521,7 @@ export function LocationsPage() {
       >
         {/* Desktop: title + Thu gọn on the first row */}
         <div className="hidden lg:flex lg:items-center lg:gap-2">
-          <h1 className="text-accent min-w-0 flex-shrink truncate text-base font-semibold lg:flex-1">
+          <h1 className="text-accent-ink min-w-0 flex-shrink truncate text-base font-semibold lg:flex-1">
             Bản đồ ăn chơi
           </h1>
         </div>
@@ -2913,7 +2913,7 @@ export function LocationsPage() {
             {!debouncedQuery && (
               <Link
                 href="/hom-nay-di-dau"
-                className="text-accent hover:text-accent-hover block text-center text-sm underline underline-offset-4"
+                className="text-accent-ink hover:text-accent-hover block text-center text-sm underline underline-offset-4"
               >
                 Hoặc để mình gợi ý cả buổi chiều →
               </Link>
@@ -2972,7 +2972,7 @@ export function LocationsPage() {
                               "self-start relative inline-flex items-center w-24 h-[26px] rounded-full border px-2.5 text-xs font-medium transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-sm overflow-hidden shrink-0",
                               l.status === "visited"
                                 ? "border-success/30 bg-success/10 text-success hover:bg-success/20"
-                                : "border-border bg-card text-muted-foreground hover:border-accent hover:text-accent hover:bg-accent/5 hover:shadow-md"
+                                : "border-border bg-card text-muted-foreground hover:border-accent hover:text-accent-ink hover:bg-accent/5 hover:shadow-md"
                             )}
                             title="Bấm để đổi trạng thái"
                             aria-label="Đổi trạng thái muốn đi / đã đi"
@@ -3079,7 +3079,7 @@ export function LocationsPage() {
                     <div className="border-border/70 mt-auto flex flex-wrap items-center gap-1 border-t pt-2 text-xs">
                       {l.socialUrl && (
                         <a
-                          className={`${ACTION_CLS} text-accent hover:bg-accent-soft`}
+                          className={`${ACTION_CLS} text-accent-ink hover:bg-accent-soft`}
                           href={l.socialUrl}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -3090,7 +3090,7 @@ export function LocationsPage() {
                       {/* In-app: pan the map to the pin and draw the route. */}
                       {l.geo && (
                         <button
-                          className={`${ACTION_CLS} text-accent hover:bg-accent-soft`}
+                          className={`${ACTION_CLS} text-accent-ink hover:bg-accent-soft`}
                           onClick={() => goToLocation(l.id, l.geo, undefined, { askChoice: true })}
                         >
                           <Navigation className="h-3.5 w-3.5" /> Chỉ đường
@@ -3198,7 +3198,7 @@ export function LocationsPage() {
             <button
               type="button"
               onClick={() => setPickingGeo(false)}
-              className="text-accent hover:bg-accent-soft focus-visible:ring-ring/50 cursor-pointer rounded-full px-2 py-0.5 font-medium transition-colors outline-none focus-visible:ring-2"
+              className="text-accent-ink hover:bg-accent-soft focus-visible:ring-ring/50 cursor-pointer rounded-full px-2 py-0.5 font-medium transition-colors outline-none focus-visible:ring-2"
             >
               Huỷ
             </button>
@@ -3414,7 +3414,7 @@ export function LocationsPage() {
                     transition={{ duration: 0.2 }}
                     className="flex flex-col items-center text-center space-y-4 px-6"
                   >
-                    <div className="bg-accent/10 text-accent rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider">
+                    <div className="bg-accent/10 text-accent-ink rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider">
                       Gợi ý #{midpointIndex + 1}
                     </div>
                     <h4 className="text-xl font-bold leading-tight">{midpointRecommendations[midpointIndex].name}</h4>
@@ -3536,7 +3536,7 @@ export function LocationsPage() {
                           onClick={() => chooseAlternative(i)}
                           className="border-border bg-card hover:bg-muted flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
                         >
-                          <Route className="text-accent h-3.5 w-3.5" />
+                          <Route className="text-accent-ink h-3.5 w-3.5" />
                           {fmtDuration(alt.durationSeconds)} · {fmtDistance(alt.distanceMeters)}
                         </button>
                       ))}
@@ -3694,7 +3694,7 @@ export function LocationsPage() {
               <div className="space-y-4 overflow-y-auto p-6 flex-1">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 shrink-0 shadow-inner">
-                    <Users className="h-6 w-6 text-accent" />
+                    <Users className="h-6 w-6 text-accent-ink" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg leading-tight">Lập kế hoạch đi chung</h3>
@@ -3772,7 +3772,7 @@ export function LocationsPage() {
             className="w-full"
           >
             <div className="flex items-center gap-3 rounded-2xl bg-card px-5 py-3 shadow-xl border border-border">
-              <Loader2 className="h-5 w-5 animate-spin text-accent shrink-0" />
+              <Loader2 className="h-5 w-5 animate-spin text-accent-ink shrink-0" />
               <span className="text-sm font-medium flex-1">Đang chờ {partnerName} đồng ý...</span>
               <button
                 className="text-muted-foreground hover:text-foreground transition-colors shrink-0 p-1"

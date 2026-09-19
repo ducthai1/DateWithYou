@@ -45,7 +45,7 @@ export function TripDetail({ id }: { id: string }) {
       <PageShell className="space-y-4">
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="mb-4 text-lg font-medium">Không tìm thấy chuyến đi</p>
-          <Link href="/trips" className="text-accent underline">
+          <Link href="/trips" className="text-accent-ink underline">
             Quay lại danh sách
           </Link>
         </div>
@@ -115,7 +115,7 @@ export function TripDetail({ id }: { id: string }) {
             {TRIP_STATUS_META[trip.status].full}
           </span>
           {trip.status === "active" && day && (
-            <span className="border-accent/30 text-accent rounded-full border px-3 py-1.5 text-[11px] font-semibold">
+            <span className="border-accent/30 text-accent-ink rounded-full border px-3 py-1.5 text-[11px] font-semibold">
               Ngày {day.day}/{day.total}
             </span>
           )}

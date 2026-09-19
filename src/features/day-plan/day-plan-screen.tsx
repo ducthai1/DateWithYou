@@ -365,7 +365,7 @@ export function DayPlanScreen() {
              * pressed Chốt during exactly that gap.
              */
             <Card floating className="space-y-3 rounded-2xl py-10 text-center">
-              <Loader2 className="text-accent mx-auto h-8 w-8 animate-spin" aria-hidden />
+              <Loader2 className="text-accent-ink mx-auto h-8 w-8 animate-spin" aria-hidden />
               <p className="text-muted-foreground text-sm">Đang xếp một buổi cho bạn…</p>
             </Card>
           ) : outOfHours ? (
@@ -499,7 +499,7 @@ export function DayPlanScreen() {
               <button
                 type="button"
                 onClick={() => setStep("tuning")}
-                className="text-muted-foreground hover:text-accent mx-auto block px-4 py-3 text-sm underline underline-offset-4"
+                className="text-muted-foreground hover:text-accent-ink mx-auto block px-4 py-3 text-sm underline underline-offset-4"
                 style={{ minHeight: 44 }}
               >
                 Chỉnh lại khu vực, ngân sách, giờ bắt đầu

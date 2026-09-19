@@ -214,7 +214,7 @@ export function ReactionBar({
         <button
           type="button"
           onClick={onRetry}
-          className="text-accent focus-visible:ring-ring/50 inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-xs font-medium outline-none focus-visible:ring-2"
+          className="text-accent-ink focus-visible:ring-ring/50 inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-xs font-medium outline-none focus-visible:ring-2"
         >
           <RotateCw className="h-3.5 w-3.5" aria-hidden />
           Thử lại

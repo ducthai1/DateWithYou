@@ -68,7 +68,7 @@ export function CycleLogList({
                       column is about 160px, and "gần nhất · cách 28 ngày" on
                       one line truncated to "gần nhất · cách 28…". */}
                   {i === 0 && (
-                    <span className="bg-accent-soft text-accent shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
+                    <span className="bg-accent-soft text-accent-ink shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
                       gần nhất
                     </span>
                   )}

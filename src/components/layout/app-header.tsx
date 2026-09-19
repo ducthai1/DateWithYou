@@ -13,7 +13,7 @@ const ACTION_CLASS = (active: boolean) =>
   "flex h-10 w-10 items-center justify-center rounded-lg transition-colors touch-manipulation " +
   "outline-none focus-visible:ring-2 focus-visible:ring-ring/50 " +
   (active
-    ? "text-accent bg-accent-soft active:bg-accent/20"
+    ? "text-accent-ink bg-accent-soft active:bg-accent/20"
     : "text-muted-foreground hover:bg-muted active:bg-muted");
 
 /**

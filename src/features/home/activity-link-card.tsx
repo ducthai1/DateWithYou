@@ -17,7 +17,7 @@ export function ActivityLinkCard() {
         className="bg-accent-soft flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
         aria-hidden="true"
       >
-        <Footprints className="text-accent h-4 w-4" strokeWidth={1.8} />
+        <Footprints className="text-accent-ink h-4 w-4" strokeWidth={1.8} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium">Xem người kia vừa làm gì</span>

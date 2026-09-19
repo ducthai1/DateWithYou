@@ -168,7 +168,7 @@ export function DatePicker({ value, onChange, max, min, defaultView, ariaLabel, 
         aria-label={ariaLabel}
         onClick={() => setOpen(!open)}
       >
-        <CalendarIcon className="mr-2 h-4 w-4 text-accent" />
+        <CalendarIcon className="mr-2 h-4 w-4 text-accent-ink" />
         {displayVal}
       </Button>
 
@@ -252,7 +252,7 @@ export function DatePicker({ value, onChange, max, min, defaultView, ariaLabel, 
                       : isSelected
                       ? "bg-accent text-accent-foreground font-semibold active:opacity-80"
                       : isToday
-                        ? "bg-accent-soft text-accent font-semibold hover:bg-accent/20 active:bg-accent/30"
+                        ? "bg-accent-soft text-accent-ink font-semibold hover:bg-accent/20 active:bg-accent/30"
                         : "hover:bg-muted active:bg-muted text-foreground"
                     }
                   `}

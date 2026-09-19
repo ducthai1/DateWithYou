@@ -117,7 +117,7 @@ function ActorAvatar({ member }: { member?: Member }) {
   return (
     <span
       aria-hidden="true"
-      className="bg-accent-soft text-accent border-border flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm font-semibold"
+      className="bg-accent-soft text-accent-ink border-border flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm font-semibold"
       // The couple picks these colours themselves — it is stored data, not a
       // hard-coded palette, so it is safe to ring the avatar with it.
       style={member?.avatarColor ? { borderColor: member.avatarColor } : undefined}
@@ -387,7 +387,7 @@ export function ActivityFeed() {
                                 />
                               )}
                               <KindIcon
-                                className="text-accent h-4 w-4 shrink-0"
+                                className="text-accent-ink h-4 w-4 shrink-0"
                                 aria-hidden="true"
                               />
                               {/* `relative` so the sr-only note below becomes

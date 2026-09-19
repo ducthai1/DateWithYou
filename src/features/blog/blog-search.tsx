@@ -33,7 +33,7 @@ export function BlogSearch() {
 
   return (
     <main className={`mx-auto w-full ${SITE_WIDTH} px-4 pb-16 pt-8 sm:pt-12`}>
-      <Link href="/blog" className="text-muted-foreground hover:text-accent mb-4 inline-flex items-center gap-1 text-sm">
+      <Link href="/blog" className="text-muted-foreground hover:text-accent-ink mb-4 inline-flex items-center gap-1 text-sm">
         <ArrowLeft className="h-4 w-4" /> Về Blog
       </Link>
       <h1 className="text-foreground mb-4 text-2xl font-bold sm:text-3xl [font-family:var(--font-display)]">

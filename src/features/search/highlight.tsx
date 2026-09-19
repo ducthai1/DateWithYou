@@ -23,7 +23,7 @@ export function Highlight({ text, range }: { text: string; range?: MatchRange })
   return (
     <>
       {text.slice(0, range.start)}
-      <mark className="rounded-[3px] bg-accent-soft px-0.5 font-semibold text-accent">
+      <mark className="rounded-[3px] bg-accent-soft px-0.5 font-semibold text-accent-ink">
         {text.slice(range.start, range.end)}
       </mark>
       {text.slice(range.end)}

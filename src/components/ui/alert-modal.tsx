@@ -10,7 +10,7 @@ type Tone = "error" | "success" | "info";
 const TONES: Record<Tone, { Icon: typeof Info; wrap: string }> = {
   error: { Icon: AlertTriangle, wrap: "bg-destructive-soft text-destructive" },
   success: { Icon: CheckCircle2, wrap: "bg-emerald-100 text-emerald-700" },
-  info: { Icon: Info, wrap: "bg-accent-soft text-accent" },
+  info: { Icon: Info, wrap: "bg-accent-soft text-accent-ink" },
 };
 
 /**

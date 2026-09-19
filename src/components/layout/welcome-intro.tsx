@@ -90,7 +90,7 @@ export function WelcomeIntro() {
             taking almost half the screen before the first glossary row, so
             two rows showed and the rest had to be scrolled for. */}
         <div className="shrink-0 space-y-1 px-6 pt-5 pb-2 text-center">
-          <span className="bg-accent-soft text-accent mx-auto flex h-9 w-9 items-center justify-center rounded-xl">
+          <span className="bg-accent-soft text-accent-ink mx-auto flex h-9 w-9 items-center justify-center rounded-xl">
             <BrandMark variant="icon" className="h-5 w-5" />
           </span>
           <h2 className="text-lg font-semibold [font-family:var(--font-display)] sm:text-2xl">
@@ -106,7 +106,7 @@ export function WelcomeIntro() {
             const Icon = it.Icon;
             return (
               <li key={it.href} className="flex items-start gap-3 py-1.5">
-                <span className="bg-muted text-accent mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+                <span className="bg-muted text-accent-ink mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
                   <Icon className="h-[18px] w-[18px]" />
                 </span>
                 <div className="min-w-0">

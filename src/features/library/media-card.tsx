@@ -158,7 +158,7 @@ export function MediaCard({
                   {item.recipe.servings}
                 </span>
               )}
-              <span className="text-accent inline-flex items-center gap-1 font-medium">
+              <span className="text-accent-ink inline-flex items-center gap-1 font-medium">
                 <ChefHat className="h-3 w-3" />
                 Xem công thức
               </span>
@@ -176,7 +176,7 @@ export function MediaCard({
             {item.tags.map((t) => (
               <span
                 key={t}
-                className="bg-accent-soft text-accent rounded-full px-2 py-0.5 text-[10px] font-medium"
+                className="bg-accent-soft text-accent-ink rounded-full px-2 py-0.5 text-[10px] font-medium"
               >
                 {t}
               </span>
@@ -352,7 +352,7 @@ function PlayableEmbed({
               "pointer-events-auto disabled:opacity-60",
               listen!.live && isPlaying
                 ? "bg-accent text-accent-foreground"
-                : "bg-card/90 text-accent hover:bg-accent hover:text-white",
+                : "bg-card/90 text-accent-ink hover:bg-accent hover:text-white",
             )}
           >
             <Headphones className="h-3.5 w-3.5" aria-hidden="true" />

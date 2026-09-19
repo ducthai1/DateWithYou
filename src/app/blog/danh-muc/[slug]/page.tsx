@@ -78,7 +78,7 @@ export default async function BlogCategoryPage({ params }: { params: Promise<{ s
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <SmartBackLink fallback="/blog" tone="app" />
           <nav aria-label="Đường dẫn" className="text-muted-foreground text-sm">
-            <Link href="/blog" className="hover:text-accent">
+            <Link href="/blog" className="hover:text-accent-ink">
               Blog
             </Link>
             <span className="px-1.5">/</span>
@@ -97,7 +97,7 @@ export default async function BlogCategoryPage({ params }: { params: Promise<{ s
       {list.items.length === 0 ? (
         <p className="text-muted-foreground rounded-2xl border border-dashed border-border p-10 text-center">
           Mục này chưa có bài. Xem{" "}
-          <Link href="/blog" className="text-accent hover:underline">
+          <Link href="/blog" className="text-accent-ink hover:underline">
             tất cả bài viết
           </Link>{" "}
           nhé.

@@ -135,7 +135,7 @@ export function EmptyState({ icon, title, subtitle, action, art, artSize = "sm",
           </div>
         ) : (
           <span className="bg-accent-soft flex h-16 w-16 shrink-0 items-center justify-center rounded-full">
-            <Icon className="text-accent h-7 w-7" strokeWidth={1.6} />
+            <Icon className="text-accent-ink h-7 w-7" strokeWidth={1.6} />
           </span>
         )}
 

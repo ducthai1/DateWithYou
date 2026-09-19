@@ -72,7 +72,7 @@ export function CalendarWeekStrip({
               isSel ? "bg-accent-soft ring-accent shadow-sm ring-2" : "active:bg-muted",
             )}
           >
-            <span className={cn("text-[10px] font-semibold", i >= 5 ? "text-accent/70" : "text-muted-foreground")}>
+            <span className={cn("text-[10px] font-semibold", i >= 5 ? "text-accent-ink/70" : "text-muted-foreground")}>
               {WD[i]}
             </span>
             <span
@@ -87,7 +87,7 @@ export function CalendarWeekStrip({
                     : cycle
                       ? CYCLE_WINDOW_TEXT
                       : isSel
-                        ? "text-accent"
+                        ? "text-accent-ink"
                         : "text-foreground",
               )}
             >
@@ -103,7 +103,7 @@ export function CalendarWeekStrip({
               )}
               {s?.special && (
                 <Star
-                  className="fill-accent text-accent h-2.5 w-2.5"
+                  className="fill-accent text-accent-ink h-2.5 w-2.5"
                   aria-label="Ngày đặc biệt"
                 />
               )}

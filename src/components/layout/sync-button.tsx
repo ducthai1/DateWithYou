@@ -48,7 +48,7 @@ export function SyncButton({
         aria-label="Đồng bộ"
         className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted active:bg-muted touch-manipulation"
       >
-        <RefreshCw className={cn("h-5 w-5", isSyncing && "animate-spin text-accent")} />
+        <RefreshCw className={cn("h-5 w-5", isSyncing && "animate-spin text-accent-ink")} />
       </button>
     );
   }
@@ -65,12 +65,12 @@ export function SyncButton({
       )}
       title={isCollapsed ? "Đồng bộ dữ liệu" : undefined}
     >
-      <RefreshCw className={cn("shrink-0 transition-transform", isCollapsed ? "h-[22px] w-[22px]" : "h-5 w-5", isSyncing && "animate-spin text-accent")} />
+      <RefreshCw className={cn("shrink-0 transition-transform", isCollapsed ? "h-[22px] w-[22px]" : "h-5 w-5", isSyncing && "animate-spin text-accent-ink")} />
       <span
         className={cn(
           "overflow-hidden whitespace-nowrap transition-all duration-300",
           isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100",
-          isSyncing && "text-accent font-medium"
+          isSyncing && "text-accent-ink font-medium"
         )}
       >
         {isSyncing ? "Đang đồng bộ..." : "Đồng bộ"}

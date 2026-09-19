@@ -30,7 +30,7 @@ export function TripBudget({ trip }: { trip: any }) {
     <div className="flex flex-col gap-6">
       {/* Overview Card */}
       <div className="flex flex-col items-center justify-center rounded-3xl border border-border bg-card p-6 text-center shadow-md">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent/10 text-accent">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent/10 text-accent-ink">
           <Wallet className="h-7 w-7" />
         </div>
         <p className="text-sm font-medium text-muted-foreground">Tổng chi phí dự tính</p>
@@ -76,7 +76,7 @@ export function TripBudget({ trip }: { trip: any }) {
                     <span className="font-medium text-foreground line-clamp-1">{item.title}</span>
                     <span className="text-xs text-muted-foreground">{item.date} {item.time && `• ${item.time}`}</span>
                   </div>
-                  <span className="font-semibold text-accent">{formatter.format(item.cost)}</span>
+                  <span className="font-semibold text-accent-ink">{formatter.format(item.cost)}</span>
                 </div>
               ))
           )}

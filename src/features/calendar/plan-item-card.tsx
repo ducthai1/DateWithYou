@@ -213,7 +213,7 @@ export function PlanItemCard({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          {item.time && <span className="text-accent text-xs font-semibold tabular-nums">{item.time}</span>}
+          {item.time && <span className="text-accent-ink text-xs font-semibold tabular-nums">{item.time}</span>}
           <p className={cn("truncate text-sm font-medium", done && "text-muted-foreground line-through")}>
             {item.title}
           </p>
@@ -237,7 +237,7 @@ export function PlanItemCard({
               </span>
             )}
             {item.tripId && (
-              <span className="text-accent inline-flex items-center gap-0.5 text-[10px] font-medium" title="Thuộc một chuyến đi">
+              <span className="text-accent-ink inline-flex items-center gap-0.5 text-[10px] font-medium" title="Thuộc một chuyến đi">
                 <Plane className="h-3 w-3" />
               </span>
             )}

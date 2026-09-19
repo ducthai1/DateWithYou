@@ -10,7 +10,7 @@ export default function NewPostPage() {
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-8">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-foreground text-2xl font-bold">Viết bài mới</h1>
-        <Link href="/admin/blog" className="text-muted-foreground hover:text-accent inline-flex items-center gap-1 text-sm">
+        <Link href="/admin/blog" className="text-muted-foreground hover:text-accent-ink inline-flex items-center gap-1 text-sm">
           <ArrowLeft className="h-4 w-4" /> Danh sách bài
         </Link>
       </div>

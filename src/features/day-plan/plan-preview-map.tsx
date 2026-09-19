@@ -64,7 +64,7 @@ export function PlanPreviewMap({ pins }: { pins: PreviewPin[] }) {
                 "flex h-6 w-6 items-center justify-center rounded-full border-2 text-[11px] font-bold shadow " +
                 (p.suggested
                   ? "border-dashed border-sky-500 bg-white/90 text-sky-700"
-                  : "border-white bg-[#c2693f] text-white")
+                  : "border-white bg-[#b1603a] text-white")
               }
               title={p.label}
             >

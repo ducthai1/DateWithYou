@@ -272,7 +272,7 @@ export function FoodWheel() {
       */}
       <Link
         href="/hom-nay-di-dau"
-        className="text-muted-foreground hover:text-accent text-center text-sm underline underline-offset-4"
+        className="text-muted-foreground hover:text-accent-ink text-center text-sm underline underline-offset-4"
       >
         Muốn cả một buổi chiều chứ không chỉ một chỗ? →
       </Link>

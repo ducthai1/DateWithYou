@@ -153,7 +153,7 @@ export function InvitePanel({ onJoined }: { onJoined?: () => void }) {
           type="button"
           onClick={() => createInvite.mutate()}
           disabled={createInvite.isPending}
-          className="text-muted-foreground hover:text-accent inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-colors"
+          className="text-muted-foreground hover:text-accent-ink inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-colors"
           style={{ minHeight: 36 }}
         >
           <RefreshCw className={`h-3.5 w-3.5 ${createInvite.isPending ? "animate-spin" : ""}`} />

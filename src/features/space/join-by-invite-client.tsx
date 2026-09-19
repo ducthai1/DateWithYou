@@ -40,7 +40,7 @@ const JoinByInvite = dynamic(
      */
     loading: () => (
       <StandaloneScreen>
-        <Loader2 className="text-accent h-8 w-8 animate-spin" aria-hidden />
+        <Loader2 className="text-accent-ink h-8 w-8 animate-spin" aria-hidden />
         <p className="text-muted-foreground text-sm">Đang mở lời mời…</p>
       </StandaloneScreen>
     ),

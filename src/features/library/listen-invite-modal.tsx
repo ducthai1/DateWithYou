@@ -43,7 +43,7 @@ export function ListenInviteModal({
         >
           <div className="flex items-center justify-center">
             <div className="relative">
-              <div className="bg-accent-soft text-accent flex h-16 w-16 items-center justify-center rounded-full">
+              <div className="bg-accent-soft text-accent-ink flex h-16 w-16 items-center justify-center rounded-full">
                 <Headphones className="h-7 w-7" aria-hidden="true" />
               </div>
               <span className="absolute -top-1 -right-1 flex h-5 w-5">
@@ -56,7 +56,7 @@ export function ListenInviteModal({
             <h3 className="text-lg font-semibold">Nghe cùng nhau nha 🎧</h3>
             <p className="text-muted-foreground text-sm">{partnerName} đang mở…</p>
             {/* The track is the reason to say yes, so it gets the emphasis. */}
-            <p className="text-accent text-lg font-bold break-words">{trackTitle}</p>
+            <p className="text-accent-ink text-lg font-bold break-words">{trackTitle}</p>
           </div>
           <p className="text-muted-foreground text-center text-xs">
             Bấm nghe cùng là hai người cùng một chỗ trong bài, ai tạm dừng thì cùng dừng.

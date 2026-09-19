@@ -105,7 +105,7 @@ export function SideNav() {
                       className={cn(
                         "group flex w-full items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 short:py-1.5",
                         on
-                          ? "bg-accent-soft font-medium text-accent shadow-sm"
+                          ? "bg-accent-soft font-medium text-accent-ink shadow-sm"
                           : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
                         // No gap when collapsed: the zero-width label still counts as a
                         // flex item, so a gap would shove the icon off-centre.
@@ -167,7 +167,7 @@ export function SideNav() {
             className={cn(
               "group flex shrink-0 items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 short:py-1.5",
               pathname.startsWith("/admin")
-                ? "bg-accent-soft font-medium text-accent shadow-sm"
+                ? "bg-accent-soft font-medium text-accent-ink shadow-sm"
                 : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
               isCollapsed ? "justify-center px-0" : "gap-3",
             )}
@@ -189,7 +189,7 @@ export function SideNav() {
           className={cn(
             "group flex shrink-0 items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 short:py-1.5",
             pathname.startsWith("/settings")
-              ? "bg-accent-soft font-medium text-accent shadow-sm"
+              ? "bg-accent-soft font-medium text-accent-ink shadow-sm"
               : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
             isCollapsed ? "justify-center px-0" : "gap-3",
           )}

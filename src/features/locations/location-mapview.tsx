@@ -838,7 +838,7 @@ function LocationMapViewImpl({
           style={{ bottom: "calc(var(--nav-dock-h, 0px) + 1rem)" }}
           className="border-border bg-card/95 text-foreground absolute left-1/2 z-[3] flex -translate-x-1/2 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold shadow-xl backdrop-blur-sm"
         >
-          <LocateFixed className="text-accent h-4 w-4" />
+          <LocateFixed className="text-accent-ink h-4 w-4" />
           Về vị trí của tôi
         </button>
       )}
@@ -869,7 +869,7 @@ function LocationMapViewImpl({
               : "calc(var(--nav-dock-h, 0px) + 1rem)",
           }}
           className={cn(
-            "border-border bg-card/95 text-accent right-3 flex h-11 w-11 items-center justify-center rounded-full border shadow-lg backdrop-blur-sm transition-transform",
+            "border-border bg-card/95 text-accent-ink right-3 flex h-11 w-11 items-center justify-center rounded-full border shadow-lg backdrop-blur-sm transition-transform",
             isMobile ? "fixed z-[44]" : "absolute z-[3]",
             "hover:bg-card active:scale-95 disabled:opacity-70",
           )}
@@ -1022,10 +1022,10 @@ function LocationMapViewImpl({
         {draftGeo ? (
           <Marker longitude={draftGeo.lng} latitude={draftGeo.lat} anchor="bottom">
             <div className="relative flex flex-col items-center">
-              <span className="mb-1 whitespace-nowrap rounded-full bg-[#c2693f] px-2.5 py-1 text-[11px] font-semibold text-white shadow-lg">
+              <span className="mb-1 whitespace-nowrap rounded-full bg-[#b1603a] px-2.5 py-1 text-[11px] font-semibold text-white shadow-lg">
                 Chỗ vừa tìm — chưa lưu
               </span>
-              <span className="absolute bottom-1 h-10 w-10 animate-ping rounded-full bg-[#c2693f]/30" />
+              <span className="absolute bottom-1 h-10 w-10 animate-ping rounded-full bg-[#b1603a]/30" />
               <svg width="30" height="38" viewBox="0 0 24 30" className="relative drop-shadow-lg">
                 <path
                   d="M12 0C5.4 0 0 5.4 0 12c0 8.2 12 18 12 18s12-9.8 12-18c0-6.6-5.4-12-12-12z"

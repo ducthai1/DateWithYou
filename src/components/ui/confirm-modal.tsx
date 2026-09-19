@@ -20,7 +20,7 @@ const TONES: Record<Tone, { Icon: typeof HelpCircle; wrap: string; confirm: stri
   },
   question: {
     Icon: HelpCircle,
-    wrap: "bg-accent-soft text-accent",
+    wrap: "bg-accent-soft text-accent-ink",
     confirm: "",
   },
 };

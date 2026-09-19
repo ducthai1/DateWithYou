@@ -118,7 +118,7 @@ const getBucketStyles = (bucket: string) => {
                     className="group flex flex-col overflow-hidden rounded-2xl border border-border/50 bg-card p-4 text-left shadow-sm transition-all hover:border-accent/40 hover:shadow-md active:scale-[0.98]"
                   >
                     <div className="mb-3 flex items-start justify-between gap-3">
-                      <h4 className="font-semibold leading-snug text-foreground line-clamp-2 group-hover:text-accent transition-colors">
+                      <h4 className="font-semibold leading-snug text-foreground line-clamp-2 group-hover:text-accent-ink transition-colors">
                         {item.title}
                       </h4>
                       <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${getBucketStyles(item.bucket)}`}>

@@ -208,7 +208,7 @@ export function Select({
         <ChevronDown
           className={cn(
             "text-muted-foreground h-4 w-4 shrink-0 transition-transform",
-            open && "text-accent rotate-180",
+            open && "text-accent-ink rotate-180",
           )}
         />
       </button>
@@ -272,12 +272,12 @@ export function Select({
                   className={cn(
                     "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors",
                     active
-                      ? "bg-accent-soft text-accent font-medium"
+                      ? "bg-accent-soft text-accent-ink font-medium"
                       : "hover:bg-muted",
                   )}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {active && <Check className="text-accent h-4 w-4 shrink-0" />}
+                  {active && <Check className="text-accent-ink h-4 w-4 shrink-0" />}
                 </button>
               );
             })}

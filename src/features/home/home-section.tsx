@@ -56,7 +56,7 @@ export function HomeSection({
         <span
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-            highlight ? "bg-accent text-accent-foreground" : "bg-accent-soft text-accent",
+            highlight ? "bg-accent text-accent-foreground" : "bg-accent-soft text-accent-ink",
           )}
           aria-hidden="true"
         >
@@ -66,7 +66,7 @@ export function HomeSection({
         {link && (
           <Link
             href={link.href}
-            className="text-accent hover:bg-accent-soft focus-visible:ring-ring/50 -mr-1 inline-flex min-h-10 shrink-0 items-center gap-0.5 rounded-lg px-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2"
+            className="text-accent-ink hover:bg-accent-soft focus-visible:ring-ring/50 -mr-1 inline-flex min-h-10 shrink-0 items-center gap-0.5 rounded-lg px-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2"
           >
             {link.label}
             <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />

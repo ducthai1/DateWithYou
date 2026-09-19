@@ -147,7 +147,7 @@ export function RideHistory() {
                     aria-hidden="true"
                     className="bg-accent-soft flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                   >
-                    <Bike className="text-accent h-4 w-4" />
+                    <Bike className="text-accent-ink h-4 w-4" />
                   </span>
 
                   <div className="min-w-0 flex-1">
@@ -160,7 +160,7 @@ export function RideHistory() {
                           keepsake list needs to call out on sight, the same
                           way the activity feed always names the actor. */}
                       {ride.companion && (
-                        <span className="bg-accent-soft text-accent inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none">
+                        <span className="bg-accent-soft text-accent-ink inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none">
                           <Users className="h-3 w-3" aria-hidden="true" />
                           Đi cùng nhau
                         </span>

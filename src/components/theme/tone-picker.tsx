@@ -35,7 +35,7 @@ export function TonePicker() {
               className={cn(
                 "focus-visible:ring-ring/50 inline-flex min-h-10 items-center gap-1.5 rounded-xl border px-3 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2",
                 active
-                  ? "border-accent bg-accent-soft text-accent"
+                  ? "border-accent bg-accent-soft text-accent-ink"
                   : "border-border bg-card text-muted-foreground hover:bg-muted",
               )}
             >

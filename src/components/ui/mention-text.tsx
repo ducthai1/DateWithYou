@@ -33,7 +33,7 @@ export function MentionText({
       <span
         key={`m${i}`}
         data-mention=""
-        className="text-accent bg-accent-soft/60 rounded-[5px] px-1 font-semibold [-webkit-box-decoration-break:clone] [box-decoration-break:clone]"
+        className="text-accent-ink bg-accent-soft/60 rounded-[5px] px-1 font-semibold [-webkit-box-decoration-break:clone] [box-decoration-break:clone]"
       >
         {/* The name as it stands today, not the one the caption was typed with.
             Reading is where a rename should have already happened: a note that

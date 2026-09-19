@@ -279,7 +279,7 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
                   className={cn(
                     "flex cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-sm transition-colors",
                     gender === o.value
-                      ? "border-accent bg-accent-soft/50 text-accent font-medium"
+                      ? "border-accent bg-accent-soft/50 text-accent-ink font-medium"
                       : "border-border hover:bg-muted",
                   )}
                 >
@@ -324,7 +324,7 @@ function AuthFormContent({ mode }: { mode: "sign-in" | "sign-up" }) {
             <div className="flex justify-end">
               <Link
                 href="/forgot-password"
-                className="-my-1.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-accent transition-colors"
+                className="-my-1.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-accent-ink transition-colors"
               >
                 Quên mật khẩu?
               </Link>

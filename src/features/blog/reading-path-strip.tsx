@@ -41,7 +41,7 @@ export function ReadingPathStrip({
           <Compass className="h-4.5 w-4.5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="text-accent text-xs font-semibold uppercase tracking-wide">Mới dùng Vivu?</p>
+          <p className="text-accent-ink text-xs font-semibold uppercase tracking-wide">Mới dùng Vivu?</p>
           <h2 id="reading-path-heading" className="text-foreground mt-0.5 text-lg font-bold leading-snug">
             Bắt đầu từ đây — đọc theo thứ tự này là đủ dùng
           </h2>
@@ -58,12 +58,12 @@ export function ReadingPathStrip({
               className="group border-border bg-card hover:border-accent/40 relative flex h-full gap-3 rounded-2xl border p-3.5 transition-colors"
             >
               <LinkPending className="rounded-2xl" />
-              <span className="text-accent/70 w-6 shrink-0 text-xl font-bold leading-none tabular-nums">
+              <span className="text-accent-ink/70 w-6 shrink-0 text-xl font-bold leading-none tabular-nums">
                 {i + 1}
               </span>
               <span className="min-w-0">
-                <span className="text-accent block text-[11px] font-semibold uppercase tracking-wide">{s.step}</span>
-                <span className="text-foreground group-hover:text-accent mt-0.5 block text-sm font-semibold leading-snug">
+                <span className="text-accent-ink block text-[11px] font-semibold uppercase tracking-wide">{s.step}</span>
+                <span className="text-foreground group-hover:text-accent-ink mt-0.5 block text-sm font-semibold leading-snug">
                   {titles?.[s.slug] ?? s.title}
                 </span>
                 {!compact && <span className="text-muted-foreground mt-1 block text-xs leading-relaxed">{s.blurb}</span>}
@@ -74,7 +74,7 @@ export function ReadingPathStrip({
       </ol>
       <p className="text-muted-foreground mt-4 flex items-center gap-1 text-xs">
         Đọc xong sáu bài, mở app là biết bấm vào đâu.
-        <Link href={`/blog/${steps[0].slug}`} className="text-accent inline-flex items-center gap-1 font-semibold hover:underline">
+        <Link href={`/blog/${steps[0].slug}`} className="text-accent-ink inline-flex items-center gap-1 font-semibold hover:underline">
           Đọc bài đầu tiên <ArrowRight className="h-3 w-3" aria-hidden="true" />
         </Link>
       </p>

@@ -167,7 +167,7 @@ export function PlanStopCard({
             type="button"
             onClick={onSwap}
             disabled={!canSwap}
-            className="text-accent hover:bg-accent-soft disabled:text-muted-foreground/50 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 font-medium transition-colors disabled:hover:bg-transparent"
+            className="text-accent-ink hover:bg-accent-soft disabled:text-muted-foreground/50 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 font-medium transition-colors disabled:hover:bg-transparent"
             style={{ minHeight: 36 }}
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Đổi chặng này

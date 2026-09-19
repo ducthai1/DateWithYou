@@ -282,7 +282,7 @@ export function PlaceSearchBox({
               inputRef.current?.focus();
             }}
             aria-label="Xoá tìm kiếm"
-            className="text-muted-foreground hover:bg-accent-soft hover:text-accent absolute right-10 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors"
+            className="text-muted-foreground hover:bg-accent-soft hover:text-accent-ink absolute right-10 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </button>

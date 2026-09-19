@@ -447,7 +447,7 @@ function MentionList({
             i === active && "bg-accent-soft",
           )}
         >
-          <span className="text-accent font-medium">@{m.name}</span>
+          <span className="text-accent-ink font-medium">@{m.name}</span>
           {m.accountName && m.accountName !== m.name && (
             <span className="text-muted-foreground truncate text-xs">{m.accountName}</span>
           )}

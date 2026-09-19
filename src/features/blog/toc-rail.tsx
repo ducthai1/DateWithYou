@@ -142,7 +142,7 @@ export function TocRail({
                   className={cn(
                     "leading-snug transition-colors",
                     isActive
-                      ? "text-accent font-semibold"
+                      ? "text-accent-ink font-semibold"
                       : "text-muted-foreground group-hover/toc:text-foreground",
                   )}
                 >

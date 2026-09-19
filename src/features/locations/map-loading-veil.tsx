@@ -94,7 +94,7 @@ export function MapLoadingVeil({
         <path
           d="M40 640 C 110 540, 150 470, 230 400 S 286 320, 300 268"
           stroke="currentColor"
-          className="text-accent/20"
+          className="text-accent-ink/20"
           strokeWidth="5"
           strokeLinecap="round"
           strokeDasharray="1 22"

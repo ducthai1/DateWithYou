@@ -188,7 +188,7 @@ export function StatsPanel({ className }: { className?: string }) {
             <div className="relative h-9 w-9 shrink-0" aria-hidden="true">
               <SpotArt name="starRibbon" sizes="36px" />
             </div>
-            <h2 className="text-accent text-xl font-semibold">Chúng mình</h2>
+            <h2 className="text-accent-ink text-xl font-semibold">Chúng mình</h2>
           </div>
           <p className="text-muted-foreground text-sm">{lead}</p>
         </div>

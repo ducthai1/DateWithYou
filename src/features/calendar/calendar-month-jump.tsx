@@ -133,7 +133,7 @@ export function CalendarMonthJump({
                       isCurrent
                         ? "bg-accent text-accent-foreground shadow-sm"
                         : isThisMonth
-                          ? "bg-accent-soft text-accent"
+                          ? "bg-accent-soft text-accent-ink"
                           : "text-foreground active:bg-muted",
                     )}
                   >
