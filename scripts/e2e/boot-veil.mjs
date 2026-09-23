@@ -39,8 +39,41 @@ const COVERING = `(() => {
       return !!h && !!el && (h === el || el.contains(h));
     })(),
     hitTag: (() => { const h = document.elementFromPoint(Math.round(innerWidth/2), Math.round(innerHeight/2)); return h ? (h.id || h.tagName) : null; })(),
+    booted: document.documentElement.hasAttribute("data-booted"),
+    /* Khung xương ĐANG NHÌN THẤY — trong khung nhìn, đủ to để mắt bắt được. */
+    bones: [...document.querySelectorAll(".animate-pulse")].filter((b) => {
+      const q = b.getBoundingClientRect();
+      return q.width > 4 && q.height > 4 && q.bottom > 0 && q.top < innerHeight;
+    }).length,
   });
 })()`;
+
+/**
+ * Bất biến cần giữ, thay cho phép đo bằng đồng hồ.
+ *
+ * Bản trước hỏi "sau 1500ms thì tấm che còn không?" — câu trả lời phụ thuộc
+ * vào lúc đó truy vấn đã về chưa, tức phụ thuộc tải máy. Đo thật: đỏ 1/3 lần
+ * NGAY TRÊN CÂY CHƯA SỬA GÌ. Một cổng chập chờn thì không chứng minh được gì.
+ *
+ * Cái thật sự cần đúng: **không có khoảnh khắc nào khung xương hiện ra trong
+ * khi tấm che đã gỡ**. Lấy mẫu liên tục từ lúc điều hướng tới lúc gỡ xong, rồi
+ * soi lại cả chuỗi — không có mốc thời gian nào trong đó.
+ */
+async function watchBoot(app, base, { ms = 16000, everyMs = 120 } = {}) {
+  const samples = [];
+  app.send("Page.navigate", { url: `${base}/home` }).catch(() => {});
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    try {
+      const snap = JSON.parse(await app.eval(COVERING));
+      samples.push(snap);
+      // Gỡ xong VÀ đã có nội dung thì hết chuyện để xem.
+      if (snap.booted && snap.bones === 0 && samples.length > 3) break;
+    } catch { /* trang đang điều hướng, chưa nói chuyện được */ }
+    await new Promise((r) => setTimeout(r, everyMs));
+  }
+  return samples;
+}
 
 export async function run({ base, profileDir, port, db, shotDir }) {
   const chrome = await launchChrome(profileDir, port, { width: 390, height: 844 });
@@ -98,14 +131,26 @@ export async function run({ base, profileDir, port, db, shotDir }) {
         await app.send("Network.emulateNetworkConditions", {
           offline: false, latency: 4000, downloadThroughput: -1, uploadThroughput: -1,
         });
-        await app.goto(`${base}/home`);
-        await new Promise((r) => setTimeout(r, 1500));
+        const seen = await watchBoot(app, base);
+        const withBones = seen.filter((x) => x.bones > 0);
+        const leaked = withBones.filter((x) => !x.covers);
 
-        const during = JSON.parse(await app.eval(COVERING));
-        ok("màn còn khung xương thì tấm phủ vẫn che kín", during.exists && during.covers === true,
-           JSON.stringify(during));
-        ok("…và không có gì của app lọt lên trên nó", during.hitInVeil === true,
-           `giữa màn đang là: ${during.hitTag}`);
+        /*
+         * Kỳ vọng ÂM trước: không thấy khung xương lần nào thì bài dưới đạt
+         * một cách rỗng tuếch — đúng cái bẫy đã dính ở bài kiểm đường đi.
+         */
+        ok("dựng lại được đúng lúc màn còn khung xương",
+           withBones.length > 0,
+           `${seen.length} mẫu, không mẫu nào có khung xương — mạng chưa đủ chậm?`);
+        ok("không có lúc nào khung xương hiện ra mà tấm phủ đã gỡ",
+           withBones.length > 0 && leaked.length === 0,
+           leaked.length
+             ? `${leaked.length}/${withBones.length} mẫu bị hở, mẫu đầu: ${JSON.stringify(leaked[0])}`
+             : "");
+        const covering = withBones.find((x) => x.covers);
+        ok("…và không có gì của app lọt lên trên tấm phủ",
+           !!covering && covering.hitInVeil === true,
+           covering ? `giữa màn đang là: ${covering.hitTag}` : "không có mẫu nào đang che");
         if (shotDir) await app.shot(`${shotDir}/boot-veil-covering.png`);
 
         await app.send("Network.emulateNetworkConditions", {
