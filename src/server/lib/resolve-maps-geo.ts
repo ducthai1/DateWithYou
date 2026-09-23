@@ -16,6 +16,8 @@
 // The address geocoder is injected (see resolveGeoFromMapsUrl) so this module
 // has no network deps of its own and its parsers stay trivially testable.
 
+import { findPlusCode, recoverPlusCode } from "@/lib/plus-code";
+
 export type LatLng = { lat: number; lng: number };
 
 const FETCH_UA =
@@ -341,7 +343,6 @@ async function resolveFinalUrl(
     finalUrl: current,
   };
 }
-
 /**
  * How far a name lookup may land from the camera before it is disbelieved.
  *
@@ -354,8 +355,28 @@ async function resolveFinalUrl(
  */
 const NAME_DRIFT_LIMIT_M = 30_000;
 
-/** Resolves a place name to a venue coordinate, biased toward a point. */
-export type FindPlaceNear = (name: string, near: LatLng) => Promise<LatLng | null>;
+/**
+ * How close a name candidate must sit to the plus code before the two count as
+ * the same place.
+ *
+ * They are measuring different things — the provider's pin for the venue versus
+ * the centre of Google's own ~14m code block — so they never coincide exactly.
+ * Measured on a real link: 30m and 48m for the two candidates that were right,
+ * against 48km for the one that was wrong. Anywhere in that gap works; 500m
+ * leaves room for a large site whose pin sits at its gate.
+ */
+const PLUS_CODE_AGREE_M = 500;
+
+/**
+ * Resolves a place name to venue coordinates, biased toward a point.
+ *
+ * Returns every candidate, in the provider's own order, rather than just the
+ * first. Without a camera there is nothing to bias the search with, and the
+ * first hit is then only a guess — but a plus code in the same URL can say
+ * which of the candidates is the real one, and it can only do that if it is
+ * shown more than one.
+ */
+export type FindPlacesNear = (name: string, near: LatLng | null) => Promise<LatLng[]>;
 
 /**
  * Resolve coordinates from any pasted Google/Apple Maps link (short or full),
@@ -364,23 +385,28 @@ export type FindPlaceNear = (name: string, near: LatLng) => Promise<LatLng | nul
  * Order matters, and it is not the order the patterns are listed in:
  *
  *   1. The place's own marker, from the pasted URL or any redirect hop. Exact.
- *   2. The place's NAME, resolved against a search biased to the camera centre
+ *   2. The plus code in the place segment. Google writes one into the name of
+ *      a place that has no street address, and it IS the coordinate — but a
+ *      short one, which only says where the place sits inside a 1° cell. What
+ *      picks the cell is the camera, or failing that a name candidate; and the
+ *      plus code then checks that candidate back, which is the point of it.
+ *   3. The place's NAME, resolved against a search biased to the camera centre
  *      from the same URL. This is the step a phone's Share link depends on:
  *      those resolve to a page carrying a name and a camera but no marker.
  *      The two signals check each other — the name gives the venue, the camera
  *      says which one of that name — and a result that drifts too far from the
  *      camera is rejected rather than believed.
- *   3. The camera centre. Kilometres out, but near, and the form says the
+ *   4. The camera centre. Kilometres out, but near, and the form says the
  *      position may be approximate and invites a tap on the map.
  *
- * `geocode` and `findPlaceNear` are injected so this module carries no network
+ * `geocode` and `findPlaces` are injected so this module carries no network
  * dependency: callers pass the real resolvers; tests can omit them. Without
  * them, only links with inline/redirect coordinates resolve exactly.
  */
 export async function resolveGeoFromMapsUrl(
   input: string,
   geocode: (query: string, deadline?: number) => Promise<LatLng | null> = async () => null,
-  findPlaceNear?: FindPlaceNear,
+  findPlaces?: FindPlacesNear,
 ): Promise<LatLng | null> {
   const url = extractFirstUrl(input);
   if (!url) return null;
@@ -400,22 +426,53 @@ export async function resolveGeoFromMapsUrl(
   if (exact) return exact;
 
   const camera = viewport ?? extractViewportGeo(url);
-
-  // 2. The place's own name, decided against the camera.
   const query = extractPlaceQuery(finalUrl);
+  const plusCode = query ? findPlusCode(query) : null;
+
+  // 2. The plus code, if the camera can say which cell it means. The camera
+  // comes from the same URL and is at most a few km out, so it never picks the
+  // wrong 1° cell — no candidate list needed.
+  if (plusCode && camera) {
+    const point = recoverPlusCode(plusCode, camera);
+    if (point) return point;
+  }
+
   if (query) {
     const deadline = Date.now() + GEOCODE_DEADLINE_MS;
     const believable = (hit: LatLng | null) =>
       hit && (!camera || metresBetween(camera, hit) <= NAME_DRIFT_LIMIT_M) ? hit : null;
 
-    if (findPlaceNear && camera) {
-      const hit = believable(await findPlaceNear(query, camera).catch(() => null));
-      if (hit) return hit;
+    const candidates = findPlaces ? await findPlaces(query, camera).catch(() => []) : [];
+
+    /*
+     * 2b. No camera — the case a phone's Share link actually lands in.
+     *
+     * The search is then unbiased and its first hit is a guess, so the plus
+     * code arbitrates: a candidate it agrees with pins the cell, and the point
+     * it decodes to is returned in place of the candidate because it is the
+     * more precise of the two (19m from the saved pin, against 30m and 48m).
+     *
+     * And when it agrees with NONE of them, that is an answer too. Google put
+     * a coordinate in the link; every candidate contradicts it; returning one
+     * anyway is how a rest stop in Ninh Phước came back as a point in Nha
+     * Trang, 76km away, with no sign anything was wrong. Fall through to the
+     * camera instead — or to nothing, which the form already knows how to say.
+     */
+    if (plusCode && !camera) {
+      for (const candidate of candidates) {
+        const point = recoverPlusCode(plusCode, candidate);
+        if (point && metresBetween(point, candidate) <= PLUS_CODE_AGREE_M) return point;
+      }
+      return null;
     }
+
+    // 3. The place's own name, decided against the camera.
+    const near = candidates.find((c) => believable(c));
+    if (near) return near;
     const hit = believable(await geocode(query, deadline).catch(() => null));
     if (hit) return hit;
   }
 
-  // 3. Near, and honest about it.
+  // 4. Near, and honest about it.
   return camera;
 }

@@ -32,8 +32,7 @@ export function BootVeil() {
     <div id="boot-veil" aria-hidden="true">
       <div id="boot-veil-inner">
         {/* Cùng dấu hiệu và cùng nền với ảnh khởi động, để chỗ giao nhau không
-            nhìn ra được. `eager` + `high` vì đây là thứ DUY NHẤT trên màn. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+            nhìn ra được. Ưu tiên cao nhất vì đây là thứ DUY NHẤT trên màn. */}
         <img src="/icon-512.png" alt="" width={120} height={120} fetchPriority="high" />
         <p>{SITE_NAME}</p>
       </div>
