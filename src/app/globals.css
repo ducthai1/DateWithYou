@@ -51,10 +51,19 @@
   /*
    * Bố cục ĐO TỪ ảnh splash thật của hệ điều hành, không ước lượng.
    *
-   * Tách khung hình video quay máy thật: logo nằm ở 475–544 trên tổng 1066
-   * (tâm ~47,8%), chữ ở 938–955 (tâm ~88,7%). Đặt đúng hai mốc ấy thì lúc hệ
-   * điều hành nhường chỗ cho trang, không có gì nhúc nhích — sai vài chục pixel
-   * là thành một cú giật ngay giữa lúc khởi động.
+   * Tách khung video quay máy thật (màn 478×1066): dấu hiệu nằm ở x 200–278,
+   * y 474–547; chữ ở x 177–299, y 936–956; thanh trạng thái chiếm 40px trên,
+   * thanh điều hướng 49px dưới. `100vh` là khung LỚN (1026) và không đổi khi
+   * thanh dưới ẩn hiện, nên quy mọi mốc về khung đó.
+   *
+   * Cỡ dấu hiệu phải tính theo BỀ NGANG MÀN, không đặt cứng pixel: bề ngang là
+   * chiều duy nhất không bị thanh nào ăn mất, nên tỉ lệ đo được trên video
+   * dựng lại đúng trên máy đó bất kể dpr. Bản trước đặt cứng 120px — hoá ra
+   * gấp 1,5 lần dấu của hệ điều hành, và đó chính là chỗ người dùng thấy hai
+   * cái splash "không đồng bộ xíu nào".
+   *
+   * File icon có viền đệm: dấu chỉ chiếm 79,9% bề ngang file (đo ở
+   * public/icon-512.png), nên tile phải rộng 78/0,799 = 97,6 trên 478 = 20,4%.
    */
   #boot-veil-inner {
     position: absolute;
@@ -63,10 +72,13 @@
 
   #boot-veil-inner img {
     position: absolute;
-    top: 47.8%;
+    /* (510,5 − 40) / 1026 — tâm dấu của hệ điều hành, quy về khung web. */
+    top: 45.9%;
     left: 50%;
-    width: 120px;
-    height: 120px;
+    /* Kẹp hai đầu để máy tính bảng không phóng dấu lên vô tội vạ; mọi điện
+       thoại 360–430px đều rơi vào giữa khoảng và lấy đúng 20,4%. */
+    width: clamp(64px, 20.4vw, 104px);
+    height: auto;
     transform: translate(-50%, -50%);
   }
 
@@ -78,7 +90,13 @@
     margin: 0;
     text-align: center;
     color: #ffffff;
-    font-size: 15px;
+    /*
+     * Khớp theo BỀ NGANG chữ, không theo cỡ chữ: chữ của hệ điều hành rộng
+     * 123/478 = 25,7% bề ngang, còn 15px dựng ra 23,5%. Không so bằng chiều
+     * cao được — máy dựng thử không có Roboto nên thay bằng phông khác, mà
+     * chiều cao thì đổi theo phông, bề ngang thì còn so được.
+     */
+    font-size: 16px;
     letter-spacing: 0.02em;
     transform: translateY(-50%);
   }
