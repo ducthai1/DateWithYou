@@ -19,9 +19,24 @@ export async function launchChrome(profileDir, port = DEFAULT_PORT, { width = 14
   throw new Error("Chrome did not open its debugging port");
 }
 
-export async function openPage(port = DEFAULT_PORT) {
-  const res = await fetch(`${hostFor(port)}/json/new?about:blank`, { method: "PUT" });
-  const { webSocketDebuggerUrl } = await res.json();
+/**
+ * @param {number} port
+ * @param {{ existing?: boolean }} [opts] `existing: true` nối vào TAB ĐANG MỞ
+ *   thay vì mở tab mới. Cần cho cửa sổ `--app=`: chỉ tab gốc của nó mới báo
+ *   `display-mode: standalone`, còn tab mở thêm là tab thường — nên đo chế độ
+ *   "app đã cài" trên một tab mới là đo nhầm chế độ.
+ */
+export async function openPage(port = DEFAULT_PORT, opts = {}) {
+  let webSocketDebuggerUrl;
+  if (opts.existing) {
+    const list = await fetch(`${hostFor(port)}/json/list`).then((r) => r.json());
+    const tab = list.find((t) => t.type === "page");
+    if (!tab) throw new Error("không thấy tab nào đang mở để nối vào");
+    webSocketDebuggerUrl = tab.webSocketDebuggerUrl;
+  } else {
+    const res = await fetch(`${hostFor(port)}/json/new?about:blank`, { method: "PUT" });
+    ({ webSocketDebuggerUrl } = await res.json());
+  }
   const ws = new WebSocket(webSocketDebuggerUrl);
   await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
   let nextId = 1;

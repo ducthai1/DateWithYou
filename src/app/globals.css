@@ -21,6 +21,77 @@
  * recognise a 404 from the pathname — an attribute the page sets and the
  * stylesheet reads is the join between them.
  */
+/*
+ * Tấm khởi động: nối tiếp ảnh splash của hệ điều hành.
+ *
+ * Điều kiện "chỉ khi app đã cài" do CSS quyết, KHÔNG do JavaScript — nó phải
+ * đúng ngay từ byte đầu tiên, trước cả khi có JS nào chạy. Để JS quyết thì trên
+ * tab trình duyệt sẽ có một mảng navy chớp lên mỗi lần tải lại.
+ *
+ * `100vh` chứ không `dvh`/`%`: khung lớn, không co lại khi thanh điều hướng của
+ * máy ẩn hiện, nên nội dung căn giữa không nhảy.
+ */
+#boot-veil {
+  display: none;
+}
+
+@media (display-mode: standalone) {
+  #boot-veil {
+    position: fixed;
+    inset: 0;
+    height: 100vh;
+    z-index: 120;
+    display: grid;
+    place-items: center;
+    /* Đúng nền của manifest và của 24 ảnh khởi động iOS. */
+    background: #1e3a5f;
+    transition: opacity 260ms ease;
+  }
+
+  /*
+   * Bố cục ĐO TỪ ảnh splash thật của hệ điều hành, không ước lượng.
+   *
+   * Tách khung hình video quay máy thật: logo nằm ở 475–544 trên tổng 1066
+   * (tâm ~47,8%), chữ ở 938–955 (tâm ~88,7%). Đặt đúng hai mốc ấy thì lúc hệ
+   * điều hành nhường chỗ cho trang, không có gì nhúc nhích — sai vài chục pixel
+   * là thành một cú giật ngay giữa lúc khởi động.
+   */
+  #boot-veil-inner {
+    position: absolute;
+    inset: 0;
+  }
+
+  #boot-veil-inner img {
+    position: absolute;
+    top: 47.8%;
+    left: 50%;
+    width: 120px;
+    height: 120px;
+    transform: translate(-50%, -50%);
+  }
+
+  #boot-veil-inner p {
+    position: absolute;
+    top: 88.7%;
+    left: 0;
+    right: 0;
+    margin: 0;
+    text-align: center;
+    color: #ffffff;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    transform: translateY(-50%);
+  }
+
+  /* Xong thì mờ đi rồi biến mất hẳn — `pointer-events` bỏ ngay từ lúc bắt đầu
+     mờ, vì 260ms mà vẫn ăn chạm là cú chạm đầu tiên của người ta rơi vào không. */
+  html[data-booted] #boot-veil {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+  }
+}
+
 body:has([data-chromeless]) [data-app-chrome] {
   display: none;
 }

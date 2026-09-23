@@ -16,6 +16,7 @@ import { PrimeHaptics } from "@/components/layout/prime-haptics";
 import { PushSetup } from "@/components/layout/push-setup";
 import { FullscreenRecovery } from "@/components/layout/fullscreen-recovery";
 import { OfflineNotice } from "@/components/layout/offline-notice";
+import { BootVeil } from "@/components/layout/boot-veil";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { GenderGate } from "@/components/layout/gender-gate";
@@ -257,6 +258,9 @@ export default async function RootLayout({
         {/* These three touch only browser APIs — no tRPC, no query cache — so
             they can sit outside the providers. Anything that calls a tRPC hook
             cannot: see PushSetup below. */}
+        {/* NGAY ĐẦU body: nó phải có mặt trong khung hình đầu tiên, nếu không
+            thì nó đến sau thứ nó định che — xem ghi chú trong BootVeil. */}
+        <BootVeil />
         <RegisterMapCache />
         <WarmMapAssets />
         <PrimeHaptics />
