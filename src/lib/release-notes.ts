@@ -36,6 +36,34 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-09-23",
+    title: "Dán link bản đồ ra đúng chỗ, và màn khởi động liền một mạch",
+    summary:
+      "Link Google Maps dán vào giờ ghim đúng quán thay vì lệch hàng chục cây số, và ba màn khởi động khác nhau đã gom về một.",
+    changes: [
+      {
+        kind: "fix",
+        what: "Dán link bản đồ vào là ghim đúng quán.",
+        why: "Link chia sẻ từ điện thoại không mang sẵn toạ độ, nên hệ thống đi đoán theo tên quán — với một quán ở Ninh Phước, nó đoán ra một chỗ ở Nha Trang cách 76km, nhanh và không có dấu hiệu gì là sai. Hoá ra toạ độ vẫn nằm trong link, dưới một dạng khác, và bị bỏ qua.",
+      },
+      {
+        kind: "fix",
+        what: "Không đoán bừa nữa: không chắc thì nói không chắc.",
+        why: "Khi không có gì để đối chiếu, mọi kết quả tìm kiếm đều được chấp nhận. Giờ nếu toạ độ trong link mâu thuẫn với mọi kết quả, form sẽ mời chạm chọn trên bản đồ thay vì ghim đại một chỗ.",
+      },
+      {
+        kind: "polish",
+        what: "Màn khởi động chạy liền một mạch từ lúc bấm tới lúc vào app.",
+        why: "Thực ra có tới ba màn khởi động khác nhau cho cùng một app: màn của hệ điều hành, tấm che của web, và ảnh khởi động của iPhone — dấu hiệu chênh nhau tới 2,5 lần. Nay cả ba cùng một bố cục.",
+      },
+      {
+        kind: "fix",
+        what: "Tên app lúc khởi động không còn nhảy khi thanh điều hướng ẩn đi.",
+        why: "Chữ được đặt theo khung đang co giãn, nên mỗi lần thanh dưới của máy biến mất là nó tụt xuống theo.",
+      },
+    ],
+  },
+  {
     date: "2026-09-20",
     title: "Mở app nhanh hơn, và app biết nói khi mất mạng",
     summary:
