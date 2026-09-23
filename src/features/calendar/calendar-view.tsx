@@ -17,6 +17,7 @@ import { Star } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { useIsMobile } from "@/hooks/use-media-query";
+import { useAppReady } from "@/components/layout/boot-veil-dismiss";
 
 const VIEW_TABS = [
   { key: "month", label: "Tháng" },
@@ -65,6 +66,9 @@ export function CalendarView() {
   const [specialsOpen, setSpecialsOpen] = useState(false);
 
   const summary = trpc.calendar.monthSummary.useQuery({ year, month });
+  // Tấm khởi động đợi màn này: mở app đúng ở đây thì không được gỡ tấm che
+  // trong lúc còn khung xương. Báo cả khi lỗi — thẻ "thử lại" hơn là màn navy.
+  useAppReady(!summary.isPending);
 
   // Mobile gets the week view, desktop the month grid. We resolve the viewport
   // only after mount so the first client render matches the server (no hydration

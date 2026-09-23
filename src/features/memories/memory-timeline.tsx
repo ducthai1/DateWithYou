@@ -42,6 +42,7 @@ type EmbedField = {
 };
 
 import { useToast } from "@/components/ui/toast";
+import { useAppReady } from "@/components/layout/boot-veil-dismiss";
 
 /** Ids per batched interaction request — matches the router's input cap. */
 const INTERACTION_BATCH = 50;
@@ -78,6 +79,9 @@ export function MemoryTimeline() {
   // Chips come from the whole space, not from the loaded pages, or a tag would
   // appear and vanish as you scroll.
   const tagsQuery = trpc.memory.tags.useQuery();
+  // Tấm khởi động đợi màn này: mở app đúng ở đây thì không được gỡ tấm che
+  // trong lúc còn khung xương. Báo cả khi lỗi — thẻ "thử lại" hơn là màn navy.
+  useAppReady(!list.isPending);
   const loaded = useMemo(
     () => (list.data?.pages ?? []).flatMap((p) => p.items),
     [list.data],

@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerList } from "@/components/ui/stagger-list";
+import { useAppReady } from "@/components/layout/boot-veil-dismiss";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type RideItem = RouterOutputs["ride"]["list"]["items"][number];
@@ -76,6 +77,9 @@ export function RideHistory() {
     },
   );
   const stats = trpc.ride.stats.useQuery();
+  // Tấm khởi động đợi màn này: mở app đúng ở đây thì không được gỡ tấm che
+  // trong lúc còn khung xương. Báo cả khi lỗi — thẻ "thử lại" hơn là màn navy.
+  useAppReady(!list.isPending);
 
   const items = useMemo(() => list.data?.items ?? [], [list.data]);
   const days = useMemo(() => byDay(items), [items]);

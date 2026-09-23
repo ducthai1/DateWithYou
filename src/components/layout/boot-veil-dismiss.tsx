@@ -2,8 +2,10 @@
 
 import { useEffect } from "react";
 
+import { reportsAppReady } from "./boot-ready-routes";
+
 /**
- * Gỡ tấm khởi động khi màn đầu đã có gì để xem.
+ * Gỡ tấm khởi động khi màn đang mở đã có gì để xem.
  *
  * Cờ TOÀN CỤC chứ không phải sự kiện đơn thuần — và đó là lỗi thứ hai của bản
  * trước. Tín hiệu "sẵn sàng" bắn từ effect của màn Hôm nay, mà effect của
@@ -20,14 +22,31 @@ declare global {
 const READY_EVENT = "vivu:app-ready";
 /** Trần cứng. Một tấm phủ kín màn không có đường thoát là cách nhốt người ta. */
 const HARD_LIMIT_MS = 12_000;
-/** Route nào tự báo sẵn sàng; nơi khác thì đợi trang tải xong là đủ. */
-const REPORTS_READY = new Set(["/home"]);
+/** Đợi thêm sau `load` cho màn KHÔNG tự báo — đủ để khung trang vẽ xong. */
+const SETTLE_MS = 400;
 
-/** Màn đầu gọi cái này khi đã có dữ liệu thật để vẽ. */
+/** Màn đang mở gọi cái này khi đã có dữ liệu thật để vẽ. */
 export function markAppReady() {
   if (typeof window === "undefined") return;
   window.__vivuAppReady = true;
   window.dispatchEvent(new Event(READY_EVENT));
+}
+
+/**
+ * Màn chính báo "đã có gì để xem" theo trạng thái truy vấn của chính nó.
+ *
+ * Trước đây chỉ `/home` làm việc này, nên mọi màn khác gỡ tấm che ở `load` +
+ * 400ms — mà `load` không hề đợi dữ liệu. Đo thật ở `/calendar`, mạng trễ
+ * 900ms: tấm che gỡ lúc 8404ms trong khi khung xương vẫn chiếm 6,8% màn. Đúng
+ * cái "khung xương trắng chen giữa splash và nội dung".
+ *
+ * Màn nào gọi hook này thì tên route của nó phải có trong `BOOT_READY_ROUTES`;
+ * bài kiểm gác cả hai chiều.
+ */
+export function useAppReady(ready: boolean) {
+  useEffect(() => {
+    if (ready) markAppReady();
+  }, [ready]);
 }
 
 export function BootVeilDismiss() {
@@ -44,13 +63,13 @@ export function BootVeilDismiss() {
     window.addEventListener("pointerdown", done, { once: true });
 
     /*
-     * Route không tự báo (mở thẳng /map, /timeline… từ màn hình chính) thì lấy
-     * mốc `load` + một nhịp: tới lúc đó khung của trang đã vẽ, và chờ thêm chỉ
-     * là bắt người ta nhìn màu xanh.
+     * Màn không tự báo (mở thẳng /settings, một trang tĩnh…) thì lấy mốc `load`
+     * cộng một nhịp: tới lúc đó khung của trang đã vẽ, và chờ thêm chỉ là bắt
+     * người ta nhìn màu xanh.
      */
     let settle: ReturnType<typeof setTimeout> | undefined;
-    if (!REPORTS_READY.has(window.location.pathname)) {
-      const after = () => { settle = setTimeout(done, 400); };
+    if (!reportsAppReady(window.location.pathname)) {
+      const after = () => { settle = setTimeout(done, SETTLE_MS); };
       if (document.readyState === "complete") after();
       else window.addEventListener("load", after, { once: true });
     }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 
 
 /**
@@ -32,7 +31,7 @@ import { FirstRunPanel } from "./first-run-panel";
 import { HomeSearchLink } from "./home-search-link";
 import { PageShell } from "@/components/layout/page-shell";
 import { StatsPanel } from "@/features/stats/stats-panel";
-import { markAppReady } from "@/components/layout/boot-veil-dismiss";
+import { useAppReady } from "@/components/layout/boot-veil-dismiss";
 
 export function HomeScreen() {
   const today = trpc.dashboard.today.useQuery();
@@ -43,9 +42,7 @@ export function HomeScreen() {
    * của app đã cài, tức đúng màn mà ảnh splash đang nhường chỗ cho. Báo cả khi
    * lỗi: thà thấy thẻ "thử lại" còn hơn ngồi nhìn một mảng navy cho hết giờ.
    */
-  useEffect(() => {
-    if (!today.isPending) markAppReady();
-  }, [today.isPending]);
+  useAppReady(!today.isPending);
   return (
     /*
      * The shell is the standard 1400px column now, the same as every other

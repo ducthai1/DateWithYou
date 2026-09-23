@@ -14,11 +14,15 @@ import { LoadFailed } from "@/components/ui/load-failed";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { ToneArt } from "@/components/theme/tone-art";
+import { useAppReady } from "@/components/layout/boot-veil-dismiss";
 
 export function TripList() {
   const list = trpc.trip.list.useQuery();
   const trips = list.data;
   const isLoading = list.isLoading;
+  // Tấm khởi động đợi màn này: mở app đúng ở đây thì không được gỡ tấm che
+  // trong lúc còn khung xương. Báo cả khi lỗi — thẻ "thử lại" hơn là màn navy.
+  useAppReady(!list.isPending);
   const [formOpen, setFormOpen] = useState(false);
 
   return (

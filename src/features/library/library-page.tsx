@@ -20,6 +20,7 @@ import { Select } from "@/components/ui/select";
 import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
 import { foldForSearch } from "@/lib/vietnamese-text";
 import { Search } from "lucide-react";
+import { useAppReady } from "@/components/layout/boot-veil-dismiss";
 
 const TABS = [
   { key: "music", label: "Nhạc" },
@@ -39,6 +40,9 @@ export function LibraryPage() {
   const isGame = kind === "game";
   const list = trpc.media.list.useQuery({ kind });
   const allItems = (list.data ?? []) as MediaListItem[];
+  // Tấm khởi động đợi màn này: mở app đúng ở đây thì không được gỡ tấm che
+  // trong lúc còn khung xương. Báo cả khi lỗi — thẻ "thử lại" hơn là màn navy.
+  useAppReady(!list.isPending);
   
   const handleKindChange = (k: MediaKind) => {
     setKind(k);

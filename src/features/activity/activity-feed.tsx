@@ -28,6 +28,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { useToast } from "@/components/ui/toast";
+import { useAppReady } from "@/components/layout/boot-veil-dismiss";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type FeedItem = RouterOutputs["activity"]["feed"]["items"][number];
@@ -167,6 +168,9 @@ export function ActivityFeed() {
     retry: false,
     staleTime: 60_000,
   });
+  // Tấm khởi động đợi màn này: mở app đúng ở đây thì không được gỡ tấm che
+  // trong lúc còn khung xương. Báo cả khi lỗi — thẻ "thử lại" hơn là màn navy.
+  useAppReady(!list.isPending);
 
   /*
    * Where the read line stood when this visit began.
