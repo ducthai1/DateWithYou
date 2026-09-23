@@ -4,12 +4,18 @@
 //   /api/debug-maps?url=https://maps.app.goo.gl/XXXX
 // SSRF-guarded (only Google map hosts, re-checked per hop). Remove after debug.
 import { NextResponse } from "next/server";
+/*
+ * Dùng CHÍNH bộ tách của resolver, không chép lại: bản chép ở đây từng dùng
+ * `[^/]+` trong khi bản thật dùng `[^/?#]+`, nên trang chẩn đoán đọc ra một
+ * tên chỗ khác với tên mà app thật sự đem đi tra.
+ */
 import {
-  resolveGeoFromMapsUrl,
   extractGeoFromText,
+  extractPlaceQuery,
   isFetchableMapsUrl,
 } from "@/server/lib/resolve-maps-geo";
-import { geocodeAddress } from "@/server/lib/geocode-address";
+import { resolvePastedMapLink } from "@/server/lib/resolve-pasted-map-link";
+import { findPlusCode } from "@/lib/plus-code";
 
 export const dynamic = "force-dynamic";
 
@@ -88,17 +94,6 @@ async function trace(url: string, ua: string) {
   };
 }
 
-// Pull the "Name, address" out of …/maps/place/<here>/data=…
-function extractPlaceQuery(finalUrl: string): string | null {
-  const m = finalUrl.match(/\/maps\/place\/([^/]+)/);
-  if (!m) return null;
-  try {
-    return decodeURIComponent(m[1].replace(/\+/g, " ")).trim() || null;
-  } catch {
-    return m[1].replace(/\+/g, " ");
-  }
-}
-
 async function stadiaGeocode(query: string) {
   const key = process.env.STADIA_API_KEY;
   if (!key) return { error: "no STADIA_API_KEY" };
@@ -145,8 +140,16 @@ export async function GET(req: Request) {
   if (!isFetchableMapsUrl(url))
     return NextResponse.json({ error: "not a fetchable Google maps URL", url }, { status: 400 });
 
+  /*
+   * ĐÚNG dây nối mà app dùng, không phải một bản rút gọn.
+   *
+   * Trang này từng gọi `resolveGeoFromMapsUrl(url, geocodeAddress)` — thiếu bộ
+   * tìm ứng viên, nên với link mang plus code nó báo "không ra toạ độ" trong
+   * khi app ghim đúng quán. Một trang chẩn đoán nói khác app là tệ hơn không có
+   * trang chẩn đoán nào.
+   */
   const [resolved, desktop] = await Promise.all([
-    resolveGeoFromMapsUrl(url, geocodeAddress),
+    resolvePastedMapLink(url),
     trace(url, UAS.desktop),
   ]);
 
@@ -169,8 +172,10 @@ export async function GET(req: Request) {
       stadia: Boolean(process.env.STADIA_API_KEY),
     },
     input: url,
-    resolvedByCurrentCode: resolved, // what the live resolver returns (the bug)
+    resolvedByCurrentCode: resolved, // exactly what the app's paste would store
     placeQuery, // the "Name, address" we'd geocode
+    // Toạ độ Google ghi sẵn vào tên chỗ khi chỗ đó không có địa chỉ đường phố.
+    plusCode: placeQuery ? findPlusCode(placeQuery) : null,
     stadiaGeocode: geocode, // Stadia's coords + precision for that address
     desktop, // finalUrl, every coord candidate in the HTML, what got picked
   });
