@@ -77,9 +77,14 @@ export const RELEASES: Release[] = [
         why: "Lịch và màn Hôm nay vẫn gọi tên cũ, kể cả sau khi đã đổi — vì tên được chép vào lúc tạo và không ai sửa lại.",
       },
       {
-        kind: "feature",
-        what: "Màn khởi động giữ lại cho tới khi màn đầu tiên có gì để xem.",
-        why: "Trước đây ảnh khởi động biến mất ngay, để lộ một màn xương xẩu rồi mới tới nội dung.",
+        kind: "fix",
+        what: "Gỡ tấm phủ khởi động vừa thêm — nó làm chậm hẳn thay vì che đi.",
+        why: "Đo trên video quay màn hình thật: splash của Android chạy 4,5 giây, rồi giao diện hiện ra, RỒI tấm phủ mới mọc lên và ở lại thêm 6 giây nữa. Nó không nằm trong lần vẽ đầu nên không che được gì, chỉ cộng thêm thời gian chờ.",
+      },
+      {
+        kind: "fix",
+        what: "Thêm ảnh khởi động cho iPhone Air và iPad Pro M4.",
+        why: "iOS bỏ qua ảnh khởi động nếu kích thước không khớp tuyệt đối, và bỏ qua trong im lặng — nên vài máy không có splash mà không ai biết vì sao.",
       },
     ],
   },

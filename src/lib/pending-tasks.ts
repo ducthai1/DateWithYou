@@ -20,6 +20,18 @@ export type PendingTask = {
 
 export const PENDING_TASKS: PendingTask[] = [
   {
+    title: "Lần vẽ đầu tiên mất 4,5 giây trên máy thật",
+    why: "Đo trên video quay màn hình: splash của hệ điều hành giữ đúng 4,5 giây rồi mới tới khung xương. Đó là thời gian tải thật, và không có tấm che nào chữa được — chỉ có làm cho nó nhanh hơn.",
+    area: "tốc độ",
+    weight: "cao",
+  },
+  {
+    title: "Khung xương trắng chen giữa splash và nội dung",
+    why: "Splash nền navy, rồi một màn trắng xương xẩu, rồi mới tới nội dung — ba tông khác nhau trong hai giây. Cần khung xương nối tiếp được màu của splash, không phải thêm một tấm phủ nữa.",
+    area: "giao diện",
+    weight: "vừa",
+  },
+  {
     title: "Bài kiểm nút back đỏ chập chờn khoảng 1/3 lần",
     why: "Bài “back đóng trình xem ảnh” lúc xanh lúc đỏ, và đỏ y hệt trên cây chưa sửa gì — nên là một cuộc đua trong chính bài kiểm, không phải lỗi sản phẩm. Nhưng còn để vậy thì cổng kiểm mất tin cậy.",
     area: "kiểm thử",

@@ -16,7 +16,6 @@ import { PrimeHaptics } from "@/components/layout/prime-haptics";
 import { PushSetup } from "@/components/layout/push-setup";
 import { FullscreenRecovery } from "@/components/layout/fullscreen-recovery";
 import { OfflineNotice } from "@/components/layout/offline-notice";
-import { BootVeil } from "@/components/layout/boot-veil";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
 import { GenderGate } from "@/components/layout/gender-gate";
@@ -261,9 +260,6 @@ export default async function RootLayout({
         <RegisterMapCache />
         <WarmMapAssets />
         <PrimeHaptics />
-        {/* Nối tiếp ảnh khởi động của hệ điều hành cho tới khi màn đầu có gì để xem.
-            Ngoài providers được: nó chỉ đụng API trình duyệt. */}
-        <BootVeil />
         {/* SpaceGuard is mounted inside <Providers> — it is client-only
             (ssr: false), which a Server Component cannot declare. */}
         <Providers initialTone={initialTone}>
