@@ -138,7 +138,20 @@ export function PlaceSearchBox({
   const placeIds = useMemo(() => items.map((i) => i.placeId), [items]);
   const coords = trpc.location.placeCoords.useQuery(
     { placeIds },
-    { enabled: placeIds.length > 0, staleTime: Infinity },
+    {
+      enabled: placeIds.length > 0,
+      /*
+       * Nhớ mãi cái ĐỦ, không nhớ cái thiếu.
+       *
+       * `placeCoords` nuốt lỗi của từng id (`.catch(() => null)`) và trả về
+       * một bản đồ THIẾU chứ không phải một lỗi — nên với `staleTime: Infinity`
+       * thì id nào hụt lúc mạng yếu sẽ mất khoảng cách suốt cả phiên, và không
+       * có gì gọi lại. Đủ thì nhớ mãi (toạ độ không đổi), thiếu thì để lần sau
+       * hỏi lại.
+       */
+      staleTime: (q) =>
+        q.state.data && Object.keys(q.state.data).length === placeIds.length ? Infinity : 0,
+    },
   );
   const distanceOf = (placeId: string): number | null => {
     const point = coords.data?.[placeId];

@@ -151,9 +151,24 @@ export function LocationForm({
     { url: linkToResolve },
     {
       enabled: /^https?:\/\//i.test(linkToResolve) && !v.geo,
-      // A link resolves to one place forever; re-asking on every re-render of
-      // the dialog would be pure latency.
-      staleTime: Infinity,
+      /*
+       * Nhớ mãi KẾT QUẢ TÌM ĐƯỢC, không nhớ lần tìm hụt.
+       *
+       * Một link chỉ ứng với một chỗ, nên tìm ra rồi thì hỏi lại là phí. Nhưng
+       * khi không lấy được toạ độ, `resolvePastedMapLink` trả về `null` —
+       * nghĩa là truy vấn **thành công** với dữ liệu rỗng, chứ không phải lỗi.
+       * Với `staleTime: Infinity` thì cái rỗng ấy cũng được nhớ vĩnh viễn: mở
+       * lại hộp thoại không gọi lại, dán lại cũng không (cùng link là cùng
+       * khoá), và chỉ khi tắt hẳn app — tức xoá bộ nhớ — mới có lần thử mới.
+       * Đúng triệu chứng chủ repo báo: "bấm tắt ra vào vài lần mới được".
+       *
+       * Máy chủ có hai hạn chót 3,5 giây (đuổi theo redirect, rồi mã hoá địa
+       * chỉ thành toạ độ), nên mạng yếu là hụt — một lần hụt không được biến
+       * thành câu trả lời cuối cùng.
+       */
+      staleTime: (q) => (q.state.data ? Infinity : 0),
+      // `retry` chỉ chạy khi có LỖI; hết hạn chót thì máy chủ trả null nên
+      // không có lỗi nào để thử lại. Cái cứu được là `staleTime` ở trên.
       retry: false,
     },
   );
