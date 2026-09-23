@@ -26,10 +26,10 @@ export const PENDING_TASKS: PendingTask[] = [
     weight: "cao",
   },
   {
-    title: "Khung xương trắng chen giữa splash và nội dung",
-    why: "Splash nền navy, rồi một màn trắng xương xẩu, rồi mới tới nội dung — ba tông khác nhau trong hai giây. Cần khung xương nối tiếp được màu của splash, không phải thêm một tấm phủ nữa.",
+    title: "Thanh cảm xúc và ghi chú trong thẻ vẫn là khung xương lúc mở app",
+    why: "Nội dung chính của màn đã về trước khi tấm khởi động gỡ, nhưng mỗi thẻ kỷ niệm còn hai widget tự tải dữ liệu riêng — đo được 2,2% màn trên /timeline. Đợi cả chúng thì tấm che thường xuyên chạm trần 12 giây, nên để lại; cần cách khác, ví dụ gộp chúng vào cùng một lần hỏi máy chủ với danh sách.",
     area: "giao diện",
-    weight: "vừa",
+    weight: "thấp",
   },
   {
     title: "Bài kiểm nút back đỏ chập chờn khoảng 1/3 lần",

@@ -61,6 +61,16 @@ export const RELEASES: Release[] = [
         what: "Tên app lúc khởi động không còn nhảy khi thanh điều hướng ẩn đi.",
         why: "Chữ được đặt theo khung đang co giãn, nên mỗi lần thanh dưới của máy biến mất là nó tụt xuống theo.",
       },
+      {
+        kind: "fix",
+        what: "Mở app ở tab nào cũng đợi tới lúc màn đó có dữ liệu thật.",
+        why: "Chỉ màn Hôm nay biết báo \"tôi xong rồi\"; mọi tab khác gỡ màn khởi động theo mốc tải trang, mà mốc đó không đợi dữ liệu. Đo trên Lịch: gỡ lúc 8,4 giây trong khi 6,8% màn vẫn là ô xám chờ.",
+      },
+      {
+        kind: "fix",
+        what: "Bài kiểm màn khởi động không còn lúc xanh lúc đỏ.",
+        why: "Nó hỏi \"sau 1,5 giây thì màn che còn không\" — câu trả lời đổi theo máy đang bận hay rảnh, và đỏ khoảng 1/3 lần ngay cả khi không sửa gì. Giờ nó soi cả chuỗi khởi động và bắt đúng điều cần đúng: không có lúc nào ô xám hiện ra mà màn che đã tắt.",
+      },
     ],
   },
   {
