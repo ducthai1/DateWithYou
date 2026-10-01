@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { menuPlacement, type MenuPlacement } from "./select-placement";
 import { foldForSearch } from "@/lib/vietnamese-text";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -33,8 +34,6 @@ type SelectProps = {
   emptyLabel?: string;
 };
 
-const MENU_GAP = 4;
-const MAX_MENU_HEIGHT = 256;
 
 /**
  * Custom dropdown (not a native <select>): solid-white menu rendered in a body
@@ -93,12 +92,7 @@ export function Select({
   }, [open]);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [layout, setLayout] = useState<{
-    top: number;
-    left: number;
-    width: number;
-    maxHeight: number;
-  } | null>(null);
+  const [layout, setLayout] = useState<MenuPlacement | null>(null);
 
   const selected = options.find((o) => o.value === value);
 
@@ -108,16 +102,7 @@ export function Select({
     }
     const el = triggerRef.current;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const below = window.innerHeight - rect.bottom - MENU_GAP - 8;
-    const above = rect.top - MENU_GAP - 8;
-    const openBelow = below >= Math.min(MAX_MENU_HEIGHT, 160) || below >= above;
-    setLayout({
-      top: openBelow ? rect.bottom + MENU_GAP : rect.top - MENU_GAP,
-      left: rect.left,
-      width: rect.width,
-      maxHeight: Math.min(MAX_MENU_HEIGHT, Math.max(120, openBelow ? below : above)),
-    });
+    setLayout(menuPlacement(el.getBoundingClientRect(), window.innerHeight));
   }, [open]);
 
   /*
@@ -218,13 +203,15 @@ export function Select({
           <AnimatePresence>
             {open && layout && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                /* Mọc ra từ phía ô chọn: xuống thì từ trên, lên thì từ dưới. */
+                initial={{ opacity: 0, scale: 0.95, y: layout.openBelow ? -5 : 5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                exit={{ opacity: 0, scale: 0.95, y: layout.openBelow ? -5 : 5 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
                 ref={menuRef}
                 className={cn(
-                  "border-border bg-card fixed z-50 overflow-y-auto rounded-xl border shadow-xl origin-top",
+                  "border-border bg-card fixed z-50 overflow-y-auto rounded-xl border shadow-xl",
+                  layout.openBelow ? "origin-top" : "origin-bottom",
                   /*
                    * No top padding when there is a search field. That field is
                    * sticky at top:0, which pins it to the padding box — 4px
@@ -234,7 +221,13 @@ export function Select({
                    */
                   searchable ? "pb-1" : "py-1",
                 )}
-                style={{ top: layout.top, left: layout.left, width: layout.width, maxHeight: layout.maxHeight }}
+                style={{
+                  top: layout.top,
+                  bottom: layout.bottom,
+                  left: layout.left,
+                  width: layout.width,
+                  maxHeight: layout.maxHeight,
+                }}
               >
             {searchable ? (
               <div className="border-border/70 sticky top-0 z-10 border-b bg-card px-2 pb-2 pt-1.5">
