@@ -36,6 +36,19 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-10-02",
+    title: "Ô chọn sao không còn bị khuất",
+    summary:
+      "Danh sách chọn sao khi thêm địa điểm mở đè lên chính nó và chạy quá mép màn; nay nó mở lên phía trên, gọn trong màn hình.",
+    changes: [
+      {
+        kind: "fix",
+        what: "Chọn sao khi thêm địa điểm đã bấm được.",
+        why: "Ô đánh giá nằm cuối form nên danh sách phải mở lên trên — nhưng nó vẫn đổ xuống, che kín chính ô vừa bấm và chạy quá đáy màn 56px trên điện thoại, 52px trên máy tính. Đo trên cả hai khổ màn.",
+      },
+    ],
+  },
+  {
     date: "2026-09-23",
     title: "Dán link bản đồ ra đúng chỗ, và màn khởi động liền một mạch",
     summary:
