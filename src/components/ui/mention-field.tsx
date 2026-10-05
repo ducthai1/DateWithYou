@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { cn } from "@/lib/utils";
+import { clipBoundsFor } from "@/lib/clip-bounds";
 import { TEXTAREA_CLASS } from "@/components/ui/textarea";
 import {
   applyMention,
@@ -76,6 +77,11 @@ import {
  * trống trên giấy.
  */
 const LIST_MIN_ROOM = 140;
+/** Khe giữa ô nhập và danh sách (`mt-2` / `mb-2` = 8px). */
+const LIST_GAP = 8;
+/** Sàn chiều cao — thà cuộn trong một ô bé còn hơn tràn ra ngoài rồi mất hút. */
+const LIST_MIN_HEIGHT = 96;
+
 
 export function MentionField({
   value,
@@ -117,7 +123,7 @@ export function MentionField({
   const fieldRef = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   /*
-   * Danh sách mở LÊN hay XUỐNG.
+   * Danh sách mở LÊN hay XUỐNG, và cao tối đa bao nhiêu.
    *
    * Mặc định mở xuống, nhưng ô nhập ghi chú nằm trong một thẻ giữa dòng thời
    * gian, và khi thẻ ở gần cuối màn thì danh sách rơi thẳng vào sau thanh điều
@@ -125,6 +131,7 @@ export function MentionField({
    * DOM. Chỗ trống bên dưới phải trừ chiều cao dock ra mới là chỗ trống thật.
    */
   const [above, setAbove] = useState(false);
+  const [maxRoom, setMaxRoom] = useState<number | undefined>(undefined);
 
   const ranges = useMemo(() => findMentionRanges(value, members), [value, members]);
 
@@ -276,15 +283,16 @@ export function MentionField({
     const el = fieldRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const dock =
-      parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue("--nav-dock-h"),
-      ) || 0;
-    const roomBelow = window.innerHeight - dock - rect.bottom;
-    const roomAbove = rect.top;
+    const bounds = clipBoundsFor(el);
+    const roomBelow = bounds.bottom - rect.bottom - LIST_GAP;
+    const roomAbove = rect.top - bounds.top - LIST_GAP;
     // Chỉ lật khi bên dưới KHÔNG đủ mà bên trên thì đủ hơn — lật bừa thì danh
     // sách nhảy chỗ giữa hai lần gõ, khó chịu hơn là bị che.
-    setAbove(roomBelow < LIST_MIN_ROOM && roomAbove > roomBelow);
+    const flip = roomBelow < LIST_MIN_ROOM && roomAbove > roomBelow;
+    setAbove(flip);
+    // Kẹp theo chỗ THẬT còn lại: danh sách dài vẫn cuộn được trong đó, thay vì
+    // tràn ra ngoài vùng cắt và biến mất.
+    setMaxRoom(Math.max(LIST_MIN_HEIGHT, Math.floor(flip ? roomAbove : roomBelow)));
   }, [open, candidates.length]);
 
   const shared = cn(
@@ -382,6 +390,7 @@ export function MentionField({
           items={candidates}
           active={active}
           above={above}
+          maxHeight={maxRoom}
           onHover={setActive}
           onPick={choose}
         />
@@ -410,14 +419,17 @@ function MentionList({
   items,
   active,
   above,
+  maxHeight,
   onHover,
   onPick,
 }: {
   id: string;
   items: MentionMember[];
   active: number;
-  /** Mở lên trên vì bên dưới bị thanh điều hướng che — xem `above`. */
+  /** Mở lên trên vì bên dưới không đủ chỗ — xem `clipBoundsFor`. */
   above: boolean;
+  /** Chỗ thật còn lại ở phía đã chọn; danh sách cuộn trong đó. */
+  maxHeight?: number;
   onHover: (i: number) => void;
   onPick: (m: MentionMember) => void;
 }) {
@@ -430,6 +442,7 @@ function MentionList({
         "border-border bg-card shadow-elev-float absolute right-0 left-0 z-50 max-h-56 overflow-y-auto rounded-xl border py-1",
         above ? "bottom-full mb-2" : "top-full mt-2",
       )}
+      style={maxHeight != null ? { maxHeight } : undefined}
     >
       {items.map((m, i) => (
         <li
