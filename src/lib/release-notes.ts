@@ -36,6 +36,39 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-10-05",
+    title: "Bình luận trả lời được, ba cấp, và thả cảm xúc từng câu",
+    summary:
+      "Dưới mỗi kỷ niệm giờ trả lời được từng bình luận như Facebook, lồng tối đa ba cấp, và danh sách tag tên không còn bị chân cửa sổ che.",
+    changes: [
+      {
+        kind: "feature",
+        what: "Trả lời được từng bình luận, lồng tối đa ba cấp.",
+        why: "Trước đây mọi bình luận nằm chung một hàng dọc, nên dưới một kỷ niệm có chục câu thì không biết ai đang nói với câu nào. Trả lời cho một câu đã ở cấp ba thì nó nằm cạnh câu đó chứ không thụt thêm — ba cấp là vừa đủ để đọc trên điện thoại.",
+      },
+      {
+        kind: "feature",
+        what: "Bấm Trả lời là tên người đó được điền sẵn vào ô soạn.",
+        why: "Gõ lại tên bằng tay vừa mất công vừa dễ sai một dấu, mà sai thì cái tên không thành thẻ và người kia không nhận được thông báo.",
+      },
+      {
+        kind: "feature",
+        what: "Thả cảm xúc lên từng bình luận, không chỉ lên cả kỷ niệm.",
+        why: "Trả lời \"haha\" cho một câu đùa là thêm một dòng vào luồng; một mặt cười thì không.",
+      },
+      {
+        kind: "fix",
+        what: "Danh sách tag tên không còn bị chân cửa sổ che.",
+        why: "Ô soạn nằm sát chân cửa sổ chi tiết kỷ niệm, mà danh sách gợi ý vẫn mở xuống: đo được 77 trên 98 điểm ảnh bị che, tức gần như không thấy gì. Giờ nó tự lật lên trên khi bên dưới không còn chỗ.",
+      },
+      {
+        kind: "fix",
+        what: "Xoá một bình luận thì xoá luôn các câu trả lời bên dưới nó.",
+        why: "Để lại thì chúng treo lơ lửng không còn gì để trả lời, và vì câu gốc đã mất nên chúng biến khỏi màn hình mà vẫn nằm trong cơ sở dữ liệu mãi.",
+      },
+    ],
+  },
+  {
     date: "2026-10-02",
     title: "Ô chọn sao không còn bị khuất",
     summary:
