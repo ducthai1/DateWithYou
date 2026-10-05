@@ -14,8 +14,14 @@ export { REACTION_EMOJIS, type ReactionEmoji } from "@/lib/reactions";
  * Objects a reaction can hang off. Polymorphic from day one so reactions extend
  * to plans/trips/wishlist later without a data migration — only this list and
  * the target-existence guard in the router need to grow.
+ *
+ * `note` để thả cảm xúc lên từng bình luận. CỐ Ý tách khỏi danh sách chỗ một
+ * bình luận được treo vào (`NOTE_TARGET_TYPES`): gộp một danh sách thì
+ * `addNote` nhận luôn `targetType: "note"`, tức có hai cơ chế lồng bình luận
+ * song song — `parentId` và target lồng nhau — và chúng sẽ đếm độ sâu khác
+ * nhau.
  */
-export const REACTION_TARGET_TYPES = ["memory"] as const;
+export const REACTION_TARGET_TYPES = ["memory", "note"] as const;
 
 export type ReactionTargetType = (typeof REACTION_TARGET_TYPES)[number];
 

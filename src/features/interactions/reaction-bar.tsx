@@ -22,6 +22,8 @@ type RouterOutputs = inferRouterOutputs<AppRouter>;
 /** Exact input the timeline used for its batched `forTargets` fetch — reused as
  *  the react-query cache key so the optimistic patch lands on the right entry. */
 export type InteractionInput = RouterInputs["interaction"]["forTargets"];
+/** Nơi một bình luận treo vào — hẹp hơn nơi một cảm xúc treo vào. */
+export type NoteTargetType = RouterInputs["interaction"]["addNote"]["targetType"];
 export type InteractionState = "loading" | "error" | "ready";
 
 type TargetInteractions = RouterOutputs["interaction"]["forTargets"][string];
