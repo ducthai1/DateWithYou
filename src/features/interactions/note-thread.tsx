@@ -430,7 +430,7 @@ export function NoteThread({
        */
       utils.interaction.forTargets.invalidate();
     },
-    onError: (err) => toast(readableFormError(err.message, "Chưa gửi được ghi chú"), "error"),
+    onError: (err) => toast(readableFormError(err.message, "Chưa gửi được bình luận"), "error"),
   });
 
   const removeNote = trpc.interaction.removeNote.useMutation({
@@ -451,7 +451,7 @@ export function NoteThread({
     },
     onError: (err, _v, ctx) => {
       if (ctx?.prev) utils.interaction.forTargets.setData(queryInput, ctx.prev);
-      toast(readableFormError(err.message, "Chưa xoá được ghi chú"), "error");
+      toast(readableFormError(err.message, "Chưa xoá được bình luận"), "error");
     },
     // Xoá cũng phải quét cả hai nơi — xem ghi chú ở addNote.
     onSettled: () => utils.interaction.forTargets.invalidate(),
@@ -484,7 +484,7 @@ export function NoteThread({
   if (state === "error") {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-muted-foreground text-xs">Chưa tải được ghi chú.</p>
+        <p className="text-muted-foreground text-xs">Chưa tải được bình luận.</p>
         <button
           type="button"
           onClick={onRetry}

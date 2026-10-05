@@ -665,7 +665,7 @@ export function MemoryTimeline() {
                 idle="Xoá"
                 icon={<Trash2 className="mr-2 h-4 w-4" />}
                 title="Xoá kỷ niệm này?"
-                description={`"${selectedMemo.title}" cùng ảnh và ghi chú trong đó sẽ mất. Không hoàn tác được.`}
+                description={`"${selectedMemo.title}" cùng ảnh và bình luận trong đó sẽ mất. Không hoàn tác được.`}
                 className="text-destructive border-destructive/30 hover:bg-destructive-soft inline-flex h-11 flex-1 cursor-pointer items-center justify-center rounded-xl border text-sm font-medium transition-all active:scale-[.98]"
                 onConfirm={() => {
                   remove.mutate({ id: selectedMemo.id });
