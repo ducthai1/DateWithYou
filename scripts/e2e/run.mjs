@@ -42,6 +42,7 @@ const SUITES = [
   { id: "offline", load: () => import("./offline.mjs") },
   { id: "boot", load: () => import("./boot-veil.mjs") },
   { id: "reload", load: () => import("./reload-state.mjs") },
+  { id: "so-tay", load: () => import("./notebook.mjs") },
   { id: "invite", load: () => import("./invite.mjs") },
   { id: "onboarding", load: () => import("./onboarding.mjs") },
 ];

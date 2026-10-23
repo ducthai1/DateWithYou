@@ -89,6 +89,7 @@ export const PRIVATE_ROUTES = [
   "/search",
   "/hom-nay-di-dau",
   "/admin",
+  "/so-tay",
 ] as const;
 
 /**

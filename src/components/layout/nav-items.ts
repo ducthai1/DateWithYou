@@ -9,6 +9,7 @@ import {
   Sun,
   Bell,
   Search,
+  NotebookPen,
   type LucideIcon,
 } from "lucide-react";
 import { MARKETING_ROUTES } from "@/components/marketing/feature-pages/slugs";
@@ -49,6 +50,9 @@ export const NAV_ITEMS: {
   // they reach for mid-trip, so it gives up its bottom-bar slot and lives in
   // the header's "Mục khác" sheet on a phone, next to Bí mật.
   { href: "/rides", label: "Đã đi", Icon: Bike, mobileHidden: true },
+  // Notes and day-by-day plans. Out of the bottom bar, which is full at 390px;
+  // on a phone it lives in the header's "Mục khác" sheet.
+  { href: "/so-tay", label: "Sổ tay", Icon: NotebookPen, mobileHidden: true },
   // Out of the bottom bar: both are linked directly in the mobile header, which
   // is why "Mục khác" skips them.
   { href: "/search", label: "Tìm kiếm", Icon: Search, mobileHidden: true },

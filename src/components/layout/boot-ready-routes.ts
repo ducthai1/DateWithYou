@@ -22,6 +22,7 @@ export const BOOT_READY_ROUTES = [
   "/activity",
   "/library",
   "/rides",
+  "/so-tay",
 ] as const;
 
 export function reportsAppReady(pathname: string): boolean {

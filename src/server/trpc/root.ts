@@ -26,6 +26,7 @@ import { cycleRouter } from "@/server/trpc/routers/cycle";
 import { dayPlanRouter } from "@/server/trpc/routers/day-plan";
 import { opsRouter } from "@/server/trpc/routers/ops";
 import { listenRouter } from "./routers/listen";
+import { notebookRouter } from "@/server/trpc/routers/notebook";
 
 /** Root tRPC router. Each feature registers its own sub-router here. */
 export const appRouter = router({
@@ -56,6 +57,7 @@ export const appRouter = router({
   dayPlan: dayPlanRouter,
   ops: opsRouter,
   listen: listenRouter,
+  notebook: notebookRouter,
 });
 
 export type AppRouter = typeof appRouter;

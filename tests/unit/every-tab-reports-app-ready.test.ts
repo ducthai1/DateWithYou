@@ -24,6 +24,7 @@ const TAB_SCREENS: Record<string, string> = {
   "/activity": "src/features/activity/activity-feed.tsx",
   "/library": "src/features/library/library-page.tsx",
   "/rides": "src/features/rides/ride-history.tsx",
+  "/so-tay": "src/features/notebook/notebook-screen.tsx",
 };
 
 const read = (rel: string) => readFileSync(new URL(`../../${rel}`, import.meta.url), "utf8");

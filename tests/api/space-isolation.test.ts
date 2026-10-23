@@ -106,6 +106,19 @@ const FEATURES: Feature[] = [
     ],
   },
   {
+    name: "notebook",
+    create: async (c) =>
+      (await c.notebook.create({ title: "Sổ của An", start: "2026-10-23", end: "2026-10-25", slots: ["Trưa"] })).id,
+    ids: async (c) => (await c.notebook.list()).map((d) => d.id),
+    read: (c, id) => c.notebook.get({ id }),
+    writes: [
+      (c, id) => c.notebook.rename({ id, title: "Bị sửa từ space khác" }),
+      (c, id) => c.notebook.setCell({ id, date: "2026-10-23", slot: "trua", text: "Bị sửa" }),
+      (c, id) => c.notebook.swapCells({ id, a: { date: "2026-10-23", slot: "trua" }, b: { date: "2026-10-24", slot: "trua" } }),
+      (c, id) => c.notebook.remove({ id }),
+    ],
+  },
+  {
     name: "specialDate",
     create: async (c) => (await c.specialDate.create({ title: "Ngày của An", date: "2026-03-01" })).id,
     ids: async (c) => (await c.specialDate.list()).map((d) => d.id),
