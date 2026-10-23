@@ -25,7 +25,16 @@ async function seedMemory(db, spaceId, uid) {
   const now = new Date();
   const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 15));
   const existing = await db.collection("memories").findOne({ spaceId, title: "E2E ảnh lịch" });
-  if (existing) return day;
+  /*
+   * Move a memory left by an earlier run onto THIS month. Returning it as it
+   * was kept it on the month it was first seeded in, so from the next month on
+   * the grid on screen had no picture to measure and all three densities
+   * failed — a stale fixture, not a regression.
+   */
+  if (existing) {
+    await db.collection("memories").updateOne({ _id: existing._id }, { $set: { date: day } });
+    return day;
+  }
   await db.collection("memories").insertOne({
     spaceId,
     title: "E2E ảnh lịch",
