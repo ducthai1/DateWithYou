@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -100,7 +100,16 @@ export function NotebookScreen() {
             </Button>
             {/* Icon only until tapped: deleting a whole plan is rare, and a red
                 word at the top of the page shouted louder than the plan itself. */}
-            <ConfirmButton idle="" className="h-10" onConfirm={() => remove.mutate({ id: current.id })} />
+            <ConfirmButton
+              idle=""
+              icon={<Trash2 className="h-4 w-4" />}
+              aria-label="Xoá sổ"
+              title="Xoá sổ này?"
+              description="Cả lịch, các mục ghi chú và số cân trong sổ sẽ mất, không lấy lại được."
+              confirmText="Xoá sổ"
+              className="h-10 w-10 justify-center rounded-lg hover:no-underline"
+              onConfirm={() => remove.mutate({ id: current.id })}
+            />
           </Card>
           <NotebookBody key={current.id} id={current.id} />
         </>

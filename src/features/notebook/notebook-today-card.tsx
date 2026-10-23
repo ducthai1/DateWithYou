@@ -50,7 +50,10 @@ export function NotebookTodayCard({
       {day.label && <p className="text-muted-foreground -mt-2 text-sm wrap-anywhere">{day.label}</p>}
 
       <ul className="divide-border divide-y">
-        {book.slots.map((slot) => {
+        {/* Only what today asks for: a snack column empty on a normal day was a
+            "Chưa ghi gì" row on every one of them. The table still has every cell.
+            A day with nothing written yet shows all its slots, to be filled in. */}
+        {book.slots.filter((s) => total === 0 || day.cells[s.key].text.trim() !== "").map((slot) => {
           const cell = day.cells[slot.key];
           const empty = cell.text.trim() === "";
           return (
