@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
+import { useQueryEnum } from "@/hooks/use-query-state";
 import { ScrollStrip } from "@/components/ui/scroll-strip";
 import { motion, AnimatePresence } from "framer-motion";
 import { RoadmapBoard } from "@/features/vault/roadmap-board";
@@ -25,9 +25,11 @@ const TABS = [
   // someone. "Chu kỳ" is the term both people already use.
   { key: "cycle", label: "Chu kỳ", icon: Flower2 },
 ] as const;
+const TAB_KEYS = TABS.map((t) => t.key);
 
 export default function VaultPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("roadmap");
+  // `?tab=` so a reload stays on the tab, not back on "Kế hoạch".
+  const [tab, setTab] = useQueryEnum("tab", TAB_KEYS, "roadmap");
 
   // Fetch summary stats
   const plans = trpc.plan.list.useQuery();

@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-shell";
 import { KIND_META, SearchResultRow, type SearchHit } from "./search-result-row";
+import { replaceQuery, useQueryParam, useQueryText } from "@/hooks/use-query-state";
 
 const DEBOUNCE_MS = 250;
 const MAX_QUERY = 80; // mirrors the procedure's zod bound
@@ -23,17 +24,17 @@ const MAX_QUERY = 80; // mirrors the procedure's zod bound
  */
 export function SearchScreen() {
   const router = useRouter();
-  const [text, setText] = useState("");
-  const [q, setQ] = useState("");
+  /*
+   * The box follows `?q=` and the query runs on the URL's copy, which catches
+   * up once typing pauses — the URL write IS the debounce. So a reload, or
+   * coming back from a result, shows the same search instead of an empty box.
+   */
+  const [text, setText] = useQueryText("q", DEBOUNCE_MS);
+  const q = (useQueryParam("q") ?? "").trim();
   const [active, setActive] = useState(-1);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-
-  useEffect(() => {
-    const id = window.setTimeout(() => setQ(text.trim()), DEBOUNCE_MS);
-    return () => window.clearTimeout(id);
-  }, [text]);
 
   // A new query invalidates the cursor — never leave it pointing at row 7 of a
   // list that now has two rows.
@@ -75,7 +76,9 @@ export function SearchScreen() {
 
   function clearQuery() {
     setText("");
-    setQ("");
+    // Clear the URL now rather than after the debounce, or the old results
+    // linger for a beat after the box is already empty.
+    replaceQuery({ q: null });
     setActive(-1);
     inputRef.current?.focus();
   }

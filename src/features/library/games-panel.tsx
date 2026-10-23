@@ -36,6 +36,7 @@ type GameItem = {
 };
 
 import { useToast } from "@/components/ui/toast";
+import { useQueryString } from "@/hooks/use-query-state";
 
 export function GamesPanel() {
   const toast = useToast();
@@ -59,10 +60,13 @@ export function GamesPanel() {
     onSettled: () => utils.media.list.invalidate(),
   });
 
-  const [selected, setSelected] = useState<GameItem | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const games = (list.data ?? []) as GameItem[];
+  // `?game=<id>`, like the library's `?recipe=`, so an open game survives a reload.
+  const [gameId, setGameId] = useQueryString("game");
+  const selected = gameId ? games.find((g) => g.id === gameId) ?? null : null;
+  const setSelected = (game: GameItem | null) => setGameId(game?.id ?? "");
 
   const toggle = (id: string) => {
     setExpanded((prev) => {

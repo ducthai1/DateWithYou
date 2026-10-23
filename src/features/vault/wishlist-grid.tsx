@@ -19,12 +19,14 @@ import { useCelebrate } from "@/components/ui/celebrate";
 import { useToast } from "@/components/ui/toast";
 import { Trash2, Check, Undo2, Plus, Gift, Link as LinkIcon, User, Users, Coins, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQueryEnum } from "@/hooks/use-query-state";
 
-type FilterMode = "all" | "active" | "bought";
+const FILTER_MODES = ["all", "active", "bought"] as const;
 
 export function WishlistGrid() {
   const partnerName = usePartnerName();
-  const [filter, setFilter] = useState<FilterMode>("all");
+  // `?wish=` so a reload keeps "đã mua" / "chưa mua" selected.
+  const [filter, setFilter] = useQueryEnum("wish", FILTER_MODES, "all");
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);

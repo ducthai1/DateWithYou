@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { readableFormError } from "@/lib/form-error";
 import { ImagePlus } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
@@ -22,6 +22,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StaggerList } from "@/components/ui/stagger-list";
 import { type EmbedProvider } from "@/lib/embed";
 import { cn } from "@/lib/utils";
+import { useQueryString } from "@/hooks/use-query-state";
 import { MemoryForm } from "./memory-form";
 import {
   ReactionBar,
@@ -62,8 +63,19 @@ function savedAtLabel(iso: string): string {
 export function MemoryTimeline() {
   const toast = useToast();
   const [adding, setAdding] = useState(false);
-  const [filter, setFilter] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  /*
+   * The tag filter (`?tag=`) and the open memory (`?memory=`) live in the query
+   * string, so a reload keeps both. `?memory=` was already the link into one
+   * entry; it used to be read once on mount and then dropped, so the entry
+   * opened from a link stayed open but one opened by a tap was lost on reload.
+   * Closing it clears the param, so a link cannot reopen itself.
+   */
+  const [tagParam, setTagParam] = useQueryString("tag");
+  const [memoryParam, setMemoryParam] = useQueryString("memory");
+  const filter = tagParam || null;
+  const selected = memoryParam || null;
+  const setFilter = (tag: string | null) => setTagParam(tag ?? "");
+  const setSelected = (id: string | null) => setMemoryParam(id ?? "");
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
   const [warningEditId, setWarningEditId] = useState<string | null>(null);
   /*
@@ -140,16 +152,6 @@ export function MemoryTimeline() {
   );
   const selectedMemo = inList ?? (selected ? fetched.data ?? null : null);
 
-  /*
-   * ?memory=<id> opens that entry. Read from the URL directly rather than
-   * through useSearchParams, which drags a Suspense boundary into a page that
-   * needs none — this is a one-off read on mount, on the client, by definition.
-   */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const id = new URLSearchParams(window.location.search).get("memory");
-    if (id) setSelected(id);
-  }, []);
   const groups = useMemo(
     () =>
       memories.reduce<Record<string, Memo[]>>((acc, m) => {

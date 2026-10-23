@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import { PageShell, PageHeader } from "@/components/layout/page-shell";
 import { CalendarGrid } from "./calendar-grid";
@@ -14,8 +14,10 @@ import { LoadFailed } from "@/components/ui/load-failed";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { Star } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc";
+import { replaceQuery, useQueryEnum, useQueryParam } from "@/hooks/use-query-state";
+import { dayParam, formatMonthParam, parseMonthParam, type QueryPatch } from "@/lib/url-query";
+import { todayKey } from "@/lib/date-keys";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { useAppReady } from "@/components/layout/boot-veil-dismiss";
 
@@ -24,46 +26,61 @@ const VIEW_TABS = [
   { key: "agenda", label: "Nhật ký" },
 ] as const;
 
+const VIEWS = VIEW_TABS.map((t) => t.key);
+
 const initialYM = () => {
   const d = new Date();
   return { year: d.getFullYear(), month: d.getMonth() + 1 };
 };
 
+const isThisMonth = (ym: { year: number; month: number }) => {
+  const now = initialYM();
+  return ym.year === now.year && ym.month === now.month;
+};
+
+// `m` is already 1-based — it comes out of a YYYY-MM-DD key, and every month in
+// this screen is 1-based too (initialYM adds 1 to getMonth(), the grid documents
+// "1-12", the server validates min(1).max(12)). Subtracting one treated it as a
+// Date month once, so a link to 31/08 opened the right day and then left July
+// behind it, and a link to any January produced month 0, which the summary
+// query rejects outright.
+const monthOfDay = (day: string) => ({ year: Number(day.slice(0, 4)), month: Number(day.slice(5, 7)) });
+
 export function CalendarView() {
   /*
-   * `?d=YYYY-MM-DD` opens straight onto that day.
+   * View, month and open day all live in the query string:
+   * `?view=agenda`, `?month=2026-08`, `?d=2026-08-31`.
    *
-   * Everything on /home that mentions a plan used to link at "/calendar" and
-   * stop there, leaving the reader to find the day they had just been reading
-   * about. The date travels in the URL rather than in client state so the link
-   * survives a new tab, a bookmark and the back button.
+   * `?d=` came first. Everything on /home that mentions a plan used to link at
+   * "/calendar" and stop there, leaving the reader to find the day they had
+   * just been reading about. The month and the view followed it so that a
+   * reload stays where the reader was instead of snapping back to this month.
+   *
+   * Closing the day removes `d`, so a deep link cannot trap the reader in the
+   * dialog — the job the old "honour it once" ref used to do.
    */
-  const requestedDay = useSearchParams().get("d");
-  const [{ year, month }, setYM] = useState(initialYM);
-  const [view, setView] = useState<(typeof VIEW_TABS)[number]["key"]>("month");
-  const [selected, setSelected] = useState<string | null>(null);
-
-  /*
-   * Honour the deep link once per distinct date, not on every render: the
-   * reader has to be able to close the day detail and stay on the month, and
-   * re-opening it because the query string still says so would trap them.
-   */
-  const handledDay = useRef<string | null>(null);
-  useEffect(() => {
-    if (!requestedDay || handledDay.current === requestedDay) return;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDay)) return;
-    handledDay.current = requestedDay;
-    const [y, m] = requestedDay.split("-").map(Number);
-    // `m` is already 1-based — it came out of a YYYY-MM-DD key, and every month
-    // in this screen is 1-based too (initialYM adds 1 to getMonth(), the grid
-    // documents "1-12", the server validates min(1).max(12)). Subtracting one
-    // here treated it as a Date month, so a link to 31/08 opened the right day
-    // and then left July behind it once the dialog closed — and a link to any
-    // January produced month 0, which the summary query rejects outright.
-    setYM({ year: y, month: m });
-    setSelected(requestedDay);
-  }, [requestedDay]);
+  const [view, setView] = useQueryEnum("view", VIEWS, "month");
+  const selected = dayParam(useQueryParam("d"));
+  const monthParam = parseMonthParam(useQueryParam("month"));
+  const weekStripDay = dayParam(useQueryParam("day"));
+  // A deep link names only the day; the month to show is that day's.
+  const { year, month } = monthParam ?? (selected ? monthOfDay(selected) : initialYM());
   const [specialsOpen, setSpecialsOpen] = useState(false);
+
+  const setYM = (ym: { year: number; month: number }) =>
+    replaceQuery({ month: isThisMonth(ym) ? null : formatMonthParam(ym) });
+  const openDay = (day: string) => replaceQuery({ d: day });
+  const closeDay = () => {
+    const patch: QueryPatch = { d: null };
+    if (selected) {
+      // The month on screen came from the day; pin it, or closing the dialog
+      // would drop the reader back on this month.
+      if (!monthParam && !isThisMonth(monthOfDay(selected))) patch.month = formatMonthParam(monthOfDay(selected));
+      // The phone's week strip stays on the day that was open.
+      if (!weekStripDay && selected !== todayKey()) patch.day = selected;
+    }
+    replaceQuery(patch);
+  };
 
   const summary = trpc.calendar.monthSummary.useQuery({ year, month });
   // Tấm khởi động đợi màn này: mở app đúng ở đây thì không được gỡ tấm che
@@ -77,8 +94,8 @@ export function CalendarView() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const prev = () => setYM((s) => (s.month === 1 ? { year: s.year - 1, month: 12 } : { ...s, month: s.month - 1 }));
-  const next = () => setYM((s) => (s.month === 12 ? { year: s.year + 1, month: 1 } : { ...s, month: s.month + 1 }));
+  const prev = () => setYM(month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 });
+  const next = () => setYM(month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 });
   const goToday = () => setYM(initialYM());
 
   return (
@@ -130,15 +147,15 @@ export function CalendarView() {
                 retrying={summary.isFetching}
               />
             ) : (
-              <CalendarGrid year={year} month={month} summary={summary.data ?? {}} onSelectDay={setSelected} />
+              <CalendarGrid year={year} month={month} summary={summary.data ?? {}} onSelectDay={openDay} />
             )}
           </>
         )
       ) : (
-        <AgendaView onSelectDay={setSelected} />
+        <AgendaView onSelectDay={openDay} />
       )}
 
-      {selected && <DayDetail date={selected} onClose={() => setSelected(null)} />}
+      {selected && <DayDetail date={selected} onClose={closeDay} />}
 
       {specialsOpen && (
         <Modal open onClose={() => setSpecialsOpen(false)} className="max-w-lg">

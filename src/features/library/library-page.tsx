@@ -21,6 +21,7 @@ import { PROVIDER_LABEL, type EmbedProvider } from "@/lib/embed";
 import { foldForSearch } from "@/lib/vietnamese-text";
 import { Search } from "lucide-react";
 import { useAppReady } from "@/components/layout/boot-veil-dismiss";
+import { replaceQuery, useQueryEnum, useQueryString, useQueryText } from "@/hooks/use-query-state";
 
 const TABS = [
   { key: "music", label: "Nhạc" },
@@ -28,28 +29,35 @@ const TABS = [
   { key: "recipe", label: "Công thức" },
   { key: "game", label: "Trò chơi" },
 ] as const;
+const KINDS = TABS.map((t) => t.key);
 
 export function LibraryPage() {
-  const [kind, setKind] = useState<MediaKind>("music");
+  /*
+   * Tab, filters, search and the open recipe live in the query string
+   * (?tab=recipe&tag=…&recipe=<id>). In React state they were gone on every
+   * reload: the page always came back on "Nhạc" with nothing filtered.
+   */
+  const [kind] = useQueryEnum<MediaKind>("tab", KINDS, "music");
+  const [tagFilter, setTagFilter] = useQueryString("tag");
+  const [providerFilter, setProviderFilter] = useQueryString("source");
+  const [query, setQuery] = useQueryText("q");
+  const [recipeId, setRecipeId] = useQueryString("recipe");
   const [adding, setAdding] = useState(false);
-  const [recipe, setRecipe] = useState<MediaListItem | null>(null);
-  const [tagFilter, setTagFilter] = useState<string>("");
-  const [providerFilter, setProviderFilter] = useState<string>("");
-  const [query, setQuery] = useState("");
 
   const isGame = kind === "game";
   const list = trpc.media.list.useQuery({ kind });
   const allItems = (list.data ?? []) as MediaListItem[];
+  const recipe = recipeId ? allItems.find((it) => it.id === recipeId) ?? null : null;
   // Tấm khởi động đợi màn này: mở app đúng ở đây thì không được gỡ tấm che
   // trong lúc còn khung xương. Báo cả khi lỗi — thẻ "thử lại" hơn là màn navy.
   useAppReady(!list.isPending);
-  
+
+  // One write for the whole switch: a tab's filters mean nothing on the next tab.
   const handleKindChange = (k: MediaKind) => {
-    setKind(k);
-    setTagFilter("");
-    setProviderFilter("");
+    replaceQuery({ tab: k === "music" ? null : k, tag: null, source: null, q: null, recipe: null });
     setQuery("");
   };
+  const clearFilters = () => replaceQuery({ tag: null, source: null });
 
   const allTags = Array.from(new Set(allItems.flatMap(it => it.tags))).sort();
   const allProviders = Array.from(new Set(allItems.map(it => it.provider).filter(Boolean))).sort() as EmbedProvider[];
@@ -158,7 +166,7 @@ export function LibraryPage() {
               <Button
                 variant="ghost"
                 className="h-9 px-2 text-muted-foreground hover:text-foreground"
-                onClick={() => { setTagFilter(""); setProviderFilter(""); }}
+                onClick={clearFilters}
               >
                 <X className="mr-1 h-4 w-4" />
                 Xoá
@@ -198,12 +206,12 @@ export function LibraryPage() {
           spotSize="lg"
           title="Không tìm thấy"
           subtitle="Thử bỏ bớt bộ lọc xem sao nhé."
-          action={{ label: "Xoá lọc", onClick: () => { setTagFilter(""); setProviderFilter(""); } }}
+          action={{ label: "Xoá lọc", onClick: clearFilters }}
         />
       ) : (
         <StaggerList className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {items.map((it) => (
-            <MediaCard key={it.id} item={it} queue={items} onOpen={() => setRecipe(it)} />
+            <MediaCard key={it.id} item={it} queue={items} onOpen={() => setRecipeId(it.id)} />
           ))}
         </StaggerList>
       )}
@@ -218,7 +226,7 @@ export function LibraryPage() {
       {recipe && (
         <RecipeDetail
           item={recipe}
-          onClose={() => setRecipe(null)}
+          onClose={() => setRecipeId("")}
         />
       )}
     </PageShell>

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { previousRoute, readRouteTrail } from "@/components/navigation/route-trail";
 import { cn } from "@/lib/utils";
+import { pathOf } from "@/lib/url-query";
 
 /**
  * "← Về Blog", "← Về trang chủ" — a back link that knows where you came from.
@@ -66,7 +67,8 @@ export function SmartBackLink({
     if (prev) {
       // Previous entry of the trail AND the tab has somewhere to go back to.
       const trail = readRouteTrail();
-      const isLastStep = trail.length >= 2 && trail[trail.length - 1] === pathname && trail[trail.length - 2] === prev;
+      // Trail entries carry their query, so the current step is matched by path.
+      const isLastStep = trail.length >= 2 && pathOf(trail[trail.length - 1]) === pathname && trail[trail.length - 2] === prev;
       setTarget({ href: prev, viaHistory: isLastStep && window.history.length > 1 });
       return;
     }

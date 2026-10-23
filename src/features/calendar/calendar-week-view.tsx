@@ -7,7 +7,8 @@ import { todayKey, weekDaysOf, addDaysKey } from "@/lib/date-keys";
 import { CalendarWeekStrip } from "./calendar-week-strip";
 import { CalendarMonthJump } from "./calendar-month-jump";
 import { CalendarDayHero } from "./calendar-day-hero";
-import { DayDetail } from "./day-detail";
+import { replaceQuery, useQueryParam } from "@/hooks/use-query-state";
+import { dayParam } from "@/lib/url-query";
 
 const monthOf = (key: string) => ({ year: Number(key.slice(0, 4)), month: Number(key.slice(5, 7)) });
 
@@ -19,8 +20,13 @@ const monthOf = (key: string) => ({ year: Number(key.slice(0, 4)), month: Number
  */
 export function CalendarWeekView() {
   const [today] = useState(todayKey);
-  const [selected, setSelected] = useState(today);
-  const [editing, setEditing] = useState(false);
+  /*
+   * The picked day is `?day=` and the open day sheet is CalendarView's `?d=`,
+   * so a reload comes back to the same week, the same day and the same open
+   * sheet. In React state the strip always returned to today, sheet closed.
+   */
+  const selected = dayParam(useQueryParam("day")) ?? today;
+  const setSelected = (day: string) => replaceQuery({ day: day === today ? null : day });
 
   const weekDays = useMemo(() => weekDaysOf(selected), [selected]);
   // A week can straddle two months; fetch both summaries (react-query dedupes
@@ -35,7 +41,7 @@ export function CalendarWeekView() {
     [sumA.data, sumB.data],
   );
 
-  const shiftWeek = (dir: 1 | -1) => setSelected((s) => addDaysKey(s, dir * 7));
+  const shiftWeek = (dir: 1 | -1) => setSelected(addDaysKey(selected, dir * 7));
 
   return (
     <div className="space-y-4">
@@ -79,9 +85,8 @@ export function CalendarWeekView() {
         onSwipe={shiftWeek}
       />
 
-      <CalendarDayHero date={selected} today={today} onOpenDay={() => setEditing(true)} />
-
-      {editing && <DayDetail date={selected} onClose={() => setEditing(false)} />}
+      {/* CalendarView renders the sheet for `?d=`, on phones as on desktop. */}
+      <CalendarDayHero date={selected} today={today} onOpenDay={() => replaceQuery({ d: selected })} />
     </div>
   );
 }

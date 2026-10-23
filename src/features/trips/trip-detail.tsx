@@ -15,16 +15,19 @@ import { TripChecklist } from "./trip-checklist";
 import { TripBudget } from "./trip-budget";
 import { Modal, ModalHeader } from "@/components/ui/modal";
 import { TripForm } from "./trip-form";
+import { useQueryEnum } from "@/hooks/use-query-state";
 
 const TABS = [
   { key: "itinerary", label: "Lịch trình" },
   { key: "checklist", label: "Hành trang" },
   { key: "budget", label: "Ngân sách" },
 ] as const;
+const TAB_KEYS = TABS.map((t) => t.key);
 
 export function TripDetail({ id }: { id: string }) {
   const { data: trip, isLoading } = trpc.trip.get.useQuery({ id });
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]["key"]>("itinerary");
+  // `?tab=` so a reload stays on the packing list or the budget.
+  const [activeTab, setActiveTab] = useQueryEnum("tab", TAB_KEYS, "itinerary");
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Null unless today falls inside the trip, so the counter never renders
   // "ngày 0" for a trip that has not left yet.

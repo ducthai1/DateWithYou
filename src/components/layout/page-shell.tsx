@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { ToneArt } from "@/components/theme/tone-art";
 import type { ArtName } from "@/lib/tone";
+import { ScrollMemory } from "@/components/layout/scroll-memory";
 
 /**
  * The page container and its title banner, in one place.
@@ -81,6 +82,9 @@ export function PageShell({
           bug, so clip it rather than offer to scroll to it.
         */}
         <div className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-[var(--page-gutter)]">
+          {/* This box, not the window, is what scrolls — so a reload has to be
+              told where it was. */}
+          <ScrollMemory />
           <div
             className={cn(
               "mx-auto w-full max-w-[87.5rem] space-y-6 pb-6 pt-2",
@@ -108,6 +112,7 @@ export function PageShell({
         className,
       )}
     >
+      <ScrollMemory />
       <div
         className={cn(
           "mx-auto w-full max-w-[87.5rem] space-y-6 pb-6 pt-6",
