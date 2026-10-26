@@ -48,6 +48,8 @@ function frameOrigin(frame: HTMLIFrameElement | null): string {
 /** Player states the widget reports. */
 const ENDED = 0;
 const PLAYING = 1;
+/** How long after our own seek the frame's readings are still catching up, in ms. */
+const OWN_SEEK_SETTLE_MS = 1500;
 
 /**
  * Adds the flags the protocol needs, keeping whatever the stored URL had.
@@ -132,6 +134,15 @@ export function useYouTubePlayback(
    * a number nothing on screen shows. A shared session reads it on demand.
    */
   const positionRef = useRef(0);
+  /*
+   * When this hook last moved the playhead itself. A reading already on its
+   * way from the frame still carries the OLD position, so right after our own
+   * seek it reads as a jump — and then the next, correct reading reads as a
+   * jump back. Both went out as a hand on the scrubber: measured with two
+   * browsers, following the other person's pause produced two commands of our
+   * own ("paused at 3:00", "paused at 2:47") and the other phone hopped twice.
+   */
+  const ownSeekAt = useRef(0);
   const readyRef = useRef(false);
   readyRef.current = readyFor === frameKey;
 
@@ -182,7 +193,7 @@ export function useYouTubePlayback(
          */
         const prev = positionRef.current;
         positionRef.current = t;
-        if (prev > 0 && Math.abs(t - prev) > 2.5) {
+        if (prev > 0 && Math.abs(t - prev) > 2.5 && Date.now() - ownSeekAt.current > OWN_SEEK_SETTLE_MS) {
           frameChangeRef.current?.({
             isPlaying: playingRef.current,
             positionSec: t,
@@ -283,6 +294,8 @@ export function useYouTubePlayback(
     [send],
   );
   const play = useCallback(() => send("playVideo"), [send]);
+  // Explicit, for callers inside a frame message: `toggle` reads a ref that lags a render.
+  const pause = useCallback(() => send("pauseVideo"), [send]);
 
   /** Where the frame is now, in seconds. 0 before it has said anything. */
   const getPosition = useCallback(() => positionRef.current, []);
@@ -314,6 +327,7 @@ export function useYouTubePlayback(
        * overwrites this with the truth.
        */
       positionRef.current = Math.max(0, seconds);
+      ownSeekAt.current = Date.now();
     },
     [getFrame],
   );
@@ -344,5 +358,5 @@ export function useYouTubePlayback(
     [getFrame],
   );
 
-  return { playing, readyFor, toggle, play, loadVideo, seek, getPosition };
+  return { playing, readyFor, toggle, play, pause, loadVideo, seek, getPosition };
 }

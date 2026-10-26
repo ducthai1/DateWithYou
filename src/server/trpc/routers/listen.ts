@@ -51,6 +51,8 @@ export type ListenSessionView = {
   updatedBy: string;
   /** Count of commands so far; a refresh must carry the one it was taken in. */
   epoch: number;
+  /** Set when a late command was dropped because the other person acted since. */
+  stale?: boolean;
 };
 
 type SessionDoc = {
@@ -262,8 +264,9 @@ export const listenRouter = router({
    * Anything either person does to the playback.
    *
    * Both members may drive a live session — the owner's call — so this takes
-   * whichever fields changed and records who did it. Last write wins, which for
-   * two people in one room is the behaviour they expect from a shared remote.
+   * whichever fields changed and records who did it. A press made after seeing
+   * the other person's latest one wins, like a shared remote; of two made
+   * without seeing each other, the first to land stands (see `baseEpoch`).
    */
   control: protectedProcedure
     .input(
@@ -282,6 +285,8 @@ export const listenRouter = router({
         epoch: z.number().int().min(0).optional(),
         /** For a refresh: the track this player is on, by id — never an index. */
         trackId: z.string().min(1).optional(),
+        /** For a command: the latest epoch this device had seen when the person pressed. */
+        baseEpoch: z.number().int().min(0).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -294,6 +299,22 @@ export const listenRouter = router({
       if (!doc) return null;
 
       const isRefresh = input.kind === "refresh";
+      /*
+       * A command made without knowing about the other person's latest one.
+       *
+       * Pressed offline, it arrives late — the client holds it and sends it
+       * when the network is back — and a "play" from half a minute ago must not
+       * overrule their pause from ten seconds ago. Pressed at the same moment
+       * as theirs, one of the two has to win outright: applied both, each phone
+       * followed a different one and they played on 117 s apart (measured with
+       * two browsers). The first to land stands; this one is handed back as
+       * `stale`. A command following this person's OWN earlier one is not
+       * stale — two presses queued offline both go through.
+       */
+      const baseEpoch = isRefresh ? undefined : input.baseEpoch;
+      const staleFor = (d: SessionDoc) =>
+        baseEpoch !== undefined && (d.epoch ?? 0) > baseEpoch && !!d.commandBy && d.commandBy !== ctx.userId;
+      if (staleFor(doc)) return { ...toView(doc), stale: true as const };
       if (isRefresh) {
         /*
          * A refresh writes down WHERE the player is — nothing else, and only
@@ -344,6 +365,10 @@ export const listenRouter = router({
       // the read above and this write still wins.
       if (isRefresh && input.epoch !== undefined)
         filter.$or = [{ epoch: input.epoch }, ...(input.epoch === 0 ? [{ epoch: { $exists: false } }] : [])];
+      // The stale check again, in the write itself: the read above can be a
+      // moment old, and two presses read the same epoch.
+      if (baseEpoch !== undefined)
+        filter.$or = [{ epoch: { $lte: baseEpoch } }, { epoch: { $exists: false } }, { commandBy: ctx.userId }, { commandBy: null }];
       const next = await ListenSessionModel.findOneAndUpdate(
         filter,
         isRefresh ? { $set: set } : { $set: set, $inc: { epoch: 1 } },
@@ -352,6 +377,7 @@ export const listenRouter = router({
       if (next) return toView(next);
       // Lost the race to a command: report where the session is now.
       const now = await ListenSessionModel.findById(doc._id).lean<SessionDoc>();
+      if (now && now.status === "live" && staleFor(now)) return { ...toView(now), stale: true as const };
       return now ? toView(now) : null;
     }),
 

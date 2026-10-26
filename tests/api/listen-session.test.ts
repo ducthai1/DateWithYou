@@ -319,6 +319,86 @@ describe("commands and refreshes", () => {
   });
 });
 
+/*
+ * Bấm lúc mất mạng: lệnh được giữ lại và gửi khi có mạng. Đo bằng hai trình
+ * duyệt (e2e `listen-real`): cú "phát" bấm lúc mất mạng tới muộn và đè lên cú
+ * "dừng" người kia bấm SAU đó, không ai được báo. Lệnh nay mang `baseEpoch` —
+ * lệnh mới nhất máy đó đã thấy lúc bấm.
+ */
+describe("a command pressed offline and delivered late", () => {
+  async function live() {
+    await reset();
+    const { session } = await couple.a.caller.listen.invite({
+      queue: [TRACK, TRACK_2],
+      index: 0,
+      positionSec: 0,
+      isPlaying: true,
+    });
+    return couple.b.caller.listen.respond({ sessionId: session.id, accept: true }); // epoch 1
+  }
+
+  test("is dropped when the OTHER person acted after it was pressed", async () => {
+    await live();
+    // Bình, offline, pauses having seen epoch 1. Meanwhile An seeks: epoch 2.
+    await couple.a.caller.listen.control({ positionSec: 200 });
+    const late = await couple.b.caller.listen.control({ isPlaying: false, positionSec: 30, baseEpoch: 1 });
+    assert.equal(late?.stale, true, "Bình must be told the press was dropped");
+    assert.equal(late?.isPlaying, true, "the stale pause stopped An");
+    const now = await couple.a.caller.listen.current();
+    assert.ok(now && Math.abs(now.positionSec - 200) < 2, `An's seek was undone: ${now?.positionSec}`);
+    assert.equal(now?.epoch, 2);
+  });
+
+  test("still applies when nobody else has acted since — what the person meant stands", async () => {
+    await live();
+    const late = await couple.b.caller.listen.control({ isPlaying: false, positionSec: 30, baseEpoch: 1 });
+    assert.equal(late?.stale, undefined);
+    assert.equal(late?.isPlaying, false);
+    assert.equal(late?.epoch, 2);
+  });
+
+  test("is not dropped behind the person's OWN earlier press", async () => {
+    await live();
+    // Two presses queued offline, both made having seen epoch 1.
+    await couple.b.caller.listen.control({ isPlaying: false, positionSec: 30, baseEpoch: 1 });
+    const second = await couple.b.caller.listen.control({ isPlaying: true, positionSec: 30, baseEpoch: 1 });
+    assert.equal(second?.stale, undefined);
+    assert.equal(second?.isPlaying, true);
+    assert.equal(second?.epoch, 3);
+  });
+
+  /*
+   * Đo bằng hai trình duyệt: Bình dừng đúng lúc An tua. Cả hai lệnh cùng đọc
+   * thấy epoch 1 nên cả hai được ghi; máy Bình theo cú tua, máy An theo cú dừng
+   * rồi phát tiếp từ đó — hai người phát lệch nhau 117 giây.
+   */
+  test("two presses made at the same moment: exactly one stands, the other is told", async () => {
+    for (let round = 0; round < 5; round++) {
+      await live();
+      const [an, binh] = await Promise.all([
+        couple.a.caller.listen.control({ positionSec: 160, isPlaying: true, baseEpoch: 1 }),
+        couple.b.caller.listen.control({ isPlaying: false, positionSec: 44, baseEpoch: 1 }),
+      ]);
+      const stale = [an?.stale, binh?.stale].filter(Boolean).length;
+      assert.equal(stale, 1, `round ${round}: ${stale} of the two were refused`);
+      const now = await couple.a.caller.listen.current();
+      assert.equal(now?.epoch, 2, `round ${round}: both were written`);
+      const winner = an?.stale ? binh : an;
+      assert.equal(now?.isPlaying, winner?.isPlaying);
+    }
+  });
+
+  test("a refresh is untouched by it", async () => {
+    await live();
+    await couple.a.caller.listen.control({ positionSec: 200 }); // epoch 2
+    const r = await couple.b.caller.listen.control({
+      positionSec: 205, isPlaying: true, trackId: TRACK.id, kind: "refresh", epoch: 2, baseEpoch: 1,
+    });
+    assert.equal(r?.stale, undefined);
+    assert.equal(r?.positionSec, 205);
+  });
+});
+
 describe("another couple's session", () => {
   test("is invisible, and cannot be driven", async () => {
     await reset();

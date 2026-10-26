@@ -10,6 +10,14 @@ import type {
   ListenState,
   ListenTrack,
 } from "@/features/locations/use-navigation-invites";
+import type { ListenSubstance } from "@/lib/listen-notice";
+
+/**
+ * A shared state, and how this device came to know it: the stream (the other
+ * person did something) or locally (a reload, an accept, the server's answer
+ * to this device's own command). Only the first is worth announcing.
+ */
+export type FollowState = ListenState & { origin: "stream" | "local" };
 
 /**
  * The shared-listening session, from the client's side.
@@ -60,6 +68,18 @@ export const COMMAND_TOLERANCE_SEC = 0.75;
 /** How often a live session writes its position down, in ms. */
 const REPORT_EVERY_MS = 15_000;
 
+/** How long a notice stays on the player, in ms. */
+const NOTICE_MS = 4500;
+
+/**
+ * A command answered later than this was held back (no network) or retried;
+ * by then this player has moved on from the moment it was pressed.
+ */
+const LATE_COMMAND_MS = 2000;
+
+/** How long the stream may be down before the screen says so, in ms. */
+const LOST_AFTER_MS = 3000;
+
 export type ListenTogether = ReturnType<typeof useListenTogether>;
 
 export function useListenTogether() {
@@ -95,9 +115,78 @@ export function useListenTogether() {
    * be delivered by retrying it instead.
    */
   const controlMutation = trpc.listen.control.useMutation({ retry: 3 });
-  // A refresh is never retried: a late one describes a moment already gone.
-  const refreshMutation = trpc.listen.control.useMutation();
+  /*
+   * A refresh is never retried, and never held for the network to come back:
+   * a late one describes a moment already gone.
+   */
+  const refreshMutation = trpc.listen.control.useMutation({ networkMode: "always" });
   const endMutation = trpc.listen.end.useMutation();
+
+  // Read directly rather than through usePartnerName, so it shares `enabled`.
+  const members = trpc.space.members.useQuery(undefined, { enabled, staleTime: 5 * 60_000 });
+  const partnerName = members.data?.find((m) => !m.isSelf)?.name?.trim() || "Người kia";
+  const partnerNameRef = useRef(partnerName);
+  partnerNameRef.current = partnerName;
+
+  /*
+   * One line on the player saying what just happened and who did it — the
+   * other person paused, this phone fell behind and caught up, a press made
+   * offline was dropped. Without it a pause reads as a hang and a jump reads as
+   * the network acting up (chủ repo, 26/10).
+   */
+  const [notice, setNotice] = useState<{ text: string; key: number } | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const announce = useCallback((text: string) => {
+    setNotice({ text, key: Date.now() });
+    // Outlives the line on screen, for the browser suite to read afterwards.
+    document.body.dataset.lastListenNotice = text;
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), NOTICE_MS);
+  }, []);
+  useEffect(() => () => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+  }, []);
+
+  /*
+   * The session as this device last knew it — after following the other
+   * person, or after its own command came back. What the next message from the
+   * other person is compared with to put it into words; the dock's own record
+   * covers only the messages it followed, and missed every press made here.
+   */
+  const known = useRef<ListenSubstance | null>(null);
+  const know = useCallback((s: { isPlaying: boolean; index: number; epoch?: number }) => {
+    known.current = { isPlaying: s.isPlaying, index: s.index, epoch: s.epoch ?? 0 };
+  }, []);
+
+  /*
+   * Whether this device can hear the other person right now. Said on screen
+   * after a few seconds down — a reconnect in passing is not news — and at once
+   * when the phone itself reports no network.
+   */
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+  const [lost, setLost] = useState(false);
+  useEffect(() => {
+    if (!online) {
+      setLost(true);
+      return;
+    }
+    if (invites.isConnected) {
+      setLost(false);
+      return;
+    }
+    const t = setTimeout(() => setLost(true), LOST_AFTER_MS);
+    return () => clearTimeout(t);
+  }, [online, invites.isConnected]);
 
   /*
    * Live-ness comes from three places and they have to agree: the query that
@@ -117,7 +206,7 @@ export function useListenTogether() {
    * Folded into the same slot the stream writes to, so the dock has one code
    * path for "go to this point" rather than three.
    */
-  const [localFromHere, setLocalState] = useState<ListenState | null>(null);
+  const [localFromHere, setLocalState] = useState<FollowState | null>(null);
 
   /*
    * Sessions this device has ended or declined. They must never come back.
@@ -190,6 +279,7 @@ export function useListenTogether() {
             updatedBy: s.updatedBy,
             epoch: s.epoch,
             receivedAt: Date.now(),
+            origin: "local",
           },
     );
   }, [current.data]);
@@ -201,10 +291,11 @@ export function useListenTogether() {
    * a message that arrived later describes a later truth even if it was
    * measured slightly earlier.
    */
-  const partnerState = useMemo(() => {
-    const live = (s: ListenState | null) =>
+  const partnerState = useMemo((): FollowState | null => {
+    const live = <T extends ListenState>(s: T | null) =>
       s && !left.current.has(s.id) ? s : null;
-    const fromStream = live(invites.listenState);
+    const streamed = live(invites.listenState);
+    const fromStream: FollowState | null = streamed && { ...streamed, origin: "stream" };
     const localState = live(localFromHere);
     if (!fromStream) return localState;
     if (!localState) return fromStream;
@@ -225,12 +316,22 @@ export function useListenTogether() {
   // load-time answer still sitting in the cache cannot bring it back.
   useEffect(() => {
     if (!invites.listenEnded) return;
-    forget(invites.listenEnded.split("@")[0]);
+    const id = invites.listenEnded.split("@")[0];
+    /*
+     * Said out loud when it was the OTHER person. The dock simply closing its
+     * "Đang nghe cùng" strip read as the feature breaking; one this device
+     * ended itself is already in `left` and passes in silence.
+     */
+    if (!left.current.has(id)) {
+      if (liveRef.current === id) toast(`${partnerNameRef.current} đã dừng nghe cùng`, "info");
+      else if (waitingRef.current) toast(`${partnerNameRef.current} chưa nghe cùng lúc này`, "info");
+    }
+    forget(id);
     setLiveId(null);
     setWaiting(false);
     setLocalState(null);
     void utils.listen.current.invalidate();
-  }, [invites.listenEnded, forget, utils]);
+  }, [invites.listenEnded, forget, utils, toast]);
 
   /*
    * Live as of THIS render.
@@ -244,6 +345,41 @@ export function useListenTogether() {
    */
   const seeded = current.data && !left.current.has(current.data.id) ? current.data : null;
   const liveNow = liveId ?? (seeded?.status === "live" ? seeded.id : null);
+  // For the end-of-session message, which runs on the stream's schedule.
+  const liveRef = useRef(liveNow);
+  liveRef.current = liveNow;
+  const waitingRef = useRef(waiting);
+  waitingRef.current = waiting && liveNow === null;
+
+  /*
+   * An end this device never heard.
+   *
+   * The stream announces an end only to a connection that saw the session
+   * alive; one that reconnects after the other person pressed Dừng finds
+   * nothing and says nothing. Measured with two browsers: the guest's stream
+   * reconnected in that gap and the dock kept saying "Đang nghe cùng" to nobody.
+   * So every reconnect asks the server, and an answer of "no session" — taken
+   * after this device last knew it live — closes it here, out loud.
+   */
+  const wasConnected = useRef(invites.isConnected);
+  useEffect(() => {
+    const was = wasConnected.current;
+    wasConnected.current = invites.isConnected;
+    if (!was && invites.isConnected && liveRef.current) void utils.listen.current.invalidate();
+  }, [invites.isConnected, utils]);
+  const liveSince = useRef(0);
+  useEffect(() => {
+    liveSince.current = Date.now();
+  }, [liveId]);
+  useEffect(() => {
+    const id = liveRef.current;
+    if (current.data !== null || !id || current.dataUpdatedAt <= liveSince.current) return;
+    if (!left.current.has(id)) toast(`${partnerNameRef.current} đã dừng nghe cùng`, "info");
+    forget(id);
+    setLiveId(null);
+    setLocalState(null);
+    invites.clearListen();
+  }, [current.data, current.dataUpdatedAt, forget, invites, toast]);
 
   const start = useCallback(
     async (
@@ -316,6 +452,7 @@ export function useListenTogether() {
           updatedBy: res.updatedBy,
           epoch: res.epoch,
           receivedAt: Date.now(),
+          origin: "local",
         });
       }
       void utils.listen.current.invalidate();
@@ -336,20 +473,76 @@ export function useListenTogether() {
     void utils.listen.current.invalidate();
   }, [endMutation, invites, utils, forget, liveId, partnerState, current.data]);
 
+  /** Presses made here that the server has not answered yet. */
+  const inFlight = useRef(0);
+  const commandInFlight = useCallback(() => inFlight.current > 0, []);
+
+  /** Follow what the server says the session is, as if it had come from the stream — unannounced. */
+  const adopt = useCallback((view: Omit<ListenState, "receivedAt">) => {
+    setLocalState({ ...view, receivedAt: Date.now(), origin: "local" });
+  }, []);
+
   /**
    * Tell the other side what a hand just did here. No-op with no session, and
    * while this device is not speaking for it (see `silent`).
+   *
+   * `mutateAsync`, not callbacks handed to `mutate`: react-query runs those for
+   * the LATEST call only, so of two quick presses the first never had its
+   * answer handled — never counted as landed, never told it was stale.
    */
   const report = useCallback(
     (change: { isPlaying?: boolean; positionSec?: number; index?: number }) => {
       if (!liveId || silent()) return;
-      controlMutation.mutate(
-        { ...change, kind: "command" },
-        // Our own command is followed by definition; the stream will not echo it.
-        { onSuccess: (view) => view && markApplied(view.epoch) },
-      );
+      const pressedAt = Date.now();
+      inFlight.current += 1;
+      controlMutation
+        .mutateAsync({
+          ...change,
+          kind: "command",
+          // What this person had seen when they pressed — see the stale check on the server.
+          baseEpoch: known.current?.epoch ?? appliedEpoch.current ?? undefined,
+        })
+        .then(
+          (view) => {
+            if (!view) return;
+            const late = Date.now() - pressedAt > LATE_COMMAND_MS;
+            if (view.stale) {
+              // The other person acted after this press was made; theirs stands.
+              adopt(view);
+              announce(
+                late
+                  ? `Thao tác lúc mất mạng của bạn không được gửi — ${partnerNameRef.current} đã đổi sau đó`
+                  : `${partnerNameRef.current} cũng vừa bấm — theo thao tác của ${partnerNameRef.current}`,
+              );
+              return;
+            }
+            // Our own command is followed by definition; the stream will not echo it.
+            markApplied(view.epoch);
+            know(view);
+            /*
+             * Delivered late, it took effect from where this player WAS when it
+             * was pressed — and this player has moved on since. Both go to the
+             * point the session now holds, so they are together again.
+             */
+            if (late) {
+              adopt(view);
+              announce("Đã gửi thao tác của bạn khi có mạng lại");
+            }
+          },
+          () => {
+            // Retries spent. Say so, and put this player back where the session is.
+            announce("Chưa gửi được thao tác của bạn — đã đưa về theo phiên chung");
+            void utils.listen.current
+              .fetch(undefined, { staleTime: 0 })
+              .then((s) => s && s.status === "live" && adopt(s))
+              .catch(() => {});
+          },
+        )
+        .finally(() => {
+          inFlight.current = Math.max(0, inFlight.current - 1);
+        });
     },
-    [controlMutation, liveId, markApplied, silent],
+    [controlMutation, liveId, markApplied, silent, adopt, announce, know, utils],
   );
 
   /** Keep this device from speaking for the session for a while — see `silent`. */
@@ -441,11 +634,23 @@ export function useListenTogether() {
     respond,
     end,
     report,
+    commandInFlight,
     markApplied,
+    /** The session as this device last knew it — see `known`. */
+    known,
+    know,
     quiet,
     speak,
     /** The dock assigns how to read its playhead, for the periodic report. */
     positionReader,
     isBusy: inviteMutation.isPending || respondMutation.isPending,
+    partnerName,
+    /** The line on the player saying what just happened, or null. */
+    notice: liveNow !== null ? notice : null,
+    announce,
+    /** This device cannot hear the other person right now. */
+    lost: liveNow !== null && lost,
+    /** A press made here is waiting for the network to be sent. */
+    pending: liveNow !== null && controlMutation.isPaused,
   };
 }

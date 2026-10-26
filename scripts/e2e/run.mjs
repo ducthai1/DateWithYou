@@ -44,6 +44,7 @@ const SUITES = [
   { id: "reload", load: () => import("./reload-state.mjs") },
   { id: "so-tay", load: () => import("./notebook.mjs") },
   { id: "listen-sync", load: () => import("./listen-sync.mjs") },
+  { id: "listen-real", load: () => import("./listen-real.mjs") },
   { id: "landscape", load: () => import("./player-landscape.mjs") },
   { id: "invite", load: () => import("./invite.mjs") },
   { id: "onboarding", load: () => import("./onboarding.mjs") },

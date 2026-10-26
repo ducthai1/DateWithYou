@@ -32,6 +32,8 @@ import {
   type ListenTogether,
 } from "./use-listen-together";
 import { ListenTogetherControls } from "./listen-together-controls";
+import { ListenNoticeOverlay } from "./listen-notice-overlay";
+import { followTarget, noticeText, partnerAction } from "@/lib/listen-notice";
 import { usePlayerSlot, usePlayerSlotExpected } from "./player-slot";
 import { usePlayerPauseTicket } from "./player-command";
 import { useSlotRect } from "./use-slot-rect";
@@ -367,8 +369,24 @@ export function NowPlayingDock({
    */
   const needsRejoin = useRef(false);
   const catchUpRef = useRef<(() => Promise<void>) | null>(null);
+  /*
+   * A frame that has just come up and been lined up with the session is still
+   * moving into place for a moment, and what it says in that moment is not a
+   * hand. Measured: reloading the page while the two were paused, the seek
+   * that lined the new frame up STARTED it — YouTube plays a cued video when
+   * told to seek — and that "playing" went out as this person pressing play,
+   * so both phones started again on their own. Inside the window the frame is
+   * held to what the session says instead of being reported.
+   */
+  const holdTo = useRef<{ until: number; isPlaying: boolean } | null>(null);
+  const playbackRef = useRef<{ pause: () => void } | null>(null);
   const onFrameChange = useCallback(
     (c: { isPlaying: boolean; positionSec: number }) => {
+      const hold = holdTo.current;
+      if (hold && Date.now() < hold.until && listenRef.current.live) {
+        if (c.isPlaying && !hold.isPlaying) playbackRef.current?.pause();
+        return;
+      }
       if (needsRejoin.current && c.isPlaying) {
         needsRejoin.current = false;
         void catchUpRef.current?.();
@@ -389,6 +407,21 @@ export function NowPlayingDock({
     handleEnded,
     onFrameChange,
   );
+  playbackRef.current = playback;
+
+  /*
+   * A handle for the browser suite to make THIS player fall behind on its own,
+   * the way a phone on a slow network does — something no button can do,
+   * because every button is a hand and a hand is reported. Development only.
+   */
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" || !controllable) return;
+    const w = window as unknown as { __vivuPlayer?: { seekQuietly: (sec: number) => void } };
+    w.__vivuPlayer = { seekQuietly: (sec) => playback.seek(sec) };
+    return () => {
+      delete w.__vivuPlayer;
+    };
+  }, [controllable, playback]);
 
   useEffect(() => {
     if (!item) {
@@ -420,7 +453,12 @@ export function NowPlayingDock({
    * for waits to be pressed.
    */
   const liveAtMount = useRef(false);
-  liveAtMount.current = listen.live;
+  /*
+   * Only a session that is PLAYING starts the frame. A page reloaded while the
+   * two were paused used to come up playing — and its "playing" was then
+   * reported as a press, so both phones started again by themselves.
+   */
+  liveAtMount.current = listen.live && (listen.partnerState?.isPlaying ?? true);
   const intentRef = useRef(intent);
   intentRef.current = intent;
   /*
@@ -569,19 +607,65 @@ export function NowPlayingDock({
     const command =
       !last || last.isPlaying !== ps.isPlaying || last.index !== ps.index || last.epoch !== epoch;
     lastSubstance.current = { isPlaying: ps.isPlaying, index: ps.index, epoch };
-    const tolerance =
-      command || freshFrame ? COMMAND_TOLERANCE_SEC : DRIFT_TOLERANCE_SEC;
-
+    const l = listenRef.current;
+    /*
+     * The other phone writing down where it is, while a press made HERE is
+     * still on its way: it describes the moment before that press. Followed,
+     * it undid the press — measured: the guest paused, the host's routine
+     * write ("playing") arrived first, the guest's frame was started again and
+     * played on alone while the session stood paused. The next write after the
+     * press lands carries the new epoch.
+     */
+    if (!command && !freshFrame && l.commandInFlight()) return;
     const want = targetPosition(ps);
-    if (Math.abs(playback.getPosition() - want) > tolerance) {
-      playback.seek(want);
-    }
-    if (ps.isPlaying !== playback.playing) {
-      if (ps.isPlaying) playback.play();
-      else playback.toggle();
-    }
+    const mine = playback.getPosition();
+    /*
+     * Put into words BEFORE moving, while "where this player was" still means
+     * something — and only for what the other person did (`origin`), not for a
+     * reload or this device's own answer coming back.
+     */
+    const action =
+      ps.origin === "stream"
+        ? partnerAction(
+            l.known.current,
+            { isPlaying: ps.isPlaying, index: ps.index, epoch, positionSec: want, trackTitle: ps.queue[ps.index]?.title ?? "" },
+            mine,
+          )
+        : null;
+    /*
+     * A command — or a frame that just came up — is followed both ways. A
+     * refresh only ever pulls this player FORWARD: followed backwards, the
+     * phone that buffered dragged the other one back to it every 15 s.
+     */
+    const target = followTarget(mine, want, {
+      command: command || freshFrame,
+      commandTolerance: COMMAND_TOLERANCE_SEC,
+      driftTolerance: DRIFT_TOLERANCE_SEC,
+    });
+    if (target !== null) playback.seek(target);
+    /*
+     * A pause is sent whatever `playing` says. A frame that is BUFFERING — as
+     * it is right after a seek — reads as not playing, so a pause arriving then
+     * was skipped as already done, and the frame played on once it had
+     * buffered while the session stood paused. Pausing a paused frame is a
+     * no-op.
+     */
+    if (!ps.isPlaying) playback.pause();
+    else if (!playback.playing) playback.play();
+    /*
+     * Narrow on purpose: only a paused session, only after a seek, only for a
+     * moment. Held for 3 s whatever the state, it swallowed a real pause made
+     * right after the video came up.
+     */
+    holdTo.current =
+      freshFrame && !ps.isPlaying && target !== null ? { until: Date.now() + 2000, isPlaying: false } : null;
+    if (action) l.announce(noticeText(action, l.partnerName));
+    else if (target !== null && !command && !freshFrame)
+      // This phone fell behind (network, buffering) — nobody pressed anything.
+      l.announce(`Bắt kịp ${l.partnerName}: máy bạn chậm ${Math.round(target - mine)} giây`);
     // Followed: from now on this player's refresh may speak for this epoch.
-    listenRef.current.markApplied(epoch);
+    l.markApplied(epoch);
+    l.know({ isPlaying: ps.isPlaying, index: ps.index, epoch });
     needsRejoin.current = false;
   }, [
     listen.partnerState,
@@ -610,8 +694,9 @@ export function NowPlayingDock({
     const want = targetPosition({ ...s, receivedAt: asked });
     if (Math.abs(playback.getPosition() - want) > COMMAND_TOLERANCE_SEC) playback.seek(want);
     if (s.isPlaying && !playback.playing) playback.play();
-    if (!s.isPlaying && playback.playing) playback.toggle();
+    if (!s.isPlaying) playback.pause();
     l.markApplied(s.epoch);
+    l.know(s);
     /*
      * iOS may refuse to start a frame nobody has touched since the page came
      * back. Whether it did is known a moment later; if it did not, the next
@@ -1061,7 +1146,7 @@ export function NowPlayingDock({
                 <div
                   ref={mediaRef}
                   className={cn(
-                    "bg-muted mx-auto overflow-hidden",
+                    "bg-muted relative mx-auto overflow-hidden",
                     framed ? cn("h-full w-full", !landscape && "rounded-2xl") : "rounded-xl",
                   )}
                   style={framed ? undefined : { width: mediaW, height: mediaH }}
@@ -1079,6 +1164,7 @@ export function NowPlayingDock({
                     data={frameEmbed ?? item.embed}
                     fill
                   />
+                  {controllable && <ListenNoticeOverlay listen={listen} />}
                 </div>
               ) : (
                 <EmbedPlayer data={item.embed} />
