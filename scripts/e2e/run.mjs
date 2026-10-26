@@ -46,6 +46,7 @@ const SUITES = [
   { id: "listen-sync", load: () => import("./listen-sync.mjs") },
   { id: "listen-real", load: () => import("./listen-real.mjs") },
   { id: "listen-idle", load: () => import("./listen-idle.mjs") },
+  { id: "update", load: () => import("./update-notice.mjs") },
   { id: "landscape", load: () => import("./player-landscape.mjs") },
   { id: "invite", load: () => import("./invite.mjs") },
   { id: "onboarding", load: () => import("./onboarding.mjs") },

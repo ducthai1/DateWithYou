@@ -16,6 +16,7 @@ import { PrimeHaptics } from "@/components/layout/prime-haptics";
 import { PushSetup } from "@/components/layout/push-setup";
 import { FullscreenRecovery } from "@/components/layout/fullscreen-recovery";
 import { OfflineNotice } from "@/components/layout/offline-notice";
+import { UpdateNotice } from "@/components/layout/update-notice";
 import { BootVeil } from "@/components/layout/boot-veil";
 import { GlobalInviteListener } from "@/components/layout/global-invite-listener";
 import { WelcomeIntro } from "@/components/layout/welcome-intro";
@@ -278,6 +279,7 @@ export default async function RootLayout({
               `useQueryClient`, và đặt ở ngoài thì mọi route ném 500 ngay trên
               máy chủ — đúng như lần đầu tôi gắn nhầm. */}
           <OfflineNotice />
+          <UpdateNotice />
           <FullscreenRecovery />
           <AppBackdrop />
           <SideNav />

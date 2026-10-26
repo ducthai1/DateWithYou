@@ -57,6 +57,21 @@ const nextConfig: NextConfig = {
   htmlLimitedBots: /.*/,
 
   /*
+   * Which build this is, baked into the client AND the server at build time.
+   *
+   * A deploy replaces the server at once, but a page already open — a PWA on a
+   * phone, a tab left in the background — keeps running the JS it loaded.
+   * Measured on 26/10: one phone still on the previous build kept writing its
+   * position the old way, and the other person's player jumped every 15 s.
+   * The page compares its own build with the server's (`/api/version`) and
+   * asks to be reloaded when they differ — see `UpdateNotice`.
+   */
+  env: {
+    NEXT_PUBLIC_BUILD_ID:
+      process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || "dev",
+  },
+
+  /*
    * Giữ lại payload của route đã vào, để bấm qua lại giữa các tab không phải
    * chờ máy chủ thêm lần nữa.
    *
