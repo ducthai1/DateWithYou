@@ -381,6 +381,56 @@ export const listenRouter = router({
       return now ? toView(now) : null;
     }),
 
+  /**
+   * "I have left the player" / "I am back" — another tab, another app, a
+   * locked screen, another window. Only for the other person to be told; it
+   * changes nothing about the playback, and writes nothing the stream would
+   * mistake for a command or a refresh.
+   */
+  presence: protectedProcedure
+    .input(
+      z.object({
+        away: z.boolean(),
+        kind: z.enum(["hidden", "blur"]).optional(),
+        /**
+         * When the device saw it, in its own clock — only ever compared with
+         * the same device's earlier reports. Two reports a few milliseconds
+         * apart ("another window" as the page comes back, "here" as it takes
+         * focus) travel side by side and can land in either order; landing
+         * last must not make the older one the truth. Measured: the person
+         * was back, and the other screen said "another window" for good.
+         */
+        seq: z.number().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await connectToDatabase();
+      const path = `presence.${ctx.userId}`;
+      const res = await ListenSessionModel.updateOne(
+        {
+          spaceId: ctx.spaceId,
+          status: "live",
+          $and: [
+            { $or: [{ hostId: ctx.userId }, { guestId: ctx.userId }] },
+            ...(input.seq !== undefined
+              ? [{ $or: [{ [`${path}.seq`]: { $exists: false } }, { [`${path}.seq`]: { $lt: input.seq } }] }]
+              : []),
+          ],
+        },
+        {
+          $set: {
+            [path]: {
+              away: input.away,
+              kind: input.away ? (input.kind ?? "hidden") : null,
+              at: new Date(),
+              ...(input.seq !== undefined ? { seq: input.seq } : {}),
+            },
+          },
+        },
+      );
+      return { ok: res.matchedCount > 0 };
+    }),
+
   /** Leave. Either person ending it ends it for both — it is one session. */
   end: protectedProcedure.mutation(async ({ ctx }) => {
     await connectToDatabase();

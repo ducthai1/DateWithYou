@@ -76,6 +76,12 @@ export async function run({ base, profileDir, port, db, shotDir }) {
   try {
     await host.viewport(1280, 860, false);
     await guest.viewport(1280, 860, false);
+    /*
+     * Both windows count as focused, the way a person's would. Left to itself a
+     * headless page has no focus, and every run would start with "Ngọc đang ở
+     * cửa sổ khác" on screen — ca 12 turns it off on purpose.
+     */
+    for (const p of [host, guest]) await p.send("Emulation.setFocusEmulationEnabled", { enabled: true });
     const h = await signIn(host, base, db);
     spaceId = h.spaceId;
     const g = await signInAs(guest, base, db, { email: PARTNER_EMAIL, name: "Ngoc", spaceId });
@@ -260,6 +266,63 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     const s10b = await session();
     ok("10. …người kia tua trong lúc mình mất mạng: cú dừng cũ bị bỏ, cả hai theo cú tua", r.ok && s10b?.isPlaying === true, `${fmt(r.s)} session.isPlaying=${s10b?.isPlaying}`);
     ok("10. …và mình được báo là cú bấm đó không được gửi", await guestToldDropped, await guest.eval(`document.body.dataset.lastListenNotice ?? ""`));
+
+    // ── 12. Người kia chuyển tab / sang app khác / sang cửa sổ khác ───────
+    /*
+     * Thật, không giả sự kiện: thu nhỏ cửa sổ là đúng tín hiệu điện thoại bắn
+     * khi chuyển app hay khoá màn hình (visibilityState → hidden — chuyển tab
+     * trong headless thì không đổi, đã thử), còn tắt giả lập focus là trang
+     * vẫn trên màn hình nhưng cửa sổ khác đang được dùng (hasFocus() → false).
+     */
+    const AWAY = `(document.querySelector("[data-listen-partner-away]")?.textContent ?? "")`;
+    const { windowId } = await guest.send("Browser.getWindowForTarget");
+    const guestWindow = (state) => guest.send("Browser.setWindowBounds", { windowId, bounds: { windowState: state } });
+    // The focus emulation set up above also holds the page "visible" — it has to let go for a minimise to count.
+    const focusEmulation = (enabled) => guest.send("Emulation.setFocusEmulationEnabled", { enabled });
+    const leave = async () => {
+      await focusEmulation(false);
+      await guestWindow("minimized");
+    };
+    const comeBack = async () => {
+      await guestWindow("normal");
+      await focusEmulation(true);
+    };
+    await leave();
+    const awayHidden = await host.until(`${AWAY}.includes("tab hoặc ứng dụng khác")`, { timeout: 15000 }).then(() => true).catch(() => false);
+    ok("12. người kia chuyển tab / sang app khác: máy mình được báo", awayHidden, await host.eval(AWAY));
+    if (shotDir) await host.shot(`${shotDir}/listen-real-partner-away.png`);
+    await host.eval(`document.body.dataset.lastListenNotice = ""`);
+    const backTold = toldMe(host, "đã quay lại xem");
+    await comeBack();
+    const cameBack = await backTold;
+    ok("12. …quay lại thì báo đã quay lại, và thôi hiện", cameBack && !(await host.eval(AWAY)), await host.eval(`document.body.dataset.lastListenNotice ?? ""`));
+    r = await until((s) => s.host.playing && s.guest.playing && near(s.host.t, s.guest.t), 15000);
+    ok("12. …và máy vừa quay lại đang phát cùng chỗ với người kia", r.ok, fmt(r.s));
+
+    await host.eval(`document.body.dataset.lastListenNotice = ""`);
+    await leave();
+    await sleep(700);
+    await comeBack();
+    await sleep(5000);
+    const glance = (await host.eval(AWAY)) + (await host.eval(`document.body.dataset.lastListenNotice ?? ""`));
+    ok("12. liếc sang tab khác chưa tới 1 giây: không báo gì", glance === "", glance);
+
+    await focusEmulation(false);
+    const awayBlur = await host.until(`${AWAY}.includes("cửa sổ khác")`, { timeout: 15000 }).then(() => true).catch(() => false);
+    ok("12. người kia sang cửa sổ khác (trang vẫn mở): báo đúng là cửa sổ khác", awayBlur, await host.eval(AWAY));
+    await focusEmulation(true);
+    const blurBack = await host.until(`!${AWAY}`, { timeout: 15000 }).then(() => true).catch(() => false);
+    ok("12. …quay lại cửa sổ xem thì thôi báo", blurBack, await host.eval(AWAY));
+
+    // A phone losing focus (its own fullscreen player, the notification shade) has not left.
+    await guest.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+    const coarse = await guest.eval(`matchMedia("(pointer: coarse)").matches`);
+    await focusEmulation(false);
+    await sleep(6000);
+    const phoneBlur = await host.eval(AWAY);
+    ok("12. điện thoại mất focus mà vẫn ở trang xem: KHÔNG báo là rời đi", coarse && phoneBlur === "", `coarse=${coarse} ${phoneBlur}`);
+    await focusEmulation(true);
+    await guest.send("Emulation.setTouchEmulationEnabled", { enabled: false });
 
     // ── 11. Người kia dừng nghe cùng ──────────────────────────────────────
     await host.eval(`[...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Dừng")?.click()`);

@@ -11,6 +11,7 @@
 import test, { after, before, describe } from "node:test";
 import assert from "node:assert/strict";
 import { freshDatabase, closeDatabase, makeCouple, makeMember, rejects } from "./_harness.ts";
+import { ListenSessionModel } from "@/server/db/models/listen-session";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -396,6 +397,58 @@ describe("a command pressed offline and delivered late", () => {
     });
     assert.equal(r?.stale, undefined);
     assert.equal(r?.positionSec, 205);
+  });
+});
+
+/*
+ * Chủ repo 26/10: người kia chuyển tab / sang app khác / sang cửa sổ khác thì
+ * máy mình phải được báo. Đó là tin về NGƯỜI, không phải về phát — nên nó
+ * không được đụng vào bất cứ thứ gì stream dùng để nhận ra lệnh hay bản ghi.
+ */
+describe("presence: leaving the player and coming back", () => {
+  async function live() {
+    await reset();
+    const { session } = await couple.a.caller.listen.invite({ queue: [TRACK], index: 0, positionSec: 0, isPlaying: true });
+    return couple.b.caller.listen.respond({ sessionId: session.id, accept: true });
+  }
+  const presenceOf = async (userId: string) =>
+    ((await ListenSessionModel.findOne({ status: "live" }).lean<{ presence?: Record<string, { away: boolean; kind: string | null }> }>())
+      ?.presence ?? {})[userId];
+
+  test("is recorded against the person who left, with how they left", async () => {
+    await live();
+    assert.deepEqual(await couple.b.caller.listen.presence({ away: true, kind: "hidden" }), { ok: true });
+    const p = await presenceOf(couple.b.userId);
+    assert.equal(p?.away, true);
+    assert.equal(p?.kind, "hidden");
+    assert.equal(await presenceOf(couple.a.userId), undefined, "An was marked too");
+    await couple.b.caller.listen.presence({ away: false });
+    assert.equal((await presenceOf(couple.b.userId))?.away, false);
+  });
+
+  test("touches nothing the stream reads as playback", async () => {
+    const before = await live();
+    await wait(20);
+    await couple.b.caller.listen.presence({ away: true, kind: "blur" });
+    const now = await couple.a.caller.listen.current();
+    assert.equal(now?.epoch, before.epoch, "leaving the page counted as a command");
+    assert.equal(now?.updatedBy, before.updatedBy, "leaving the page counted as a refresh");
+    assert.ok(now && now.stateAgeMs >= 20, "leaving the page re-timed the playhead");
+  });
+
+  test("a report that lands after a newer one does not undo it", async () => {
+    await live();
+    // "here" (seq 2) lands first, the earlier "another window" (seq 1) lands after it.
+    await couple.b.caller.listen.presence({ away: false, seq: 2 });
+    await couple.b.caller.listen.presence({ away: true, kind: "blur", seq: 1 });
+    assert.equal((await presenceOf(couple.b.userId))?.away, false, "the older report won");
+    await couple.b.caller.listen.presence({ away: true, kind: "hidden", seq: 3 });
+    assert.equal((await presenceOf(couple.b.userId))?.away, true);
+  });
+
+  test("with no live session there is nothing to mark", async () => {
+    await reset();
+    assert.deepEqual(await couple.a.caller.listen.presence({ away: true, kind: "hidden" }), { ok: false });
   });
 });
 

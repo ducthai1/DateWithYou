@@ -6,7 +6,7 @@ import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
 import { ListenSessionModel } from "@/server/db/models/listen-session";
 import { LiveLocationModel } from "@/server/db/models/live-location";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
-import { FRESH_TRACKER, listenDelivery, type ListenTracker } from "@/lib/listen-delivery";
+import { FRESH_TRACKER, listenDelivery, presenceDelivery, type ListenTracker } from "@/lib/listen-delivery";
 
 /**
  * SSE endpoint for navigation invites.
@@ -117,6 +117,8 @@ export async function GET(req: NextRequest) {
        * playing or which track, and used to be lost).
        */
       let listenTracker: ListenTracker = FRESH_TRACKER;
+      /** The other person's presence as last passed on, for this session — see `presenceDelivery`. */
+      let partnerPresenceKey: string | null = null;
 
 
       /*
@@ -310,6 +312,7 @@ export async function GET(req: NextRequest) {
             updatedBy: string;
             epoch?: number;
             commandBy?: string | null;
+            presence?: Record<string, unknown>;
           }>();
 
           const lsId = listen ? String(listen._id) : null;
@@ -317,6 +320,7 @@ export async function GET(req: NextRequest) {
 
           if (lsId !== lastListenId || lsStatus !== lastListenStatus) {
             const prevId = lastListenId;
+            if (lsId !== prevId) partnerPresenceKey = null;
             lastListenId = lsId;
             lastListenStatus = lsStatus;
             if (listen && listen.status === "inviting" && listen.guestId === userId) {
@@ -364,8 +368,19 @@ export async function GET(req: NextRequest) {
                 epoch: listen.epoch ?? 0,
               });
             }
+            /*
+             * Whether the other person is still looking at the player — moved
+             * to another tab, another app, another window, and back. Its own
+             * event: it is not playback, and riding on `listen-state` would
+             * have made it look like a command or a refresh.
+             */
+            const partnerId = listen.hostId === userId ? listen.guestId : listen.hostId;
+            const presence = presenceDelivery(partnerPresenceKey, listen.presence?.[partnerId]);
+            partnerPresenceKey = presence.key;
+            if (presence.send) send("listen-presence", { id: lsId, userId: partnerId, ...presence.send });
           } else {
             listenTracker = FRESH_TRACKER;
+            partnerPresenceKey = null;
           }
 
           /*

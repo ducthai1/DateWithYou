@@ -70,3 +70,25 @@ export function listenDelivery(
 export function refreshAccepted(docEpoch: number | null | undefined, refreshEpoch: number | undefined): boolean {
   return refreshEpoch === undefined || refreshEpoch === (docEpoch ?? 0);
 }
+
+/** Whether the other person is looking at the player, as the stream tells it. */
+export type PartnerPresence = { away: boolean; kind: "hidden" | "blur" | null };
+
+/**
+ * Whether a stream connection should pass on the other person's presence, and
+ * what it remembers. Every change goes out once; a fresh connection (no `prev`)
+ * passes on whatever is recorded, so a page opened while the other person is
+ * away learns it straight away. Nothing recorded, nothing said.
+ */
+export function presenceDelivery(
+  prev: string | null,
+  entry: unknown,
+): { send: PartnerPresence | null; key: string | null } {
+  const e = entry as { away?: unknown; kind?: unknown; at?: unknown } | null | undefined;
+  if (!e || typeof e.away !== "boolean") return { send: null, key: prev };
+  const kind = e.kind === "hidden" || e.kind === "blur" ? e.kind : null;
+  const at = e.at ? new Date(e.at as string | Date).getTime() : 0;
+  const key = `${e.away}:${kind}:${at}`;
+  if (key === prev) return { send: null, key };
+  return { send: { away: e.away, kind: e.away ? (kind ?? "hidden") : null }, key };
+}

@@ -84,6 +84,15 @@ const listenSessionSchema = new Schema(
     /** Who gave the latest command. A refresh changes `updatedBy`, never this. */
     commandBy: { type: String, default: null },
     /**
+     * Whether each person is looking at the player, keyed by user id:
+     * `{ away, kind, at }`, where `kind` is "hidden" (another tab, another
+     * app, a locked screen) or "blur" (another window, the page still on
+     * screen). Kept apart from the playback fields on purpose — it never
+     * touches `stateAt`, `updatedBy` or `epoch`, so it cannot look like a
+     * command or a refresh to anyone.
+     */
+    presence: { type: Schema.Types.Mixed, default: () => ({}) },
+    /**
      * TTL. Refreshed on every control, so a session being listened to never
      * expires under the people using it, while an invite nobody answers and a
      * session everyone walked away from both clear themselves out.

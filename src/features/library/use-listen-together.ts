@@ -11,6 +11,7 @@ import type {
   ListenTrack,
 } from "@/features/locations/use-navigation-invites";
 import type { ListenSubstance } from "@/lib/listen-notice";
+import { useListenPresence } from "./use-listen-presence";
 
 /**
  * A shared state, and how this device came to know it: the stream (the other
@@ -348,6 +349,12 @@ export function useListenTogether() {
   // For the end-of-session message, which runs on the stream's schedule.
   const liveRef = useRef(liveNow);
   liveRef.current = liveNow;
+  const partnerAway = useListenPresence({
+    sessionId: liveNow,
+    partner: invites.listenPresence,
+    partnerName,
+    announce,
+  });
   const waitingRef = useRef(waiting);
   waitingRef.current = waiting && liveNow === null;
 
@@ -648,6 +655,8 @@ export function useListenTogether() {
     /** The line on the player saying what just happened, or null. */
     notice: liveNow !== null ? notice : null,
     announce,
+    /** The other person has left the player: another tab or app ("hidden"), another window ("blur"). */
+    partnerAway,
     /** This device cannot hear the other person right now. */
     lost: liveNow !== null && lost,
     /** A press made here is waiting for the network to be sent. */

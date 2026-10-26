@@ -93,6 +93,15 @@ export type ListenState = {
   receivedAt: number;
 };
 
+/** The other person left the player (another tab, app or window), or came back. */
+export type ListenPresence = {
+  id: string;
+  userId: string;
+  away: boolean;
+  kind: "hidden" | "blur" | null;
+  receivedAt: number;
+};
+
 /**
  * @param enabled  Open the stream only where it is needed. The public marketing
  *   surface (landing, feature pages, blog) has no invites and no session, so a
@@ -130,6 +139,8 @@ export function useNavigationInvites(enabled = true) {
    * load-time query would wipe itself the moment it mounted.
    */
   const [listenEnded, setListenEnded] = useState<string | null>(null);
+  /** Whether the other person is looking at the player — see `listen.presence`. */
+  const [listenPresence, setListenPresence] = useState<ListenPresence | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const esRef = useRef<EventSource | null>(null);
   /*
@@ -240,6 +251,15 @@ export function useNavigationInvites(enabled = true) {
       setListenLive(null);
       setListenInvite(null);
       setListenState(null);
+      setListenPresence(null);
+    });
+
+    on("listen-presence", (e) => {
+      try {
+        setListenPresence({ ...(JSON.parse(e.data) as Omit<ListenPresence, "receivedAt">), receivedAt: Date.now() });
+      } catch {
+        /* ignore malformed */
+      }
     });
 
     on("listen-state", (e) => {
@@ -340,6 +360,7 @@ export function useNavigationInvites(enabled = true) {
     setListenLive(null);
     setListenState(null);
     setListenInvite(null);
+    setListenPresence(null);
   }, []);
 
   // Connect on mount, disconnect on unmount — but only where enabled.
@@ -381,6 +402,8 @@ export function useNavigationInvites(enabled = true) {
     listenEnded,
     /** The partner's latest playback state (never an echo of our own). */
     listenState,
+    /** Whether the partner is looking at the player right now (null = not heard). */
+    listenPresence,
     isConnected,
     clearIncoming,
     clearResponse,
