@@ -36,6 +36,13 @@ import { usePlayerSlot, usePlayerSlotExpected } from "./player-slot";
 import { usePlayerPauseTicket } from "./player-command";
 import { useSlotRect } from "./use-slot-rect";
 import { useScrollMirror } from "./use-scroll-mirror";
+import { usePlayerLandscape } from "./use-player-landscape";
+import {
+  exitPlayerLandscape,
+  landscapeBox,
+  onFullscreenLost,
+  registerPlayerLandscapeTarget,
+} from "@/lib/player-landscape";
 
 const KIND_ICON: Record<MediaListItem["kind"], typeof Music2> = {
   music: Music2,
@@ -207,6 +214,59 @@ export function NowPlayingDock({
   // of sight rather than flash in the corner and slide up (see player-slot).
   const hidden = usePlayerSlotExpected() && !docked;
   const mode = hidden ? "hidden" : docked ? "docked" : "floating";
+
+  /*
+   * Landscape mode (see @/lib/player-landscape): the same panel, the same
+   * frame, laid over the whole screen — turned 90° when the screen is still
+   * portrait. Nothing is re-mounted: a new iframe would start the video over.
+   */
+  const landscape = usePlayerLandscape();
+  const [viewport, setViewport] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    if (!landscape) return;
+    const measure = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("orientationchange", measure);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") exitPlayerLandscape();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("orientationchange", measure);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [landscape]);
+  // Above the app's own bars: the layer sits at 40, under the header and the nav.
+  useEffect(() => {
+    if (layer) layer.style.zIndex = landscape ? "1000" : "40";
+  }, [layer, landscape]);
+  useEffect(() => {
+    /*
+     * Two kinds of fullscreen to look after. Ours, taken away by the system
+     * (Android's back gesture, the app going to the background): leave the
+     * mode. And YouTube's own button inside the frame: on Android the screen
+     * can be locked to landscape for it too, so that button turns the phone
+     * on its side and keeps it there, instead of following every tilt.
+     */
+    const onChange = () => {
+      onFullscreenLost();
+      const fs = document.fullscreenElement;
+      const ours = fs?.tagName === "IFRAME" && !!layer?.contains(fs);
+      const orientation = screen.orientation as ScreenOrientation & { lock?: (o: "landscape") => Promise<void> };
+      if (ours) orientation?.lock?.("landscape").catch(() => {});
+      else if (!fs) {
+        try {
+          orientation?.unlock?.();
+        } catch {
+          /* nothing locked */
+        }
+      }
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, [layer]);
   const [settling, setSettling] = useState(false);
   const lastMode = useRef(mode);
   useEffect(() => {
@@ -297,8 +357,23 @@ export function NowPlayingDock({
    */
   const listenRef = useRef(listen);
   listenRef.current = listen;
+  /*
+   * Set while this device is behind the session it belongs to: it was away
+   * (another app, a locked screen) and its player was paused or frozen by the
+   * OS, not by the person. Until it has caught up, the first press of play is
+   * a "take me back to where we are", not "everybody come to where I am" —
+   * reporting it used to drag the other person back to this phone's stale
+   * position.
+   */
+  const needsRejoin = useRef(false);
+  const catchUpRef = useRef<(() => Promise<void>) | null>(null);
   const onFrameChange = useCallback(
     (c: { isPlaying: boolean; positionSec: number }) => {
+      if (needsRejoin.current && c.isPlaying) {
+        needsRejoin.current = false;
+        void catchUpRef.current?.();
+        return;
+      }
       listenRef.current.report({
         isPlaying: c.isPlaying,
         positionSec: c.positionSec,
@@ -421,6 +496,8 @@ export function NowPlayingDock({
           positionSec: playback.getPosition(),
           isPlaying: playback.playing,
           index,
+          // By id: `index` is into THIS device's queue, which need not be the session's.
+          trackId: itemIdRef.current,
         })
       : null;
     return () => {
@@ -439,7 +516,7 @@ export function NowPlayingDock({
    */
   const appliedPartner = useRef<string | null>(null);
   /** What the last applied message said, to tell a command from a refresh. */
-  const lastSubstance = useRef<{ isPlaying: boolean; index: number } | null>(
+  const lastSubstance = useRef<{ isPlaying: boolean; index: number; epoch: number } | null>(
     null,
   );
   /** The frame that has been lined up with the session since it came ready. */
@@ -482,10 +559,16 @@ export function NowPlayingDock({
      * A frame that has just come up is lined up tightly too, whatever the
      * message: it started from zero when the song was already under way.
      */
+    /*
+     * A new epoch is a command too — that is how a SEEK is recognised, since it
+     * changes neither playing nor the track. Judged on substance alone, a seek
+     * got the loose drift tolerance and anything under 2.5 s was dropped.
+     */
+    const epoch = ps.epoch ?? 0;
     const last = lastSubstance.current;
     const command =
-      !last || last.isPlaying !== ps.isPlaying || last.index !== ps.index;
-    lastSubstance.current = { isPlaying: ps.isPlaying, index: ps.index };
+      !last || last.isPlaying !== ps.isPlaying || last.index !== ps.index || last.epoch !== epoch;
+    lastSubstance.current = { isPlaying: ps.isPlaying, index: ps.index, epoch };
     const tolerance =
       command || freshFrame ? COMMAND_TOLERANCE_SEC : DRIFT_TOLERANCE_SEC;
 
@@ -497,6 +580,9 @@ export function NowPlayingDock({
       if (ps.isPlaying) playback.play();
       else playback.toggle();
     }
+    // Followed: from now on this player's refresh may speak for this epoch.
+    listenRef.current.markApplied(epoch);
+    needsRejoin.current = false;
   }, [
     listen.partnerState,
     listen.live,
@@ -506,15 +592,86 @@ export function NowPlayingDock({
     item?.id,
   ]);
 
+  /*
+   * Catch up with the session after being away.
+   *
+   * Asks the server where the session is NOW rather than trusting the last
+   * message: the stream was dead while the phone was elsewhere, and the other
+   * person kept listening. Lines the frame up and says nothing — this device is
+   * the one that is behind, so there is nothing for the other side to hear.
+   * A different track is left to the provider, which follows the queue.
+   */
+  const catchUp = useCallback(async () => {
+    const l = listenRef.current;
+    if (!l.live || !controllable) return;
+    const asked = Date.now();
+    const s = await l.fetchCurrent().catch(() => null);
+    if (!s || s.status !== "live" || s.queue[s.index]?.id !== itemIdRef.current) return;
+    const want = targetPosition({ ...s, receivedAt: asked });
+    if (Math.abs(playback.getPosition() - want) > COMMAND_TOLERANCE_SEC) playback.seek(want);
+    if (s.isPlaying && !playback.playing) playback.play();
+    if (!s.isPlaying && playback.playing) playback.toggle();
+    l.markApplied(s.epoch);
+    /*
+     * iOS may refuse to start a frame nobody has touched since the page came
+     * back. Whether it did is known a moment later; if it did not, the next
+     * press of play (on the frame or here) is still a catch-up.
+     */
+    needsRejoin.current = s.isPlaying;
+    setTimeout(() => {
+      // Read through a ref: `playback.playing` here would be this render's value.
+      if (playingNow.current) needsRejoin.current = false;
+    }, 3000);
+  }, [controllable, playback]);
+  catchUpRef.current = catchUp;
+  const playingNow = useRef(false);
+  playingNow.current = playback.playing;
+
+  /*
+   * Leaving the app and coming back.
+   *
+   * Hidden: nothing this player does is reported (the session hook stays
+   * silent while the page is hidden) — the OS pausing a backgrounded video
+   * used to reach the other phone as a pause and stop them too. Back: a short
+   * quiet spell swallows the frame's own catching-up messages, then the player
+   * is lined up with where the session got to.
+   */
+  useEffect(() => {
+    if (!controllable) return;
+    const onVisibility = () => {
+      const l = listenRef.current;
+      if (!l.live) return;
+      if (document.visibilityState === "hidden") {
+        needsRejoin.current = true;
+        return;
+      }
+      l.quiet(2500);
+      void catchUpRef.current?.();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onVisibility);
+    };
+  }, [controllable]);
+
   /** Play/pause, and tell the other side — one action, both effects. */
   const togglePlayback = useCallback(() => {
+    // Back from elsewhere and behind: this press means "rejoin", not "come here".
+    if (needsRejoin.current && !playback.playing && listen.live) {
+      needsRejoin.current = false;
+      playback.play();
+      void catchUp();
+      return;
+    }
     const nowPlaying = !playback.playing;
     playback.toggle();
     listen.report({
       isPlaying: nowPlaying,
       positionSec: playback.getPosition(),
     });
-  }, [playback, listen]);
+  }, [playback, listen, catchUp]);
 
   /*
    * Another screen has asked for silence — the TikTok feed, which plays sound
@@ -575,10 +732,22 @@ export function NowPlayingDock({
       PAD,
   });
 
+  // The panel is what goes fullscreen in landscape mode; nothing playing, nothing to turn.
+  const hasItem = Boolean(item);
+  useEffect(() => {
+    registerPlayerLandscapeTarget(hasItem ? boxRef.current : null);
+    if (!hasItem) exitPlayerLandscape();
+    return () => registerPlayerLandscapeTarget(null);
+  }, [hasItem, boxRef]);
+
   if (!mounted || !layer || !box) return null;
 
   const Icon = item ? KIND_ICON[item.kind] : Music2;
   const embeddable = Boolean(item?.embed.embedUrl);
+  /** The box landscape mode fills; null until the viewport has been measured. */
+  const lbox = landscape && viewport.w > 0 ? landscapeBox(viewport.w, viewport.h) : null;
+  /** Laid into a box chosen elsewhere — the page's slot, or the whole screen — so no window chrome. */
+  const framed = docked || landscape;
 
   /*
    * The frame's box, worked out here rather than by the provider defaults: the
@@ -733,21 +902,41 @@ export function NowPlayingDock({
             ref={boxRef}
             role="region"
             aria-label={`Đang phát: ${item.title}`}
-            style={{
-              ...(slotRect
+            style={
+              landscape && lbox
                 ? {
-                    // In the layer's content space, which scrolls with the page.
-                    position: "absolute" as const,
-                    left: slotRect.left,
-                    top: slotRect.boxTop + slotRect.top,
-                    width: slotRect.width,
-                    height: slotRect.height,
+                    // The whole screen, turned when the screen is portrait. Framer
+                    // composes `x` before `rotate`, i.e. rotate about the top-left
+                    // corner, then slide right by the screen's width.
+                    position: "fixed" as const,
+                    left: 0,
+                    top: 0,
+                    width: lbox.width,
+                    height: lbox.height,
+                    x: lbox.shiftX,
+                    rotate: lbox.rotated ? 90 : 0,
+                    originX: 0,
+                    originY: 0,
+                    touchAction: "none",
                   }
-                : box.x == null
-                  ? { width: box.w }
-                  : { width: box.w, left: box.x, top: box.y ?? 0 }),
-              ...(hidden ? { visibility: "hidden" as const } : {}),
-            }}
+                : {
+                    ...(slotRect
+                      ? {
+                          // In the layer's content space, which scrolls with the page.
+                          position: "absolute" as const,
+                          left: slotRect.left,
+                          top: slotRect.boxTop + slotRect.top,
+                          width: slotRect.width,
+                          height: slotRect.height,
+                        }
+                      : box.x == null
+                        ? { width: box.w }
+                        : { width: box.w, left: box.x, top: box.y ?? 0 }),
+                    x: 0,
+                    rotate: 0,
+                    ...(hidden ? { visibility: "hidden" as const } : {}),
+                  }
+            }
             className={cn(
               /*
               No `overflow-hidden` on the floating panel on purpose. With it,
@@ -760,14 +949,18 @@ export function NowPlayingDock({
             */
               // The layer swallows nothing; the panel is the one thing in it that does.
               "pointer-events-auto fixed",
-              docked
-                ? "overflow-hidden rounded-2xl bg-black"
-                : "border-border bg-card rounded-2xl border shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
+              landscape
+                ? "overflow-hidden bg-black"
+                : docked
+                  ? "overflow-hidden rounded-2xl bg-black"
+                  : "border-border bg-card rounded-2xl border shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
               // Parked above the bottom nav until the first drag moves it.
               !docked &&
+                !landscape &&
                 box.x == null &&
                 "right-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] sm:right-6 sm:bottom-6",
               settling &&
+                !landscape &&
                 "transition-[left,top,width,height] duration-300 ease-out",
             )}
           >
@@ -778,7 +971,7 @@ export function NowPlayingDock({
             people aim at — falls through to the drag surface and moves the
             panel instead of sizing it.
           */}
-            {!docked &&
+            {!framed &&
               CORNERS.map((c) => (
                 <div
                   key={c.mode}
@@ -798,7 +991,7 @@ export function NowPlayingDock({
             to be only the thin inset around the frame, which meant hunting for
             a few pixels of border before the window would move at all.
           */}
-            {!docked && (
+            {!framed && (
               <div
                 {...moveProps}
                 style={{ touchAction: "none" }}
@@ -849,9 +1042,9 @@ export function NowPlayingDock({
             )}
 
             <div
-              {...(docked ? {} : moveProps)}
+              {...(framed ? {} : moveProps)}
               style={
-                docked
+                framed
                   ? undefined
                   : {
                       paddingLeft: PAD,
@@ -861,7 +1054,7 @@ export function NowPlayingDock({
                     }
               }
               className={
-                docked ? "h-full" : "cursor-grab active:cursor-grabbing"
+                framed ? "h-full" : "cursor-grab active:cursor-grabbing"
               }
             >
               {embeddable ? (
@@ -869,9 +1062,9 @@ export function NowPlayingDock({
                   ref={mediaRef}
                   className={cn(
                     "bg-muted mx-auto overflow-hidden",
-                    docked ? "h-full w-full rounded-2xl" : "rounded-xl",
+                    framed ? cn("h-full w-full", !landscape && "rounded-2xl") : "rounded-xl",
                   )}
-                  style={docked ? undefined : { width: mediaW, height: mediaH }}
+                  style={framed ? undefined : { width: mediaW, height: mediaH }}
                 >
                   {/*
                   Keyed by track, so a change mounts a fresh frame instead of
@@ -901,7 +1094,7 @@ export function NowPlayingDock({
               empty space beside them still drags the window instead of
               swallowing the gesture.
             */}
-              {!docked && (
+              {!framed && (
                 <div
                   className="pointer-events-none relative z-10 flex items-center pt-2"
                   style={{ height: barH }}
@@ -924,8 +1117,28 @@ export function NowPlayingDock({
                 </div>
               )}
 
-              {!docked && listenStrip}
+              {!framed && listenStrip}
             </div>
+
+            {/*
+              The way out, inside the turned box so it sits at the picture's own
+              top-left whichever way the box is turned. Top-left because YouTube
+              keeps its controls along the bottom and its share/more buttons at
+              the top-right. A 44px tap area around a 36px disc.
+            */}
+            {landscape && (
+              <button
+                type="button"
+                onClick={() => exitPlayerLandscape()}
+                aria-label="Thoát xoay ngang"
+                title="Thoát xoay ngang"
+                className="absolute top-2 left-2 z-30 flex h-11 w-11 items-center justify-center"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white">
+                  <X className="h-5 w-5" />
+                </span>
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

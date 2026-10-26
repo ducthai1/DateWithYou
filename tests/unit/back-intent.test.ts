@@ -56,6 +56,14 @@ describe("backIntent", () => {
     // `lastBackAt: 0` nghĩa là "chưa có lần nào", không phải "lúc 0ms".
     assert.equal(backIntent({ photoViewerOpen: false, lastBackAt: 0, now: 0 }), "navigate");
   });
+
+  test("đang xoay ngang: back chỉ thoát xoay ngang, kể cả khi là cú back thứ hai liền nhau", () => {
+    assert.equal(backIntent({ photoViewerOpen: false, landscapeOpen: true, lastBackAt: 0, now: 5000 }), "close-landscape");
+    assert.equal(
+      backIntent({ photoViewerOpen: false, landscapeOpen: true, lastBackAt: 1000, now: 1000 + DOUBLE_BACK_MS - 1 }),
+      "close-landscape",
+    );
+  });
 });
 
 describe("stepsToLeaveApp", () => {

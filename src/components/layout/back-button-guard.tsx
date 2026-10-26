@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { closePhotoViewer, isPhotoViewerOpen } from "@/lib/photo-viewer-state";
 import { backIntent, stepsToLeaveApp } from "@/lib/back-intent";
+import { exitPlayerLandscape, isPlayerLandscapeOpen } from "@/lib/player-landscape";
 
 /**
  * Nút back của điện thoại, hành xử như trong một app chứ không như trong tab.
@@ -61,9 +62,14 @@ export function BackButtonGuard() {
     };
     window.addEventListener("photo-viewer-open", onOpen);
     window.addEventListener("photo-viewer-close", onClose);
+    // Trình phát xoay ngang cũng là một lớp phủ kín màn: cùng một mốc, cùng một cách dọn.
+    window.addEventListener("player-landscape-open", onOpen);
+    window.addEventListener("player-landscape-close", onClose);
     return () => {
       window.removeEventListener("photo-viewer-open", onOpen);
       window.removeEventListener("photo-viewer-close", onClose);
+      window.removeEventListener("player-landscape-open", onOpen);
+      window.removeEventListener("player-landscape-close", onClose);
     };
   }, []);
 
@@ -78,10 +84,17 @@ export function BackButtonGuard() {
       switch (
         backIntent({
           photoViewerOpen: isPhotoViewerOpen(),
+          landscapeOpen: isPlayerLandscapeOpen(),
           lastBackAt: lastBackAt.current,
           now,
         })
       ) {
+        case "close-landscape":
+          // Như đóng ảnh: cú back vừa ăn đúng mốc đẩy vào lúc xoay ngang.
+          sentinel.current = false;
+          exitPlayerLandscape({ fromBack: true });
+          lastBackAt.current = 0;
+          return;
         case "close-photo":
           // Route không đổi: cú back vừa ăn đúng cái mốc đẩy vào lúc mở ảnh.
           sentinel.current = false;

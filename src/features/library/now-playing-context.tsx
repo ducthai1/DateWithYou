@@ -257,7 +257,28 @@ export function NowPlayingProvider({ children }: { children: ReactNode }) {
           jumpTo(shared);
           return;
         }
-        leaveSession(listen.partnerState?.id ?? null);
+        /*
+         * Not on screen does not mean not in the session. On a page that has
+         * just loaded, the screen's queue is still empty when the watch page
+         * adopts its URL — so every track looked foreign and the session was
+         * ended for BOTH people. That is the "it left the session on its own"
+         * report: coming back from another app, iOS reloads the page. The
+         * session's own queue is the one to ask.
+         */
+        const ps = listen.partnerState;
+        const inSession = ps ? ps.queue.findIndex((t) => t.id === wanted.id) : -1;
+        if (ps && inSession >= 0 && listen.live) {
+          setState({
+            queue: ps.queue.map(fromListenTrack),
+            index: inSession,
+            // The session's current track is a rejoin, not a skip.
+            intent: inSession === ps.index ? "follow" : "press",
+            pressedAt: inSession === ps.index ? 0 : Date.now(),
+          });
+          if (inSession !== ps.index) listen.report({ index: inSession, positionSec: 0, isPlaying: true });
+          return;
+        }
+        leaveSession(ps?.id ?? null);
       }
       setState({
         queue,

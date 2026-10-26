@@ -83,6 +83,13 @@ export type ListenState = {
   positionSec: number;
   stateAgeMs: number;
   updatedBy: string;
+  /**
+   * How many commands the session has seen. A different epoch from the last
+   * one followed means a hand moved the playback (a seek included); the same
+   * one is just the other phone writing down where it is. Absent from a server
+   * that predates it, read as 0.
+   */
+  epoch?: number;
   receivedAt: number;
 };
 

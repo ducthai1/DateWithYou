@@ -87,7 +87,16 @@ export function useListenTogether() {
 
   const inviteMutation = trpc.listen.invite.useMutation();
   const respondMutation = trpc.listen.respond.useMutation();
-  const controlMutation = trpc.listen.control.useMutation();
+  /*
+   * Commands retry. A refresh used to re-send the whole state every 15 s,
+   * which quietly repaired a pause or a skip whose POST was lost on a flaky
+   * network; a refresh may now only write the position (it moved both people
+   * to the next song when it carried a stale index), so a lost command has to
+   * be delivered by retrying it instead.
+   */
+  const controlMutation = trpc.listen.control.useMutation({ retry: 3 });
+  // A refresh is never retried: a late one describes a moment already gone.
+  const refreshMutation = trpc.listen.control.useMutation();
   const endMutation = trpc.listen.end.useMutation();
 
   /*
@@ -127,6 +136,32 @@ export function useListenTogether() {
     if (id) left.current.add(id);
   }, []);
 
+  /*
+   * The epoch of the last command this device has FOLLOWED — its own, or the
+   * other person's once the dock has applied it. The periodic refresh carries
+   * it, and the server refuses a refresh from behind the latest command: a
+   * player that has not caught up with a seek must not write its old position
+   * over that seek. Null until something has been followed, and then no refresh
+   * is sent at all.
+   */
+  const appliedEpoch = useRef<number | null>(null);
+  const markApplied = useCallback((epoch: number | undefined) => {
+    const e = epoch ?? 0;
+    if (appliedEpoch.current === null || e > appliedEpoch.current) appliedEpoch.current = e;
+  }, []);
+  /*
+   * Moments when this device must not speak for the session: while the page is
+   * hidden (the OS pausing a backgrounded player is not the person pausing),
+   * and while the dock is catching up after coming back. See `quiet`.
+   */
+  const quietUntil = useRef(0);
+  const silent = useCallback(
+    () =>
+      typeof document !== "undefined" &&
+      (document.visibilityState === "hidden" || Date.now() < quietUntil.current),
+    [],
+  );
+
   // Seed from the load-time query, once it answers.
   useEffect(() => {
     const s = current.data;
@@ -153,6 +188,7 @@ export function useListenTogether() {
             positionSec: s.positionSec,
             stateAgeMs: s.stateAgeMs,
             updatedBy: s.updatedBy,
+            epoch: s.epoch,
             receivedAt: Date.now(),
           },
     );
@@ -185,13 +221,29 @@ export function useListenTogether() {
     }
   }, [invites.listenLive]);
 
-  // An end reported by the stream closes it here too.
+  // An end reported by the stream closes it here too — for good, so the
+  // load-time answer still sitting in the cache cannot bring it back.
   useEffect(() => {
     if (!invites.listenEnded) return;
+    forget(invites.listenEnded.split("@")[0]);
     setLiveId(null);
     setWaiting(false);
     setLocalState(null);
-  }, [invites.listenEnded]);
+    void utils.listen.current.invalidate();
+  }, [invites.listenEnded, forget, utils]);
+
+  /*
+   * Live as of THIS render.
+   *
+   * `liveId` is set in an effect after the load-time answer arrives, so for one
+   * render this hook said "ready, and no session" — and the watch page, which
+   * adopts its URL exactly when no session leads, did so in that render. It
+   * built the library's queue around the URL's track; the periodic write then
+   * sent that queue's index into the session, and both people were moved to
+   * the next song. Read straight off the answer, there is no such render.
+   */
+  const seeded = current.data && !left.current.has(current.data.id) ? current.data : null;
+  const liveNow = liveId ?? (seeded?.status === "live" ? seeded.id : null);
 
   const start = useCallback(
     async (
@@ -262,6 +314,7 @@ export function useListenTogether() {
           positionSec: res.positionSec,
           stateAgeMs: res.stateAgeMs,
           updatedBy: res.updatedBy,
+          epoch: res.epoch,
           receivedAt: Date.now(),
         });
       }
@@ -283,14 +336,29 @@ export function useListenTogether() {
     void utils.listen.current.invalidate();
   }, [endMutation, invites, utils, forget, liveId, partnerState, current.data]);
 
-  /** Tell the other side what just happened here. No-op with no session. */
+  /**
+   * Tell the other side what a hand just did here. No-op with no session, and
+   * while this device is not speaking for it (see `silent`).
+   */
   const report = useCallback(
     (change: { isPlaying?: boolean; positionSec?: number; index?: number }) => {
-      if (!liveId) return;
-      controlMutation.mutate(change);
+      if (!liveId || silent()) return;
+      controlMutation.mutate(
+        { ...change, kind: "command" },
+        // Our own command is followed by definition; the stream will not echo it.
+        { onSuccess: (view) => view && markApplied(view.epoch) },
+      );
     },
-    [controlMutation, liveId],
+    [controlMutation, liveId, markApplied, silent],
   );
+
+  /** Keep this device from speaking for the session for a while — see `silent`. */
+  const quiet = useCallback((ms: number) => {
+    quietUntil.current = Math.max(quietUntil.current, Date.now() + ms);
+  }, []);
+  const speak = useCallback(() => {
+    quietUntil.current = 0;
+  }, []);
 
   /**
    * Write the position down every so often while playing.
@@ -306,11 +374,17 @@ export function useListenTogether() {
    * storing it.
    */
   const positionReader = useRef<
-    (() => { positionSec: number; isPlaying: boolean; index: number }) | null
+    (() => { positionSec: number; isPlaying: boolean; index: number; trackId: string | null }) | null
   >(null);
   useEffect(() => {
     if (!liveId) return;
     const t = setInterval(() => {
+      /*
+       * Nothing written from a page nobody is looking at — its player may be
+       * paused by the OS, its playhead frozen — or from one that has not yet
+       * followed anything (it would carry no epoch the server accepts).
+       */
+      if (silent() || appliedEpoch.current === null) return;
       const r = positionReader.current?.();
       if (!r) return;
       /*
@@ -325,10 +399,16 @@ export function useListenTogether() {
        * tick regardless. The stream only forwards what actually CHANGED, so
        * repeating an unchanged state costs the other device nothing.
        */
-      controlMutation.mutate({
+      // No track id, nothing to vouch for: an index means nothing across queues.
+      if (!r.trackId) return;
+      refreshMutation.mutate({
         positionSec: Math.max(0, r.positionSec),
+        // Not written — the server checks them against the session and refuses
+        // a refresh from a player that is out of step.
         isPlaying: r.isPlaying,
-        index: r.index,
+        trackId: r.trackId,
+        kind: "refresh",
+        epoch: appliedEpoch.current,
       });
     }, REPORT_EVERY_MS);
     return () => clearInterval(t);
@@ -338,19 +418,32 @@ export function useListenTogether() {
   return {
     enabled,
     /** True while a session is live for this space. */
-    live: liveId !== null,
+    live: liveNow !== null,
     /** True after inviting, until the other person answers. */
-    waiting: waiting && liveId === null,
+    waiting: waiting && liveNow === null,
     /** A pending invite aimed at this user. */
     invite: invites.listenInvite,
     /** The newest known shared state — from the stream, an accept, or a reload. */
     partnerState,
     /** The session as the server last described it, for a fresh page. */
     initial: current.data ?? null,
+    /**
+     * Whether the load-time answer about the session has come back.
+     *
+     * Until it has, nobody knows whether a session is live — and a page that
+     * acted on its own URL in that moment (the watch page adopting its track)
+     * used to end the session for both people when it raced the answer.
+     */
+    ready: !enabled || !current.isPending,
+    /** Ask the server where the session is now — for catching up after a pause in attention. */
+    fetchCurrent: () => utils.listen.current.fetch(undefined, { staleTime: 0 }),
     start,
     respond,
     end,
     report,
+    markApplied,
+    quiet,
+    speak,
     /** The dock assigns how to read its playhead, for the periodic report. */
     positionReader,
     isBusy: inviteMutation.isPending || respondMutation.isPending,

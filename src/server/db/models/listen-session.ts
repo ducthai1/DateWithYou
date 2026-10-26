@@ -69,6 +69,21 @@ const listenSessionSchema = new Schema(
     /** Whose action produced the current state. */
     updatedBy: { type: String, required: true },
     /**
+     * A count of COMMANDS — a pause, a resume, a seek, a skip done by a hand.
+     *
+     * The periodic position refresh both phones send is not a command, and it
+     * used to be indistinguishable from one: a seek on one phone was written,
+     * then the other phone's refresh (still at the old position, because it had
+     * not heard about the seek yet) was written over it a moment later. The
+     * seek never reached the other phone, and the phone that seeked was dragged
+     * back. A refresh now names the epoch it was taken in, and one taken before
+     * the latest command is ignored — so only someone who has already followed
+     * a command can write a position over it.
+     */
+    epoch: { type: Number, default: 0 },
+    /** Who gave the latest command. A refresh changes `updatedBy`, never this. */
+    commandBy: { type: String, default: null },
+    /**
      * TTL. Refreshed on every control, so a session being listened to never
      * expires under the people using it, while an invite nobody answers and a
      * session everyone walked away from both clear themselves out.

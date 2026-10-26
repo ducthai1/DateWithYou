@@ -6,6 +6,7 @@ import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
 import { ListenSessionModel } from "@/server/db/models/listen-session";
 import { LiveLocationModel } from "@/server/db/models/live-location";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
+import { FRESH_TRACKER, listenDelivery, type ListenTracker } from "@/lib/listen-delivery";
 
 /**
  * SSE endpoint for navigation invites.
@@ -108,18 +109,14 @@ export async function GET(req: NextRequest) {
        */
       let lastListenId: string | null = null;
       let lastListenStatus: string | null = null;
-      let lastListenStateAt = 0;
       /*
-       * What this connection last TOLD its client the playback was.
-       *
-       * Delivery used to be gated on "the newest write was not mine". Both
-       * sides write — a position refresh every 15s, plus every press — so a
-       * partner's pause that landed just before my own refresh was overwritten
-       * as "mine" and never sent. Comparing the substance (playing? which
-       * track? where?) against what was last delivered cannot be fooled by who
-       * happened to write last.
+       * What this connection has accounted for: the last command (epoch) and
+       * the last write (stateAt). The decision itself is `listenDelivery`, kept
+       * pure so it can be tested — see there for why commands are keyed on the
+       * epoch rather than on what they say (a seek says nothing new about
+       * playing or which track, and used to be lost).
        */
-      let lastListenSnapshot: string | null = null;
+      let listenTracker: ListenTracker = FRESH_TRACKER;
 
 
       /*
@@ -311,6 +308,8 @@ export async function GET(req: NextRequest) {
             positionSec: number;
             stateAt: Date;
             updatedBy: string;
+            epoch?: number;
+            commandBy?: string | null;
           }>();
 
           const lsId = listen ? String(listen._id) : null;
@@ -346,22 +345,13 @@ export async function GET(req: NextRequest) {
            */
           if (listen && listen.status === "live") {
             const stateAtMs = new Date(listen.stateAt).getTime();
-            const trackId = (listen.queue?.[listen.index] as { id?: string } | undefined)?.id ?? "";
-            const snapshot = `${listen.isPlaying ? 1 : 0}:${listen.index}:${trackId}`;
-            const substanceChanged = snapshot !== lastListenSnapshot;
-            const fromPartner = listen.updatedBy !== userId;
-            if (stateAtMs > lastListenStateAt && (fromPartner || substanceChanged)) {
-              /*
-               * Sent when the partner wrote it, OR when what it says differs
-               * from what this client was last told — even if the last writer
-               * was this client. The second clause is what rescues a partner's
-               * pause that our own 15s position refresh overwrote a moment
-               * later: the document still says "paused", we last said
-               * "playing", so it goes out. A pure position refresh of our own
-               * (same substance) is still absorbed silently, as before.
-               */
-              lastListenStateAt = stateAtMs;
-              lastListenSnapshot = snapshot;
+            const { send: deliver, next } = listenDelivery(
+              listenTracker,
+              { epoch: listen.epoch, commandBy: listen.commandBy, updatedBy: listen.updatedBy, stateAtMs },
+              userId,
+            );
+            listenTracker = next;
+            if (deliver) {
               send("listen-state", {
                 id: lsId,
                 queue: listen.queue ?? [],
@@ -371,14 +361,11 @@ export async function GET(req: NextRequest) {
                 // An age, not a timestamp — the two phones' clocks disagree.
                 stateAgeMs: Math.max(0, Date.now() - stateAtMs),
                 updatedBy: listen.updatedBy,
+                epoch: listen.epoch ?? 0,
               });
-            } else if (stateAtMs > lastListenStateAt) {
-              // Our own write with nothing new in it: absorb, do not replay.
-              lastListenStateAt = stateAtMs;
-              lastListenSnapshot = snapshot;
             }
           } else {
-            lastListenSnapshot = null;
+            listenTracker = FRESH_TRACKER;
           }
 
           /*

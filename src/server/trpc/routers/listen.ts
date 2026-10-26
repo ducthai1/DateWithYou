@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/server/db/connect";
 import { SpaceModel } from "@/server/db/models/space";
 import { ListenSessionModel } from "@/server/db/models/listen-session";
 import { sendPushToUser } from "@/server/lib/push";
+import { refreshAccepted } from "@/lib/listen-delivery";
 
 /**
  * Listening together.
@@ -48,6 +49,8 @@ export type ListenSessionView = {
    */
   stateAgeMs: number;
   updatedBy: string;
+  /** Count of commands so far; a refresh must carry the one it was taken in. */
+  epoch: number;
 };
 
 type SessionDoc = {
@@ -61,6 +64,8 @@ type SessionDoc = {
   positionSec: number;
   stateAt: Date;
   updatedBy: string;
+  epoch?: number;
+  commandBy?: string | null;
 };
 
 function toView(doc: SessionDoc): ListenSessionView {
@@ -75,6 +80,7 @@ function toView(doc: SessionDoc): ListenSessionView {
     positionSec: doc.positionSec ?? 0,
     stateAgeMs: Math.max(0, Date.now() - new Date(doc.stateAt).getTime()),
     updatedBy: doc.updatedBy,
+    epoch: doc.epoch ?? 0,
   };
 }
 
@@ -222,20 +228,24 @@ export const listenRouter = router({
       const doc = await ListenSessionModel.findOneAndUpdate(
         { _id: pending._id, status: "inviting" },
         {
-          status: input.accept ? "live" : "ended",
-          updatedBy: ctx.userId,
-          /*
-           * Accepting is what starts the music. An invite sent from a card
-           * that had not been played holds at the beginning — neither side
-           * plays while it is pending — so the answer is the moment both
-           * players are told to go, from the same point.
-           */
-          ...(input.accept ? { isPlaying: true } : {}),
-          positionSec,
-          stateAt: new Date(now),
-          // A decline is over; keep it only long enough for both streams to see
-          // the change, like `end` does — not the six hours a live session gets.
-          expiresAt: new Date(now + (input.accept ? SIX_HOURS : 60 * 1000)),
+          $set: {
+            status: input.accept ? "live" : "ended",
+            updatedBy: ctx.userId,
+            /*
+             * Accepting is what starts the music. An invite sent from a card
+             * that had not been played holds at the beginning — neither side
+             * plays while it is pending — so the answer is the moment both
+             * players are told to go, from the same point.
+             */
+            ...(input.accept ? { isPlaying: true, commandBy: ctx.userId } : {}),
+            positionSec,
+            stateAt: new Date(now),
+            // A decline is over; keep it only long enough for both streams to see
+            // the change, like `end` does — not the six hours a live session gets.
+            expiresAt: new Date(now + (input.accept ? SIX_HOURS : 60 * 1000)),
+          },
+          // Starting both players is a command like any other.
+          ...(input.accept ? { $inc: { epoch: 1 } } : {}),
         },
         { new: true },
       ).lean<SessionDoc>();
@@ -261,6 +271,17 @@ export const listenRouter = router({
         isPlaying: z.boolean().optional(),
         positionSec: z.number().min(0).optional(),
         index: z.number().int().min(0).optional(),
+        /**
+         * A hand on the playback, or the periodic write-down of where it is.
+         * Defaults to "command", which is what every call meant before the
+         * distinction existed — an installed app still running old code keeps
+         * working.
+         */
+        kind: z.enum(["command", "refresh"]).default("command"),
+        /** For a refresh: the epoch of the last command this player followed. */
+        epoch: z.number().int().min(0).optional(),
+        /** For a refresh: the track this player is on, by id — never an index. */
+        trackId: z.string().min(1).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -272,34 +293,66 @@ export const listenRouter = router({
       }).lean<SessionDoc & { queue: unknown[] }>();
       if (!doc) return null;
 
-      const update: Record<string, unknown> = {
+      const isRefresh = input.kind === "refresh";
+      if (isRefresh) {
+        /*
+         * A refresh writes down WHERE the player is — nothing else, and only
+         * from a player that is in step with the session.
+         *
+         * Out of step is: behind the latest command (see `epoch` on the
+         * model), on another track, or paused while the session plays (or the
+         * reverse). Two of those were measured with two browsers: a refresh
+         * that carried the player's own index — an index into ITS queue, which
+         * was not the session's — moved both people to the next song, and one
+         * that carried `isPlaying: false` from a player that had not yet
+         * reported its state would have paused them both. A refresh can no
+         * longer change the track or the playing state at all; only commands
+         * can. The caller is handed the state it is out of step with.
+         */
+        const onTrack = (doc.queue[doc.index] as { id?: string } | undefined)?.id;
+        const inStep =
+          refreshAccepted(doc.epoch, input.epoch) &&
+          (input.trackId === undefined || input.trackId === onTrack) &&
+          (input.isPlaying === undefined || input.isPlaying === doc.isPlaying);
+        if (!inStep || input.positionSec === undefined) return toView(doc);
+      }
+
+      const set: Record<string, unknown> = {
         updatedBy: ctx.userId,
-        // Every control action re-times the state, because a pause or a skip
-        // makes the stored position true as of NOW and not before.
+        // Every write re-times the state, because a pause or a skip makes the
+        // stored position true as of NOW and not before.
         stateAt: new Date(),
         expiresAt: new Date(Date.now() + SIX_HOURS),
       };
-      if (input.isPlaying !== undefined) update.isPlaying = input.isPlaying;
-      if (input.positionSec !== undefined)
-        update.positionSec = input.positionSec;
-      if (input.index !== undefined) {
+      if (input.positionSec !== undefined) set.positionSec = input.positionSec;
+      if (!isRefresh) set.commandBy = ctx.userId;
+      if (!isRefresh && input.isPlaying !== undefined) set.isPlaying = input.isPlaying;
+      if (!isRefresh && input.index !== undefined) {
         const nextIndex = Math.min(
           input.index,
           Math.max(0, doc.queue.length - 1),
         );
-        update.index = nextIndex;
+        set.index = nextIndex;
         // A DIFFERENT track starts at its beginning unless told otherwise. The
         // same index re-sent by the periodic full-state write is not a skip.
         if (input.positionSec === undefined && nextIndex !== doc.index)
-          update.positionSec = 0;
+          set.positionSec = 0;
       }
 
+      const filter: Record<string, unknown> = { _id: doc._id, status: "live" };
+      // The epoch check rides in the filter too, so a command landing between
+      // the read above and this write still wins.
+      if (isRefresh && input.epoch !== undefined)
+        filter.$or = [{ epoch: input.epoch }, ...(input.epoch === 0 ? [{ epoch: { $exists: false } }] : [])];
       const next = await ListenSessionModel.findOneAndUpdate(
-        { _id: doc._id, status: "live" },
-        update,
+        filter,
+        isRefresh ? { $set: set } : { $set: set, $inc: { epoch: 1 } },
         { new: true },
       ).lean<SessionDoc>();
-      return next ? toView(next) : null;
+      if (next) return toView(next);
+      // Lost the race to a command: report where the session is now.
+      const now = await ListenSessionModel.findById(doc._id).lean<SessionDoc>();
+      return now ? toView(now) : null;
     }),
 
   /** Leave. Either person ending it ends it for both — it is one session. */

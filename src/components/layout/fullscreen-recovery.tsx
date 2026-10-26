@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { isPlayerLandscapeOpen } from "@/lib/player-landscape";
 
 /**
  * Leaves the app's own fullscreen when the app is looked at again.
@@ -22,7 +23,9 @@ export function FullscreenRecovery() {
     const leave = () => {
       if (document.visibilityState !== "visible") return;
       const el = document.fullscreenElement;
-      if (!el || el.tagName === "IFRAME") return;
+      // The player's landscape mode is asked for on purpose and stays until the
+      // person leaves it — see @/lib/player-landscape.
+      if (!el || el.tagName === "IFRAME" || isPlayerLandscapeOpen()) return;
       document.exitFullscreen().catch(() => {
         /* Already out, or not allowed right now — nothing else to do. */
       });

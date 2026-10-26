@@ -12,6 +12,8 @@ export const DOUBLE_BACK_MS = 1200;
 export type BackIntent =
   /** Đang xem ảnh toàn màn hình: chỉ đóng ảnh, không rời trang. */
   | "close-photo"
+  /** Trình phát đang xoay ngang: chỉ thoát xoay ngang, không rời trang. */
+  | "close-landscape"
   /** Bấm lần thứ hai ngay sau lần đầu: ra khỏi app. */
   | "exit"
   /**
@@ -27,10 +29,13 @@ export type BackIntent =
 
 export function backIntent({
   photoViewerOpen,
+  landscapeOpen = false,
   lastBackAt,
   now,
 }: {
   photoViewerOpen: boolean;
+  /** Trình phát đang ở chế độ xoay ngang (xem @/lib/player-landscape). */
+  landscapeOpen?: boolean;
   /** Mốc của lần back trước, hoặc 0 nếu chưa có / đã bị xoá. */
   lastBackAt: number;
   now: number;
@@ -43,6 +48,8 @@ export function backIntent({
    * sẽ đá họ ra khỏi app trong khi họ chỉ định đóng cái ảnh.
    */
   if (photoViewerOpen) return "close-photo";
+  // Cùng lý do: đang xem video nằm ngang, back là "dựng máy lại", không phải "rời trang".
+  if (landscapeOpen) return "close-landscape";
   if (lastBackAt > 0 && now - lastBackAt < DOUBLE_BACK_MS) return "exit";
   return "navigate";
 }

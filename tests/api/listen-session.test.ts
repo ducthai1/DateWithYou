@@ -220,6 +220,105 @@ describe("driving a live session", () => {
   });
 });
 
+/*
+ * Chủ repo báo 26/10: tua khi đang xem cùng thì không đồng bộ. Bản ghi vị trí
+ * định kỳ (15 giây một lần) của máy kia ghi đè cú tua trước khi nó kịp tới, và
+ * máy vừa tua bị kéo ngược về chỗ cũ. Lệnh nay có số thứ tự (epoch); bản ghi
+ * định kỳ phải mang epoch của lệnh nó đã theo.
+ */
+describe("commands and refreshes", () => {
+  async function live() {
+    await reset();
+    const { session } = await couple.a.caller.listen.invite({
+      queue: [TRACK, TRACK_2],
+      index: 0,
+      positionSec: 0,
+      isPlaying: true,
+    });
+    return couple.b.caller.listen.respond({ sessionId: session.id, accept: true });
+  }
+
+  test("accepting is the first command, and a seek is a command too", async () => {
+    const accepted = await live();
+    assert.equal(accepted.epoch, 1);
+    const seeked = await couple.a.caller.listen.control({ positionSec: 120 });
+    assert.equal(seeked?.epoch, 2, "a seek changes neither playing nor the track, but it is still a command");
+  });
+
+  test("a refresh from behind the latest command is refused, so the seek survives", async () => {
+    await live(); // epoch 1, which Bình has followed
+    await couple.a.caller.listen.control({ positionSec: 300 }); // An seeks: epoch 2
+    // Bình's player has not heard about the seek yet and writes down where it is.
+    const answer = await couple.b.caller.listen.control({
+      positionSec: 20,
+      isPlaying: true,
+      index: 0,
+      kind: "refresh",
+      epoch: 1,
+    });
+    assert.equal(answer?.epoch, 2, "the refusal hands back the state Bình is behind");
+    const now = await couple.a.caller.listen.current();
+    assert.ok(now && Math.abs(now.positionSec - 300) < 1, `the seek was undone: ${now?.positionSec}`);
+    assert.equal(now?.updatedBy, couple.a.userId);
+  });
+
+  test("a refresh from someone who has followed the latest command is written, and is not a command", async () => {
+    await live();
+    await couple.a.caller.listen.control({ positionSec: 300 }); // epoch 2
+    const refreshed = await couple.b.caller.listen.control({
+      positionSec: 305,
+      isPlaying: true,
+      index: 0,
+      kind: "refresh",
+      epoch: 2,
+    });
+    assert.equal(refreshed?.positionSec, 305);
+    assert.equal(refreshed?.epoch, 2, "a refresh must not count as a command");
+  });
+
+  /*
+   * Đo bằng hai trình duyệt (e2e `listen-sync`): bản ghi định kỳ mang `index`
+   * của hàng đợi CỦA MÁY ĐÓ — không phải của phiên — và đã chuyển cả hai người
+   * sang bài kế. Nó cũng mang `isPlaying: false` từ một máy chưa kịp báo trạng
+   * thái, đủ để dừng cả hai. Bản ghi định kỳ nay chỉ được ghi VỊ TRÍ.
+   */
+  test("a refresh never moves the track and never pauses", async () => {
+    await live(); // epoch 1, index 0, playing
+    const r = await couple.b.caller.listen.control({
+      positionSec: 40,
+      isPlaying: true,
+      index: 1,
+      trackId: TRACK.id,
+      kind: "refresh",
+      epoch: 1,
+    });
+    assert.equal(r?.index, 0, "a refresh moved both people to another song");
+    assert.equal(r?.positionSec, 40);
+    assert.equal(r?.epoch, 1);
+  });
+
+  test("a refresh from a player on another track, or paused while the session plays, is refused", async () => {
+    await live();
+    await couple.a.caller.listen.control({ positionSec: 50 }); // epoch 2, An at 50 s
+    const otherTrack = await couple.b.caller.listen.control({
+      positionSec: 5, isPlaying: true, trackId: TRACK_2.id, kind: "refresh", epoch: 2,
+    });
+    assert.ok(otherTrack && Math.abs(otherTrack.positionSec - 50) < 1, "a player on another track wrote its position");
+    const paused = await couple.b.caller.listen.control({
+      positionSec: 5, isPlaying: false, trackId: TRACK.id, kind: "refresh", epoch: 2,
+    });
+    assert.equal(paused?.isPlaying, true, "a refresh paused the session for both");
+    assert.ok(paused && Math.abs(paused.positionSec - 50) < 1, "a paused player wrote its frozen position");
+  });
+
+  test("an installed app still on old code (no kind, no epoch) keeps working", async () => {
+    await live();
+    const old = await couple.a.caller.listen.control({ isPlaying: false, positionSec: 10 });
+    assert.equal(old?.isPlaying, false);
+    assert.equal(old?.epoch, 2, "with no kind it is what every call used to be: a command");
+  });
+});
+
 describe("another couple's session", () => {
   test("is invisible, and cannot be driven", async () => {
     await reset();

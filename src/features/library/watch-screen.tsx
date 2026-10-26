@@ -7,9 +7,12 @@ import {
   ListMusic,
   Loader2,
   PictureInPicture2,
+  RectangleHorizontal,
   SkipBack,
   SkipForward,
 } from "lucide-react";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { enterPlayerLandscape } from "@/lib/player-landscape";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { SmartBackLink } from "@/components/marketing/smart-back-link";
@@ -88,7 +91,20 @@ export function WatchScreen({ id }: { id: string }) {
    * Rewriting the address alone keeps the page, the box and the frame exactly
    * where they are, and the link still names the track that is playing.
    */
-  const seen = useRef({ id, agreed: false });
+  const seen = useRef({ id, agreed: false, fresh: true });
+  /*
+   * On a page that has just loaded, a shared session — or the possibility of
+   * one, before the server has answered — decides what plays, not the URL.
+   *
+   * Coming back to the app on a phone often reloads this page. Adopting the URL
+   * then raced the session arriving: with the screen's queue still empty the
+   * URL's track looked like something outside the session, and the session was
+   * ended for both people; or, if the other person had moved on meanwhile, both
+   * were dragged back to the track in the old URL. Only the first load defers —
+   * a real navigation to another track is still an instruction.
+   */
+  const sessionLeads =
+    seen.current.fresh && !!listen?.enabled && (!listen.ready || listen.live || listen.waiting);
   useEffect(() => {
     const s = seen.current;
     const pid = playing?.id ?? null;
@@ -124,22 +140,31 @@ export function WatchScreen({ id }: { id: string }) {
       // A real navigation — the URL is an instruction again.
       s.id = id;
       s.agreed = false;
+      s.fresh = false;
     }
 
     if (pid === id) {
       s.agreed = true;
+      s.fresh = false;
       return;
     }
     if (!s.agreed) {
-      adopt();
-      return;
+      if (sessionLeads) {
+        // Wait for the session to put its track on; from then on the URL follows it.
+        if (!pid) return;
+        s.agreed = true;
+        s.fresh = false;
+      } else {
+        adopt();
+        return;
+      }
     }
     if (pid) {
       const next = `/library/phat/${pid}`;
       if (window.location.pathname !== next)
         window.history.replaceState(null, "", next);
     }
-  }, [id, playing, queue, list.data, jumpTo, start]);
+  }, [id, playing, queue, list.data, jumpTo, start, sessionLeads]);
 
   /*
    * The player was closed — the X on the floating window, or the last track
@@ -170,6 +195,12 @@ export function WatchScreen({ id }: { id: string }) {
    * The flag flips at most twice, since the setter is guarded.
    */
   const [stripScrolled, setStripScrolled] = useState(false);
+  // Gated on mount: the media query reads `window` in its initializer, so the
+  // server's markup (no button) and the phone's first render would disagree.
+  const coarse = useMediaQuery("(pointer: coarse)");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const touch = mounted && coarse;
 
   const item = playing;
   const controllable =
@@ -292,6 +323,23 @@ export function WatchScreen({ id }: { id: string }) {
                 <PictureInPicture2 className="h-4 w-4" aria-hidden="true" />
                 Thu nhỏ, nghe tiếp
               </button>
+              {/*
+                Landscape, fixed. YouTube's own fullscreen keeps a phone in
+                portrait unless auto-rotate is on, and then it follows every
+                tilt. This turns the picture once and keeps it there — see
+                @/lib/player-landscape. Touch screens only: a desk monitor has
+                nothing to turn.
+              */}
+              {touch && item?.embed.embedUrl && (
+                <button
+                  type="button"
+                  onClick={() => enterPlayerLandscape()}
+                  className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium shadow-sm transition-colors"
+                >
+                  <RectangleHorizontal className="h-4 w-4" aria-hidden="true" />
+                  Xoay ngang
+                </button>
+              )}
               {total > 1 && (
                 <div className="border-border bg-card inline-flex items-center rounded-full border shadow-sm">
                   <button
