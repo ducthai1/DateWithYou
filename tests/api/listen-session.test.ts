@@ -312,6 +312,17 @@ describe("commands and refreshes", () => {
     assert.ok(paused && Math.abs(paused.positionSec - 50) < 1, "a paused player wrote its frozen position");
   });
 
+  test("an old app's 15 s write (no kind, the whole unchanged state) is a refresh, not a command", async () => {
+    await live(); // epoch 1, index 0, playing
+    const r = await couple.b.caller.listen.control({ positionSec: 42, isPlaying: true, index: 0 });
+    assert.equal(r?.epoch, 1, "every 15 s the other phone was told 'they seeked'");
+    assert.equal(r?.positionSec, 42, "the position is still written down");
+    // A kind-less call that changes something is still a hand on the playback.
+    const pause = await couple.b.caller.listen.control({ positionSec: 43, isPlaying: false, index: 0 });
+    assert.equal(pause?.isPlaying, false);
+    assert.equal(pause?.epoch, 2);
+  });
+
   test("an installed app still on old code (no kind, no epoch) keeps working", async () => {
     await live();
     const old = await couple.a.caller.listen.control({ isPlaying: false, positionSec: 10 });

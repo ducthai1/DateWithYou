@@ -143,6 +143,9 @@ export function useYouTubePlayback(
    * own ("paused at 3:00", "paused at 2:47") and the other phone hopped twice.
    */
   const ownSeekAt = useRef(0);
+  /** When the last playhead reading came, and whether the frame was playing then — see the scrub check. */
+  const readingAt = useRef(0);
+  const readingPlaying = useRef(false);
   const readyRef = useRef(false);
   readyRef.current = readyFor === frameKey;
 
@@ -150,6 +153,8 @@ export function useYouTubePlayback(
     setPlaying(false);
     setReadyFor(null);
     positionRef.current = 0;
+    readingAt.current = 0;
+    readingPlaying.current = false;
     lastCommand.current = null;
     lastReportedState.current = null;
   }, [frameKey]);
@@ -193,7 +198,16 @@ export function useYouTubePlayback(
          */
         const prev = positionRef.current;
         positionRef.current = t;
-        if (prev > 0 && Math.abs(t - prev) > 2.5 && Date.now() - ownSeekAt.current > OWN_SEEK_SETTLE_MS) {
+        /*
+         * Net of the time that passed between the two readings. A phone that
+         * throttles the frame delivers readings seconds apart while the video
+         * plays on; measured as a bare difference, every such gap was a
+         * "scrub" sent to the other person as a seek.
+         */
+        const now = Date.now();
+        const elapsed = readingPlaying.current ? (now - readingAt.current) / 1000 : 0;
+        readingAt.current = now;
+        if (prev > 0 && Math.abs(t - prev - elapsed) > 2.5 && now - ownSeekAt.current > OWN_SEEK_SETTLE_MS) {
           frameChangeRef.current?.({
             isPlaying: playingRef.current,
             positionSec: t,
@@ -209,6 +223,7 @@ export function useYouTubePlayback(
             : null;
       if (state != null) {
         const nowPlaying = state === PLAYING;
+        readingPlaying.current = nowPlaying;
         setPlaying(nowPlaying);
         if (state === ENDED) endedRef.current?.();
         /*

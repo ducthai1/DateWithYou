@@ -280,7 +280,7 @@ export const listenRouter = router({
          * distinction existed — an installed app still running old code keeps
          * working.
          */
-        kind: z.enum(["command", "refresh"]).default("command"),
+        kind: z.enum(["command", "refresh"]).optional(),
         /** For a refresh: the epoch of the last command this player followed. */
         epoch: z.number().int().min(0).optional(),
         /** For a refresh: the track this player is on, by id — never an index. */
@@ -298,7 +298,21 @@ export const listenRouter = router({
       }).lean<SessionDoc & { queue: unknown[] }>();
       if (!doc) return null;
 
-      const isRefresh = input.kind === "refresh";
+      /*
+       * An app still running the code from before commands and refreshes were
+       * told apart sends no `kind`, and its 15 s write is the whole state —
+       * position, playing, track — with nothing changed but the position.
+       * Counted as a command, as every kind-less call once was, it bumped the
+       * epoch every 15 s and the other phone, told "they seeked", jumped every
+       * 15 s while both sat watching (measured with two browsers, one sending
+       * the old write). Anything else kind-less is still a command.
+       */
+      const legacyWrite =
+        input.kind === undefined &&
+        input.positionSec !== undefined &&
+        input.index === doc.index &&
+        input.isPlaying === doc.isPlaying;
+      const isRefresh = input.kind === "refresh" || legacyWrite;
       /*
        * A command made without knowing about the other person's latest one.
        *

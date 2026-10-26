@@ -154,9 +154,9 @@ export function useListenTogether() {
    * other person is compared with to put it into words; the dock's own record
    * covers only the messages it followed, and missed every press made here.
    */
-  const known = useRef<ListenSubstance | null>(null);
-  const know = useCallback((s: { isPlaying: boolean; index: number; epoch?: number }) => {
-    known.current = { isPlaying: s.isPlaying, index: s.index, epoch: s.epoch ?? 0 };
+  const known = useRef<(ListenSubstance & { id: string }) | null>(null);
+  const know = useCallback((s: { id: string; isPlaying: boolean; index: number; epoch?: number }) => {
+    known.current = { id: s.id, isPlaying: s.isPlaying, index: s.index, epoch: s.epoch ?? 0 };
   }, []);
 
   /*
@@ -507,7 +507,7 @@ export function useListenTogether() {
           ...change,
           kind: "command",
           // What this person had seen when they pressed — see the stale check on the server.
-          baseEpoch: known.current?.epoch ?? appliedEpoch.current ?? undefined,
+          baseEpoch: (known.current?.id === liveId ? known.current.epoch : null) ?? appliedEpoch.current ?? undefined,
         })
         .then(
           (view) => {
@@ -525,16 +525,16 @@ export function useListenTogether() {
             }
             // Our own command is followed by definition; the stream will not echo it.
             markApplied(view.epoch);
-            know(view);
             /*
              * Delivered late, it took effect from where this player WAS when it
              * was pressed — and this player has moved on since. Both go to the
-             * point the session now holds, so they are together again.
+             * point the session now holds, so they are together again: handed
+             * to the dock as news (not yet `known`), so it lines up both ways.
              */
             if (late) {
               adopt(view);
               announce("Đã gửi thao tác của bạn khi có mạng lại");
-            }
+            } else know(view);
           },
           () => {
             // Retries spent. Say so, and put this player back where the session is.

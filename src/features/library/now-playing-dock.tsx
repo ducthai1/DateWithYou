@@ -33,7 +33,7 @@ import {
 } from "./use-listen-together";
 import { ListenTogetherControls } from "./listen-together-controls";
 import { ListenNoticeOverlay } from "./listen-notice-overlay";
-import { followTarget, noticeText, partnerAction } from "@/lib/listen-notice";
+import { followTarget, noticeText, partnerAction, SEEK_NOTICE_SEC } from "@/lib/listen-notice";
 import { usePlayerSlot, usePlayerSlotExpected } from "./player-slot";
 import { usePlayerPauseTicket } from "./player-command";
 import { useSlotRect } from "./use-slot-rect";
@@ -553,10 +553,6 @@ export function NowPlayingDock({
    * simply not working.
    */
   const appliedPartner = useRef<string | null>(null);
-  /** What the last applied message said, to tell a command from a refresh. */
-  const lastSubstance = useRef<{ isPlaying: boolean; index: number; epoch: number } | null>(
-    null,
-  );
   /** The frame that has been lined up with the session since it came ready. */
   const alignedFrame = useRef<string | null>(null);
   useEffect(() => {
@@ -603,11 +599,27 @@ export function NowPlayingDock({
      * got the loose drift tolerance and anything under 2.5 s was dropped.
      */
     const epoch = ps.epoch ?? 0;
-    const last = lastSubstance.current;
-    const command =
-      !last || last.isPlaying !== ps.isPlaying || last.index !== ps.index || last.epoch !== epoch;
-    lastSubstance.current = { isPlaying: ps.isPlaying, index: ps.index, epoch };
     const l = listenRef.current;
+    /*
+     * Measured against what THIS DEVICE knows — the other person's messages it
+     * followed AND the answers to its own presses. Measured against the other
+     * person's messages alone, the first routine write after any press made
+     * here carried an epoch never seen in them, read as "they seeked", and
+     * pulled this player back to them: a jolt of about a second after every
+     * pause, resume or seek made here (measured with two browsers).
+     */
+    const known = l.known.current?.id === ps.id ? l.known.current : null;
+    // Older than what this device already knows — its own press landed after it was sent.
+    if (known && epoch < known.epoch && !freshFrame) return;
+    const command =
+      !known || known.isPlaying !== ps.isPlaying || known.index !== ps.index || known.epoch !== epoch;
+    /*
+     * A seek and nothing else, to within SEEK_NOTICE_SEC of where this player
+     * already is, is the same place as far as anyone can hear — and seeking to
+     * it is a jolt for nothing. The other person pausing, resuming or changing
+     * track is still lined up tightly.
+     */
+    const onlySeek = command && known !== null && known.isPlaying === ps.isPlaying && known.index === ps.index;
     /*
      * The other phone writing down where it is, while a press made HERE is
      * still on its way: it describes the moment before that press. Followed,
@@ -627,7 +639,7 @@ export function NowPlayingDock({
     const action =
       ps.origin === "stream"
         ? partnerAction(
-            l.known.current,
+            known,
             { isPlaying: ps.isPlaying, index: ps.index, epoch, positionSec: want, trackTitle: ps.queue[ps.index]?.title ?? "" },
             mine,
           )
@@ -639,7 +651,7 @@ export function NowPlayingDock({
      */
     const target = followTarget(mine, want, {
       command: command || freshFrame,
-      commandTolerance: COMMAND_TOLERANCE_SEC,
+      commandTolerance: onlySeek && !freshFrame ? SEEK_NOTICE_SEC : COMMAND_TOLERANCE_SEC,
       driftTolerance: DRIFT_TOLERANCE_SEC,
     });
     if (target !== null) playback.seek(target);
@@ -665,7 +677,7 @@ export function NowPlayingDock({
       l.announce(`Bắt kịp ${l.partnerName}: máy bạn chậm ${Math.round(target - mine)} giây`);
     // Followed: from now on this player's refresh may speak for this epoch.
     l.markApplied(epoch);
-    l.know({ isPlaying: ps.isPlaying, index: ps.index, epoch });
+    l.know({ id: ps.id, isPlaying: ps.isPlaying, index: ps.index, epoch });
     needsRejoin.current = false;
   }, [
     listen.partnerState,
