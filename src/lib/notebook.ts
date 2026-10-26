@@ -129,15 +129,26 @@ export const weekdayLong = (key: string) => WEEKDAY_LONG[weekdayOf(key)];
 /** "23/10" */
 export const dayMonth = (key: string) => `${Number(key.slice(8, 10))}/${Number(key.slice(5, 7))}`;
 
-/** "61,4" — the way a Vietnamese reader writes a weight, one decimal, no trailing ",0". */
+/**
+ * Decimals a reading may carry. Shown exactly — never rounded.
+ *
+ * This used to be one decimal on display, so "60,45" typed in came back as
+ * "60,5": the stored number was right, the screen was not, and the owner read
+ * it as the app changing their weigh-in. Whatever is typed (up to this many
+ * decimals) is what is shown; more than this is refused at input rather than
+ * silently rounded.
+ */
+export const READING_DECIMALS = 3;
+
+/** "61,45" — written the Vietnamese way, with exactly the decimals the value has. */
 export function formatReading(value: number): string {
-  return value.toLocaleString("vi-VN", { maximumFractionDigits: 1 });
+  return value.toLocaleString("vi-VN", { maximumFractionDigits: READING_DECIMALS, useGrouping: false });
 }
 
-/** Accepts "61,4", "61.4" and " 61 "; anything else is null. */
+/** Accepts "61,45", "61.4" and " 61 "; more than READING_DECIMALS decimals, or anything else, is null. */
 export function parseReading(raw: string): number | null {
   const s = raw.trim().replace(",", ".");
-  if (!/^\d+(\.\d+)?$/.test(s)) return null;
+  if (!new RegExp(`^\\d+(\\.\\d{1,${READING_DECIMALS}})?$`).test(s)) return null;
   const v = Number(s);
   return v > METRIC_RANGE.min && v < METRIC_RANGE.max ? v : null;
 }

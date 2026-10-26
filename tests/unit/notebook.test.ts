@@ -95,9 +95,36 @@ describe("biểu đồ và số cân", () => {
     for (const bad of ["", "abc", "-1", "0", "1e3", "61,4kg", "100000"]) assert.equal(parseReading(bad), null, bad);
   });
 
-  test("hiển thị một chữ số thập phân, không đuôi ,0", () => {
-    assert.equal(formatReading(61.4), "61,4");
-    assert.equal(formatReading(61), "61");
-    assert.equal(formatReading(60.45), "60,5");
+  /*
+   * Chủ repo báo 26/10: nhập 2 chữ số thập phân mà app tự làm tròn. Bản cũ
+   * hiển thị tối đa 1 chữ số nên "60,45" hiện thành "60,5" — và chính bài này
+   * từng GHIM hành vi sai đó. Nay: nhập sao hiện vậy.
+   */
+  test("hiện đúng số đã nhập, KHÔNG làm tròn lên hay xuống", () => {
+    for (const [typed, shown] of [
+      ["60,45", "60,45"],
+      ["60,44", "60,44"],
+      ["60,05", "60,05"],
+      ["59,999", "59,999"],
+      ["61,4", "61,4"],
+      ["61", "61"],
+      ["60.15", "60,15"],
+    ]) {
+      const v = parseReading(typed);
+      assert.notEqual(v, null, typed);
+      assert.equal(formatReading(v!), shown, `${typed} phải hiện là ${shown}`);
+    }
+  });
+
+  test("nhiều chữ số thập phân hơn mức hiện được thì không nhận, chứ không làm tròn lặng lẽ", () => {
+    assert.equal(parseReading("60,4567"), null);
+  });
+
+  test("số lớn không bị chèn dấu chấm phân nghìn", () => {
+    assert.equal(formatReading(12345), "12345");
+  });
+
+  test("hiệu giữa hai lần cân vẫn đúng tới phần trăm (không lộ sai số dấu phẩy động)", () => {
+    assert.equal(formatReading(Math.abs(60.45 - 61)), "0,55");
   });
 });
