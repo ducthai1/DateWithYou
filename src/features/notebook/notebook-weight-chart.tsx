@@ -17,18 +17,29 @@ const PAD = { top: 16, right: 52, bottom: 28, left: 40 };
  * 7px-a-character estimate said "fits" and the real text was a few px wider.
  * The layout effect runs before paint, so a flipped label never flashes.
  */
-function EndLabel({ at, y, width, text, strong = false }: { at: number; y: number; width: number; text: string; strong?: boolean }) {
+function EndLabel({
+  at, y, width, text, strong = false, flip = "beside",
+}: {
+  at: number; y: number; width: number; text: string; strong?: boolean;
+  /**
+   * Where it goes when the right side is short. Beside, on the left, it sat on
+   * the mark before it: the milestones of a weight-loss plan step down to the
+   * right, and "mốc 55" landed on the 55,5 ring (28/10). Below or above clears it.
+   */
+  flip?: "beside" | "below" | "above";
+}) {
   const ref = useRef<SVGTextElement>(null);
   const [fitsRight, setFitsRight] = useState(true);
   useLayoutEffect(() => {
     const w = ref.current?.getBBox().width ?? 0;
     setFitsRight(at + 10 + w <= width - 2);
   }, [at, width, text]);
+  const vertical = !fitsRight && flip !== "beside";
   return (
     <text
       ref={ref}
-      x={fitsRight ? at + 10 : at - 10}
-      y={y}
+      x={fitsRight ? at + 10 : vertical ? at + 6 : at - 10}
+      y={vertical ? y + (flip === "below" ? 16 : -16) : y}
       dy="0.32em"
       textAnchor={fitsRight ? "start" : "end"}
       // A halo in the card colour, painted under the glyphs, keeps the label
@@ -154,7 +165,14 @@ export function NotebookWeightChart({
             <EndLabel at={x(lastReading.date)} y={y(lastReading.value)} width={width} text={formatReading(lastReading.value)} strong />
           )}
           {lastTarget && lastTarget.date !== lastReading?.date && (
-            <EndLabel at={x(lastTarget.date)} y={y(lastTarget.value)} width={width} text={`mốc ${formatReading(lastTarget.value)}`} />
+            <EndLabel
+              at={x(lastTarget.date)}
+              y={y(lastTarget.value)}
+              width={width}
+              text={`mốc ${formatReading(lastTarget.value)}`}
+              // Away from the mark before it: below when the plan steps down, above when it climbs.
+              flip={(targets.at(-2)?.value ?? lastTarget.value) >= lastTarget.value ? "below" : "above"}
+            />
           )}
         </svg>
       )}

@@ -12,10 +12,9 @@ import {
   type NotebookCell,
   type NotebookDay,
 } from "@/lib/notebook";
+import { dateKey, notFound, objectId, slotKey } from "./notebook-input";
+import { notebookEditProcedures } from "./notebook-edits";
 
-const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
-const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const slotKey = z.string().min(1).max(60);
 const cellRef = z.object({ date: dateKey, slot: slotKey });
 const title = z.string().trim().min(1).max(L.title);
 const metricValue = z.number().gt(METRIC_RANGE.min).lt(METRIC_RANGE.max);
@@ -69,7 +68,6 @@ function serialize(d: Lean) {
 
 export type NotebookView = ReturnType<typeof serialize>;
 
-const notFound = () => new TRPCError({ code: "NOT_FOUND" });
 
 /** Filter for one cell that must exist, so a write aimed at nothing says so. */
 const withCell = (id: string, spaceId: string, ref: { date: string; slot: string }) => ({
@@ -308,4 +306,6 @@ export const notebookRouter = router({
     await NotebookModel.deleteOne({ _id: input.id, spaceId: ctx.spaceId });
     return { ok: true };
   }),
+
+  ...notebookEditProcedures,
 });

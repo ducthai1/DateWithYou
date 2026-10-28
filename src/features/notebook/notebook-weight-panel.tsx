@@ -14,6 +14,7 @@ import type { NotebookActions, NotebookView } from "./use-notebook-actions";
 export function NotebookWeightPanel({ book, actions }: { book: NotebookView; actions: NotebookActions }) {
   const { readings, targets, unit, label } = book.metric;
   const [editingTargets, setEditingTargets] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   const firstReading = readings[0];
   const lastReading = readings.at(-1);
   const delta = firstReading && lastReading && readings.length > 1 ? lastReading.value - firstReading.value : null;
@@ -61,22 +62,36 @@ export function NotebookWeightPanel({ book, actions }: { book: NotebookView; act
             <summary className="text-muted-foreground hover:text-foreground flex min-h-10 cursor-pointer items-center">
               Xem từng ngày
             </summary>
+            <p className="text-muted-foreground mt-1 text-xs">Quên cân hôm nào: lật thẻ ngày về hôm đó để ghi bù.</p>
             <table className="mt-1 w-full max-w-sm text-left tabular-nums">
               <thead className="text-muted-foreground text-xs">
                 <tr>
                   <th className="py-1 font-medium">Ngày</th>
                   <th className="py-1 font-medium">Đã cân</th>
                   <th className="py-1 font-medium">Mốc</th>
+                  <th className="py-1"><span className="sr-only">Sửa</span></th>
                 </tr>
               </thead>
               <tbody>
-                {dates.map((d) => (
-                  <tr key={d} className="border-border border-t">
-                    <td className="py-1">{dayMonth(d)}</td>
-                    <td className="py-1">{fmt(readings.find((p) => p.date === d)?.value)}</td>
-                    <td className="py-1">{fmt(targets.find((p) => p.date === d)?.value)}</td>
-                  </tr>
-                ))}
+                {dates.map((d) => {
+                  const value = readings.find((p) => p.date === d)?.value;
+                  return editing === d ? (
+                    <ReadingEdit key={d} book={book} date={d} value={value} actions={actions} onDone={() => setEditing(null)} />
+                  ) : (
+                    <tr key={d} className="border-border border-t">
+                      <td className="py-1">{dayMonth(d)}</td>
+                      <td className="py-1">{fmt(value)}</td>
+                      <td className="py-1">{fmt(targets.find((p) => p.date === d)?.value)}</td>
+                      <td className="py-0.5 text-right">
+                        {value !== undefined && (
+                          <Button variant="ghost" className="h-9 px-2 text-xs" aria-label={`Sửa số ngày ${dayMonth(d)}`} onClick={() => setEditing(d)}>
+                            Sửa
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </details>
@@ -97,6 +112,40 @@ export function NotebookWeightPanel({ book, actions }: { book: NotebookView; act
 }
 
 const fmt = (v: number | undefined) => (v === undefined ? "—" : formatReading(v));
+
+/** One weigh-in, corrected or removed in place — a typo on a past morning used to be there for good. */
+function ReadingEdit({
+  book, date, value, actions, onDone,
+}: { book: NotebookView; date: string; value: number | undefined; actions: NotebookActions; onDone: () => void }) {
+  const [text, setText] = useState(value === undefined ? "" : formatReading(value));
+  const parsed = parseReading(text);
+  return (
+    <tr className="border-border border-t">
+      <td className="py-1">{dayMonth(date)}</td>
+      <td className="py-1" colSpan={2}>
+        <input
+          autoFocus
+          inputMode="decimal"
+          aria-label={`${book.metric.label} ngày ${dayMonth(date)}`}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className="border-border bg-card focus:border-accent h-9 w-20 rounded-lg border px-2 text-right outline-none"
+        />
+      </td>
+      <td className="py-1 text-right whitespace-nowrap">
+        <Button variant="ghost" className="h-9 px-2 text-xs" disabled={parsed === null} onClick={() => { actions.logReading.mutate({ id: book.id, date, value: parsed! }); onDone(); }}>
+          Lưu
+        </Button>
+        <Button variant="ghost" className="text-destructive h-9 px-2 text-xs" onClick={() => { actions.logReading.mutate({ id: book.id, date, value: null }); onDone(); }}>
+          Xoá
+        </Button>
+        <Button variant="ghost" className="h-9 px-2 text-xs" onClick={onDone}>
+          Huỷ
+        </Button>
+      </td>
+    </tr>
+  );
+}
 
 type Row = { date: string; text: string };
 

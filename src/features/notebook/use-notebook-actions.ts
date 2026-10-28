@@ -5,7 +5,7 @@ import type { AppRouter } from "@/server/trpc/root";
 import { trpc } from "@/lib/trpc";
 import { useToast } from "@/components/ui/toast";
 import { readableFormError } from "@/lib/form-error";
-import { swapCells, type CellRef, type NotebookCell } from "@/lib/notebook";
+import type { CellRef, NotebookCell } from "@/lib/notebook";
 
 export type NotebookView = inferRouterOutputs<AppRouter>["notebook"]["get"];
 
@@ -38,15 +38,6 @@ export function useNotebookActions(id: string) {
   });
   const touchList = () => void utils.notebook.list.invalidate();
 
-  const setCell = trpc.notebook.setCell.useMutation({
-    onMutate: async (v) => {
-      const prev = await snapshot();
-      patch((b) => editCell(b, v, { text: v.text.trim() }));
-      return { prev };
-    },
-    onError: (e, _v, ctx) => rollback(ctx?.prev, e.message),
-    onSettled: touchList,
-  });
 
   const toggleCell = trpc.notebook.toggleCell.useMutation({
     onMutate: async (v) => {
@@ -57,24 +48,7 @@ export function useNotebookActions(id: string) {
     onError: (e, _v, ctx) => rollback(ctx?.prev, e.message),
   });
 
-  const swap = trpc.notebook.swapCells.useMutation({
-    onMutate: async (v) => {
-      const prev = await snapshot();
-      patch((b) => ({ ...b, days: swapCells(b.days, v.a, v.b) }));
-      return { prev };
-    },
-    onError: (e, _v, ctx) => rollback(ctx?.prev, e.message),
-    onSuccess: () => toast("Đã đổi chỗ hai ô", "success"),
-  });
 
-  const setDayLabel = trpc.notebook.setDayLabel.useMutation({
-    onMutate: async (v) => {
-      const prev = await snapshot();
-      patch((b) => ({ ...b, days: b.days.map((d) => (d.date === v.date ? { ...d, label: v.label.trim() } : d)) }));
-      return { prev };
-    },
-    onError: (e, _v, ctx) => rollback(ctx?.prev, e.message),
-  });
 
   const logReading = trpc.notebook.logReading.useMutation({
     onMutate: async (v) => {
@@ -97,10 +71,48 @@ export function useNotebookActions(id: string) {
   const saveSection = trpc.notebook.saveSection.useMutation({ onSuccess: refetch, onError: fail });
   const removeSection = trpc.notebook.removeSection.useMutation({ onSuccess: refetch, onError: fail });
   const rename = trpc.notebook.rename.useMutation({ onSuccess: () => { refetch(); touchList(); }, onError: fail });
-  const renameSlot = trpc.notebook.renameSlot.useMutation({ onSuccess: refetch, onError: fail });
   const setTargets = trpc.notebook.setTargets.useMutation({ onSuccess: refetch, onError: fail });
 
-  return { setCell, toggleCell, swap, setDayLabel, logReading, saveSection, removeSection, rename, renameSlot, setTargets };
+  /*
+   * The day sheet's save: label and the cells that changed, shown at once —
+   * the same reason as a tick. Reshaping (range, columns, copying days) waits
+   * for the server instead: it moves whole days, and a wrong guess would show
+   * days that are not there.
+   */
+  const saveDay = trpc.notebook.saveDay.useMutation({
+    onMutate: async (v) => {
+      const prev = await snapshot();
+      patch((b) => ({
+        ...b,
+        days: b.days.map((d) => {
+          if (d.date !== v.date) return d;
+          const cells = { ...d.cells };
+          for (const c of v.cells)
+            cells[c.slot] = { ...cells[c.slot], ...(c.text !== undefined && { text: c.text.trim() }), ...(c.done !== undefined && { done: c.done }) };
+          return { ...d, label: v.label !== undefined ? v.label.trim() : d.label, cells };
+        }),
+      }));
+      return { prev };
+    },
+    onError: (e, _v, ctx) => rollback(ctx?.prev, e.message),
+  });
+  const reshaped = () => { refetch(); touchList(); };
+  const setRange = trpc.notebook.setRange.useMutation({ onSuccess: reshaped, onError: fail });
+  const setSlots = trpc.notebook.setSlots.useMutation({ onSuccess: refetch, onError: fail });
+  const setMetric = trpc.notebook.setMetric.useMutation({ onSuccess: refetch, onError: fail });
+  const copyDay = trpc.notebook.copyDay.useMutation({
+    onSuccess: (_r, v) => { refetch(); toast(`Đã chép sang ${v.to.length} ngày`, "success"); },
+    onError: fail,
+  });
+  const swapDays = trpc.notebook.swapDays.useMutation({
+    onSuccess: () => { refetch(); toast("Đã đổi hai ngày cho nhau", "success"); },
+    onError: fail,
+  });
+
+  return {
+    toggleCell, logReading, saveSection, removeSection, rename, setTargets,
+    saveDay, setRange, setSlots, setMetric, copyDay, swapDays,
+  };
 }
 
 export type NotebookActions = ReturnType<typeof useNotebookActions>;

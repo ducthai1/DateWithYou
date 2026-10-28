@@ -207,3 +207,142 @@ describe("của chung hai người, kín với người ngoài", () => {
     await rejects(() => couple.a.caller.notebook.get({ id: "khong-phai-id" }), "BAD_REQUEST");
   });
 });
+
+/*
+ * Chủ repo 28/10: sổ "gò bó" — tạo xong là không đổi được khoảng ngày, cột,
+ * tên chỉ số; sửa một ngày phải mở từng ô; không chép được ngày. Những chỗ dễ
+ * sai lặng lẽ ở đây: ô đi lạc khi cột đổi chỗ, nội dung mất khi kéo dài, cú
+ * tick của người kia bị ghi đè khi một người sửa cả ngày.
+ */
+describe("đổi khoảng ngày", () => {
+  test("kéo dài: ngày cũ nguyên vẹn, ngày mới có đủ ô trống; rút ngắn: ngày ngoài khoảng đi mất", async () => {
+    const id = await newBook();
+    await couple.a.caller.notebook.setCell({ id, date: "2026-10-23", slot: "tap", text: "Buổi C" });
+    await couple.a.caller.notebook.setRange({ id, start: "2026-10-23", end: "2026-11-05" });
+    let book = await read(id);
+    assert.equal(book.days.length, 14);
+    assert.equal(cell(book, "2026-10-23", "tap").text, "Buổi C");
+    assert.deepEqual(Object.keys(must(book.days.at(-1), "last").cells), ["trua-12h", "toi-19h30", "tap"]);
+    await couple.a.caller.notebook.setRange({ id, start: "2026-10-25", end: "2026-10-26" });
+    book = await read(id);
+    assert.deepEqual(book.days.map((d) => d.date), ["2026-10-25", "2026-10-26"]);
+  });
+  test("khoảng ngược hoặc quá dài bị từ chối, sổ không đổi", async () => {
+    const id = await newBook();
+    await rejects(() => couple.a.caller.notebook.setRange({ id, start: "2026-10-29", end: "2026-10-23" }), "BAD_REQUEST");
+    assert.equal((await read(id)).days.length, 7);
+  });
+});
+
+describe("cột", () => {
+  test("đổi tên, đổi chỗ, thêm, xoá trong một lần: chữ trong ô đi theo cột của nó", async () => {
+    const id = await newBook();
+    await couple.a.caller.notebook.setCell({ id, date: "2026-10-24", slot: "toi-19h30", text: "cá hấp" });
+    await couple.a.caller.notebook.setSlots({
+      id,
+      slots: [{ key: "toi-19h30", label: "Tối" }, { label: "Bữa sáng" }, { key: "trua-12h", label: "Trưa" }],
+    });
+    const book = await read(id);
+    assert.deepEqual(book.slots.map((s) => [s.key, s.label]), [["toi-19h30", "Tối"], ["bua-sang", "Bữa sáng"], ["trua-12h", "Trưa"]]);
+    assert.equal(cell(book, "2026-10-24", "toi-19h30").text, "cá hấp");
+    assert.deepEqual(cell(book, "2026-10-24", "bua-sang"), { text: "", done: false });
+    assert.equal(cell(book, "2026-10-24", "tap"), undefined, "a removed column left its cells behind");
+  });
+  test("ít nhất một cột, nhiều nhất theo giới hạn", async () => {
+    const id = await newBook();
+    await rejects(() => couple.a.caller.notebook.setSlots({ id, slots: [] }), "BAD_REQUEST");
+    const many = Array.from({ length: NOTEBOOK_LIMITS.slots + 1 }, (_, i) => ({ label: `Cột ${i}` }));
+    await rejects(() => couple.a.caller.notebook.setSlots({ id, slots: many }), "BAD_REQUEST");
+  });
+});
+
+describe("tên và đơn vị chỉ số", () => {
+  test("đổi sang vòng eo, cm; số đã ghi vẫn còn", async () => {
+    const id = await newBook();
+    await couple.a.caller.notebook.logReading({ id, date: "2026-10-23", value: 80 });
+    await couple.a.caller.notebook.setMetric({ id, label: "Vòng eo", unit: "cm" });
+    const book = await read(id);
+    assert.equal(book.metric.label, "Vòng eo");
+    assert.equal(book.metric.unit, "cm");
+    assert.equal(book.metric.readings.length, 1);
+  });
+});
+
+describe("sửa cả một ngày", () => {
+  test("nhãn và các ô đổi được ghi; ô người kia vừa tick trong lúc đó vẫn còn tick", async () => {
+    const id = await newBook();
+    await couple.b.caller.notebook.setCell({ id, date: "2026-10-24", slot: "trua-12h", text: "gà" });
+    await couple.b.caller.notebook.toggleCell({ id, date: "2026-10-24", slot: "trua-12h", done: true });
+    // An's sheet only sends what An changed: the label and dinner.
+    await couple.a.caller.notebook.saveDay({
+      id,
+      date: "2026-10-24",
+      label: "cầu lông",
+      cells: [{ slot: "toi-19h30", text: "tôm + cá ngừ" }],
+    });
+    const book = await read(id);
+    const d = must(book.days.find((x) => x.date === "2026-10-24"), "day");
+    assert.equal(d.label, "cầu lông");
+    assert.equal(d.cells["toi-19h30"].text, "tôm + cá ngừ");
+    assert.deepEqual(d.cells["trua-12h"], { text: "gà", done: true }, "Bình's tick was overwritten");
+  });
+  test("ngày không có thì NOT_FOUND", async () => {
+    const id = await newBook();
+    await rejects(() => couple.a.caller.notebook.saveDay({ id, date: "2030-01-01", label: "x", cells: [] }), "NOT_FOUND");
+  });
+});
+
+describe("chép và đổi ngày", () => {
+  test("chép sang các ngày khác: nhãn và chữ, không tick", async () => {
+    const id = await newBook();
+    await couple.a.caller.notebook.saveDay({
+      id, date: "2026-10-23", label: "tập A", cells: [{ slot: "trua-12h", text: "gà", done: true }],
+    });
+    await couple.a.caller.notebook.copyDay({ id, from: "2026-10-23", to: ["2026-10-27", "2026-10-29"] });
+    const book = await read(id);
+    for (const date of ["2026-10-27", "2026-10-29"]) {
+      const d = must(book.days.find((x) => x.date === date), date);
+      assert.equal(d.label, "tập A");
+      assert.deepEqual(d.cells["trua-12h"], { text: "gà", done: false });
+    }
+    assert.equal(cell(book, "2026-10-23", "trua-12h").done, true, "the source lost its tick");
+  });
+  test("đổi hai ngày nguyên vẹn", async () => {
+    const id = await newBook();
+    await couple.a.caller.notebook.saveDay({ id, date: "2026-10-23", label: "tập A", cells: [{ slot: "tap", text: "A" }] });
+    await couple.a.caller.notebook.saveDay({ id, date: "2026-10-25", label: "nghỉ", cells: [] });
+    await couple.a.caller.notebook.swapDays({ id, a: "2026-10-23", b: "2026-10-25" });
+    const book = await read(id);
+    assert.equal(must(book.days.find((x) => x.date === "2026-10-23"), "a").label, "nghỉ");
+    assert.equal(cell(book, "2026-10-25", "tap").text, "A");
+  });
+  test("chép từ ngày không có thì NOT_FOUND", async () => {
+    const id = await newBook();
+    await rejects(() => couple.a.caller.notebook.copyDay({ id, from: "2030-01-01", to: ["2026-10-23"] }), "NOT_FOUND");
+  });
+});
+
+describe("cân ngày khác hôm nay", () => {
+  test("ghi bù ngày đã qua, sửa, rồi xoá", async () => {
+    const id = await newBook();
+    await couple.a.caller.notebook.logReading({ id, date: "2026-10-24", value: 59.8 });
+    await couple.a.caller.notebook.logReading({ id, date: "2026-10-24", value: 59.6 });
+    assert.deepEqual((await read(id)).metric.readings, [{ date: "2026-10-24", value: 59.6 }]);
+    await couple.a.caller.notebook.logReading({ id, date: "2026-10-24", value: null });
+    assert.deepEqual((await read(id)).metric.readings, []);
+  });
+});
+
+describe("thao tác mới kín với người ngoài", () => {
+  test("người ngoài không đổi được khoảng ngày, cột, chỉ số, ngày", async () => {
+    const id = await newBook();
+    const c = outsider.caller.notebook;
+    await rejects(() => c.setRange({ id, start: "2026-10-23", end: "2026-10-30" }), "NOT_FOUND");
+    await rejects(() => c.setSlots({ id, slots: [{ label: "Bị sửa" }] }), "NOT_FOUND");
+    await rejects(() => c.setMetric({ id, label: "Bị sửa", unit: "" }), "NOT_FOUND");
+    await rejects(() => c.saveDay({ id, date: "2026-10-23", label: "Bị sửa", cells: [] }), "NOT_FOUND");
+    await rejects(() => c.copyDay({ id, from: "2026-10-23", to: ["2026-10-24"] }), "NOT_FOUND");
+    await rejects(() => c.swapDays({ id, a: "2026-10-23", b: "2026-10-24" }), "NOT_FOUND");
+    assert.equal((await read(id)).days.length, 7);
+  });
+});
