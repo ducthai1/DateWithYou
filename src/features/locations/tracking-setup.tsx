@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Loader2, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CheckAction, CheckItem } from "@/lib/tracking-checklist";
 import { ACTION_LABEL, useTrackingChecklist } from "./use-tracking-checklist";
+import { TrackerHomeRow } from "./tracker-home-row";
 
 /** One problem and the buttons that fix it, shared by the settings row and the map notice. */
 export function TrackingCheckRow({
@@ -99,6 +100,8 @@ export function TrackingSetup() {
             Đã sẵn sàng — tắt màn hình vẫn gửi vị trí.
           </p>
         )}
+
+        {linked && <TrackerHomeRow home={tracker.home} />}
 
         {linked && (
           <button

@@ -12,6 +12,15 @@ import { Schema, model, models, type InferSchemaType } from "mongoose";
  * what is wrong — "nothing has arrived", "only allowed while in use",
  * "Android may stop it to save battery" — instead of leaving someone to guess.
  */
+const fenceSchema = new Schema(
+  {
+    inside: { type: Boolean, default: null },
+    at: { type: Date, default: null },
+    announcedAt: { type: Date, default: null },
+  },
+  { _id: false },
+);
+
 const trackerLinkSchema = new Schema(
   {
     spaceId: { type: String, required: true },
@@ -38,6 +47,24 @@ const trackerLinkSchema = new Schema(
       ),
       default: null,
     },
+    /*
+     * The circles it watches for us (src/lib/geofence.ts): "Nhà", set by the
+     * member, and the meeting point of a trip both accepted, which lapses on
+     * its own. `*Fence` is which side of each they were last seen on.
+     */
+    home: { type: new Schema({ lat: Number, lng: Number }, { _id: false }), default: null },
+    meet: {
+      type: new Schema({ lat: Number, lng: Number, name: String, until: Date }, { _id: false }),
+      default: null,
+    },
+    homeFence: { type: fenceSchema, default: null },
+    meetFence: { type: fenceSchema, default: null },
+    /** The regions last sent to the phone, so they are re-sent only when they change. */
+    regionsSent: { type: String, default: null },
+    regionsSentAt: { type: Date, default: null },
+    /** Fixes before this are already turned into rides (src/server/lib/tracker-trips.ts). */
+    tripCursorAt: { type: Date, default: null },
+    tripsCheckedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

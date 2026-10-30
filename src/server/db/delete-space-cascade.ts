@@ -28,6 +28,9 @@ import { CycleLogModel } from "./models/cycle-log";
 import { TripModel } from "./models/trip";
 import { RideModel } from "./models/ride";
 import { TrackerLinkModel } from "./models/tracker-link";
+import { TrackPointModel } from "./models/track-point";
+import { SpeedCellModel } from "./models/speed-cell";
+import { MeetingStateModel } from "./models/meeting-state";
 import { SpaceModel } from "./models/space";
 import { ErrorLogModel } from "./models/error-log";
 
@@ -77,6 +80,9 @@ const SPACE_SCOPED_MODELS: Deletable[] = [
   TripModel,
   RideModel,
   TrackerLinkModel,
+  TrackPointModel,
+  SpeedCellModel,
+  MeetingStateModel,
 ];
 
 /**

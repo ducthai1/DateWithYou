@@ -6,6 +6,7 @@ import { NavigationInviteModel } from "@/server/db/models/navigation-invite";
 import { ListenSessionModel } from "@/server/db/models/listen-session";
 import { LiveLocationModel } from "@/server/db/models/live-location";
 import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
+import { freshBattery } from "@/lib/battery-freshness";
 import { FRESH_TRACKER, listenDelivery, presenceDelivery, type ListenTracker } from "@/lib/listen-delivery";
 
 /**
@@ -238,11 +239,11 @@ export async function GET(req: NextRequest) {
             userId: { $ne: userId },
             updatedAt: { $gt: fiveMinsAgo }
           })
-            .select("userId lat lng heading speedKmH accuracy batteryLevel pingAction pingAt remainingMeters remainingSeconds source updatedAt")
+            .select("userId lat lng heading speedKmH accuracy batteryLevel batteryAt pingAction pingAt remainingMeters remainingSeconds source updatedAt")
             .lean<{
               userId: string; lat: number; lng: number; heading: number | null;
               speedKmH: number | null; accuracy: number | null; batteryLevel: number | null;
-              pingAction: string | null; pingAt?: Date | null;
+              batteryAt?: Date | null; pingAction: string | null; pingAt?: Date | null;
               remainingMeters?: number | null; remainingSeconds?: number | null;
               source?: "app" | "tracker"; updatedAt: Date;
             }>();
@@ -272,7 +273,7 @@ export async function GET(req: NextRequest) {
                 heading: partnerLoc.heading,
                 speedKmH: partnerLoc.speedKmH,
                 accuracy: partnerLoc.accuracy,
-                batteryLevel: partnerLoc.batteryLevel,
+                batteryLevel: freshBattery(partnerLoc.batteryLevel, partnerLoc.batteryAt),
                 remainingMeters: partnerLoc.remainingMeters ?? null,
                 remainingSeconds: partnerLoc.remainingSeconds ?? null,
                 source: partnerLoc.source ?? "app",

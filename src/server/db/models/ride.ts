@@ -29,6 +29,13 @@ const rideSchema = new Schema(
     // Whether the partner rode along on an accepted companion trip — not
     // "whether anyone else exists", since a space only ever has two members.
     companion: { type: Boolean, default: false },
+    /*
+     * "app": recorded when in-app navigation ended. "tracker": cut out of the
+     * background tracker's fixes with nobody pressing anything — and only
+     * those carry `pathAt`, the phone's time (ms) at each point of `path`.
+     */
+    source: { type: String, enum: ["app", "tracker"], default: "app" },
+    pathAt: { type: [Number], default: undefined },
   },
   { timestamps: true },
 );

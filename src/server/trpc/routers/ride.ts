@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "@/server/trpc/trpc";
 import { connectToDatabase } from "@/server/db/connect";
 import { RideModel } from "@/server/db/models/ride";
+import { closeSpaceTrips } from "@/server/lib/tracker-trips";
 
 /**
  * Ride history — one document per finished motorbike trip, written once by
@@ -87,6 +88,8 @@ function serialize(d: Record<string, any>) {
     distanceMeters: d.distanceMeters as number,
     durationSeconds: d.durationSeconds as number,
     companion: Boolean(d.companion),
+    /** "tracker": cut from the background tracker's fixes, nobody pressed anything. */
+    source: (d.source as "app" | "tracker" | undefined) ?? "app",
   };
 }
 
@@ -117,6 +120,12 @@ export const rideRouter = router({
 
     const limit = input?.limit ?? 30;
     const before = input?.before;
+    /*
+     * A trip the tracker finished since its last fix arrived is cut now, so
+     * opening the list shows it — rather than after the next ride starts.
+     * Only on the first page; never allowed to break the list.
+     */
+    if (!before) await closeSpaceTrips(ctx.spaceId, Date.now()).catch((err) => console.error("ride.list: trips not closed", err));
     const base = {
       spaceId: ctx.spaceId,
       ...(before ? { endedAt: { $lt: before } } : {}),
@@ -127,7 +136,7 @@ export const rideRouter = router({
     // guess that is wrong exactly when the space has precisely `limit` rides.
     const rows = await RideModel.find(base)
       .select(
-        "_id userId destinationName destinationLocationId startedAt endedAt distanceMeters durationSeconds companion",
+        "_id userId destinationName destinationLocationId startedAt endedAt distanceMeters durationSeconds companion source",
       )
       .sort({ endedAt: -1 })
       .limit(limit + 1)
@@ -145,6 +154,7 @@ export const rideRouter = router({
   /** Space-wide totals for the summary header — rides, distance, duration. */
   stats: protectedProcedure.query(async ({ ctx }) => {
     await connectToDatabase();
+    await closeSpaceTrips(ctx.spaceId, Date.now()).catch((err) => console.error("ride.stats: trips not closed", err));
 
     const [totals] = await RideModel.aggregate<{
       count: number;

@@ -24,6 +24,11 @@ import { PARTNER_FIX_FRESH_MS } from "@/lib/maps";
 import { searchAreas } from "@/lib/vn-admin";
 import { areaAtPoint } from "@/server/lib/area-at-point";
 import { sendPushToUser } from "@/server/lib/push";
+import { alertMember, partnerOf, vnClock } from "@/server/lib/partner-alerts";
+import { setMeetPoint } from "@/server/lib/tracker-fences";
+import { routeTimer } from "@/server/lib/learned-route-time";
+import { freshBattery } from "@/lib/battery-freshness";
+import { pingButton } from "@/lib/ping-actions";
 import { buildPattern } from "@/lib/vietnamese-text";
 
 /*
@@ -37,6 +42,9 @@ import { buildPattern } from "@/lib/vietnamese-text";
  * see `withArea` — so a blank arriving from the client is a question to answer,
  * not a reason to refuse.
  */
+/** Emotions closer together than this reach a pocketed phone as one notification. */
+const PING_PUSH_GAP_MS = 8_000;
+
 const districtSchema = z.string().trim().max(120);
 const categorySchema = z.string().trim().min(1);
 const statusEnum = z.enum(["want_to_go", "visited"]);
@@ -723,12 +731,27 @@ export const locationRouter = router({
         ];
       });
 
+      /*
+       * The provider has no traffic; the couple's own trips do (the tracker
+       * records them with times). Each leg and alternative is re-timed square
+       * by square from that history, and left as it was where there is none.
+       */
+      const timer = await routeTimer(ctx.spaceId, [allCoordinates, ...alternatives.map((a) => a.geometry.coordinates)]);
+      const retime = <T extends { durationSeconds: number; geometry: { coordinates: Array<[number, number]> } }>(leg: T): T => ({
+        ...leg,
+        durationSeconds: timer(leg.geometry.coordinates, leg.durationSeconds).seconds,
+      });
+      const timedLegs = legs.map(retime);
+      const whole = timer(allCoordinates, Math.round(trip.summary?.time ?? 0));
+
       return {
         distanceMeters: Math.round((trip.summary?.length ?? 0) * 1000),
-        durationSeconds: Math.round(trip.summary?.time ?? 0),
+        durationSeconds: timedLegs.length > 1 ? timedLegs.reduce((t, l) => t + l.durationSeconds, 0) : whole.seconds,
+        /** Fraction of the route timed from their own history rather than the map's. */
+        learnedShare: Math.round(whole.learnedShare * 100) / 100,
         geometry: { type: "LineString", coordinates: allCoordinates },
-        legs,
-        alternatives,
+        legs: timedLegs,
+        alternatives: alternatives.map((a) => ({ ...retime(a), legs: a.legs.map(retime) })),
       };
     }),
 
@@ -789,7 +812,7 @@ export const locationRouter = router({
       
       // Update own location
       const now = new Date();
-      await LiveLocationModel.findOneAndUpdate(
+      const previous = await LiveLocationModel.findOneAndUpdate(
         { spaceId: ctx.spaceId, userId: ctx.userId },
         {
           lat: input.lat,
@@ -797,7 +820,11 @@ export const locationRouter = router({
           heading: input.heading,
           speedKmH: input.speedKmH,
           accuracy: input.accuracy,
-          batteryLevel: input.batteryLevel,
+          /*
+           * Only a level actually read. Safari has none, and writing its null
+           * every 2.5 s wiped the level the iPhone's tracker had just sent.
+           */
+          ...(input.batteryLevel != null ? { batteryLevel: input.batteryLevel, batteryAt: now } : {}),
           // Null from a phone that is not navigating, and from an older build.
           remainingMeters: input.remainingMeters ?? null,
           remainingSeconds: input.remainingSeconds ?? null,
@@ -807,8 +834,29 @@ export const locationRouter = router({
           source: "app",
           updatedAt: now,
         },
-        { upsert: true, new: true }
-      );
+        { upsert: true, new: false }
+      ).lean<{ pingAt?: Date | null }>();
+
+      /*
+       * An emotion reaches a phone in a pocket too. The banner on the map only
+       * shows on a screen that is on — "Nhanh lên!" sent to someone already
+       * riding with the phone away arrived nowhere. Skipped when their app is
+       * on screen (it shows the banner), and when the last one went out a
+       * moment ago, so tapping four buttons is not four buzzes.
+       */
+      const button = input.pingAction ? pingButton(input.pingAction) : null;
+      const lastPingAt = previous?.pingAt ? new Date(previous.pingAt).getTime() : 0;
+      if (button && now.getTime() - lastPingAt >= PING_PUSH_GAP_MS) {
+        const partnerId = await partnerOf(ctx.spaceId, ctx.userId);
+        if (partnerId) {
+          await alertMember(ctx.spaceId, partnerId, ctx.userId, (name) => ({
+            title: `${button.emoji} ${name}: ${button.label}`,
+            body: `Gửi lúc ${vnClock(now.getTime())}. Mở bản đồ để xem đang ở đâu.`,
+            url: "/map",
+            tag: "ping",
+          }));
+        }
+      }
 
       // Other members in this space whose last ping is still fresh. The window
       // is shared with the client so a cached fix and a queried one mean the
@@ -818,9 +866,9 @@ export const locationRouter = router({
         spaceId: ctx.spaceId,
         userId: { $ne: ctx.userId },
         updatedAt: { $gt: freshSince }
-      }).lean<{ userId: string; lat: number; lng: number; heading: number | null; speedKmH: number | null; accuracy: number | null; batteryLevel: number | null; pingAction: string | null; remainingMeters: number | null; remainingSeconds: number | null; source?: "app" | "tracker"; updatedAt: Date }[]>();
+      }).lean<{ userId: string; lat: number; lng: number; heading: number | null; speedKmH: number | null; accuracy: number | null; batteryLevel: number | null; batteryAt?: Date | null; pingAction: string | null; remainingMeters: number | null; remainingSeconds: number | null; source?: "app" | "tracker"; updatedAt: Date }[]>();
 
-      return partners;
+      return partners.map(({ batteryAt, ...p }) => ({ ...p, batteryLevel: freshBattery(p.batteryLevel, batteryAt) }));
     }),
 
   // ── Navigation Invites ("Cùng khởi hành") ─────────────────────────────
@@ -953,6 +1001,20 @@ export const locationRouter = router({
           message: "Lời mời không tồn tại hoặc đã hết hạn.",
         });
 
+      /*
+       * Both are now headed to one place: put it on their background trackers
+       * as a circle, so "đã tới" is told when either arrives with the phone
+       * in a pocket. Best-effort — the trip is accepted either way.
+       */
+      if (invite.status === "accepted") {
+        const dest = await meetPointOf(ctx.spaceId, invite).catch(() => null);
+        if (dest) {
+          await setMeetPoint(ctx.spaceId, { ...dest, until: new Date(Date.now() + 6 * 3600_000) }).catch((err) =>
+            console.error("respondNavInvite: meet point not set", err),
+          );
+        }
+      }
+
       return {
         id: String(invite._id),
         locationId: invite.locationId,
@@ -1049,9 +1111,29 @@ export const locationRouter = router({
         },
         { status: "ended", endedBy: ctx.userId },
       );
+      await setMeetPoint(ctx.spaceId, null).catch(() => {});
       return { ok: true };
     }),
 });
+
+/**
+ * Where an accepted trip ends: the saved place it was for, else its last stop
+ * that is not the partner's own position.
+ */
+async function meetPointOf(
+  spaceId: string,
+  invite: { locationId: string; locationName: string; waypoints?: Array<{ lat: number; lng: number; name: string; type: string }> },
+): Promise<{ lat: number; lng: number; name: string } | null> {
+  if (mongoose.Types.ObjectId.isValid(invite.locationId)) {
+    const place = await LocationModel.findOne({ _id: invite.locationId, spaceId })
+      .select("name geo")
+      .lean<{ name: string; geo?: { lat?: number; lng?: number } }>();
+    if (place?.geo?.lat != null && place.geo.lng != null)
+      return { lat: place.geo.lat, lng: place.geo.lng, name: place.name };
+  }
+  const stop = [...(invite.waypoints ?? [])].reverse().find((w) => w.type !== "partner_location");
+  return stop ? { lat: stop.lat, lng: stop.lng, name: invite.locationName || stop.name } : null;
+}
 
 /**
  * Decode a Google/Valhalla encoded polyline into GeoJSON [lng, lat] pairs.

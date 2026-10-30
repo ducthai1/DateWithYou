@@ -193,3 +193,65 @@ export function ownTracksConfigLink(config: Record<string, unknown>): string {
       : btoa(String.fromCharCode(...new TextEncoder().encode(json)));
   return `owntracks:///config?inline=${encodeURIComponent(b64)}`;
 }
+
+/*
+ * Regions the tracker watches for us, so "đã về nhà" / "đã tới quán" is told
+ * the moment the phone crosses the line, with the screen off.
+ *
+ * Fixed names AND fixed timestamps on purpose: iOS keys a region by its name,
+ * Android by `tst` (https://owntracks.org/booklet/tech/json/ — `setWaypoints`
+ * merges). Keeping both constant means sending a region again moves it rather
+ * than adding a second one beside it.
+ */
+export const REGION_HOME = { key: "home", desc: "Nhà", tst: 1_700_000_001 } as const;
+export const REGION_MEET = { key: "meet", desc: "Điểm hẹn", tst: 1_700_000_002 } as const;
+export type RegionKey = (typeof REGION_HOME)["key"] | (typeof REGION_MEET)["key"];
+/** iOS cannot watch a circle much smaller than this reliably. */
+export const REGION_RADIUS_M = 120;
+
+export type TrackerRegion = { key: RegionKey; lat: number; lng: number };
+
+export function regionByTst(wtst: number): RegionKey | null {
+  return wtst === REGION_HOME.tst ? "home" : wtst === REGION_MEET.tst ? "meet" : null;
+}
+
+/** The command that installs (or moves) the regions, sent back in a POST reply. */
+export function setWaypointsCommand(regions: TrackerRegion[]) {
+  return {
+    _type: "cmd",
+    action: "setWaypoints",
+    waypoints: {
+      _type: "waypoints",
+      _creator: "vivu",
+      waypoints: regions.map((r) => {
+        const def = r.key === "home" ? REGION_HOME : REGION_MEET;
+        return { _type: "waypoint", desc: def.desc, tst: def.tst, lat: r.lat, lon: r.lng, rad: REGION_RADIUS_M };
+      }),
+    },
+  };
+}
+
+export type TrackerTransition = {
+  event: "enter" | "leave";
+  region: RegionKey;
+  /** When it happened on the phone, ms. */
+  at: number;
+};
+
+/** A `_type: "transition"` message for one of our regions, or null. */
+export function parseOwnTracksTransition(body: unknown): TrackerTransition | null {
+  if (!body || typeof body !== "object") return null;
+  const m = body as Record<string, unknown>;
+  if (m._type !== "transition") return null;
+  if (m.event !== "enter" && m.event !== "leave") return null;
+  const tst = num(m.tst);
+  const wtst = num(m.wtst);
+  if (tst === null || tst <= 0 || wtst === null) return null;
+  // Matched by timestamp, then by name: Android copies `tst` into `wtst`, iOS
+  // may hand back a timestamp of its own for a region it re-created.
+  const region =
+    regionByTst(wtst) ??
+    (m.desc === REGION_HOME.desc ? "home" : m.desc === REGION_MEET.desc ? "meet" : null);
+  if (!region) return null;
+  return { event: m.event, region, at: tst * 1000 };
+}

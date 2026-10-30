@@ -169,6 +169,14 @@ export function RideHistory() {
                           Đi cùng nhau
                         </span>
                       )}
+                      {ride.source === "tracker" && (
+                        <span
+                          data-ride-source="tracker"
+                          className="border-border text-muted-foreground inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none"
+                        >
+                          Tự ghi
+                        </span>
+                      )}
                     </div>
                     <p className="text-muted-foreground text-xs">
                       {fmtDistance(ride.distanceMeters)} · {fmtDuration(ride.durationSeconds)} ·{" "}

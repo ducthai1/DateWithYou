@@ -58,9 +58,9 @@ export function LiveSharingRow() {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">Mức pin của nhau</p>
           <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            Chỉ máy Android (Chrome) mới gửi được mức pin. Safari trên iPhone không cho
-            trang web đọc pin, nên một bên dùng iPhone thì phía kia sẽ không thấy con số
-            này — không phải lỗi, và không có cách nào vòng qua.
+            Android (Chrome) tự gửi mức pin. Safari trên iPhone không cho trang web đọc
+            pin, nên iPhone chỉ gửi được khi đã kết nối OwnTracks ở trên — OwnTracks gửi
+            kèm mức pin mỗi lần gửi vị trí.
           </p>
         </div>
       </div>

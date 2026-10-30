@@ -69,3 +69,28 @@ describe("link cấu hình một chạm", () => {
     assert.ok(cfg.locatorDisplacement / (60 / 3.6) > TRACKER_INTERVAL_S);
   });
 });
+
+describe("vùng Nhà / Điểm hẹn trên OwnTracks", () => {
+  test("lệnh cài vùng giữ tên và tst cố định, để gửi lại là dời vùng chứ không thêm vùng", async () => {
+    const { setWaypointsCommand, REGION_HOME, REGION_MEET, REGION_RADIUS_M } = await import("@/lib/owntracks");
+    const cmd = setWaypointsCommand([
+      { key: "home", lat: 10.8, lng: 106.7 },
+      { key: "meet", lat: 10.77, lng: 106.69 },
+    ]);
+    assert.equal(cmd.action, "setWaypoints");
+    assert.deepEqual(cmd.waypoints.waypoints[0], { _type: "waypoint", desc: REGION_HOME.desc, tst: REGION_HOME.tst, lat: 10.8, lon: 106.7, rad: REGION_RADIUS_M });
+    assert.equal(cmd.waypoints.waypoints[1].tst, REGION_MEET.tst);
+  });
+
+  test("tin vượt vùng: nhận theo wtst, hoặc theo tên khi iOS tự đặt lại tst", async () => {
+    const { parseOwnTracksTransition, REGION_HOME, REGION_MEET } = await import("@/lib/owntracks");
+    assert.deepEqual(parseOwnTracksTransition({ _type: "transition", event: "enter", wtst: REGION_HOME.tst, tst: 1_761_800_000, acc: 10, t: "c" }), {
+      event: "enter",
+      region: "home",
+      at: 1_761_800_000_000,
+    });
+    assert.equal(parseOwnTracksTransition({ _type: "transition", event: "leave", wtst: 123, desc: REGION_MEET.desc, tst: 1 })?.region, "meet");
+    assert.equal(parseOwnTracksTransition({ _type: "transition", event: "leave", wtst: 123, desc: "Garage", tst: 1 }), null);
+    assert.equal(parseOwnTracksTransition({ _type: "location", lat: 1, lon: 1, tst: 1 }), null);
+  });
+});

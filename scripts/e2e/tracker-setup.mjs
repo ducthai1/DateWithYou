@@ -112,10 +112,55 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     }
     const proof = await page.eval(`document.querySelector('[data-tracker-status]')?.textContent || ''`);
     ok("Cài đặt: thấy lần nhận gần nhất và pin từ OwnTracks", /giây trước/.test(proof) && /pin 55%/.test(proof), proof);
+
+    // "Nhà": one tap where they stand, so the other person hears "đã về nhà / vừa rời nhà".
+    await page.eval(click("[data-tracker-home]", "Chỗ đang đứng là nhà"));
+    const homeSet = await page
+      .until(`document.querySelector('[data-tracker-home]')?.dataset.trackerHome === "set"`, { timeout: 20000 })
+      .then(() => true)
+      .catch(() => false);
+    if (shotDir && homeSet) {
+      await page.eval(`document.querySelector('[data-tracker-home]')?.scrollIntoView({ block: "center" })`);
+      await new Promise((r) => setTimeout(r, 400));
+      await page.shot(`${shotDir}/tracker-home-set.png`);
+    }
+    const stored = await db.collection("trackerlinks").findOne({ userId });
+    ok(
+      "Cài đặt: bấm 'Chỗ đang đứng là nhà' → lưu đúng chỗ đang đứng",
+      homeSet && Math.abs((stored?.home?.lat ?? 0) - 10.7769) < 0.0005,
+      JSON.stringify(stored?.home),
+    );
+    const r2 = JSON.parse(await (await send({ _type: "location", lat: 10.7769, lon: 106.7009, tst: Math.floor(Date.now() / 1000), acc: 10, m: 2 })).text());
+    ok("OwnTracks gửi lần sau → được cài vùng 'Nhà'", r2.some((m) => m.action === "setWaypoints" && m.waypoints?.waypoints?.[0]?.desc === "Nhà"), JSON.stringify(r2));
+
+    // A trip the tracker saw, nobody pressed anything: it is on the ride list.
+    const spaceId = stored?.spaceId;
+    const t0 = Date.now() - 2 * 3600_000;
+    const pts = [];
+    for (let i = 0; i <= 48; i++) pts.push({ at: t0 + i * 25_000, lat: 10.7769, lng: 106.7009 });
+    const leave = pts[pts.length - 1].at;
+    for (let i = 1; i <= 36; i++) pts.push({ at: leave + i * 25_000, lat: 10.7769 + i * 0.0015, lng: 106.7009 });
+    const end = pts[pts.length - 1];
+    for (let i = 1; i <= 72; i++) pts.push({ at: end.at + i * 25_000, lat: end.lat, lng: end.lng });
+    await db.collection("trackpoints").insertMany(pts.map((p) => ({ spaceId, userId, at: new Date(p.at), lat: p.lat, lng: p.lng, accuracy: 10 })));
+    await db.collection("trackerlinks").updateOne({ userId }, { $set: { tripsCheckedAt: null, tripCursorAt: new Date(t0 - 1000) } });
+    await page.goto(`${base}/rides`);
+    const listed = await page
+      .until(`!!document.querySelector('[data-ride-source="tracker"]')`, { timeout: 60000 })
+      .then(() => true)
+      .catch(() => false);
+    ok("trang Chuyến đi: chuyến OwnTracks tự ghi hiện ra, gắn nhãn 'Tự ghi'", listed);
+    const totals = await page.eval(`document.body.innerText.match(/(\\d+) chuyến · ([\\d.,]+ ?k?m)/)?.[0] || ""`);
+    ok("trang Chuyến đi: ô tổng đếm luôn chuyến vừa tự ghi", /^1 chuyến · 6[.,]0 km$/.test(totals), totals);
+    if (shotDir && listed) await page.shot(`${shotDir}/tracker-auto-ride.png`);
+    // The pace it learned would slow every route this dev space asks for.
+    await db.collection("speedcells").deleteMany({ spaceId });
   } finally {
     if (userId) {
       await db.collection("trackerlinks").deleteMany({ userId }).catch(() => {});
       await db.collection("livelocations").deleteMany({ userId }).catch(() => {});
+      await db.collection("trackpoints").deleteMany({ userId }).catch(() => {});
+      await db.collection("rides").deleteMany({ userId, source: "tracker" }).catch(() => {});
     }
     page.close();
     chrome.kill();

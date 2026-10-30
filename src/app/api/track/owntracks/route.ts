@@ -3,7 +3,15 @@ import { connectToDatabase } from "@/server/db/connect";
 import { LiveLocationModel } from "@/server/db/models/live-location";
 import { TrackerLinkModel } from "@/server/db/models/tracker-link";
 import { checkTrackerPassword, readBasicAuth } from "@/server/lib/tracker-token";
-import { parseOwnTracksLocation, parseOwnTracksStatus, type TrackerFix } from "@/lib/owntracks";
+import {
+  parseOwnTracksLocation,
+  parseOwnTracksStatus,
+  parseOwnTracksTransition,
+  type TrackerFix,
+} from "@/lib/owntracks";
+import { feedFences, regionsToSend, type FenceLink } from "@/server/lib/tracker-fences";
+import { watchMeeting } from "@/server/lib/meeting-watch";
+import { closeTrips, recordTrackPoint } from "@/server/lib/tracker-trips";
 
 /**
  * Where OwnTracks posts while the phone is in a pocket.
@@ -28,7 +36,7 @@ const STATUS_EVERY_MS = 30 * 60_000;
 /** OwnTracks counts any 2xx as delivered and reads the body as an array of messages. */
 const reply = (messages: unknown[] = [], status = 200) => Response.json(messages, { status });
 
-type Link = { _id: unknown; spaceId: string; userId: string; lastFixAt?: Date | null; statusAskedAt?: Date | null; health?: { at?: Date } | null };
+type Link = FenceLink & { lastFixAt?: Date | null; statusAskedAt?: Date | null; health?: { at?: Date } | null };
 
 async function writeLive(link: Link, fix: TrackerFix, now: number) {
   try {
@@ -46,7 +54,7 @@ async function writeLive(link: Link, fix: TrackerFix, now: number) {
           heading: fix.heading,
           speedKmH: fix.speedKmH,
           accuracy: fix.accuracy,
-          batteryLevel: fix.battery,
+          ...(fix.battery != null ? { batteryLevel: fix.battery, batteryAt: new Date(fix.at) } : {}),
           // The tracker knows nothing of routes; the partner's screen estimates instead.
           remainingMeters: null,
           remainingSeconds: null,
@@ -60,6 +68,16 @@ async function writeLive(link: Link, fix: TrackerFix, now: number) {
     // The filter missed because the app's row is fresh, and the upsert then hit
     // the unique (spaceId, userId) index: exactly the case to skip.
     if ((err as { code?: number }).code !== 11000) throw err;
+    /*
+     * The app keeps the position, but not the battery: Safari cannot read an
+     * iPhone's, so the app sends none, and the tracker's is the only one there is.
+     */
+    if (fix.battery != null) {
+      await LiveLocationModel.updateOne(
+        { spaceId: link.spaceId, userId: link.userId },
+        { $set: { batteryLevel: fix.battery, batteryAt: new Date(fix.at) } },
+      );
+    }
   }
 }
 
@@ -90,10 +108,16 @@ export async function POST(request: Request) {
     set.battery = fix.battery;
     if (fix.monitoring !== null) set.monitoring = fix.monitoring;
     const newer = !link.lastFixAt || fix.at > new Date(link.lastFixAt).getTime();
+    const live = now - fix.at < LIVE_MAX_AGE_MS && fix.at - now < 60_000;
+    // Kept even when late: a queue flushed after a tunnel is still the trip.
+    if (fix.at - now < 60_000) await recordTrackPoint(link, fix);
     if (newer) {
       set.lastFixAt = new Date(fix.at);
-      if (now - fix.at < LIVE_MAX_AGE_MS && fix.at - now < 60_000) await writeLive(link, fix, now);
+      if (live) await writeLive(link, fix, now);
+      await feedFences(link, { kind: "fix", lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, at: fix.at }, now);
+      if (live) await watchMeeting(link.spaceId, link.userId, { lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, at: fix.at }, now);
     }
+    await closeTrips(link._id, now);
     /*
      * Ask which permissions it has, now and then. The answer comes back as a
      * `status` message on its next post — the only way to see from here
@@ -108,6 +132,20 @@ export async function POST(request: Request) {
 
   const health = parseOwnTracksStatus(body);
   if (health) set.health = { ...health, at: new Date(now) };
+
+  const transition = parseOwnTracksTransition(body);
+  if (transition) {
+    await feedFences(link, { kind: "transition", event: transition.event, at: transition.at }, now, transition.region);
+  }
+
+  // "Nhà" and today's meeting point, installed on the phone so it can tell us
+  // the moment it crosses one, asleep or not.
+  const regions = regionsToSend(link, now);
+  if (regions) {
+    out.push(regions.command);
+    set.regionsSent = regions.hash;
+    set.regionsSentAt = new Date(now);
+  }
 
   await TrackerLinkModel.updateOne({ _id: link._id }, { $set: set });
   return reply(out);

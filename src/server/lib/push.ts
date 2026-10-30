@@ -75,10 +75,22 @@ export type PushResult = {
   delivered: number;
 };
 
+type PushSender = (userId: string, payload: PushPayload) => Promise<PushResult>;
+let interceptor: PushSender | null = null;
+
+/**
+ * Tests replace delivery to see WHAT would be sent, and to whom, without a
+ * push service. Nothing else should call this.
+ */
+export function interceptPushForTests(fn: PushSender | null) {
+  interceptor = fn;
+}
+
 export async function sendPushToUser(
   userId: string,
   payload: PushPayload,
 ): Promise<PushResult> {
+  if (interceptor) return interceptor(userId, payload);
   if (!pushConfigured()) {
     console.warn("push: VAPID keys missing, nothing sent");
     return { reason: "not-configured", devices: 0, delivered: 0 };

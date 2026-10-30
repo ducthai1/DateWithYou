@@ -11,6 +11,10 @@ const liveLocationSchema = new Schema(
     // GPS horizontal accuracy in metres (lower = better). Used to flag "weak GPS".
     accuracy: { type: Number, default: null },
     batteryLevel: { type: Number, default: null },
+    // When that level was read. Safari never reports one, so an iPhone's level
+    // comes only from its tracker; an app ping without a level leaves it, and
+    // this is what lets a reader drop one gone stale.
+    batteryAt: { type: Date, default: null },
     // The last emotion sent, and when. A position write never clears either:
     // the 2.5 s position loop used to write `pingAction: null` over a ping
     // before the stream's one-second poll had seen it, and the ping was lost.

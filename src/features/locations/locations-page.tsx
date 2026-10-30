@@ -129,20 +129,8 @@ import { MapLoadingVeil } from "./map-loading-veil";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { PlaceSearchBox } from "./place-search-box";
 import { buzz } from "@/lib/haptics";
-
-
-/**
- * The four emotions that can be sent mid-journey.
- *
- * A table rather than four near-identical elements: they only ever differed by
- * glyph and label, and the copies had already drifted apart in their classes.
- */
-const PING_BUTTONS: Array<{ action: string; emoji: string; label: string; urgent?: boolean }> = [
-  { action: "HOT", emoji: "🥵", label: "Nóng quá!" },
-  { action: "JAM", emoji: "🐌", label: "Kẹt xe!" },
-  { action: "WAIT", emoji: "🥺", label: "Đợi xíu nha" },
-  { action: "HURRY", emoji: "🚨", label: "Nhanh lên!", urgent: true },
-];
+// The four emotions that can be sent mid-journey; shared with the server's push.
+import { PING_BUTTONS } from "@/lib/ping-actions";
 
 export function LocationsPage() {
   const toast = useToast();
@@ -2158,10 +2146,10 @@ export function LocationsPage() {
                               đây trống, nên người kia thấy thời tiết của mình
                               còn mình không thấy gì của họ.
 
-                              Pin thì không sửa được từ phía web: Safari/iOS
-                              không có Battery API, nên một chiếc iPhone không
-                              bao giờ gửi được con số đó — giới hạn nền tảng,
-                              không phải thiếu sót ở đây. */}
+                              Pin của iPhone: Safari không có Battery API, nên
+                              con số chỉ tới khi máy đó đã nối OwnTracks — nó
+                              gửi kèm pin, và ping của app không còn xoá mất
+                              (src/lib/battery-freshness.ts). */}
                           {partnerWeather && (
                             <div className="flex items-center gap-0.5 rounded-full bg-sky-100/60 px-1 py-0.5 text-[9px] font-medium leading-tight text-sky-900/70">
                               ⛅ {Math.round(partnerWeather.temp)}°
