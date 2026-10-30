@@ -49,6 +49,8 @@ export type PartnerLive = {
   /** What their phone says is left on their route; null when it is not navigating. */
   remainingMeters?: number | null;
   remainingSeconds?: number | null;
+  /** "tracker" when it came from the background tracker, which reports every 25 s. */
+  source?: "app" | "tracker";
   updatedAt: string;
 };
 

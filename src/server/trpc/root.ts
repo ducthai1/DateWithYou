@@ -19,6 +19,7 @@ import { dashboardRouter } from "@/server/trpc/routers/dashboard";
 import { searchRouter } from "@/server/trpc/routers/search";
 import { statsRouter } from "@/server/trpc/routers/stats";
 import { pushRouter } from "@/server/trpc/routers/push";
+import { trackerRouter } from "@/server/trpc/routers/tracker";
 import { blogRouter } from "@/server/trpc/routers/blog";
 import { uploadRouter } from "@/server/trpc/routers/upload";
 import { profileRouter } from "@/server/trpc/routers/profile";
@@ -50,6 +51,7 @@ export const appRouter = router({
   search: searchRouter,
   stats: statsRouter,
   push: pushRouter,
+  tracker: trackerRouter,
   blog: blogRouter,
   upload: uploadRouter,
   profile: profileRouter,

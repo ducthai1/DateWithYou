@@ -238,12 +238,13 @@ export async function GET(req: NextRequest) {
             userId: { $ne: userId },
             updatedAt: { $gt: fiveMinsAgo }
           })
-            .select("userId lat lng heading speedKmH accuracy batteryLevel pingAction pingAt remainingMeters remainingSeconds updatedAt")
+            .select("userId lat lng heading speedKmH accuracy batteryLevel pingAction pingAt remainingMeters remainingSeconds source updatedAt")
             .lean<{
               userId: string; lat: number; lng: number; heading: number | null;
               speedKmH: number | null; accuracy: number | null; batteryLevel: number | null;
               pingAction: string | null; pingAt?: Date | null;
-              remainingMeters?: number | null; remainingSeconds?: number | null; updatedAt: Date;
+              remainingMeters?: number | null; remainingSeconds?: number | null;
+              source?: "app" | "tracker"; updatedAt: Date;
             }>();
 
           /*
@@ -274,6 +275,7 @@ export async function GET(req: NextRequest) {
                 batteryLevel: partnerLoc.batteryLevel,
                 remainingMeters: partnerLoc.remainingMeters ?? null,
                 remainingSeconds: partnerLoc.remainingSeconds ?? null,
+                source: partnerLoc.source ?? "app",
                 updatedAt: partnerLoc.updatedAt.toISOString(),
               });
             }

@@ -20,6 +20,11 @@ const liveLocationSchema = new Schema(
     // so the partner shows a live number rather than the one from departure.
     remainingMeters: { type: Number, default: null },
     remainingSeconds: { type: Number, default: null },
+    // Who wrote it: the app on screen ("app", every 2.5 s while riding) or the
+    // background tracker ("tracker", every 25 s — src/lib/owntracks.ts). The
+    // partner's screen needs to know which, or the tracker's slower rhythm
+    // reads as a lost connection between every two fixes.
+    source: { type: String, enum: ["app", "tracker"], default: "app" },
     // Auto-delete records after 1 hour (3600 seconds) of inactivity
     updatedAt: { type: Date, default: Date.now, expires: 3600 },
   },

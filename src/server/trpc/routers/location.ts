@@ -804,6 +804,7 @@ export const locationRouter = router({
           // Only an emotion touches these; a plain position write (which
           // sends `pingAction: null`) must not wipe one not yet delivered.
           ...(input.pingAction ? { pingAction: input.pingAction, pingAt: now } : {}),
+          source: "app",
           updatedAt: now,
         },
         { upsert: true, new: true }
@@ -817,7 +818,7 @@ export const locationRouter = router({
         spaceId: ctx.spaceId,
         userId: { $ne: ctx.userId },
         updatedAt: { $gt: freshSince }
-      }).lean<{ userId: string; lat: number; lng: number; heading: number | null; speedKmH: number | null; accuracy: number | null; batteryLevel: number | null; pingAction: string | null; remainingMeters: number | null; remainingSeconds: number | null; updatedAt: Date }[]>();
+      }).lean<{ userId: string; lat: number; lng: number; heading: number | null; speedKmH: number | null; accuracy: number | null; batteryLevel: number | null; pingAction: string | null; remainingMeters: number | null; remainingSeconds: number | null; source?: "app" | "tracker"; updatedAt: Date }[]>();
 
       return partners;
     }),

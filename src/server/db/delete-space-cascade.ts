@@ -27,6 +27,7 @@ import { ListenSessionModel } from "./models/listen-session";
 import { CycleLogModel } from "./models/cycle-log";
 import { TripModel } from "./models/trip";
 import { RideModel } from "./models/ride";
+import { TrackerLinkModel } from "./models/tracker-link";
 import { SpaceModel } from "./models/space";
 import { ErrorLogModel } from "./models/error-log";
 
@@ -75,6 +76,7 @@ const SPACE_SCOPED_MODELS: Deletable[] = [
    */
   TripModel,
   RideModel,
+  TrackerLinkModel,
 ];
 
 /**

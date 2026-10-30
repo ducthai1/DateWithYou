@@ -33,6 +33,7 @@ const SUITES = [
   { id: "map", load: () => import("./map.mjs") },
   { id: "nav", load: () => import("./nav-overlay.mjs") },
   { id: "nav-ping", load: () => import("./nav-pings.mjs") },
+  { id: "tracker", load: () => import("./tracker-setup.mjs") },
   { id: "suggested", load: () => import("./suggested-places.mjs") },
   { id: "day-plan", load: () => import("./day-plan.mjs") },
   { id: "nav-recover", load: () => import("./nav-position-recovery.mjs") },

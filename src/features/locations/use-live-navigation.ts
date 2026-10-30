@@ -39,6 +39,7 @@ export type PartnerLocation = {
    */
   remainingMeters?: number | null;
   remainingSeconds?: number | null;
+  source?: "app" | "tracker";
   updatedAt: Date;
 };
 
@@ -48,6 +49,12 @@ export type PartnerConnection = "online" | "stale" | "weak";
 
 /** No fresh partner ping within this window → treated as disconnected. */
 const PARTNER_STALE_MS = 20_000;
+/**
+ * The same, for a position from their background tracker. It reports every
+ * 25 s by design, so the 20 s window above would call them lost between every
+ * two fixes; three missed reports is a real gap.
+ */
+const TRACKER_STALE_MS = 80_000;
 /** Horizontal GPS accuracy worse than this (metres) → "weak GPS". */
 const WEAK_ACCURACY_M = 50;
 /** No new GPS fix within this window while navigating → "lost GPS". Kept short
@@ -790,7 +797,8 @@ export function useLiveNavigation(options?: {
     ? everHadPartner
       ? "stale"
       : null
-    : nowTs - new Date(partnerLocation.updatedAt).getTime() > PARTNER_STALE_MS
+    : nowTs - new Date(partnerLocation.updatedAt).getTime() >
+        (partnerLocation.source === "tracker" ? TRACKER_STALE_MS : PARTNER_STALE_MS)
       ? "stale"
       : partnerLocation.accuracy != null && partnerLocation.accuracy > WEAK_ACCURACY_M
         ? "weak"

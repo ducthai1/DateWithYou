@@ -38,6 +38,7 @@ import { usePartnerWeather } from "./use-partner-weather";
 import { pickHeading } from "@/lib/heading";
 import { fmtDistance, fmtDuration } from "./format-journey";
 import { usePartnerProgress } from "./use-partner-progress";
+import { TrackingNotice } from "./tracking-notice";
 import { ToneArt } from "@/components/theme/tone-art";
 import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { TripStopPlanner, type PlannedStop } from "./trip-stop-planner";
@@ -1976,6 +1977,9 @@ export function LocationsPage() {
         userAvatar={userAvatar}
         partnerAvatar={partnerAvatar}
       />
+
+      {/* What stops this phone being seen — each with its fix — as the map opens. */}
+      <TrackingNotice />
 
       {/* A ride that was cut off — by the app being relaunched — offered back. */}
       {resumable && !nav.isNavigating && (
