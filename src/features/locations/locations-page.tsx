@@ -37,6 +37,7 @@ import { useDeviceHeading } from "./use-device-heading";
 import { usePartnerWeather } from "./use-partner-weather";
 import { pickHeading } from "@/lib/heading";
 import { fmtDistance, fmtDuration } from "./format-journey";
+import { usePartnerProgress } from "./use-partner-progress";
 import { ToneArt } from "@/components/theme/tone-art";
 import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { TripStopPlanner, type PlannedStop } from "./trip-stop-planner";
@@ -1732,6 +1733,13 @@ export function LocationsPage() {
   // Prefer live remaining values; fall back to initial route totals.
   const displayDistance = nav.remainingMeters ?? routeDistanceMeters;
   const displayDuration = nav.remainingSeconds ?? routeDurationSeconds;
+  // The same for the partner — see use-partner-progress.ts for why it was frozen.
+  const partnerLeft = usePartnerProgress(
+    nav.partnerLocation,
+    partnerRouteGeometry,
+    partnerRouteDistanceMeters,
+    partnerRouteDurationSeconds,
+  );
 
   /*
    * One spoken line as the ride starts.
@@ -2160,11 +2168,11 @@ export function LocationsPage() {
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
                         <div className="flex items-center gap-1">
                           <Route className="h-3 w-3 text-rose-500 shrink-0" />
-                          <span className="text-xs font-semibold whitespace-nowrap">{fmtDistance(partnerRouteDistanceMeters)}</span>
+                          <span className="text-xs font-semibold whitespace-nowrap">{fmtDistance(partnerLeft.meters)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3 text-rose-500 shrink-0" />
-                          <span className="text-xs font-semibold whitespace-nowrap">{fmtDuration(partnerRouteDurationSeconds)}</span>
+                          <span className="text-xs font-semibold whitespace-nowrap">{fmtDuration(partnerLeft.seconds)}</span>
                         </div>
                       </div>
                     </div>
@@ -2172,12 +2180,12 @@ export function LocationsPage() {
                 </div>
 
                 {/* ETA GAP Analysis */}
-                {displayDuration != null && partnerRouteDurationSeconds != null && (
+                {displayDuration != null && partnerLeft.seconds != null && (
                   <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-md">
-                    {displayDuration - partnerRouteDurationSeconds > 120 ? (
-                      <span>Ối, bạn sẽ đến trễ hơn <strong className="text-rose-500">{Math.round((displayDuration - partnerRouteDurationSeconds)/60)} phút</strong>. Lo chạy lẹ lên 🏃‍♂️💨</span>
-                    ) : partnerRouteDurationSeconds - displayDuration > 120 ? (
-                      <span>Bạn đến sớm hơn <strong className="text-blue-500">{Math.round((partnerRouteDurationSeconds - displayDuration)/60)} phút</strong>. Tha hồ order nước ngồi chờ 🍹</span>
+                    {displayDuration - partnerLeft.seconds > 120 ? (
+                      <span>Ối, bạn sẽ đến trễ hơn <strong className="text-rose-500">{Math.round((displayDuration - partnerLeft.seconds)/60)} phút</strong>. Lo chạy lẹ lên 🏃‍♂️💨</span>
+                    ) : partnerLeft.seconds - displayDuration > 120 ? (
+                      <span>Bạn đến sớm hơn <strong className="text-blue-500">{Math.round((partnerLeft.seconds - displayDuration)/60)} phút</strong>. Tha hồ order nước ngồi chờ 🍹</span>
                     ) : (
                       <span className="text-emerald-600">Perfect timing! Hai bạn sẽ cập bến cùng lúc 🎯</span>
                     )}
@@ -2419,8 +2427,8 @@ export function LocationsPage() {
           userAccuracyM={nav.accuracyM}
           userGeo={nav.isNavigating ? shownUser : liveUser}
           partnerLocation={partnerPin}
-          partnerPingAction={navInvites.partnerPingAction}
-          userPingAction={nav.userPingAction}
+          partnerPing={navInvites.partnerPing}
+          userPing={nav.userPing}
           followGeo={nav.isNavigating ? (nav.snappedGeo ?? nav.userGeo) : null}
           heading={nav.isNavigating ? shownHeading : null}
           userAvatar={userAvatar}

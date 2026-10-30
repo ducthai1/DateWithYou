@@ -46,6 +46,9 @@ export type PartnerLive = {
   speedKmH: number | null;
   accuracy: number | null;
   batteryLevel: number | null;
+  /** What their phone says is left on their route; null when it is not navigating. */
+  remainingMeters?: number | null;
+  remainingSeconds?: number | null;
   updatedAt: string;
 };
 
@@ -115,7 +118,7 @@ export function useNavigationInvites(enabled = true) {
   );
   const [inviteResponse, setInviteResponse] =
     useState<InviteResponse | null>(null);
-  const [partnerPingAction, setPartnerPingAction] = useState<string | null>(null);
+  const [partnerPing, setPartnerPing] = useState<{ action: string; ts: number } | null>(null);
   /*
    * Where the partner is, pushed by the server rather than fetched.
    *
@@ -208,10 +211,13 @@ export function useNavigationInvites(enabled = true) {
 
     on("ping", (e) => {
       try {
-        const data = JSON.parse(e.data) as { action: string; ts: number };
-        setPartnerPingAction(data.action);
-        // Reset ping action state after a few seconds so it can be re-triggered
-        setTimeout(() => setPartnerPingAction(null), 4000);
+        /*
+         * Kept with its own time, never reset. The bare action used to be
+         * stored and cleared after 4 s, so the same emotion arriving again
+         * inside those 4 s was the same string — no change, no banner. Two
+         * "Kẹt xe!" pressed three seconds apart showed once.
+         */
+        setPartnerPing(JSON.parse(e.data) as { action: string; ts: number });
       } catch {
         /* ignore malformed */
       }
@@ -388,8 +394,8 @@ export function useNavigationInvites(enabled = true) {
     incomingInvite,
     /** The latest response to an invite this user sent (null = none). */
     inviteResponse,
-    /** The real-time ping action from partner. Reset automatically. */
-    partnerPingAction,
+    /** The partner's latest emotion ping; a new object for every ping, repeats included. */
+    partnerPing,
     /** The partner's last known position, pushed over the stream. */
     partnerLive,
     /** Set when the partner ends a shared trip (null = none). */

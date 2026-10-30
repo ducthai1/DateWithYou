@@ -158,6 +158,39 @@ describe("live location", () => {
     assert.equal(seen[0].lat, 10.77);
   });
 
+  test("the next position write does not wipe an emotion before it is delivered", async () => {
+    /*
+     * The position loop writes every 2.5 s with `pingAction: null`; the stream
+     * reads once a second. Keyed on the row's last write, a ping landing between
+     * two reads was gone before either saw it — two of four reached the phone.
+     */
+    await couple.b.caller.location.pingLiveLocation({ lat: 10.78, lng: 106.71, pingAction: "JAM" });
+    const first = (await couple.a.caller.location.pingLiveLocation({ lat: 10.77, lng: 106.7 }))[0] as {
+      pingAction: string | null; pingAt?: Date | null;
+    };
+    assert.equal(first.pingAction, "JAM");
+    assert.ok(first.pingAt, "an emotion records when it was sent");
+
+    await couple.b.caller.location.pingLiveLocation({ lat: 10.781, lng: 106.711, pingAction: null });
+    const after = (await couple.a.caller.location.pingLiveLocation({ lat: 10.77, lng: 106.7 }))[0] as typeof first;
+    assert.equal(after.pingAction, "JAM", "a plain position write cleared the emotion");
+    assert.equal(new Date(after.pingAt!).getTime(), new Date(first.pingAt!).getTime());
+  });
+
+  test("what a phone says is left reaches the partner, and goes when it stops saying", async () => {
+    await couple.b.caller.location.pingLiveLocation({ lat: 10.78, lng: 106.71, remainingMeters: 4200, remainingSeconds: 900 });
+    const riding = (await couple.a.caller.location.pingLiveLocation({ lat: 10.77, lng: 106.7 }))[0];
+    assert.equal(riding.remainingMeters, 4200);
+    assert.equal(riding.remainingSeconds, 900);
+
+    // An older build never sends the fields: the partner must not keep showing
+    // a number from before as if it were live.
+    await couple.b.caller.location.pingLiveLocation({ lat: 10.78, lng: 106.71 });
+    const stale = (await couple.a.caller.location.pingLiveLocation({ lat: 10.77, lng: 106.7 }))[0];
+    assert.equal(stale.remainingMeters, null);
+    assert.equal(stale.remainingSeconds, null);
+  });
+
   test("a ping never carries another couple's position", async () => {
     await other.a.caller.location.pingLiveLocation({ lat: 21.02, lng: 105.83 });
     const seen = await other.b.caller.location.pingLiveLocation({ lat: 21.03, lng: 105.84 });

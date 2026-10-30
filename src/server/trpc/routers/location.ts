@@ -781,22 +781,30 @@ export const locationRouter = router({
       accuracy: z.number().nullable().optional(),
       batteryLevel: z.number().nullable().optional(),
       pingAction: z.string().nullable().optional(),
+      remainingMeters: z.number().min(0).nullable().optional(),
+      remainingSeconds: z.number().min(0).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await connectToDatabase();
       
       // Update own location
+      const now = new Date();
       await LiveLocationModel.findOneAndUpdate(
         { spaceId: ctx.spaceId, userId: ctx.userId },
-        { 
+        {
           lat: input.lat,
           lng: input.lng,
           heading: input.heading,
           speedKmH: input.speedKmH,
           accuracy: input.accuracy,
           batteryLevel: input.batteryLevel,
-          pingAction: input.pingAction,
-          updatedAt: new Date()
+          // Null from a phone that is not navigating, and from an older build.
+          remainingMeters: input.remainingMeters ?? null,
+          remainingSeconds: input.remainingSeconds ?? null,
+          // Only an emotion touches these; a plain position write (which
+          // sends `pingAction: null`) must not wipe one not yet delivered.
+          ...(input.pingAction ? { pingAction: input.pingAction, pingAt: now } : {}),
+          updatedAt: now,
         },
         { upsert: true, new: true }
       );
@@ -809,7 +817,7 @@ export const locationRouter = router({
         spaceId: ctx.spaceId,
         userId: { $ne: ctx.userId },
         updatedAt: { $gt: freshSince }
-      }).lean<{ userId: string; lat: number; lng: number; heading: number | null; speedKmH: number | null; accuracy: number | null; batteryLevel: number | null; pingAction: string | null; updatedAt: Date }[]>();
+      }).lean<{ userId: string; lat: number; lng: number; heading: number | null; speedKmH: number | null; accuracy: number | null; batteryLevel: number | null; pingAction: string | null; remainingMeters: number | null; remainingSeconds: number | null; updatedAt: Date }[]>();
 
       return partners;
     }),

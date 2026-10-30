@@ -238,11 +238,12 @@ export async function GET(req: NextRequest) {
             userId: { $ne: userId },
             updatedAt: { $gt: fiveMinsAgo }
           })
-            .select("userId lat lng heading speedKmH accuracy batteryLevel pingAction updatedAt")
+            .select("userId lat lng heading speedKmH accuracy batteryLevel pingAction pingAt remainingMeters remainingSeconds updatedAt")
             .lean<{
               userId: string; lat: number; lng: number; heading: number | null;
               speedKmH: number | null; accuracy: number | null; batteryLevel: number | null;
-              pingAction: string | null; updatedAt: Date;
+              pingAction: string | null; pingAt?: Date | null;
+              remainingMeters?: number | null; remainingSeconds?: number | null; updatedAt: Date;
             }>();
 
           /*
@@ -271,6 +272,8 @@ export async function GET(req: NextRequest) {
                 speedKmH: partnerLoc.speedKmH,
                 accuracy: partnerLoc.accuracy,
                 batteryLevel: partnerLoc.batteryLevel,
+                remainingMeters: partnerLoc.remainingMeters ?? null,
+                remainingSeconds: partnerLoc.remainingSeconds ?? null,
                 updatedAt: partnerLoc.updatedAt.toISOString(),
               });
             }
@@ -281,17 +284,23 @@ export async function GET(req: NextRequest) {
             send("partner-gone", { ts: Date.now() });
           }
 
-          if (partnerLoc && partnerLoc.pingAction) {
-            const updatedAtMs = partnerLoc.updatedAt.getTime();
-            // Repeat-suppression invariant: a ping is emitted at most once per
-            // partner location write (updatedAt strictly newer than last sent)
-            // AND only inside a 10s freshness window. This is what stops a
-            // stale pingAction (paths that don't send pingAction:null, e.g.
-            // Meet-Me-Halfway, leave the stored value untouched) from re-firing
-            // every poll — do NOT remove either guard.
-            if (updatedAtMs > lastPartnerPingAt && (Date.now() - updatedAtMs) < 10000) {
-              lastPartnerPingAt = updatedAtMs;
-              send("ping", { action: partnerLoc.pingAction, ts: updatedAtMs });
+          if (partnerLoc && partnerLoc.pingAction && partnerLoc.pingAt) {
+            const pingAtMs = new Date(partnerLoc.pingAt).getTime();
+            /*
+             * Keyed on when the EMOTION was sent, not on the row's last write.
+             *
+             * It used to be keyed on `updatedAt`, and the position loop writes
+             * the row every 2.5 s with `pingAction: null` — so a ping that
+             * landed between two one-second polls was overwritten before this
+             * loop saw it. Two "Kẹt xe!" of four reached the other phone.
+             *
+             * Still at most once per ping (strictly newer than the last sent)
+             * and only while fresh, so a stream that reconnects does not
+             * replay an old one — do NOT remove either guard.
+             */
+            if (pingAtMs > lastPartnerPingAt && (Date.now() - pingAtMs) < 10000) {
+              lastPartnerPingAt = pingAtMs;
+              send("ping", { action: partnerLoc.pingAction, ts: pingAtMs });
             }
           }
 

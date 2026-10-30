@@ -143,8 +143,8 @@ function LocationMapViewImpl({
   userGeo,
   userAccuracyM,
   partnerLocation,
-  partnerPingAction,
-  userPingAction,
+  partnerPing,
+  userPing,
   followGeo,
   heading,
   facingHeading,
@@ -183,8 +183,8 @@ function LocationMapViewImpl({
   /** Horizontal GPS accuracy in metres, drawn to scale when known. */
   userAccuracyM?: number | null;
   partnerLocation?: { lat: number; lng: number; pingAction?: string | null } | null;
-  partnerPingAction?: string | null;
-  userPingAction?: string | null;
+  partnerPing?: { action: string; ts: number } | null;
+  userPing?: { action: string; at: number } | null;
   followGeo?: LatLng | null;
   /** Device heading in degrees (0 = north). Rotates the map when following. */
   heading?: number | null;
@@ -362,27 +362,40 @@ function LocationMapViewImpl({
     return emoji;
   };
 
+  /*
+   * Pings that were already there when this map mounted are old news.
+   *
+   * Both pings now live above this component and are never cleared — that is
+   * what lets the same emotion show twice in a row — so a map mounted later
+   * (coming back to the page, the riding overlay opening) would otherwise
+   * replay the last one the moment it appears.
+   */
+  const shownPartnerPing = useRef(partnerPing);
+  const shownUserPing = useRef(userPing);
+
   useEffect(() => {
     // Pings arrive in real time over SSE only. The persisted live-location
     // pingAction is intentionally NOT used as a second source — it lingers across
     // polls and would re-fire the same ping repeatedly. The single always-visible
     // banner below is the only render, so a ping shows exactly once.
-    if (!partnerPingAction) return;
-    const emoji = getPingEmoji(partnerPingAction, true);
+    if (!partnerPing || partnerPing === shownPartnerPing.current) return;
+    shownPartnerPing.current = partnerPing;
+    const emoji = getPingEmoji(partnerPing.action, true);
     if (!emoji) return;
     const pingId = Date.now();
     setGlobalPing({ emoji, id: pingId, fromPartner: true });
     setTimeout(() => setGlobalPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
-  }, [partnerPingAction]);
+  }, [partnerPing]);
 
   useEffect(() => {
-    if (!userPingAction) return;
-    const emoji = getPingEmoji(userPingAction, false);
+    if (!userPing || userPing === shownUserPing.current) return;
+    shownUserPing.current = userPing;
+    const emoji = getPingEmoji(userPing.action, false);
     if (!emoji) return;
     const pingId = Date.now();
     setGlobalPing({ emoji, id: pingId, fromPartner: false });
     setTimeout(() => setGlobalPing((prev) => (prev?.id === pingId ? null : prev)), 4000);
-  }, [userPingAction]);
+  }, [userPing]);
 
   /*
    * Panning stops the camera following, and it stays stopped.

@@ -7,7 +7,7 @@ import type { Maneuver } from "@/lib/maneuver-vi";
  * route-geometry.ts. The windowed match there is 9x cheaper than the full scan
  * this hook used to run on every GPS fix, and returns identical numbers. */
 import { cumulativeMetres, remainingAlongRoute, SNAP_MAX_M } from "@/lib/route-geometry";
-import { liveEtaSeconds, trimSamples, type ProgressSample } from "@/lib/live-eta";
+import { newEtaTracker, onNewRoute, stepEta, type EtaTracker } from "@/lib/live-eta";
 import { initialOffRouteState, stepOffRoute, type OffRouteState } from "@/lib/off-route";
 
 /** How long the emotion buttons stay refused after one is sent. */
@@ -32,6 +32,13 @@ export type PartnerLocation = {
   accuracy: number | null;
   batteryLevel: number | null;
   pingAction: string | null;
+  /**
+   * What THEIR phone says is left, measured along their own route with their
+   * own GPS. Null from a phone that is not navigating, or one still running an
+   * older build that never sent it — the page falls back to its own estimate.
+   */
+  remainingMeters?: number | null;
+  remainingSeconds?: number | null;
   updatedAt: Date;
 };
 
@@ -137,8 +144,13 @@ export type LiveNavigation = {
   sendPingAction: (action: string) => Promise<PingResult>;
   /** Epoch ms until which another ping is refused; lets the UI show the wait. */
   pingReadyAt: number;
-  /** User's own latest ping action to show their own emotion locally */
-  userPingAction: string | null;
+  /**
+   * The user's own latest ping, to show it locally. An object with its own
+   * time, not the bare action: pressing "Kẹt xe!" twice set the same string
+   * twice, React saw no change, and the second press drew nothing — a button
+   * that worked once and then looked dead.
+   */
+  userPing: { action: string; at: number } | null;
   /** Position pinned to the route being followed, or null when not applicable. */
   snappedGeo: LatLng | null;
   /** Direction the road runs at that point, in degrees from north. */
@@ -176,13 +188,13 @@ export function useLiveNavigation(options?: {
    */
   const offRouteRef = useRef<OffRouteState>(initialOffRouteState());
   /*
-   * Lịch sử rút ngắn quãng đường, để đo tốc độ thực.
+   * Những gì đã học về nhịp đi của chuyến này, để tính thời gian còn lại.
    *
    * `useRef` chứ không `useState`: nó được ghi trong callback của watchPosition
    * vài giây một lần và chỉ dùng ngay tại đó — cho vào state là mỗi lần có GPS
    * lại render lại cả cây điều hướng cho một giá trị không ai vẽ ra màn hình.
    */
-  const progressRef = useRef<ProgressSample[]>([]);
+  const etaRef = useRef<EtaTracker>(newEtaTracker());
 
   const [isNavigating, setIsNavigating] = useState(false);
   const [userGeo, setUserGeo] = useState<LatLng | null>(null);
@@ -208,7 +220,7 @@ export function useLiveNavigation(options?: {
   const [snappedGeo, setSnappedGeo] = useState<LatLng | null>(null);
   /* Which way the road runs here, which is steadier than any compass. */
   const [snappedHeading, setSnappedHeading] = useState<number | null>(null);
-  const [userPingAction, setUserPingAction] = useState<string | null>(null);
+  const [userPing, setUserPing] = useState<{ action: string; at: number } | null>(null);
   const [pingReadyAt, setPingReadyAt] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(
@@ -249,6 +261,8 @@ export function useLiveNavigation(options?: {
     heading,
     speedKmH,
     accuracyM,
+    remainingMeters,
+    remainingSeconds,
   });
 
   // Keep the ref up-to-date with every state change
@@ -258,8 +272,10 @@ export function useLiveNavigation(options?: {
       heading,
       speedKmH,
       accuracyM,
+      remainingMeters,
+      remainingSeconds,
     };
-  }, [userGeo, heading, speedKmH, accuracyM]);
+  }, [userGeo, heading, speedKmH, accuracyM, remainingMeters, remainingSeconds]);
   
   /*
    * `networkMode: "always"`: a write made while the device is offline must FAIL,
@@ -270,6 +286,15 @@ export function useLiveNavigation(options?: {
    * 2.5 s away.
    */
   const pingLiveLocation = trpc.location.pingLiveLocation.useMutation({ networkMode: "always" });
+  /*
+   * The emotion buttons get their own mutation.
+   *
+   * `mutate(vars, { onSuccess })` only runs the callbacks of the LAST call made
+   * on that mutation, so with one shared between the 2.5 s position loop and
+   * the buttons, a tap swallowed the loop's success/failure bookkeeping and the
+   * loop swallowed the tap's reply.
+   */
+  const pingEmotion = trpc.location.pingLiveLocation.useMutation({ networkMode: "always" });
   const lastPingTime = useRef<number>(0);
   const pingFailuresRef = useRef(0);
   const [networkFlaky, setNetworkFlaky] = useState(false);
@@ -301,7 +326,7 @@ export function useLiveNavigation(options?: {
     // after the network round-trip. The mutation still runs to deliver it to the
     // partner; if it fails the emotion simply isn't propagated (no rollback
     // needed — it's an ephemeral self-affordance).
-    setUserPingAction(action);
+    setUserPing({ action, at: now });
 
     let batteryLevel = null;
     try {
@@ -315,7 +340,7 @@ export function useLiveNavigation(options?: {
       // ignore
     }
 
-    pingLiveLocation.mutate({
+    pingEmotion.mutate({
       lat: p.userGeo.lat,
       lng: p.userGeo.lng,
       heading: p.heading,
@@ -323,6 +348,8 @@ export function useLiveNavigation(options?: {
       accuracy: p.accuracyM,
       batteryLevel,
       pingAction: action,
+      remainingMeters: p.remainingMeters,
+      remainingSeconds: p.remainingSeconds,
     }, {
       onSuccess: (partners) => {
         if (partners && partners.length > 0) {
@@ -364,6 +391,9 @@ export function useLiveNavigation(options?: {
         accuracy: p.accuracyM,
         batteryLevel,
         pingAction: null,
+        // Null unless following a route: stop() clears both.
+        remainingMeters: p.remainingMeters,
+        remainingSeconds: p.remainingSeconds,
       },
       {
         onSuccess: (partners) => {
@@ -476,13 +506,14 @@ export function useLiveNavigation(options?: {
        */
       offRouteRef.current = initialOffRouteState();
       /*
-       * Và quên nhịp đã đo trên tuyến cũ.
+       * Và quên cửa sổ đo trên tuyến cũ — nhưng giữ những gì đã học về chuyến.
        *
        * Các mẫu ghi lại "quãng còn lại", nên một tuyến khác là một thang đo
        * khác: giữ lại chúng thì lần đo đầu tiên trên tuyến mới sẽ thấy quãng
        * còn lại nhảy một phát vài cây số và kết luận người ta vừa bay qua đó.
+       * Hệ số cả chuyến là tỉ lệ, không phải quãng đường, nên mang sang được.
        */
-      progressRef.current = [];
+      etaRef.current = onNewRoute(etaRef.current);
       routeTotalMetersRef.current = totalMeters;
       routeTotalSecondsRef.current = totalSeconds;
       if (routeLegs) setLegs(routeLegs);
@@ -555,7 +586,7 @@ export function useLiveNavigation(options?: {
     setRemainingMeters(null);
     setRemainingSeconds(null);
     // Chuyến sau không được thừa hưởng nhịp của chuyến trước.
-    progressRef.current = [];
+    etaRef.current = newEtaTracker();
   }, []);
 
   const start = useCallback(() => {
@@ -646,29 +677,20 @@ export function useLiveNavigation(options?: {
           }
 
           /*
-           * Thời gian còn lại theo tốc độ ĐANG đi, không theo lời hứa lúc xuất phát.
-           *
-           * Phép chia tỉ lệ cũ không bao giờ biết ngoài đường đang xảy ra gì:
-           * đứng yên giữa đám kẹt hay chạy bon trên đường trống, con số vẫn
-           * đếm xuống y hệt. Cửa sổ trượt năm phút là thứ làm nó tự co lại khi
-           * vừa thoát khỏi chỗ tắc — một trung bình cộng dồn thì nhớ mãi.
+           * Thời gian còn lại: đoạn gần theo nhịp vừa đi, phần xa theo tuyến.
+           * Vì sao không lấy nhịp năm phút nhân cho cả quãng — src/lib/live-eta.ts.
            */
           const totalM = routeTotalMetersRef.current;
           const totalS = routeTotalSecondsRef.current;
-          if (totalM > 0) {
-            const now = Date.now();
-            progressRef.current = trimSamples(
-              [...progressRef.current, { at: now, remainingM: remaining }],
-              now,
-            );
-            setRemainingSeconds(
-              liveEtaSeconds({
-                remainingM: remaining,
-                routeTotalM: totalM,
-                routeTotalS: totalS,
-                samples: progressRef.current,
-              }),
-            );
+          if (totalM > 0 && totalS > 0) {
+            const step = stepEta(etaRef.current, {
+              at: Date.now(),
+              remainingM: remaining,
+              deviationM: deviation,
+              secPerM: totalS / totalM,
+            });
+            etaRef.current = step.tracker;
+            setRemainingSeconds(step.seconds);
           }
         }
       },
@@ -788,7 +810,7 @@ export function useLiveNavigation(options?: {
     partnerLocation,
     accuracyM,
     partnerConnection,
-    userPingAction,
+    userPing,
     snappedGeo,
     snappedHeading,
     remainingMeters,
