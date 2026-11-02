@@ -60,6 +60,7 @@ const SUITES = [
   { id: "special-dates", load: () => import("./special-date-presets.mjs") },
   { id: "trip-presets", load: () => import("./trip-presets.mjs") },
   { id: "calendar-item", load: () => import("./calendar-item-presets.mjs") },
+  { id: "so-tay-mau", load: () => import("./notebook-templates.mjs") },
 ];
 
 /** Never point the suites at anything that could be production data. */

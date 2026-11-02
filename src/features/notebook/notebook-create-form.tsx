@@ -9,6 +9,8 @@ import { trpc } from "@/lib/trpc";
 import { readableFormError } from "@/lib/form-error";
 import { addDaysKey, todayKey } from "@/lib/date-keys";
 import { NOTEBOOK_LIMITS, dayKeysBetween } from "@/lib/notebook";
+import { NOTEBOOK_SPANS, NOTEBOOK_TEMPLATES } from "@/lib/notebook-templates";
+import { Chip } from "@/components/ui/chip";
 
 /** A new notebook: a name, a date range, and the columns each day has. */
 export function NotebookCreateForm({ onCreated, onClose }: { onCreated: (id: string) => void; onClose: () => void }) {
@@ -57,6 +59,26 @@ export function NotebookCreateForm({ onCreated, onClose }: { onCreated: (id: str
         }}
       >
         <ModalContent className="space-y-3">
+          <div className="space-y-1.5">
+            <p className="text-muted-foreground text-xs font-medium">Bắt đầu từ mẫu — bấm để điền tên, cột và số ngày</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Mẫu sổ">
+              {NOTEBOOK_TEMPLATES.map((t) => (
+                <Chip
+                  key={t.name}
+                  label={t.name}
+                  // Lit while the columns are still the template's own, not after they were edited away from it.
+                  selected={columns === t.slots.join(", ")}
+                  onClick={() => {
+                    // Their own name stays; one that came from another template follows this one.
+                    if (!title.trim() || NOTEBOOK_TEMPLATES.some((x) => x.title === title)) setTitle(t.title);
+                    setColumns(t.slots.join(", "));
+                    setEnd(addDaysKey(start, t.days - 1));
+                  }}
+                  className="px-3"
+                />
+              ))}
+            </div>
+          </div>
           <Input
             label="Tên sổ"
             value={title}
@@ -68,12 +90,32 @@ export function NotebookCreateForm({ onCreated, onClose }: { onCreated: (id: str
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <span className="text-sm font-medium">Từ ngày</span>
-              <DatePicker value={start} onChange={setStart} ariaLabel="Ngày bắt đầu" />
+              <DatePicker
+                value={start}
+                onChange={(d) => {
+                  // Moving the start keeps the length, so a "2 tuần" stays two weeks wherever it begins.
+                  const length = dayKeysBetween(start, end).length || 14;
+                  setStart(d);
+                  setEnd(addDaysKey(d, length - 1));
+                }}
+                ariaLabel="Ngày bắt đầu"
+              />
             </div>
             <div className="space-y-1">
               <span className="text-sm font-medium">Đến ngày</span>
               <DatePicker value={end} onChange={setEnd} min={start} ariaLabel="Ngày kết thúc" />
             </div>
+          </div>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Dài bao lâu">
+            {NOTEBOOK_SPANS.map((sp) => (
+              <Chip
+                key={sp.label}
+                label={sp.label}
+                selected={dayCount === sp.days}
+                onClick={() => setEnd(addDaysKey(start, sp.days - 1))}
+                className="px-3"
+              />
+            ))}
           </div>
           <Input
             label="Các cột, cách nhau bởi dấu phẩy"
