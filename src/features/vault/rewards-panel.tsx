@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { usePartnerName } from "@/features/space/use-partner";
 import { readableFormError } from "@/lib/form-error";
 import { Coins, Gift, ListChecks, Plus, CheckCircle2, History, Ticket } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { trpc } from "@/lib/trpc";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -17,6 +15,8 @@ import { useCelebrate } from "@/components/ui/celebrate";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { buzz } from "@/lib/haptics";
+import { TASK_IDEAS, TASK_POINT_PRESETS, VOUCHER_IDEAS, VOUCHER_POINT_PRESETS } from "@/lib/reward-ideas";
+import { RewardQuickAdd } from "./reward-quick-add";
 
 // Small grant/redeem chip — min 40px tall for touch targets
 const CHIP =
@@ -29,17 +29,12 @@ export function RewardsPanel() {
   const utils = trpc.useUtils();
   const invalidate = () => utils.reward.overview.invalidate();
 
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskPoints, setTaskPoints] = useState("10");
-  const [vTitle, setVTitle] = useState("");
-  const [vCost, setVCost] = useState("50");
-
   const createTask = trpc.reward.createTask.useMutation({ 
-    onSuccess: () => { setTaskTitle(""); invalidate(); toast("Đã thêm nhiệm vụ", "success"); },
+    onSuccess: () => { invalidate(); toast("Đã thêm nhiệm vụ", "success"); },
     onError: (err) => toast(readableFormError(err.message), "error")
   });
   const createVoucher = trpc.reward.createVoucher.useMutation({ 
-    onSuccess: () => { setVTitle(""); invalidate(); toast("Đã thêm voucher", "success"); },
+    onSuccess: () => { invalidate(); toast("Đã thêm voucher", "success"); },
     onError: (err) => toast(readableFormError(err.message), "error")
   });
   /*
@@ -241,32 +236,16 @@ export function RewardsPanel() {
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
           <ListChecks className="text-accent-ink h-4 w-4" /> Danh sách nhiệm vụ
         </h3>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            placeholder="Nhiệm vụ (vd: Đấm lưng 15p)"
-            value={taskTitle}
-            onChange={(e) => setTaskTitle(e.target.value)}
-          />
-          <div className="relative w-full shrink-0 sm:w-24">
-            <Input
-              type="number"
-              className="pr-7 text-right"
-              value={taskPoints}
-              onChange={(e) => setTaskPoints(e.target.value)}
-            />
-            <span className="text-muted-foreground pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm">
-              đ
-            </span>
-          </div>
-          <Button
-            aria-label="Thêm nhiệm vụ"
-            className="w-full touch-manipulation sm:w-auto sm:shrink-0 sm:px-3"
-            disabled={!taskTitle.trim() || createTask.isPending}
-            onClick={() => createTask.mutate({ title: taskTitle.trim(), points: Number(taskPoints) || 1 })}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
+        <RewardQuickAdd
+          what="nhiệm vụ"
+          placeholder="Nhiệm vụ (vd: Đấm lưng 15p)"
+          ideas={TASK_IDEAS}
+          presets={TASK_POINT_PRESETS}
+          defaultPoints={10}
+          taken={tasks.map((t) => t.title)}
+          pending={createTask.isPending}
+          onAdd={(title, points) => createTask.mutateAsync({ title, points })}
+        />
         {tasks.length === 0 ? (
           <EmptyState
             icon="list-checks"
@@ -291,9 +270,10 @@ export function RewardsPanel() {
                     <span className="text-accent-ink mt-1 inline-block font-medium text-sm">+{t.points}đ</span>
                   </div>
                 </div>
-                <div className="flex shrink-0 flex-col gap-1.5 border-t border-border pt-3 sm:border-0 sm:pt-0">
+                <div className="flex min-w-0 shrink-0 flex-col gap-1.5 border-t border-border pt-3 sm:max-w-[50%] sm:border-0 sm:pt-0">
                   <span className="text-muted-foreground text-[10px] font-medium sm:hidden">Ai đã hoàn thành?</span>
-                  <div className="flex gap-2">
+                  {/* Wraps: one button per member, and a space can hold more than two, or a long name. */}
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
                     {balances.map((b) => (
                       <button
                         key={b.userId}
@@ -317,32 +297,16 @@ export function RewardsPanel() {
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
           <Gift className="text-accent-ink h-4 w-4" /> Phần thưởng (Voucher)
         </h3>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            placeholder="Voucher (vd: Chọn món cuối tuần)"
-            value={vTitle}
-            onChange={(e) => setVTitle(e.target.value)}
-          />
-          <div className="relative w-full shrink-0 sm:w-24">
-            <Input
-              type="number"
-              className="pr-7 text-right"
-              value={vCost}
-              onChange={(e) => setVCost(e.target.value)}
-            />
-            <span className="text-muted-foreground pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm">
-              đ
-            </span>
-          </div>
-          <Button
-            aria-label="Thêm voucher"
-            className="w-full touch-manipulation sm:w-auto sm:shrink-0 sm:px-3"
-            disabled={!vTitle.trim() || createVoucher.isPending}
-            onClick={() => createVoucher.mutate({ title: vTitle.trim(), cost: Number(vCost) || 1 })}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
+        <RewardQuickAdd
+          what="voucher"
+          placeholder="Voucher (vd: Chọn món cuối tuần)"
+          ideas={VOUCHER_IDEAS}
+          presets={VOUCHER_POINT_PRESETS}
+          defaultPoints={50}
+          taken={vouchers.map((v) => v.title)}
+          pending={createVoucher.isPending}
+          onAdd={(title, points) => createVoucher.mutateAsync({ title, cost: points })}
+        />
         {redeem.error && (
           <div className="bg-destructive-soft text-destructive rounded-lg p-3 text-sm font-medium">
             {redeem.error.message === "INSUFFICIENT_POINTS" ? "Không đủ điểm để đổi voucher này." : "Voucher này đã được đổi rồi."}
@@ -385,14 +349,14 @@ export function RewardsPanel() {
                         <CheckCircle2 className="h-4 w-4" /> Đã đổi
                       </div>
                     ) : (
-                      <div className="mt-2 flex shrink-0 gap-2">
+                      <div className="mt-2 flex shrink-0 flex-wrap gap-2">
                         {balances.map((b) => {
                           const canAfford = b.balance >= v.cost;
                           return (
                             <button
                               key={b.userId}
                               className={cn(
-                                "flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-all",
+                                "inline-flex min-w-[7rem] flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-bold transition-all",
                                 canAfford 
                                   ? "bg-accent-soft text-accent-ink hover:bg-accent hover:text-accent-foreground shadow-sm"
                                   : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
