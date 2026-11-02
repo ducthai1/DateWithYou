@@ -10,6 +10,22 @@ export const BUCKETS = [
 ] as const;
 
 export type BucketKey = (typeof BUCKETS)[number]["key"];
+
+/**
+ * The things a day is usually made of, for the calendar's "Thêm việc" form:
+ * a tap names the item and puts it in its usual part of the day. The ones
+ * that can happen any time ("Cà phê", "Đi chợ") leave the part of day alone.
+ */
+export const DAY_ACTIVITIES: Array<{ title: string; bucket?: BucketKey }> = [
+  { title: "Ăn sáng", bucket: "morning" },
+  { title: "Ăn trưa", bucket: "noon" },
+  { title: "Ăn tối", bucket: "evening" },
+  { title: "Cà phê" },
+  { title: "Xem phim", bucket: "evening" },
+  { title: "Đi dạo", bucket: "afternoon" },
+  { title: "Đi chợ" },
+  { title: "Tập thể dục", bucket: "morning" },
+];
 export const BUCKET_KEYS = BUCKETS.map((b) => b.key) as BucketKey[];
 export const BUCKET_ORDER: Record<BucketKey, number> = {
   morning: 0,

@@ -9,7 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TimePicker } from "@/components/ui/time-picker";
-import { BUCKETS, bucketForTime, type BucketKey } from "@/lib/plan-meta";
+import { BUCKETS, DAY_ACTIVITIES, bucketForTime, type BucketKey } from "@/lib/plan-meta";
+import { Chip } from "@/components/ui/chip";
+import { MoneyInput } from "@/components/ui/money-input";
+import { Plus } from "lucide-react";
+
+/** Round amounts for one outing, not a trip — a coffee to a nice dinner for two. */
+const COST_PRESETS = [50_000, 100_000, 200_000, 500_000];
 import { TagPicker } from "./tag-picker";
 import { useToast } from "@/components/ui/toast";
 
@@ -54,7 +60,8 @@ export function PlanItemForm({
   const [tags, setTags] = useState<string[]>(item?.tags ?? []);
   const [assigneeId, setAssigneeId] = useState(item?.assigneeId ?? "");
   const [locationId, setLocationId] = useState(item?.locationId ?? "");
-  const [cost, setCost] = useState(item?.cost?.toString() ?? "");
+  const [cost, setCost] = useState<number | null>(item?.cost ? item.cost : null);
+  const [noteOpen, setNoteOpen] = useState(!!item?.note);
 
   const toast = useToast();
   const members = trpc.space.members.useQuery();
@@ -87,7 +94,7 @@ export function PlanItemForm({
       assigneeId: assigneeId || undefined,
       locationId: locationId || undefined,
       tripId: tripId || undefined,
-      cost: Number(cost) || 0,
+      cost: cost ?? 0,
     };
     if (item) update.mutate({ id: item.id, ...payload });
     else create.mutate(payload);
@@ -96,14 +103,40 @@ export function PlanItemForm({
   return (
     <>
       <ModalContent className="space-y-5">
-        <div>
-          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Tiêu đề công việc</label>
-          <Input placeholder="Làm gì nào?" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground ml-1 block">Tiêu đề công việc</label>
+          <Input aria-label="Tiêu đề công việc" placeholder="Làm gì nào?" value={title} onChange={(e) => setTitle(e.target.value)} />
+          {!item && (
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Việc hay làm">
+              {DAY_ACTIVITIES.map((a) => (
+                <Chip
+                  key={a.title}
+                  label={a.title}
+                  selected={title === a.title}
+                  onClick={() => {
+                    setTitle(a.title);
+                    if (a.bucket && !time) setPickedBucket(a.bucket);
+                  }}
+                  className="px-3"
+                />
+              ))}
+            </div>
+          )}
         </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Ghi chú chi tiết</label>
-          <Textarea placeholder="Ghi chú (tuỳ chọn)" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
-        </div>
+        {noteOpen ? (
+          <div>
+            <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Ghi chú chi tiết</label>
+            <Textarea placeholder="Ghi chú (tuỳ chọn)" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setNoteOpen(true)}
+            className="text-muted-foreground hover:text-accent-ink -mt-2 inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-1 text-sm font-medium"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" /> Thêm ghi chú
+          </button>
+        )}
 
         {/* Bucket + time: stack on mobile so each control gets full width;
             side-by-side on sm+ where there is room. */}
@@ -153,7 +186,12 @@ export function PlanItemForm({
             <Select
               aria-label="Địa điểm"
               value={locationId}
-              onChange={setLocationId}
+              onChange={(id) => {
+                setLocationId(id);
+                // An unnamed item at a place is a visit to that place.
+                const place = (locations.data ?? []).find((l) => l.id === id);
+                if (place && !title.trim()) setTitle(place.name);
+              }}
               placeholder="Không gắn địa điểm"
               options={[
                 { value: "", label: "Không gắn địa điểm" },
@@ -164,8 +202,8 @@ export function PlanItemForm({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Chi phí dự kiến (VNĐ)</label>
-          <Input type="number" min={0} placeholder="0" value={cost} onChange={(e) => setCost(e.target.value)} />
+          <label className="text-xs font-medium text-muted-foreground ml-1 mb-2 block">Chi phí dự kiến</label>
+          <MoneyInput value={cost} onChange={setCost} presets={COST_PRESETS} ariaLabel="Chi phí dự kiến" placeholder="Không tốn gì" />
         </div>
       </ModalContent>
 

@@ -59,6 +59,7 @@ const SUITES = [
   { id: "vault-capsule", load: () => import("./vault-capsule-form.mjs") },
   { id: "special-dates", load: () => import("./special-date-presets.mjs") },
   { id: "trip-presets", load: () => import("./trip-presets.mjs") },
+  { id: "calendar-item", load: () => import("./calendar-item-presets.mjs") },
 ];
 
 /** Never point the suites at anything that could be production data. */
