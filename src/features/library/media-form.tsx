@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { TagPicker } from "@/features/calendar/tag-picker";
 import { useToast } from "@/components/ui/toast";
-import { normalizeUrl } from "@/lib/embed";
+import { normalizeUrl, parseEmbed } from "@/lib/embed";
 import { UploadFromDevice, VIDEO_SIZE_HINT } from "@/components/ui/upload-from-device";
 
 export type MediaKind = "music" | "food_video" | "recipe" | "game";
@@ -39,6 +39,42 @@ export function MediaForm({
 
   const toast = useToast();
   const utils = trpc.useUtils();
+
+  /*
+   * The title comes from the link when there is one to read it from.
+   *
+   * Until someone types a title themselves: from then on the link is theirs to
+   * change without their words being replaced. A ref, not state, because the
+   * answer lands after a round trip and must see a title typed meanwhile.
+   */
+  const titleTyped = useRef(!!initialData?.title);
+  const [lookingUp, setLookingUp] = useState(false);
+  useEffect(() => {
+    const link = normalizeUrl(url);
+    if (titleTyped.current || !link) return;
+    const provider = parseEmbed(link).provider;
+    if (provider !== "youtube" && provider !== "spotify" && provider !== "tiktok") return;
+    let live = true;
+    const timer = setTimeout(() => {
+      setLookingUp(true);
+      utils.media.linkTitle
+        .fetch({ url: link })
+        .then((r) => {
+          if (live && r.title && !titleTyped.current) setTitle(r.title);
+        })
+        .catch(() => {})
+        .finally(() => live && setLookingUp(false));
+    }, 400);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [url, utils]);
+
+  function typeTitle(next: string) {
+    titleTyped.current = next.trim() !== "";
+    setTitle(next);
+  }
   const create = trpc.media.create.useMutation({
     onSuccess: () => {
       utils.media.list.invalidate();
@@ -90,13 +126,16 @@ export function MediaForm({
   return (
     <>
       <ModalContent className="space-y-5">
-        <Input placeholder={isGame ? "Tên trò chơi" : "Tên"} value={title} onChange={(e) => setTitle(e.target.value)} />
+        {/* Link first where there is one: pasting it fills the name below. */}
         {!isRecipe && !isGame && (
           /* Dán link HOẶC tải từ máy — trước đây chỉ có nửa đầu, nên một clip
              tự quay phải đem lên YouTube trước mới lưu được vào đây. */
           <div className="space-y-1.5">
             <Input
-              placeholder="Link YouTube / Spotify / TikTok"
+              aria-label="Link"
+              inputMode="url"
+              autoFocus={!initialData?.id}
+              placeholder="Dán link YouTube / Spotify / TikTok"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
@@ -110,6 +149,17 @@ export function MediaForm({
             </div>
           </div>
         )}
+        <div className="space-y-1">
+          <Input
+            aria-label="Tên"
+            placeholder={isGame ? "Tên trò chơi" : isRecipe ? "Tên món" : "Tên — tự điền khi dán link"}
+            value={title}
+            onChange={(e) => typeTitle(e.target.value)}
+          />
+          {lookingUp && !title && (
+            <p className="text-muted-foreground px-1 text-[11px]" role="status">Đang lấy tên từ link…</p>
+          )}
+        </div>
         {isRecipe && (
           <>
             <div className="space-y-1.5">

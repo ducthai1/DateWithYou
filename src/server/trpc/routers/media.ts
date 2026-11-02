@@ -5,6 +5,7 @@ import { patchOf } from "@/server/trpc/patch-input";
 import { connectToDatabase } from "@/server/db/connect";
 import { MediaItemModel } from "@/server/db/models/media-item";
 import { resolveEmbed } from "@/server/lib/resolve-embed";
+import { linkTitle } from "@/server/lib/link-title";
 
 const kindEnum = z.enum(["music", "food_video", "recipe", "game"]);
 const httpsUrl = z.string().url().startsWith("https://");
@@ -71,6 +72,11 @@ function serialize(d: Record<string, unknown>) {
 }
 
 export const mediaRouter = router({
+  /** The title a YouTube / Spotify / TikTok link already has, so the form can fill it in. */
+  linkTitle: protectedProcedure
+    .input(z.object({ url: httpsUrl.max(2000) }))
+    .query(({ input }) => linkTitle(input.url)),
+
   list: protectedProcedure
     .input(z.object({ kind: kindEnum.optional() }).optional())
     .query(async ({ ctx, input }) => {
