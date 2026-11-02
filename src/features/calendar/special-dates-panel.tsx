@@ -10,7 +10,9 @@ import { ConfirmButton } from "@/components/ui/confirm-button";
 import { ModalContent } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Trash2 } from "lucide-react";
-import { todayKey } from "@/lib/date-keys";
+import { dayKeyLabel, todayKey } from "@/lib/date-keys";
+import { freshPresets, nextMonthDay, type DatePreset } from "@/lib/special-date-presets";
+import { Chip } from "@/components/ui/chip";
 import { resolveIcon } from "@/lib/icon-registry";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -85,25 +87,61 @@ export function SpecialDatesPanel() {
   const [iconKey, setIconKey] = useState<SpecialDateIconKey>(DEFAULT_ICON);
   const [recurYearly, setRecurYearly] = useState(true);
 
-  function add() {
-    if (!title.trim()) return;
+  function applyPreset(p: DatePreset) {
+    setTitle(p.title);
+    setRecurYearly(true);
+    if ((SPECIAL_DATE_ICON_KEYS as readonly string[]).includes(p.icon)) setIconKey(p.icon as SpecialDateIconKey);
+    if (p.monthDay) setDate(nextMonthDay(todayKey(), p.monthDay));
+  }
+
+  function add(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!title.trim() || create.isPending) return;
     create.mutate({ title: title.trim(), date, icon: iconKey, recurYearly });
     setTitle("");
     setIconKey(DEFAULT_ICON);
   }
 
   const items = list.data ?? [];
+  const presets = freshPresets(items.map((d) => d.title));
 
   return (
     <ModalContent className="space-y-4">
       {/* Create form */}
-      <div className="space-y-2">
+      <form onSubmit={add} className="space-y-2" data-special-date-form>
+        {presets.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-muted-foreground text-xs font-medium">Hay dùng — bấm để điền</p>
+            {/* Two rows that scroll sideways on a phone; seven chips wrapped stood five rows tall. */}
+            <div className="relative -mx-5">
+              <div
+                className="grid auto-cols-max grid-flow-col grid-rows-2 justify-items-start gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] md:flex md:flex-wrap md:overflow-visible"
+                role="group"
+                aria-label="Ngày hay dùng"
+              >
+                {presets.map((p) => (
+                  <Chip
+                    key={p.title}
+                    icon={resolveIcon(p.icon)}
+                    label={p.title}
+                    selected={title === p.title}
+                    onClick={() => applyPreset(p)}
+                    className="px-3"
+                  />
+                ))}
+              </div>
+              <div aria-hidden="true" className="from-card pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l to-transparent md:hidden" />
+            </div>
+          </div>
+        )}
         <Input
+          aria-label="Tên ngày đặc biệt"
           placeholder="Tên ngày đặc biệt"
+          maxLength={80}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
-        <DatePicker value={date} onChange={setDate} />
+        <DatePicker value={date} onChange={setDate} ariaLabel="Ngày" />
 
         {/* Lucide icon picker — replaces the old emoji EMOJI[] array.
             Each option renders via resolveIcon() so it stays in the registry. */}
@@ -155,13 +193,13 @@ export function SpecialDatesPanel() {
         </div>
 
         <Button
+          type="submit"
           className="w-full"
           disabled={!title.trim() || create.isPending}
-          onClick={add}
         >
           {create.isPending ? "Đang thêm…" : "Thêm ngày đặc biệt"}
         </Button>
-      </div>
+      </form>
 
       {/* List — EmptyState when empty */}
       <div className="space-y-2">
@@ -188,7 +226,7 @@ export function SpecialDatesPanel() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{s.title}</p>
                   <p className="text-muted-foreground text-xs">
-                    {s.date}
+                    {dayKeyLabel(s.date)}
                     {s.recurYearly && " · hàng năm"}
                     {" · "}
                     {s.daysUntil === 0 ? "hôm nay" : `còn ${s.daysUntil} ngày`}

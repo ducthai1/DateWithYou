@@ -4,14 +4,13 @@ import { useState } from "react";
 import { Loader2, Lock, PenLine } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { readableFormError } from "@/lib/form-error";
-import { addDaysKey, todayKey } from "@/lib/date-keys";
+import { addDaysKey, dayKeyLabel, todayKey } from "@/lib/date-keys";
 import {
   LETTER_STARTERS,
   UNLOCK_SPANS,
   addMonthsKey,
   addStarter,
   capsuleTitle,
-  shortDay,
 } from "@/lib/capsule-presets";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
@@ -110,7 +109,7 @@ export function CapsuleCreateForm({ partnerName, onDone }: { partnerName: string
               key={`${o.title}-${o.day}`}
               label={
                 <span className="max-w-[14rem] truncate">
-                  {o.title} · {shortDay(o.day).slice(0, 5)}
+                  {o.title} · {dayKeyLabel(o.day).slice(0, 5)}
                 </span>
               }
               selected={choice?.key === o.title}

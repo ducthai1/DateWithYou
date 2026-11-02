@@ -5,7 +5,8 @@
  */
 import test, { describe } from "node:test";
 import assert from "node:assert/strict";
-import { addMonthsKey, addStarter, capsuleTitle, shortDay } from "@/lib/capsule-presets";
+import { addMonthsKey, addStarter, capsuleTitle } from "@/lib/capsule-presets";
+import { dayKeyLabel } from "@/lib/date-keys";
 
 describe("addMonthsKey", () => {
   test("ordinary spans", () => {
@@ -39,6 +40,6 @@ describe("titles and starters", () => {
     assert.equal(addStarter("Chào em.\n\n  ", "Cảm ơn vì…"), "Chào em.\n\nCảm ơn vì…");
   });
   test("a day for a chip", () => {
-    assert.equal(shortDay("2027-02-14"), "14/02/2027");
+    assert.equal(dayKeyLabel("2027-02-14"), "14/02/2027");
   });
 });

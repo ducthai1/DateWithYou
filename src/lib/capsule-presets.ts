@@ -39,12 +39,6 @@ export function addMonthsKey(key: string, months: number): string {
   return `${year}-${pad(month)}-${pad(Math.min(d, last))}`;
 }
 
-/** "14/02/2027" for a chip or a title. */
-export function shortDay(key: string): string {
-  const [y, m, d] = key.split("-");
-  return `${d}/${m}/${y}`;
-}
-
 /** The title a choice suggests: "Gửi An của 1 năm sau", "Gửi An nhân Ngày yêu nhau". */
 export function capsuleTitle(partner: string, choice: { span?: string; occasion?: string }): string {
   const to = partner.trim() || "người ấy";

@@ -52,6 +52,12 @@ export function todayKey(): string {
   return dateKeyFromDate(new Date());
 }
 
+/** "14/02/2027" — a date key the way it is read and written in Vietnam. */
+export function dayKeyLabel(key: string): string {
+  const [y, m, d] = key.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 /** Month/day ("MM-DD") slice of a date key — used for yearly recurrence match. */
 export function monthDayOf(key: string): string {
   return key.slice(5);
