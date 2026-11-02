@@ -280,6 +280,15 @@ export function Modal({
               "bg-card border-border relative flex w-full flex-col overflow-hidden rounded-2xl border shadow-elev-float cursor-default",
               MODAL_SIZE[size],
               "max-h-[90dvh]",
+              /*
+               * A <form> wrapped around the body and footer has to carry the
+               * column on. Left a plain block it grows to its content, the body
+               * stops being the part that scrolls, and the dialog's overflow
+               * clip cuts off whatever is below 90dvh — the footer with the
+               * save button first. Five forms in the notebook and the plan form
+               * had exactly that; doing it here covers the next one too.
+               */
+              "[&>form]:flex [&>form]:min-h-0 [&>form]:w-full [&>form]:flex-1 [&>form]:flex-col [&>form]:overflow-hidden",
               "outline-none",
               className,
             )}

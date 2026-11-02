@@ -114,6 +114,18 @@ const setField = (sel, value) => `(() => {
   return true;
 })()`;
 const dayChecks = `[...document.querySelectorAll('[role="checkbox"]')]`;
+/**
+ * The dialog's save button is on screen and inside the dialog. A <form> around
+ * the body once left the body unscrollable and the dialog's clip cut the footer
+ * off — `requestSubmit()` below would still pass, so this is what a thumb sees.
+ */
+const footerReachable = `(() => {
+  const d = document.querySelector('[role="dialog"]');
+  const b = d && [...d.querySelectorAll("button[type=submit]")].pop();
+  if (!b) return JSON.stringify({ ok: false, why: "no submit" });
+  const r = b.getBoundingClientRect(), box = d.getBoundingClientRect();
+  return JSON.stringify({ ok: r.height > 0 && r.bottom <= box.bottom + 1 && r.bottom <= innerHeight, bottom: Math.round(r.bottom), box: Math.round(box.bottom), vh: innerHeight });
+})()`;
 const dayTitle = `(document.querySelector("h2.text-center")?.textContent ?? "")`;
 
 export async function run({ base, profileDir, port, db, shotDir }) {
@@ -174,6 +186,9 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     // ── Sửa cả ngày mai trong một khung ────────────────────────────────────
     await page.eval(clickButton("Sửa ngày này"));
     await page.until(`!!document.querySelector('[role="dialog"]')`, { timeout: 10000 });
+    await sleep(500);
+    const daySheetFooter = JSON.parse(await page.eval(footerReachable));
+    ok("khung sửa cả ngày ở 390px: nút lưu nằm trong khung, không bị cắt", daySheetFooter.ok, JSON.stringify(daySheetFooter));
     await page.eval(setField('[role="dialog"] input[maxlength="40"]', "tập C mới"));
     await page.eval(setField(`[role="dialog"] textarea[aria-label^="Trưa 12h"]`, "300g ức gà + 1 chén cơm"));
     await page.eval(`document.querySelector('[role="dialog"] form').requestSubmit()`);
@@ -257,6 +272,9 @@ export async function run({ base, profileDir, port, db, shotDir }) {
     for (let i = n; i > 1; i--) await page.eval(`[...document.querySelectorAll('[role="dialog"] button[aria-label^="Đưa cột Nước uống lên"]')][0]?.click()`);
     await page.eval(setField('[role="dialog"] input[aria-label="Tên chỉ số"]', "Vòng eo"));
     await page.eval(setField('[role="dialog"] input[aria-label="Đơn vị"]', "cm"));
+    await sleep(300);
+    const settingsFooter = JSON.parse(await page.eval(footerReachable));
+    ok("khung Tuỳ chỉnh ở 390px (5 cột + chỉ số): nút lưu nằm trong khung, không bị cắt", settingsFooter.ok, JSON.stringify(settingsFooter));
     await page.eval(`document.querySelector('[role="dialog"] form').requestSubmit()`);
     await sleep(2500);
     await reload(page);

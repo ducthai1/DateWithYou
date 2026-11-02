@@ -139,10 +139,7 @@ export function PlanFormModal({
         icon={<Target className="h-[18px] w-[18px]" />}
         onClose={onClose}
       />
-      {/* The form sits between the dialog's flex column and its body, so it has to
-          carry the column on — without these the body stops scrolling and a long
-          form pushes the footer, and its save button, out of the dialog. */}
-      <form onSubmit={save} data-plan-form className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+      <form onSubmit={save} data-plan-form>
         <ModalContent className="space-y-5">
           <div>
             <label htmlFor="plan-title" className={LABEL}>Muốn cùng nhau làm gì?</label>
