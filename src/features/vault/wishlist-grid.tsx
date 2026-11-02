@@ -5,21 +5,19 @@ import { usePartnerName } from "@/features/space/use-partner";
 import { readableFormError } from "@/lib/form-error";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerList } from "@/components/ui/stagger-list";
-import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { AlertModal } from "@/components/ui/alert-modal";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useCelebrate } from "@/components/ui/celebrate";
 import { useToast } from "@/components/ui/toast";
 import { Trash2, Check, Undo2, Plus, Gift, Link as LinkIcon, User, Users, Coins, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryEnum } from "@/hooks/use-query-state";
+import { WishlistFormModal, type WishDraft } from "./wishlist-form-modal";
 
 const FILTER_MODES = ["all", "active", "bought"] as const;
 
@@ -28,29 +26,15 @@ export function WishlistGrid() {
   // `?wish=` so a reload keeps "đã mua" / "chưa mua" selected.
   const [filter, setFilter] = useQueryEnum("wish", FILTER_MODES, "all");
   const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // A fresh form per opening; the last one stays mounted (closed) so it can animate out.
+  const [formKey, setFormKey] = useState(0);
+  const [draft, setDraft] = useState<WishDraft | null>(null);
   const [redeemError, setRedeemError] = useState<string | null>(null);
-
-  // Form State
-  const [itemName, setItemName] = useState("");
-  const [price, setPrice] = useState("");
-  const [pointCost, setPointCost] = useState("");
-  const [forWhom, setForWhom] = useState<"me" | "partner">("partner");
-  const [note, setNote] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
 
   const toast = useToast();
   const list = trpc.wishlist.list.useQuery();
   const utils = trpc.useUtils();
   const invalidate = () => utils.wishlist.list.invalidate();
-  const create = trpc.wishlist.create.useMutation({
-    onSuccess: () => { closeForm(); invalidate(); toast("Đã lưu vào wishlist ✓", "success"); },
-    onError: (err) => toast(readableFormError(err.message), "error"),
-  });
-  const update = trpc.wishlist.update.useMutation({
-    onSuccess: () => { closeForm(); invalidate(); toast("Đã cập nhật wishlist ✓", "success"); },
-    onError: (err) => toast(readableFormError(err.message), "error"),
-  });
   /*
    * The tick moves first; the server hears about it afterwards.
    *
@@ -112,57 +96,25 @@ export function WishlistGrid() {
     return true;
   }), [items, filter]);
 
-  function openNewForm() {
-    setItemName("");
-    setPrice("");
-    setPointCost("");
-    setForWhom("partner");
-    setNote("");
-    setSourceUrl("");
-    setEditingId(null);
+  function openForm(next: WishDraft) {
+    setFormKey((k) => k + 1);
+    setDraft(next);
     setFormOpen(true);
   }
 
-  function openEditForm(item: typeof items[number]) {
-    setItemName(item.itemName);
-    setPrice(item.price ? String(item.price) : "");
-    setPointCost(item.pointCost ? String(item.pointCost) : "");
-    setForWhom(item.forWhom);
-    setNote(item.note ?? "");
-    setSourceUrl(item.sourceUrl ?? "");
-    setEditingId(item.id);
-    setFormOpen(true);
-  }
+  const openNewForm = () =>
+    openForm({ itemName: "", price: null, pointCost: 0, forWhom: "partner", note: "", sourceUrl: "" });
 
-  function closeForm() {
-    setFormOpen(false);
-    setTimeout(() => {
-      setItemName("");
-      setPrice("");
-      setPointCost("");
-      setForWhom("partner");
-      setNote("");
-      setSourceUrl("");
-      setEditingId(null);
-    }, 200);
-  }
-
-  function saveForm() {
-    if (!itemName.trim()) return;
-    const data = {
-      itemName,
-      price: price ? Number(price) : undefined,
-      pointCost: pointCost ? Number(pointCost) : undefined,
-      forWhom,
-      note,
-      sourceUrl: sourceUrl || undefined,
-    };
-    if (editingId) {
-      update.mutate({ id: editingId, ...data });
-    } else {
-      create.mutate(data);
-    }
-  }
+  const openEditForm = (item: typeof items[number]) =>
+    openForm({
+      id: item.id,
+      itemName: item.itemName,
+      price: item.price,
+      pointCost: item.pointCost ?? 0,
+      forWhom: item.forWhom,
+      note: item.note ?? "",
+      sourceUrl: item.sourceUrl ?? "",
+    });
 
   function handleToggle(id: string, currentlyBought: boolean, anchorEl?: HTMLElement | null) {
     toggle.mutate({ id });
@@ -379,85 +331,15 @@ export function WishlistGrid() {
         </StaggerList>
       )}
 
-      {/* Modal Form */}
-      <Modal open={formOpen} onClose={closeForm}>
-        <ModalHeader title={editingId ? "Chỉnh sửa Wishlist" : "Thêm vào Wishlist"} onClose={closeForm} />
-        <ModalContent className="space-y-4">
-          <div>
-            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Tên món quà</label>
-            <Input 
-              autoFocus 
-              placeholder="VD: Giày sneaker, Nước hoa..." 
-              value={itemName} 
-              onChange={(e) => setItemName(e.target.value)} 
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Giá dự kiến (VNĐ)</label>
-              <Input 
-                type="number"
-                placeholder="VD: 500000" 
-                value={price} 
-                onChange={(e) => setPrice(e.target.value)} 
-              />
-            </div>
-            <div>
-              <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Giá đổi điểm (Phiếu bé ngoan)</label>
-              <Input 
-                type="number"
-                placeholder="VD: 100" 
-                value={pointCost} 
-                onChange={(e) => setPointCost(e.target.value)} 
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Dành cho ai?</label>
-              <div className="bg-muted flex h-11 items-center rounded-xl p-1 text-sm">
-                <button
-                  className={cn("flex-1 rounded-lg py-1.5 transition-colors outline-none", forWhom === "me" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
-                  onClick={() => setForWhom("me")}
-                >
-                  Bạn
-                </button>
-                <button
-                  className={cn("flex-1 rounded-lg py-1.5 transition-colors outline-none", forWhom === "partner" ? "bg-background shadow-sm font-medium" : "text-muted-foreground")}
-                  onClick={() => setForWhom("partner")}
-                >
-                  {partnerName}
-                </button>
-              </div>
-            </div>
-
-          <div>
-            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Link tham khảo (bắt đầu bằng https://)</label>
-            <Input 
-              placeholder="https://shopee.vn/..." 
-              value={sourceUrl} 
-              onChange={(e) => setSourceUrl(e.target.value)} 
-            />
-          </div>
-
-          <div>
-            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Ghi chú thêm</label>
-            <Textarea
-              rows={2}
-              placeholder="Màu sắc, size, địa chỉ mua..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-        </ModalContent>
-        <ModalFooter>
-          <Button variant="secondary" className="flex-1" onClick={closeForm}>Huỷ</Button>
-          <Button variant="primary" className="flex-1" disabled={!itemName.trim() || create.isPending || update.isPending} onClick={saveForm}>
-            {editingId ? "Cập nhật" : "Lưu vào Wishlist"}
-          </Button>
-        </ModalFooter>
-      </Modal>
+      {draft && (
+        <WishlistFormModal
+          key={formKey}
+          open={formOpen}
+          draft={draft}
+          partnerName={partnerName}
+          onClose={() => setFormOpen(false)}
+        />
+      )}
 
       {/* Redeem failure (e.g. not enough points) — replaces native alert() */}
       <AlertModal

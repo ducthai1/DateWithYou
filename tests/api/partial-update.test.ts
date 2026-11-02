@@ -166,6 +166,23 @@ describe("the other update procedures", () => {
     assert.equal(row.pointCost, 120);
   });
 
+  test("a wish's price and link can be taken away again — null clears, a missing key keeps", async () => {
+    const { id } = await couple.a.caller.wishlist.create({
+      itemName: "Nước hoa",
+      price: 1_500_000,
+      sourceUrl: "https://shopee.vn/N%C6%B0%E1%BB%9Bc-hoa-i.1.2",
+    });
+    const read = async () => must((await couple.a.caller.wishlist.list()).find((d: { id: string }) => d.id === id));
+    await couple.a.caller.wishlist.update({ id, note: "size 50ml" });
+    assert.equal((await read()).price, 1_500_000, "an edit that does not send the price keeps it");
+    await couple.a.caller.wishlist.update({ id, price: null, sourceUrl: null });
+    const row = await read();
+    assert.equal(row.price, null);
+    assert.equal(row.sourceUrl, null);
+    assert.equal(row.note, "size 50ml");
+    await rejects(() => couple.a.caller.wishlist.update({ id, price: -1 }), "BAD_REQUEST");
+  });
+
   test("a trip keeps its budget through a title patch", async () => {
     const { id } = await couple.a.caller.trip.create({
       title: "Đà Nẵng",

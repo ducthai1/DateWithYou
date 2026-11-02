@@ -12,8 +12,10 @@ const wishlistInput = z.object({
   itemName: z.string().trim().min(1).max(120),
   forWhom: z.enum(["me", "partner"]).default("partner"),
   imageUrl: httpsUrl.optional(),
-  sourceUrl: httpsUrl.optional(),
-  price: z.number().nonnegative().optional(),
+  // Nullable so an edit can take a link or a price away again; leaving the key
+  // out keeps what is stored, which is all an empty field used to send.
+  sourceUrl: httpsUrl.nullable().optional(),
+  price: z.number().nonnegative().nullable().optional(),
   pointCost: z.number().nonnegative().default(0).optional(),
   note: z.string().trim().max(500).optional(),
 });

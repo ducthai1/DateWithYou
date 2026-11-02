@@ -53,6 +53,7 @@ const SUITES = [
   { id: "invite", load: () => import("./invite.mjs") },
   { id: "onboarding", load: () => import("./onboarding.mjs") },
   { id: "vault-plan", load: () => import("./vault-plan-form.mjs") },
+  { id: "vault-wish", load: () => import("./vault-wishlist-form.mjs") },
 ];
 
 /** Never point the suites at anything that could be production data. */
