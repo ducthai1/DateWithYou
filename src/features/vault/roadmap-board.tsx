@@ -6,52 +6,29 @@ import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StaggerList } from "@/components/ui/stagger-list";
-import { Modal, ModalContent, ModalFooter, ModalHeader } from "@/components/ui/modal";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useCelebrate } from "@/components/ui/celebrate";
-import { CheckCircle2, GripVertical, Lightbulb, Map, Plus, Target, Trash2 } from "lucide-react";
+import { ArrowRight, GripVertical, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
-
-type PlanStatus = "idea" | "planning" | "done";
-
-const COLUMNS = [
-  // spot: a wide scene here would crop to a smear at 1/3-column width (md+),
-  // so each empty column gets a spot illustration picked for what the status
-  // means instead — a daydream, a booked plan, a trip already made.
-  { key: "idea" as const, label: "Ý tưởng", icon: Lightbulb, bg: "bg-amber-500/10 border-amber-500/20", iconColor: "text-amber-600", spot: "islandCampsite" as const },
-  { key: "planning" as const, label: "Đang lên kế hoạch", icon: Map, bg: "bg-sky-500/10 border-sky-500/20", iconColor: "text-sky-600", spot: "pinTicket" as const },
-  { key: "done" as const, label: "Đã làm", icon: CheckCircle2, bg: "bg-emerald-500/10 border-emerald-500/20", iconColor: "text-emerald-600", spot: "backpackScrapbook" as const },
-];
+import { PLAN_COLUMNS as COLUMNS, NEXT_STATUS, planCategoryIcon, type PlanStatus } from "./plan-board-meta";
+import { PlanFormModal, type PlanDraft } from "./plan-form-modal";
 
 export function RoadmapBoard() {
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<PlanDraft | null>(null);
+  // A fresh form per opening; the old one stays mounted (closed) so it can animate out.
+  const [formKey, setFormKey] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [draggedPlanId, setDraggedPlanId] = useState<string | null>(null);
-  
-  // Form State
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
 
   const list = trpc.plan.list.useQuery();
   const utils = trpc.useUtils();
   const toast = useToast();
   const invalidate = () => utils.plan.list.invalidate();
-  const create = trpc.plan.create.useMutation({ 
-    onSuccess: () => { closeForm(); invalidate(); toast("Đã thêm dự định mới!", "success"); },
-    onError: (err) => toast(readableFormError(err.message), "error")
-  });
-  const update = trpc.plan.update.useMutation({ 
-    onSuccess: () => { closeForm(); invalidate(); toast("Đã cập nhật dự định!", "success"); },
-    onError: (err) => toast(readableFormError(err.message), "error")
-  });
   const setStatus = trpc.plan.setStatus.useMutation({
     onMutate: async ({ id, status }) => {
       await utils.plan.list.cancel();
@@ -84,40 +61,26 @@ export function RoadmapBoard() {
 
   const plans = list.data ?? [];
 
-  function openNewForm() {
-    setTitle("");
-    setDescription("");
-    setCategory("");
-    setEditingId(null);
+  function openForm(next: PlanDraft) {
+    setFormKey((k) => k + 1);
+    setDraft(next);
     setFormOpen(true);
   }
 
-  function openEditForm(plan: typeof plans[number]) {
-    setTitle(plan.title);
-    setDescription(plan.description ?? "");
-    setCategory(plan.category ?? "");
-    setEditingId(plan.id);
-    setFormOpen(true);
-  }
+  const openNewForm = (status: PlanStatus = "idea") =>
+    openForm({ title: "", description: "", category: "", status });
 
-  function closeForm() {
-    setFormOpen(false);
-    setTimeout(() => {
-      setTitle("");
-      setDescription("");
-      setCategory("");
-      setEditingId(null);
-    }, 200);
-  }
+  const openEditForm = (plan: typeof plans[number]) =>
+    openForm({
+      id: plan.id,
+      title: plan.title,
+      description: plan.description ?? "",
+      category: plan.category ?? "",
+      status: plan.status,
+    });
 
-  function saveForm() {
-    if (!title.trim()) return;
-    if (editingId) {
-      update.mutate({ id: editingId, title, description, category });
-    } else {
-      create.mutate({ title, description, category });
-    }
-  }
+  const titles = plans.map((p) => p.title);
+  const usedCategories = [...new Set(plans.map((p) => p.category).filter((c): c is string => !!c))];
 
   function handleStatusChange(id: string, newStatus: PlanStatus, anchorEl?: HTMLElement | null) {
     setStatus.mutate({ id, status: newStatus });
@@ -178,8 +141,8 @@ export function RoadmapBoard() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-muted-foreground text-sm">Lên kế hoạch những dự định cùng nhau: từ Ý tưởng → Đang lên kế hoạch → Đã làm. Kéo thả thẻ để đổi trạng thái. (Khác Lịch: đây là bucket planning, không gắn ngày cụ thể.)</p>
-        <Button onClick={openNewForm} className="shrink-0 gap-1.5 w-full sm:w-auto" variant="primary">
+        <p className="text-muted-foreground text-sm">Những điều muốn cùng nhau làm, chưa cần gắn ngày: từ Ý tưởng → Đang lên kế hoạch → Đã làm. Bấm vào thẻ để sửa hoặc chuyển cột.</p>
+        <Button onClick={() => openNewForm()} className="shrink-0 gap-1.5 w-full sm:w-auto" variant="primary">
           <Plus className="h-4 w-4" /> Thêm dự định
         </Button>
       </div>
@@ -202,6 +165,15 @@ export function RoadmapBoard() {
                 <span className="bg-background/80 text-muted-foreground ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium shadow-sm">
                   {colPlans.length}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => openNewForm(col.key)}
+                  aria-label={`Thêm vào ${col.label}`}
+                  title={`Thêm vào ${col.label}`}
+                  className="text-muted-foreground hover:bg-background/80 hover:text-foreground -my-1 -mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
 
               {colPlans.length === 0 ? (
@@ -209,7 +181,7 @@ export function RoadmapBoard() {
                   icon="heart"
                   spot={col.spot}
                   title="Trống"
-                  subtitle={col.key === "idea" ? "Thêm dự định mới hoặc kéo thả thẻ vào đây." : "Kéo thả thẻ vào đây để chuyển trạng thái."}
+                  subtitle={col.key === "idea" ? "Bấm + để thêm một ý tưởng, có sẵn gợi ý để chọn." : "Bấm + để thêm, hoặc chuyển thẻ từ cột bên cạnh sang."}
                   className="py-10"
                 />
               ) : (
@@ -226,10 +198,16 @@ export function RoadmapBoard() {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          {p.category && (
-                            <Badge tone="accent" className="mb-1.5 line-clamp-1 w-fit">{p.category}</Badge>
-                          )}
-                          <h4 className={`font-medium leading-tight ${p.status === "done" ? "text-muted-foreground line-through" : ""}`}>
+                          {p.category && (() => {
+                            const KindIcon = planCategoryIcon(p.category);
+                            return (
+                              <Badge tone="accent" className="mb-1.5 inline-flex max-w-full w-fit items-center gap-1">
+                                {KindIcon && <KindIcon className="h-3 w-3 shrink-0" aria-hidden="true" />}
+                                <span className="truncate">{p.category}</span>
+                              </Badge>
+                            );
+                          })()}
+                          <h4 className={`font-medium leading-tight [overflow-wrap:anywhere] ${p.status === "done" ? "text-muted-foreground line-through" : ""}`}>
                             {p.title}
                           </h4>
                         </div>
@@ -240,17 +218,27 @@ export function RoadmapBoard() {
                       </div>
 
                       {p.description && (
-                        <p className="text-muted-foreground line-clamp-2 text-xs">
+                        <p className="text-muted-foreground line-clamp-2 text-xs [overflow-wrap:anywhere]">
                           {p.description}
                         </p>
                       )}
 
                       <div className="mt-1 flex items-center justify-between gap-x-2 border-t border-border/50 pt-3">
-                        <p className="text-muted-foreground text-[10px]" title={p.createdAt?.toString()}>
+                        <p className="text-muted-foreground min-w-0 text-[10px]" title={p.createdAt?.toString()}>
                           {p.createdAt ? formatDistanceToNow(p.createdAt, { locale: vi, addSuffix: true }) : ""}
                         </p>
-                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}
+                        <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}>
+                          {NEXT_STATUS[p.status] && (
+                            <button
+                              type="button"
+                              data-plan-advance
+                              onClick={(e) => handleStatusChange(p.id, NEXT_STATUS[p.status]!.to, e.currentTarget)}
+                              className="text-accent-ink hover:bg-accent-soft inline-flex min-h-[36px] shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-xs font-medium transition-colors"
+                            >
+                              {NEXT_STATUS[p.status]!.label} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                            </button>
+                          )}
                           <ConfirmButton
                             idle=""
                             confirmText="Xoá"
@@ -269,48 +257,20 @@ export function RoadmapBoard() {
         })}
       </div>
 
-      <Modal open={formOpen} onClose={closeForm}>
-        <ModalHeader
-          title={editingId ? "Chỉnh sửa dự định" : "Thêm dự định mới"}
-          description="Nơi muốn tới, việc muốn làm — chưa cần gắn ngày cụ thể."
-          icon={<Target className="h-[18px] w-[18px]" />}
-          onClose={closeForm}
+      {draft && (
+        <PlanFormModal
+          key={formKey}
+          open={formOpen}
+          draft={draft}
+          boardTitles={titles}
+          usedCategories={usedCategories}
+          onClose={() => setFormOpen(false)}
+          onSaved={(movedToDone) => {
+            setFormOpen(false);
+            if (movedToDone) celebrate();
+          }}
         />
-        <ModalContent className="space-y-4">
-          <div>
-            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Tiêu đề</label>
-            <Input 
-              autoFocus 
-              placeholder="VD: Du lịch Đà Lạt mùa mưa" 
-              value={title} 
-              onChange={(e) => setTitle(e.target.value)} 
-            />
-          </div>
-          <div>
-            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Phân loại (tùy chọn)</label>
-            <Input 
-              placeholder="VD: Du lịch, Mua sắm, Trải nghiệm..." 
-              value={category} 
-              onChange={(e) => setCategory(e.target.value)} 
-            />
-          </div>
-          <div>
-            <label className="text-muted-foreground mb-1.5 block text-xs font-medium">Mô tả chi tiết</label>
-            <Textarea
-              rows={3}
-              placeholder="Ghi chú thêm về dự định này..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-        </ModalContent>
-        <ModalFooter>
-          <Button variant="secondary" className="flex-1" onClick={closeForm}>Huỷ</Button>
-          <Button variant="primary" className="flex-1" disabled={!title.trim() || create.isPending || update.isPending} onClick={saveForm}>
-            {editingId ? "Cập nhật" : "Thêm vào kế hoạch"}
-          </Button>
-        </ModalFooter>
-      </Modal>
+      )}
     </div>
   );
 }

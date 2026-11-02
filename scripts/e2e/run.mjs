@@ -52,6 +52,7 @@ const SUITES = [
   { id: "landscape", load: () => import("./player-landscape.mjs") },
   { id: "invite", load: () => import("./invite.mjs") },
   { id: "onboarding", load: () => import("./onboarding.mjs") },
+  { id: "vault-plan", load: () => import("./vault-plan-form.mjs") },
 ];
 
 /** Never point the suites at anything that could be production data. */

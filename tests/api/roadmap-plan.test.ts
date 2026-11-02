@@ -65,9 +65,29 @@ describe("a plan's life", () => {
     assert.equal(row.status, "planning", "a title edit must not move the card");
   });
 
+  test("the '+' on a column puts a new card straight into that column", async () => {
+    const { id } = await couple.a.caller.plan.create({ title: "Đã đi Vũng Tàu", status: "done" });
+    assert.equal((await rowOf(id)).status, "done");
+    await rejects(
+      () => couple.a.caller.plan.create({ title: "Lạ", status: "maybe" as "idea" }),
+      "BAD_REQUEST",
+    );
+  });
+
+  test("the form's status row moves a card, and only the status changes", async () => {
+    const { id } = await couple.a.caller.plan.create({ title: "Học bơi", category: "Học cùng nhau", description: "mùa hè" });
+    await couple.a.caller.plan.update({ id, status: "planning" });
+    const row = await rowOf(id);
+    assert.equal(row.status, "planning");
+    assert.equal(row.title, "Học bơi");
+    assert.equal(row.category, "Học cùng nhau");
+    assert.equal(row.description, "mùa hè");
+    await couple.a.caller.plan.remove({ id });
+  });
+
   test("newest first", async () => {
     const titles = (await couple.a.caller.plan.list()).map((p) => p.title);
-    assert.deepEqual(titles.slice(0, 3), ["Học nhảy đôi", "Mua nhà", "Đi Nhật"]);
+    assert.deepEqual(titles.slice(0, 4), ["Đã đi Vũng Tàu", "Học nhảy đôi", "Mua nhà", "Đi Nhật"]);
   });
 
   test("removing takes it off the list", async () => {

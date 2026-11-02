@@ -12,6 +12,14 @@ const planInput = z.object({
   description: z.string().trim().max(1000).optional(),
   category: z.string().trim().max(40).optional(),
   targetDate: z.coerce.date().optional(),
+  /*
+   * Where the card goes, for the "+" on each column and the status row in the
+   * form. On the phone that row is the only way to move a card at all — the
+   * board's drag and drop is HTML5 drag, which touch screens never fire.
+   * Optional with no default, so a create without it is still an idea and an
+   * edit without it leaves the card where it is.
+   */
+  status: statusEnum.optional(),
 });
 
 export const planRouter = router({
