@@ -6,6 +6,7 @@ import { ScrollStrip } from "@/components/ui/scroll-strip";
 import Link from "next/link";
 import { ChevronLeft, Settings2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { dayKeyLabel } from "@/lib/date-keys";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
@@ -78,7 +79,7 @@ export function TripDetail({ id }: { id: string }) {
       header={
         <PageHeader
           title={trip.title}
-          subtitle={`${trip.startDate} — ${trip.endDate}`}
+          subtitle={`${dayKeyLabel(trip.startDate)} — ${dayKeyLabel(trip.endDate)}`}
           art="bannerSub"
           artPosition="center 40%"
           actions={

@@ -5,7 +5,11 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { trpc } from "@/lib/trpc";
 import { todayKey } from "@/lib/date-keys";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Target, Trash2 } from "lucide-react";
+import { Chip } from "@/components/ui/chip";
+import { MoneyInput } from "@/components/ui/money-input";
+import { BUDGET_PRESETS, TRIP_LENGTHS, tripDays, tripEnd } from "@/lib/trip-presets";
+import { guessPlanCategory } from "@/lib/plan-ideas";
 
 import { ModalContent, ModalFooter } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -31,7 +35,13 @@ export function TripForm({
   const [description, setDescription] = useState(trip?.description ?? "");
   const [startDate, setStartDate] = useState(trip?.startDate ?? todayKey());
   const [endDate, setEndDate] = useState(trip?.endDate ?? todayKey());
-  const [budget, setBudget] = useState(trip?.budget?.toString() ?? "0");
+  // null is "not set yet", which the field shows as empty rather than a "0" to delete first.
+  const [budget, setBudget] = useState<number | null>(trip?.budget ? trip.budget : null);
+  // Their "Du lịch" plans from Bí mật — a trip is usually one of those coming true.
+  const plans = trpc.plan.list.useQuery(undefined, { enabled: !trip });
+  const fromPlans = (plans.data ?? [])
+    .filter((p) => p.status !== "done" && (p.category === "Du lịch" || (!p.category && guessPlanCategory(p.title) === "Du lịch")))
+    .slice(0, 4);
 
   const createMut = trpc.trip.create.useMutation({
     onSuccess: () => {
@@ -95,7 +105,7 @@ export function TripForm({
         description: description.trim() || undefined,
         startDate,
         endDate,
-        budget: Number(budget) || 0,
+        budget: budget ?? 0,
       });
     } else {
       createMut.mutate({
@@ -103,7 +113,7 @@ export function TripForm({
         description: description.trim() || undefined,
         startDate,
         endDate,
-        budget: Number(budget) || 0,
+        budget: budget ?? 0,
       });
     }
   };
@@ -113,6 +123,26 @@ export function TripForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0 w-full">
       <ModalContent className="flex flex-col gap-4">
+        {fromPlans.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-muted-foreground text-xs font-medium">Từ kế hoạch của hai bạn</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Từ kế hoạch">
+              {fromPlans.map((p) => (
+                <Chip
+                  key={p.id}
+                  icon={Target}
+                  label={<span className="max-w-[14rem] truncate">{p.title}</span>}
+                  selected={title === p.title}
+                  onClick={() => {
+                    setTitle(p.title);
+                    if (!description.trim() && p.description) setDescription(p.description);
+                  }}
+                  className="max-w-full px-3"
+                />
+              ))}
+            </div>
+          </div>
+        )}
         <div>
           <label className="mb-1 block text-sm font-medium text-muted-foreground">Tên chuyến đi</label>
           <input
@@ -132,13 +162,14 @@ export function TripForm({
             <label className="mb-1 block text-sm font-medium text-muted-foreground">Từ ngày</label>
             {/* Shared DatePicker: day-first and unambiguous, icon leading — the
                 native field printed the browser's own order and drew its icon
-                against the right edge. Moving the start past the end drags the
-                end along, so the range can never be inverted. */}
+                against the right edge. Moving the start carries the end with
+                it, so a "3N2Đ" picked first stays three days wherever the trip
+                moves, and the range can never be inverted. */}
             <DatePicker
               value={startDate}
               onChange={(d) => {
                 setStartDate(d);
-                if (endDate < d) setEndDate(d);
+                setEndDate(tripEnd(d, tripDays(startDate, endDate)));
               }}
               ariaLabel="Ngày bắt đầu"
             />
@@ -152,18 +183,21 @@ export function TripForm({
             />
           </div>
         </div>
+        <div className="-mt-1 flex flex-wrap gap-2" role="group" aria-label="Độ dài chuyến đi">
+          {TRIP_LENGTHS.map((l) => (
+            <Chip
+              key={l.label}
+              label={l.label}
+              selected={tripDays(startDate, endDate) === l.days}
+              onClick={() => setEndDate(tripEnd(startDate, l.days))}
+              className="px-3"
+            />
+          ))}
+        </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-muted-foreground">Ngân sách dự kiến (VNĐ)</label>
-          <input
-            aria-label="Ngân sách dự kiến"
-            type="number"
-            min={0}
-            value={budget}
-            onChange={(e) => setBudget(e.target.value)}
-            placeholder="0"
-            className="w-full rounded-xl border border-border bg-background px-4 py-2 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-          />
+          <label className="mb-1 block text-sm font-medium text-muted-foreground">Ngân sách dự kiến</label>
+          <MoneyInput value={budget} onChange={setBudget} presets={BUDGET_PRESETS} ariaLabel="Ngân sách dự kiến" placeholder="Chưa tính" />
         </div>
 
         <div>

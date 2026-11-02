@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToast } from "@/components/ui/toast";
 import { Check, Plus, Trash2 } from "lucide-react";
+import { Chip } from "@/components/ui/chip";
+import { freshPacking } from "@/lib/trip-presets";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function TripChecklist({ trip }: { trip: any }) {
@@ -11,13 +13,33 @@ export function TripChecklist({ trip }: { trip: any }) {
   const toast = useToast();
   const [newItem, setNewItem] = useState("");
 
+  /*
+   * Typed items and tapped ideas share one mutation, so clearing the box is the
+   * typed add's own business — a tapped idea landing must not wipe what is
+   * being typed meanwhile.
+   */
   const addMut = trpc.trip.addChecklist.useMutation({
-    onSuccess: () => {
-      ctx.trip.get.invalidate({ id: trip.id });
-      setNewItem("");
-    },
+    onSuccess: () => ctx.trip.get.invalidate({ id: trip.id }),
     onError: () => toast("Chưa thêm được, thử lại nhé", "error"),
   });
+  // Ideas tapped and on their way, so a second tap before the list refreshes cannot add one twice.
+  const [sending, setSending] = useState<string[]>([]);
+  const ideas = freshPacking([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...trip.checklists.map((c: any) => c.content as string),
+    ...sending,
+  ]);
+
+  function addIdea(content: string) {
+    setSending((s) => [...s, content]);
+    // mutateAsync, not mutate(vars, { onError }): react-query runs per-call
+    // callbacks for the LAST call only, so three quick taps left two stuck.
+    // Kept hidden on success — the refreshed list hides it from then on, and
+    // dropping it sooner flashed the chip back for the length of the refetch.
+    addMut
+      .mutateAsync({ tripId: trip.id, content })
+      .catch(() => setSending((s) => s.filter((x) => x !== content)));
+  }
 
   /*
    * Ticking an item moves the tick NOW and tells the server afterwards.
@@ -123,7 +145,10 @@ export function TripChecklist({ trip }: { trip: any }) {
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.trim()) return;
-    addMut.mutate({ tripId: trip.id, content: newItem.trim() });
+    addMut
+      .mutateAsync({ tripId: trip.id, content: newItem.trim() })
+      .then(() => setNewItem(""))
+      .catch(() => {});
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -203,6 +228,17 @@ export function TripChecklist({ trip }: { trip: any }) {
           <Plus className="h-5 w-5" />
         </button>
       </form>
+
+      {ideas.length > 0 && (
+        <div className="space-y-1.5" data-packing-ideas>
+          <p className="text-muted-foreground text-xs font-medium">Hay mang theo — bấm là thêm</p>
+          <div className="flex flex-wrap gap-2">
+            {ideas.map((i) => (
+              <Chip key={i} icon={Plus} label={i} onClick={() => addIdea(i)} className="px-3" />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
